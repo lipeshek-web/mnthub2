@@ -8,13 +8,14 @@ import {
   GraduationCap,
   LogOut,
   PlusCircle,
+  Sparkles,
   UserRoundPlus,
   Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/platform/avatar'
 import { api } from '@/lib/api'
-import { useAppStore } from '@/lib/store'
+import { useAppStore, type AppView } from '@/lib/store'
 import type { UserDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -77,21 +78,20 @@ export function Navbar() {
     }
   }
 
-  const navItem = (
-    name: 'marketplace' | 'dashboard' | 'onboarding',
-    label: string,
-    icon: React.ReactNode
-  ) => {
-    const active = view.name === name
+  const navItem = (target: AppView, label: string, icon: React.ReactNode) => {
+    const active = view.name === target.name
     return (
       <button
-        onClick={() => navigate({ name } as never)}
+        key={label}
+        onClick={() => navigate(target)}
         aria-current={active ? 'page' : undefined}
         aria-label={label}
         title={label}
         className={cn(
           'flex h-9 items-center gap-2 rounded-full px-3.5 text-sm font-medium transition-colors',
-          active ? 'bg-emerald-100 text-emerald-800' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+          active
+            ? 'bg-emerald-50 text-emerald-800'
+            : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900'
         )}
       >
         {icon}
@@ -101,26 +101,26 @@ export function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-stone-200/70 bg-white/85 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
+    <header className="z-40 shrink-0 border-b border-stone-200/70 bg-white/85 backdrop-blur-md">
+      <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4">
         <button
           className="flex items-center gap-2.5"
-          onClick={() => navigate({ name: 'marketplace' })}
+          onClick={() => navigate({ name: 'home' })}
           aria-label="Ir para a página inicial"
         >
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-700 text-white shadow-sm">
-            <GraduationCap className="h-5 w-5" />
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-700 text-white">
+            <GraduationCap className="h-4.5 w-4.5" />
           </span>
-          <span className="text-lg font-extrabold tracking-tight text-stone-900">
+          <span className="text-base font-extrabold tracking-tight text-stone-900">
             Mentor<span className="text-emerald-700">Hub</span>
           </span>
         </button>
 
-        <div className="ml-4 hidden items-center gap-1 sm:flex">
-          {navItem('marketplace', 'Explorar', <Compass className="h-4 w-4" />)}
-          {navItem('dashboard', 'Minhas sessões', <CalendarDays className="h-4 w-4" />)}
-          {navItem('onboarding', 'Tornar-se mentor', <PlusCircle className="h-4 w-4" />)}
-        </div>
+        <nav aria-label="Navegação principal" className="ml-4 hidden items-center gap-1 sm:flex">
+          {navItem({ name: 'marketplace' }, 'Explorar', <Compass className="h-4 w-4" />)}
+          {navItem({ name: 'dashboard' }, 'Minhas sessões', <CalendarDays className="h-4 w-4" />)}
+          {navItem({ name: 'for-mentors' }, 'Para mentores', <Sparkles className="h-4 w-4" />)}
+        </nav>
 
         <div className="ml-auto flex items-center gap-2">
           {user ? (
@@ -148,6 +148,9 @@ export function Navbar() {
                 <DropdownMenuItem onClick={() => navigate({ name: 'onboarding' })}>
                   <PlusCircle className="h-4 w-4" /> Perfil de mentor
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate({ name: 'marketplace' })}>
+                  <Compass className="h-4 w-4" /> Explorar mentores
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-xs text-muted-foreground">
                   Trocar usuário (demo)
@@ -168,7 +171,7 @@ export function Navbar() {
                 <DropdownMenuItem
                   onClick={() => {
                     setUser(null)
-                    navigate({ name: 'marketplace' })
+                    navigate({ name: 'home' })
                   }}
                   className="text-rose-600 focus:text-rose-600"
                 >
@@ -201,12 +204,6 @@ export function Navbar() {
             </DropdownMenu>
           )}
         </div>
-      </div>
-
-      <div className="flex items-center gap-1 overflow-x-auto border-t border-stone-100 px-4 py-2 sm:hidden">
-        {navItem('marketplace', 'Explorar', <Compass className="h-4 w-4" />)}
-        {navItem('dashboard', 'Sessões', <CalendarDays className="h-4 w-4" />)}
-        {navItem('onboarding', 'Ser mentor', <PlusCircle className="h-4 w-4" />)}
       </div>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

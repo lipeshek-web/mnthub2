@@ -132,3 +132,75 @@ Work Log:
 
 Stage Summary:
 - Plataforma verificada de ponta a ponta no browser real: marketplace → perfil → agendamento → confirmação → reunião (Jitsi) → avaliação → onboarding.
+
+---
+Task ID: 10-c
+Agent: frontend-styling-expert
+Task: Landing page para recrutar mentores (landing-mentor.tsx)
+
+Work Log:
+- Lidos worklog.md, store.ts (AppView com 'for-mentors' + navigate), helpers.ts (currencyBRL) e avatar.tsx (Avatar/Stars) para confirmar os contratos; conferidos slider.tsx (Radix onValueChange v[0]), accordion.tsx e card.tsx (overrides de gap/py via cn+twMerge)
+- Criado `src/components/platform/landing-mentor.tsx` (único arquivo; nenhum outro modificado): 'use client', navigate({name:'onboarding'}) nos CTAs "Criar meu perfil de mentor", scrollIntoView suave para #calculadora (scroll-mt-24), raiz em fluxo simples sem min-h-screen/fixed (renderiza dentro do <main> scrollável)
+- Hero split lg:grid-cols-2: pill badge, h1 com destaque emerald-700, 3 bullets com Check emerald, CTAs rounded-full h-12; mock UI em CSS puro (card de solicitação do Lucas Ferreira com Avatar/chips CalendarClock+Video/botões Aceitar-Recusar decorativos tabIndex={-1} aria-hidden) + 2 chips flutuantes absolutos (TrendingUp "R$ 2.450 este mês" com loop framer-motion y:[0,-6,0]; CalendarCheck "Novo agendamento")
+- Calculadora (#calculadora): Card minimalista com 2 Sliders (horas 2-40, preço R$50-500, labels htmlFor + aria-label), painel de resultado bg-stone-50 com monthly = hours*4.33*rate (useMemo) em currencyBRL text-4xl emerald-700 + projeção anual, footnote 4,33 semanas/mês
+- Como funciona (3 colunas, border-t-2 border-emerald-700 + numeração 01/02/03, sem cards); Benefícios (6 itens em grid 2/3 colunas, ícones bg-emerald-100 text-emerald-700 rounded-xl); Depoimento do Carlos Oliveira (Quote, Avatar xl, Stars 5, "Mentor de Tecnologia · 4 anos de experiência"); FAQ (Accordion single collapsible, 4 itens, border-stone-200, max-w-3xl); CTA final bg-emerald-950 rounded-3xl com blobs emerald blur + botão bg-white text-emerald-950 → onboarding
+- Framer-motion contido: Rise (whileInView fade/rise, viewport once) nas seções + fade inicial no hero; animação de loop apenas em 1 chip
+- Acessibilidade: seções semânticas com aria-labelledby, sr-only no título do depoimento, aria-hidden no mock decorativo e blobs, aria-labels nos Sliders
+- Qualidade: `bun run lint` limpo (0 erros/warnings); `bunx tsc --noEmit` sem erros em src/ (erros pré-existentes apenas em examples/ e skills/, fora do escopo)
+
+Stage Summary:
+- Landing de recrutamento de mentores completa em pt-BR (hero com mock UI, calculadora interativa de ganhos, como funciona, 6 benefícios, depoimento, FAQ e CTA emerald-950), pronta para ser montada no shell via view { name: 'for-mentors' }, consumindo store/helpers/avatar + shadcn (Button/Card/Slider/Accordion) e paleta stone+esmeralda exclusiva
+
+---
+Task ID: 10-b
+Agent: frontend-styling-expert
+Task: Landing page para alunos (landing-mentee.tsx)
+
+Work Log:
+- Lidos worklog.md e os contratos da Task 3: store.ts (navigate, setExploreQuery, view {name:'home'}), api.ts (api.listMentors({}) → MentorListItemDTO[]), types.ts, helpers.ts (currencyBRL, firstName), avatar.tsx (Avatar sm/md/lg, Stars) e os componentes ui usados (Button, Input, Badge, Skeleton)
+- Criado `src/components/platform/landing-mentee.tsx` (único arquivo tocado; export nomeado `LandingMenteeView`), client component em pt-BR para a view { name: 'home' }, renderiza como flow content dentro do main scrollável (sem min-h-screen/sticky/fixed)
+- Hero branco centrado (max-w-3xl): pill "Mentorias 1:1 ao vivo" com Sparkles, h1 com span emerald-700, sub copy, form de busca (preventDefault → setExploreQuery(term) + navigate marketplace; Input h-13 rounded-2xl pl-11 com Search à esquerda + Button h-13 rounded-full "Explorar mentores", stacked mobile/row desktop, max-w-xl) e linha de 5 avatares sobrepostos (-space-x-2, ring embutido no Avatar) com "+N mentores especialistas" (N = mentors.length), com estado de carregamento em Skeletons
+- Stats strip com useMemo a partir da lista da API: +mentores / +sessões (soma totalSessions) / +avaliações (soma reviewCount), sm:divide-x divide-stone-200, números text-3xl/4xl font-extrabold, labels uppercase; seção border-y bg-stone-50/50 py-10
+- "Como funciona" em 3 colunas sem cards, cada uma com border-t-2 border-emerald-700 pt-6, número 01/02/03 em emerald-700 e os textos especificados (Descubra / Agende / Conecte-se)
+- "Mentores em destaque": header com h2 + Button link "Ver todos" → marketplace; grid sm:grid-cols-3 gap-6 com top 3 (useMemo: rating>0, sort rating desc + reviewCount desc); card rounded-2xl border-stone-200 p-6 hover:border-emerald-300 com Avatar lg, BadgeCheck emerald-600 (rating>=4.5 && reviewCount>=3), "{firstName} · X anos de experiência", headline line-clamp-2, Stars + rating.toFixed(1) + (reviewCount), até 2 Badges bg-emerald-50 text-emerald-800, footer mt-auto border-t com currencyBRL(hourlyRate)+"/h" e Button sm rounded-full "Ver perfil" → {name:'mentor', mentorId}; 6 skeleton cards durante o load e empty state discreto se nada avaliado
+- Depoimentos: 3 figures estáticos (rounded-2xl bg-stone-50 border-stone-100 p-6, Quote preenchido em emerald-700, blockquote text-sm stone-700, figcaption author) com histórias plausíveis: Lucas Prado (transição p/ produto), Camila R. (inglês com Sofia), Diego M. (carreira com Marina)
+- CTA final: rounded-3xl bg-emerald-950 overflow-hidden com um blob emerald-600/30 blur, h2 "Pronto para dar o próximo passo?", copy emerald-100/90 e Button bg-white text-emerald-950 rounded-full px-8 h-12 → marketplace
+- framer-motion sutil: hero com fade-up no mount e demais sections com whileInView (once, margin -80px, duration 0.5); acessibilidade com section aria-labelledby + h2 id, aria-labels em busca/BadgeCheck/Ver perfil, ícones decorativos aria-hidden
+- Validação: `bun run lint` limpo (0 erros/warnings no projeto); `bunx tsc --noEmit` sem erros em src/ (apenas erros pré-existentes em examples/ e skills/, fora do escopo)
+
+Stage Summary:
+- Landing pública do lado mentee pronta em src/components/platform/landing-mentee.tsx, export nomeado `LandingMenteeView`, pronta para ser montada pelo shell no case view.name === 'home' do page.tsx
+- Paleta estrita: branco/stone + emerald apenas (accent emerald-700, chips emerald-50/100, único momento escuro no CTA bg-emerald-950); botões rounded-full, cards rounded-2xl, layout max-w-6xl px-4 com seções py-14 sm:py-20
+- Integração: consome apenas contratos existentes (useAppStore.navigate/setExploreQuery, api.listMentors, Avatar/Stars, currencyBRL/firstName) e navega somente para {name:'marketplace'} e {name:'mentor', mentorId}; nenhum outro arquivo foi modificado
+
+---
+Task ID: 10-a + 10-d + 10-e
+Agent: main (Z.ai Code)
+Task: Overhaul de UI — shell app-nativo, navbar/footer fixos minimalistas, Explorar inovador
+
+Work Log:
+- `src/lib/store.ts`: novas views `{name:'home'}` (landing alunos, default) e `{name:'for-mentors'}` (landing recrutamento); estado `exploreQuery` + `setExploreQuery` para pré-preencher o Explorar a partir da home; persist continua apenas com `user`
+- `src/app/page.tsx`: shell app-nativo — raiz `h-dvh flex flex-col overflow-hidden`, Navbar e Footer `shrink-0` (sempre visíveis), `<main className="flex-1 overflow-y-auto overscroll-contain">` como único container de rolagem; reset de scroll via `mainRef.scrollTo` no change de view; splash `h-dvh` claro; rotas: home/for-mentors/marketplace/mentor/dashboard/meeting/onboarding
+- `src/components/platform/navbar.tsx`: header fixo h-14 shrink-0 com backdrop-blur; logo → home; nav com pills minimalistas (ativo `bg-emerald-50 text-emerald-800`): Explorar / Minhas sessões / Para mentores (→ landing `for-mentors`, não mais direto ao onboarding); dropdown do usuário ganhou atalho "Explorar mentores"; logout → home; mobile sem segunda linha (tab bar do footer cobre)
+- `src/components/platform/footer.tsx`: desktop = barra fina h-12 sempre visível (marca, 4 links, ©); mobile = tab bar nativa h-14 com safe-area (Explorar/Sessões/Ser mentor, ícone+label, ativo em emerald-700)
+- `src/components/platform/marketplace.tsx` (redesign "Explorar"): barra superior compacta com título + contagem viva + Select de ordenação; busca grande com atalho de teclado "/" (listener global, hint `<kbd>`), botão de limpar (X) e debounce 300ms; chips de categoria com contagens calculadas da base completa (fetch sem filtros em paralelo); bento inovador: tile escuro `emerald-950` "Mentor em destaque" com rotação automática a cada 6s entre top-rated (AnimatePresence fade, dots clicáveis com role=tab) + 3 StatTiles (mentores/sessões/nota média com vírgula pt-BR); grid de cards minimalistas (rounded-2xl p-5, hover lift); pluralização "1 sessão"; consome `exploreQuery` da store uma única vez no mount (hero da home → Explorar pré-filtrado); "Como funciona" removido (mudou para a landing)
+- `src/components/platform/landing-mentor.tsx`: fix `Math.round` no monthly da calculadora (evitava "R$ 8.443,5")
+
+Stage Summary:
+- Sistema inteiro agora comporta-se como app nativo web: header e footer permanentemente fixos, rolagem exclusiva do corpo; visual minimalista (branco/stone, hairlines, emerald como único acento, rounded-full/2xl)
+- Novo Explorar é um dashboard: busca com "/", filtros com contagens, spotlight rotativo e stats — sem seção de marketing
+- Duas landings novas: `home` (alunos) e `for-mentors` (recrutamento, com calculadora de ganhos interativa)
+
+---
+Task ID: 11
+Agent: main (Z.ai Code)
+Task: Integração, lint e verificação end-to-end no browser
+
+Work Log:
+- `bun run lint`: limpo (0 erros/warnings); `bunx tsc --noEmit`: sem erros em src/ (apenas erro pré-existing em skills/, fora de escopo)
+- Verificação Agent Browser (desktop 1440x900): home (hero, stats, como funciona, destaques, depoimentos, CTA emerald-950) ✓; busca do hero "Product" → Explorar pré-filtrado com 2 resultados ✓; filtros por categoria com contagens (Carreira 4) ✓; spotlight rotativo trocou sozinho com dots ✓; landing mentores (hero com mock de solicitação + chips flutuantes, calculadora 10h/R$150→R$6.495, slider via teclado 10→13→R$8.443 arredondado, FAQ accordion abre, CTA → onboarding) ✓; login Ana via dropdown ✓; dashboard (tabs, badges, confirm/cancel via AlertDialog) ✓; perfil do mentor com booking widget sticky dentro do scroll container ✓; agendamento completo (slot 08:00, tema, dialog, toast, card em Próximas) e cancelamento do agendamento de teste ✓; sala de reunião Jitsi carregada ✓
+- Mobile 390x844: header slim, tab bar fixa com estados ativos, home/search hero, Explorar com bento e chips roláveis, cards empilhados, "1 sessão" ✓
+- Console do browser sem erros; dev.log saudável (apenas queries prisma)
+
+Stage Summary:
+- UI overhaul verificada de ponta a ponta no browser real, desktop + mobile; golden path (explorar → agendar → dashboard → reunião) intacto após o redesign

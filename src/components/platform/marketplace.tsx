@@ -1,19 +1,20 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
+  ArrowRight,
   BadgeCheck,
-  CalendarClock,
   Globe2,
   GraduationCap,
   Search,
   SearchX,
-  Sparkles,
+  Star,
+  Users,
   Video,
+  X,
 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -30,33 +31,32 @@ import { useAppStore } from '@/lib/store'
 import type { MentorListItemDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-const HOW_IT_WORKS = [
-  {
-    icon: Search,
-    title: 'Descubra o mentor ideal',
-    text: 'Explore especialistas por área, leia o mural de conteúdos e veja avaliações reais de outros mentorados.',
-  },
-  {
-    icon: CalendarClock,
-    title: 'Agende em segundos',
-    text: 'Escolha um horário livre na agenda do mentor, descreva seu objetivo e envie sua solicitação.',
-  },
-  {
-    icon: Video,
-    title: 'Conecte-se na plataforma',
-    text: 'A reunião acontece aqui mesmo, com vídeo integrado. Depois, avalie a sessão e acompanhe sua evolução.',
-  },
-]
+const SPOTLIGHT_INTERVAL_MS = 6000
 
 export function MarketplaceView() {
   const navigate = useAppStore((s) => s.navigate)
+
+  // Base completa (sem filtros): alimenta destaque rotativo, contagens e stats
+  const [baseMentors, setBaseMentors] = useState<MentorListItemDTO[]>([])
+  // Lista filtrada exibida no grid
   const [mentors, setMentors] = useState<MentorListItemDTO[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [category, setCategory] = useState<string>('')
+  const [inputValue, setInputValue] = useState('')
+  const [category, setCategory] = useState('')
   const [sort, setSort] = useState('relevance')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [inputValue, setInputValue] = useState('')
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  // Consome termo vindo de outra tela (hero da home) uma única vez
+  useEffect(() => {
+    const q = useAppStore.getState().exploreQuery
+    if (q) {
+      setInputValue(q)
+      setSearch(q)
+      useAppStore.setState({ exploreQuery: '' })
+    }
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -74,156 +74,103 @@ export function MarketplaceView() {
     load()
   }, [load])
 
+  useEffect(() => {
+    api
+      .listMentors({})
+      .then(setBaseMentors)
+      .catch(() => {})
+  }, [])
+
+  // Atalho "/" foca a busca (sensação de app nativo)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      const typing =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target?.isContentEditable
+      if (e.key === '/' && !typing) {
+        e.preventDefault()
+        searchRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   const onSearchChange = (value: string) => {
     setInputValue(value)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => setSearch(value), 300)
   }
 
+  const clearSearch = () => {
+    setInputValue('')
+    setSearch('')
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    searchRef.current?.focus()
+  }
+
+  // ---------- Derivados da base ----------
+
+  const spotlightPool = useMemo(() => {
+    const rated = baseMentors
+      .filter((m) => m.rating > 0)
+      .sort((a, b) => b.rating - a.rating || b.reviewCount - a.reviewCount)
+    if (rated.length > 0) return rated.slice(0, 4)
+    return [...baseMentors].sort((a, b) => b.totalSessions - a.totalSessions).slice(0, 3)
+  }, [baseMentors])
+
+  const [spotIdx, setSpotIdx] = useState(0)
+  useEffect(() => {
+    if (spotlightPool.length < 2) return
+    const t = setInterval(
+      () => setSpotIdx((i) => (i + 1) % spotlightPool.length),
+      SPOTLIGHT_INTERVAL_MS
+    )
+    return () => clearInterval(t)
+  }, [spotlightPool.length])
+
+  const spot = spotlightPool.length > 0 ? spotlightPool[spotIdx % spotlightPool.length] : null
+
   const stats = useMemo(() => {
+    const rated = baseMentors.filter((m) => m.rating > 0)
     return {
-      mentors: mentors.length,
-      sessions: mentors.reduce((acc, m) => acc + m.totalSessions, 0),
-      reviews: mentors.reduce((acc, m) => acc + m.reviewCount, 0),
+      mentors: baseMentors.length,
+      sessions: baseMentors.reduce((acc, m) => acc + m.totalSessions, 0),
+      avg: rated.length > 0 ? rated.reduce((acc, m) => acc + m.rating, 0) / rated.length : null,
     }
-  }, [mentors])
+  }, [baseMentors])
+
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const m of baseMentors) {
+      for (const c of m.categories) counts.set(c, (counts.get(c) ?? 0) + 1)
+    }
+    return counts
+  }, [baseMentors])
+
+  const baseReady = baseMentors.length > 0
 
   return (
-    <div className="flex flex-col">
-      {/* ---------- HERO ---------- */}
-      <section className="relative overflow-hidden bg-emerald-950 text-white">
-        <div
-          aria-hidden
-          className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-emerald-600/30 blur-3xl"
-        />
-        <div
-          aria-hidden
-          className="absolute -bottom-32 right-0 h-80 w-80 rounded-full bg-teal-500/20 blur-3xl"
-        />
-        <div
-          aria-hidden
-          className="absolute left-1/2 top-10 h-40 w-40 rounded-full bg-amber-400/10 blur-2xl"
-        />
-        <div className="relative mx-auto max-w-6xl px-4 py-14 sm:py-20">
-          <div className="max-w-2xl">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-200">
-              <Sparkles className="h-3.5 w-3.5" /> O maior hub de mentorias 1:1 do Brasil
-            </span>
-            <h1 className="mt-5 text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl">
-              Aprenda com quem <span className="text-emerald-300">vive o que ensina</span>
-            </h1>
-            <p className="mt-4 max-w-xl text-sm leading-relaxed text-emerald-100/90 sm:text-base">
-              Profissionais de verdade, agendas reais e reuniões por vídeo dentro da própria
-              plataforma. Encontre seu mentor, agende em minutos e dê o próximo passo na carreira.
-            </p>
-
-            <div className="mt-7 flex max-w-xl flex-col gap-2.5 sm:flex-row">
-              <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-stone-400" />
-                <Input
-                  value={inputValue}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                  placeholder="Busque por nome, especialidade ou área..."
-                  aria-label="Buscar mentores"
-                  className="h-12 rounded-xl border-transparent bg-white pl-10 text-stone-900 shadow-lg placeholder:text-stone-400 focus-visible:ring-emerald-400"
-                />
-              </div>
-              <Button
-                size="lg"
-                onClick={() => document.getElementById('mentores')?.scrollIntoView({ behavior: 'smooth' })}
-                className="h-12 rounded-xl bg-emerald-500 px-6 font-bold text-emerald-950 shadow-lg hover:bg-emerald-400"
-              >
-                Buscar mentor
-              </Button>
-            </div>
-
-            <dl className="mt-9 flex flex-wrap gap-x-10 gap-y-4">
-              {[
-                { label: 'mentores especialistas', value: `+${stats.mentors}` },
-                { label: 'sessões realizadas', value: `+${stats.sessions}` },
-                { label: 'avaliações da comunidade', value: `+${stats.reviews}` },
-              ].map((s) => (
-                <div key={s.label}>
-                  <dt className="sr-only">{s.label}</dt>
-                  <dd className="text-2xl font-extrabold text-white sm:text-3xl">{s.value}</dd>
-                  <dd className="text-xs text-emerald-200/80">{s.label}</dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        </div>
-      </section>
-
-      {/* ---------- CATEGORIAS ---------- */}
-      <section aria-label="Categorias" className="border-b bg-white">
-        <div className="mx-auto flex max-w-6xl gap-2 overflow-x-auto px-4 py-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <button
-            onClick={() => setCategory('')}
-            className={cn(
-              'shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
-              category === ''
-                ? 'border-emerald-700 bg-emerald-700 text-white'
-                : 'border-stone-200 bg-white text-stone-600 hover:border-emerald-300 hover:text-emerald-700'
-            )}
-          >
-            Todas as áreas
-          </button>
-          {CATEGORIES.map((c) => (
-            <button
-              key={c}
-              onClick={() => setCategory(category === c ? '' : c)}
-              className={cn(
-                'shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
-                category === c
-                  ? 'border-emerald-700 bg-emerald-700 text-white'
-                  : 'border-stone-200 bg-white text-stone-600 hover:border-emerald-300 hover:text-emerald-700'
-              )}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* ---------- COMO FUNCIONA ---------- */}
-      <section className="mx-auto w-full max-w-6xl px-4 py-12 sm:py-16" aria-labelledby="como-funciona">
-        <h2 id="como-funciona" className="text-center text-2xl font-extrabold tracking-tight sm:text-3xl">
-          Como funciona
-        </h2>
-        <p className="mx-auto mt-2 max-w-md text-center text-sm text-muted-foreground">
-          Três passos simples entre você e a sua próxima evolução.
-        </p>
-        <div className="mt-9 grid gap-5 sm:grid-cols-3">
-          {HOW_IT_WORKS.map((step, i) => (
-            <Card key={step.title} className="relative border-stone-200 shadow-sm transition-shadow hover:shadow-md">
-              <CardContent className="p-6">
-                <span className="absolute right-5 top-4 text-5xl font-black text-stone-100">
-                  {i + 1}
-                </span>
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-                  <step.icon className="h-5.5 w-5.5" />
-                </span>
-                <h3 className="mt-4 font-bold">{step.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{step.text}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      {/* ---------- LISTA DE MENTORES ---------- */}
-      <section id="mentores" className="w-full bg-stone-50 pb-16" aria-labelledby="mentores-title">
-        <div className="mx-auto max-w-6xl scroll-mt-20 px-4 pt-12">
+    <div>
+      {/* ---------- BARRA SUPERIOR: título, ordenação, busca e categorias ---------- */}
+      <section className="border-b border-stone-200/70 bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-7 sm:py-9">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 id="mentores-title" className="text-2xl font-extrabold tracking-tight">
-                Mentores disponíveis
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {loading ? 'Carregando...' : `${mentors.length} especialistas prontos para te ajudar`}
+              <h1 className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
+                Explorar mentores
+              </h1>
+              <p className="mt-1 text-sm text-stone-500">
+                {loading
+                  ? 'Carregando especialistas...'
+                  : `${mentors.length} ${mentors.length === 1 ? 'especialista' : 'especialistas'} pronto${
+                      mentors.length === 1 ? '' : 's'
+                    } para mentoria 1:1`}
               </p>
             </div>
-            <div className="w-48">
+            <div className="w-44">
               <Select value={sort} onValueChange={setSort}>
                 <SelectTrigger aria-label="Ordenar mentores" className="bg-white">
                   <SelectValue placeholder="Ordenar" />
@@ -239,124 +186,371 @@ export function MarketplaceView() {
             </div>
           </div>
 
-          <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {loading
-              ? Array.from({ length: 6 }).map((_, i) => (
-                  <Card key={i} className="border-stone-200">
-                    <CardContent className="space-y-4 p-6">
-                      <div className="flex items-center gap-3">
-                        <Skeleton className="h-16 w-16 rounded-full" />
-                        <div className="flex-1 space-y-2">
-                          <Skeleton className="h-4 w-3/4" />
-                          <Skeleton className="h-3 w-1/2" />
-                        </div>
-                      </div>
-                      <Skeleton className="h-3 w-full" />
-                      <Skeleton className="h-3 w-5/6" />
-                      <div className="flex gap-2">
-                        <Skeleton className="h-6 w-20 rounded-full" />
-                        <Skeleton className="h-6 w-16 rounded-full" />
-                      </div>
-                      <Skeleton className="h-9 w-full rounded-lg" />
-                    </CardContent>
-                  </Card>
-                ))
-              : mentors.map((m) => <MentorCard key={m.id} mentor={m} />)}
+          <div className="relative mt-5 max-w-2xl">
+            <Search
+              aria-hidden
+              className="absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-stone-400"
+            />
+            <Input
+              ref={searchRef}
+              value={inputValue}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Busque por nome, especialidade ou área..."
+              aria-label="Buscar mentores"
+              className="h-12 rounded-2xl border-stone-200 bg-white pl-11 pr-16 text-stone-900 shadow-none placeholder:text-stone-400 focus-visible:border-emerald-400 focus-visible:ring-emerald-200"
+            />
+            {inputValue ? (
+              <button
+                onClick={clearSearch}
+                aria-label="Limpar busca"
+                className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : (
+              <kbd className="pointer-events-none absolute right-3.5 top-1/2 hidden h-6 -translate-y-1/2 items-center rounded-md border border-stone-200 bg-stone-50 px-1.5 font-mono text-[11px] font-medium text-stone-400 sm:inline-flex">
+                /
+              </kbd>
+            )}
           </div>
 
-          {!loading && mentors.length === 0 && (
-            <Card className="mt-4 border-dashed">
-              <CardContent className="flex flex-col items-center gap-3 p-12 text-center">
-                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100">
-                  <SearchX className="h-7 w-7 text-stone-400" />
-                </span>
-                <p className="font-semibold">Nenhum mentor encontrado</p>
-                <p className="max-w-sm text-sm text-muted-foreground">
-                  Tente remover os filtros ou buscar por outro termo — temos especialistas em
-                  várias áreas.
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSearch('')
-                    setInputValue('')
-                    setCategory('')
-                  }}
+          <div
+            aria-label="Filtrar por categoria"
+            className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            <button
+              onClick={() => setCategory('')}
+              className={cn(
+                'shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
+                category === ''
+                  ? 'border-emerald-700 bg-emerald-700 text-white'
+                  : 'border-stone-200 bg-white text-stone-600 hover:border-emerald-300 hover:text-emerald-700'
+              )}
+            >
+              Todas as áreas
+            </button>
+            {CATEGORIES.map((c) => {
+              const count = categoryCounts.get(c) ?? 0
+              return (
+                <button
+                  key={c}
+                  onClick={() => setCategory(category === c ? '' : c)}
+                  className={cn(
+                    'shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
+                    category === c
+                      ? 'border-emerald-700 bg-emerald-700 text-white'
+                      : 'border-stone-200 bg-white text-stone-600 hover:border-emerald-300 hover:text-emerald-700'
+                  )}
                 >
-                  Limpar filtros
-                </Button>
-              </CardContent>
-            </Card>
+                  {c}
+                  {baseReady && (
+                    <span className={cn('ml-1.5 text-[10px]', category === c ? 'text-emerald-100' : 'text-stone-400')}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- BENTO: destaque rotativo + estatísticas ---------- */}
+      <section aria-label="Destaques e estatísticas" className="mx-auto w-full max-w-6xl px-4 pt-6">
+        <div className="grid gap-4 lg:grid-cols-3">
+          {/* Spotlight */}
+          <div className="lg:col-span-2">
+            {spot ? (
+              <SpotlightCard mentor={spot} index={spotIdx} total={spotlightPool.length} onSelect={(i) => setSpotIdx(i)} />
+            ) : (
+              <div className="h-full min-h-56 animate-pulse rounded-2xl bg-emerald-950/90" aria-hidden />
+            )}
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-4 lg:grid-cols-1">
+            <StatTile icon={<Users className="h-4.5 w-4.5" />} value={`+${stats.mentors}`} label="mentores especialistas" />
+            <StatTile icon={<Video className="h-4.5 w-4.5" />} value={`+${stats.sessions}`} label="sessões realizadas" />
+            <StatTile
+              icon={<Star className="h-4.5 w-4.5" />}
+              value={stats.avg !== null ? stats.avg.toFixed(1).replace('.', ',') : '—'}
+              label="nota média da comunidade"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- RESULTADOS ---------- */}
+      <section aria-labelledby="resultado-title" className="mx-auto w-full max-w-6xl px-4 pb-12 pt-8">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <h2 id="resultado-title" className="text-lg font-extrabold tracking-tight text-stone-900">
+            Todos os mentores
+          </h2>
+          {!loading && (
+            <p className="text-xs font-medium text-stone-400">
+              {search || category ? 'Resultado da busca' : 'Ordenado por relevância'}
+            </p>
           )}
         </div>
+
+        <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {loading
+            ? Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="rounded-2xl border border-stone-200 p-5">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-14 w-14 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                    </div>
+                  </div>
+                  <Skeleton className="mt-4 h-3 w-full" />
+                  <Skeleton className="mt-2 h-3 w-5/6" />
+                  <div className="mt-4 flex gap-2">
+                    <Skeleton className="h-6 w-20 rounded-full" />
+                    <Skeleton className="h-6 w-16 rounded-full" />
+                  </div>
+                  <Skeleton className="mt-4 h-10 w-full rounded-full" />
+                </div>
+              ))
+            : mentors.map((m) => <MentorCard key={m.id} mentor={m} />)}
+        </div>
+
+        {!loading && mentors.length === 0 && (
+          <div className="mt-2 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 px-6 py-14 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100">
+              <SearchX className="h-7 w-7 text-stone-400" />
+            </span>
+            <p className="font-bold text-stone-900">Nenhum mentor encontrado</p>
+            <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+              Tente remover os filtros ou buscar por outro termo — temos especialistas em várias
+              áreas.
+            </p>
+            <Button
+              variant="outline"
+              className="rounded-full"
+              onClick={() => {
+                setSearch('')
+                setInputValue('')
+                setCategory('')
+              }}
+            >
+              Limpar filtros
+            </Button>
+          </div>
+        )}
       </section>
     </div>
   )
 }
 
+/* ---------- Spotlight rotativo (bento principal) ---------- */
+
+function SpotlightCard({
+  mentor,
+  index,
+  total,
+  onSelect,
+}: {
+  mentor: MentorListItemDTO
+  index: number
+  total: number
+  onSelect: (index: number) => void
+}) {
+  const navigate = useAppStore((s) => s.navigate)
+
+  return (
+    <div className="relative flex h-full min-h-56 flex-col overflow-hidden rounded-2xl bg-emerald-950 p-5 text-white sm:p-6">
+      <div
+        aria-hidden
+        className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="absolute -bottom-24 left-10 h-48 w-48 rounded-full bg-teal-400/10 blur-3xl"
+      />
+
+      <div className="relative flex items-center justify-between gap-3">
+        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-300" />
+          </span>
+          Mentor em destaque
+        </span>
+        {total > 1 && (
+          <div className="flex items-center gap-1.5" role="tablist" aria-label="Alternar destaque">
+            {Array.from({ length: total }).map((_, i) => (
+              <button
+                key={i}
+                role="tab"
+                aria-selected={i === index}
+                aria-label={`Ver destaque ${i + 1}`}
+                onClick={() => onSelect(i)}
+                className={cn(
+                  'h-1.5 rounded-full transition-all',
+                  i === index ? 'w-5 bg-white' : 'w-1.5 bg-white/30 hover:bg-white/50'
+                )}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={mentor.id}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.3 }}
+          className="relative mt-5 flex flex-1 flex-col justify-center"
+        >
+          <div className="flex items-center gap-4">
+            <Avatar name={mentor.name} size="xl" />
+            <div className="min-w-0">
+              <p className="flex items-center gap-1.5 truncate text-lg font-bold">
+                {mentor.name}
+                {mentor.reviewCount >= 3 && mentor.rating >= 4.5 && (
+                  <BadgeCheck className="h-4.5 w-4.5 shrink-0 text-emerald-300" aria-label="Mentor bem avaliado" />
+                )}
+              </p>
+              <div className="mt-0.5 flex items-center gap-1.5">
+                <Stars rating={mentor.rating} size={13} />
+                <span className="text-xs font-semibold text-emerald-50">
+                  {mentor.rating.toFixed(1)}
+                </span>
+                <span className="text-xs text-emerald-100/70">
+                  ({mentor.reviewCount} avaliações)
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-emerald-50/90">
+            {mentor.headline}
+          </p>
+
+          <div className="mt-3.5 flex flex-wrap gap-1.5">
+            {mentor.categories.slice(0, 3).map((c) => (
+              <span
+                key={c}
+                className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100"
+              >
+                {c}
+              </span>
+            ))}
+          </div>
+        </motion.div>
+      </AnimatePresence>
+
+      <div className="relative mt-5 flex items-center justify-between gap-3 border-t border-emerald-400/15 pt-4">
+        <p className="text-xl font-extrabold tracking-tight">
+          {currencyBRL(mentor.hourlyRate)}
+          <span className="text-xs font-medium text-emerald-200/70">/h</span>
+        </p>
+        <Button
+          size="sm"
+          onClick={() => navigate({ name: 'mentor', mentorId: mentor.id })}
+          aria-label={`Ver perfil de ${mentor.name}`}
+          className="rounded-full bg-white font-bold text-emerald-950 hover:bg-emerald-100"
+        >
+          Ver perfil <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/* ---------- Tile de estatística ---------- */
+
+function StatTile({
+  icon,
+  value,
+  label,
+}: {
+  icon: React.ReactNode
+  value: string
+  label: string
+}) {
+  return (
+    <div className="flex flex-col justify-center rounded-2xl border border-stone-200 bg-white p-4 sm:p-5">
+      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+        {icon}
+      </span>
+      <p className="mt-3 text-2xl font-extrabold tracking-tight text-stone-900">{value}</p>
+      <p className="mt-0.5 text-xs font-medium leading-snug text-stone-500">{label}</p>
+    </div>
+  )
+}
+
+/* ---------- Card de mentor ---------- */
+
 function MentorCard({ mentor }: { mentor: MentorListItemDTO }) {
   const navigate = useAppStore((s) => s.navigate)
 
   return (
-    <Card className="group flex flex-col border-stone-200 shadow-sm transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg">
-      <CardContent className="flex flex-1 flex-col gap-3.5 p-6">
-        <div className="flex items-start gap-3.5">
-          <Avatar name={mentor.name} size="lg" />
-          <div className="min-w-0 flex-1">
-            <p className="flex items-center gap-1.5 truncate font-bold text-stone-900">
-              {mentor.name}
-              {mentor.reviewCount >= 3 && mentor.rating >= 4.5 && (
-                <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-600" aria-label="Mentor bem avaliado" />
-              )}
-            </p>
-            <p className="text-xs font-medium text-muted-foreground">{firstName(mentor.name)} · {mentor.experienceYears} anos de experiência</p>
-            <div className="mt-1 flex items-center gap-1.5">
-              <Stars rating={mentor.rating} size={13} />
-              <span className="text-xs font-semibold text-stone-700">
-                {mentor.rating > 0 ? mentor.rating.toFixed(1) : 'Novo'}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                ({mentor.reviewCount} avaliações)
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <p className="line-clamp-2 min-h-10 text-sm leading-relaxed text-stone-600">
-          {mentor.headline}
-        </p>
-
-        <div className="flex flex-wrap gap-1.5">
-          {mentor.categories.slice(0, 3).map((c) => (
-            <Badge key={c} variant="secondary" className="bg-emerald-50 font-medium text-emerald-800">
-              {c}
-            </Badge>
-          ))}
-        </div>
-
-        <div className="mt-auto flex items-center justify-between gap-2 border-t border-stone-100 pt-3.5">
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <GraduationCap className="h-3.5 w-3.5" /> {mentor.totalSessions} sessões
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Globe2 className="h-3.5 w-3.5" /> {mentor.languages.split(',')[0]}
-            </span>
-          </div>
-          <p className="text-sm font-extrabold text-stone-900">
-            {currencyBRL(mentor.hourlyRate)}
-            <span className="text-xs font-medium text-muted-foreground">/h</span>
+    <article className="group flex flex-col rounded-2xl border border-stone-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md">
+      <div className="flex items-start gap-3.5">
+        <Avatar name={mentor.name} size="lg" />
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-1.5 truncate font-bold text-stone-900">
+            {mentor.name}
+            {mentor.reviewCount >= 3 && mentor.rating >= 4.5 && (
+              <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-600" aria-label="Mentor bem avaliado" />
+            )}
           </p>
+          <p className="text-xs font-medium text-stone-500">
+            {firstName(mentor.name)} · {mentor.experienceYears} anos de experiência
+          </p>
+          <div className="mt-1 flex items-center gap-1.5">
+            <Stars rating={mentor.rating} size={13} />
+            <span className="text-xs font-semibold text-stone-700">
+              {mentor.rating > 0 ? mentor.rating.toFixed(1) : 'Novo'}
+            </span>
+            <span className="text-xs text-stone-400">({mentor.reviewCount})</span>
+          </div>
         </div>
+      </div>
 
-        <Button
-          className="w-full font-bold"
-          onClick={() => navigate({ name: 'mentor', mentorId: mentor.id })}
-          aria-label={`Ver perfil de ${mentor.name}`}
-        >
-          Ver perfil e agendar
-        </Button>
-      </CardContent>
-    </Card>
+      <p className="mt-3.5 line-clamp-2 min-h-10 text-sm leading-relaxed text-stone-600">
+        {mentor.headline}
+      </p>
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {mentor.categories.slice(0, 3).map((c) => (
+          <span
+            key={c}
+            className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-800"
+          >
+            {c}
+          </span>
+        ))}
+      </div>
+
+      <div className="mt-auto flex items-center justify-between gap-2 border-t border-stone-100 pt-3.5">
+        <div className="flex items-center gap-3 text-xs text-stone-400">
+          <span className="inline-flex items-center gap-1">
+            <GraduationCap className="h-3.5 w-3.5" />{' '}
+            {mentor.totalSessions} {mentor.totalSessions === 1 ? 'sessão' : 'sessões'}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Globe2 className="h-3.5 w-3.5" /> {mentor.languages.split(',')[0]}
+          </span>
+        </div>
+        <p className="text-sm font-extrabold text-stone-900">
+          {currencyBRL(mentor.hourlyRate)}
+          <span className="text-xs font-medium text-stone-400">/h</span>
+        </p>
+      </div>
+
+      <Button
+        className="mt-3.5 h-10 w-full rounded-full font-semibold"
+        onClick={() => navigate({ name: 'mentor', mentorId: mentor.id })}
+        aria-label={`Ver perfil de ${mentor.name}`}
+      >
+        Ver perfil e agendar
+      </Button>
+    </article>
   )
 }
