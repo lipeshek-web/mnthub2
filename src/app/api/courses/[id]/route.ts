@@ -20,7 +20,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
             reviews: { select: { rating: true } },
           },
         },
-        lessons: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] },
+        lessons: {
+          orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
+          include: { _count: { select: { questions: true } } },
+        },
         enrollments: { select: { id: true } },
       },
     })
@@ -33,6 +36,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
             (course.mentor.reviews.reduce((a, r) => a + r.rating, 0) / course.mentor.reviews.length) * 10
           ) / 10
         : 0
+
+    const isOwner = Boolean(userId && course.mentor.userId === userId)
 
     let enrollment: { completedLessonIds: string[] } | null = null
     if (userId) {
@@ -51,6 +56,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       }
     }
 
+    // Material restrito (link da live + anexos) só para inscritos ou dono
+    const canSeeMaterial = Boolean(enrollment) || isOwner
+
     return NextResponse.json({
       id: course.id,
       title: course.title,
@@ -60,6 +68,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       price: course.price,
       coverUrl: course.coverUrl,
       isPublished: course.isPublished,
+      mentorshipCount: course.mentorshipCount,
       createdAt: course.createdAt.toISOString(),
       updatedAt: course.updatedAt.toISOString(),
       mentor: {
@@ -77,16 +86,37 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       },
       lessonCount: course.lessons.length,
       totalDurationMin: course.lessons.reduce((a, l) => a + l.durationMin, 0),
+      liveCount: course.lessons.filter((l) => l.kind === 'LIVE').length,
       studentCount: course.enrollments.length,
-      lessons: course.lessons.map((l) => ({
-        id: l.id,
-        title: l.title,
-        description: l.description,
-        videoUrl: l.videoUrl,
-        content: l.content,
-        durationMin: l.durationMin,
-        order: l.order,
-      })),
+      lessons: course.lessons.map((l) => {
+        let attachments: { name: string; url: string }[] = []
+        try {
+          const parsed = JSON.parse(l.attachments || '[]')
+          if (Array.isArray(parsed)) {
+            attachments = parsed
+              .filter((a) => a && typeof a === 'object')
+              .map((a) => ({ name: String((a as { name?: unknown }).name ?? 'Anexo'), url: String((a as { url?: unknown }).url ?? '') }))
+              .filter((a) => a.url)
+          }
+        } catch {
+          attachments = []
+        }
+        return {
+          id: l.id,
+          title: l.title,
+          description: l.description,
+          kind: l.kind,
+          videoUrl: l.videoUrl,
+          content: l.content,
+          startsAt: l.startsAt,
+          meetingUrl: canSeeMaterial ? l.meetingUrl : null,
+          attachments: canSeeMaterial ? attachments : [],
+          hasAttachments: attachments.length > 0,
+          durationMin: l.durationMin,
+          questionCount: l._count.questions,
+          order: l.order,
+        }
+      }),
       enrollment,
     })
   } catch (err) {
@@ -145,6 +175,10 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     if (body?.coverUrl !== undefined) {
       const coverUrl = body.coverUrl ? String(body.coverUrl).trim().slice(0, 300) : null
       data.coverUrl = coverUrl
+    }
+    if (body?.mentorshipCount !== undefined) {
+      const mc = Math.max(0, Math.min(20, Math.round(Number(body.mentorshipCount) || 0)))
+      data.mentorshipCount = mc
     }
     if (body?.isPublished !== undefined) {
       data.isPublished = Boolean(body.isPublished)

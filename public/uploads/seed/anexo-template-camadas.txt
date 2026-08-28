@@ -1,0 +1,7 @@
+Template de projeto em camadas (MentorHub)
+
+src/
+  ui/        -> componentes e telas
+  app/       -> casos de uso (orquestracao)
+  domain/    -> regras de negocio puras
+  infra/     -> http, banco, filas, cache

@@ -1,0 +1,7 @@
+Checklist de Arquitetura — Carlos Ferreira (MentorHub)
+
+[ ] Regras de negocio em um lugar so
+[ ] UI chama apenas casos de uso
+[ ] Dependencias apontam para dentro
+[ ] Estrategia de cache definida por tipo de dado
+[ ] Erros de negocio separados de erros tecnicos

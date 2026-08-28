@@ -143,10 +143,36 @@ export interface CourseLessonDTO {
   id: string
   title: string
   description: string
+  kind: 'RECORDED' | 'TEXT' | 'LIVE' | string
   videoUrl: string | null
   content: string | null
+  startsAt: string | null // LIVE: "YYYY-MM-DDTHH:mm"
+  meetingUrl: string | null // LIVE: link da transmissão (só p/ inscritos)
+  attachments: LessonAttachmentDTO[]
+  hasAttachments: boolean
   durationMin: number
+  questionCount: number
   order: number
+}
+
+export interface LessonAttachmentDTO {
+  name: string
+  url: string
+}
+
+export interface LessonQuestionDTO {
+  id: string
+  body: string
+  answer: string | null
+  answeredAt: string | null
+  createdAt: string
+  author: { id: string; name: string; avatarUrl: string | null }
+  isMine: boolean
+}
+
+export interface LessonNoteDTO {
+  body: string
+  updatedAt: string | null
 }
 
 export interface CourseListItemDTO {
@@ -170,6 +196,8 @@ export interface CourseListItemDTO {
   }
   lessonCount: number
   totalDurationMin: number
+  liveCount: number
+  mentorshipCount: number // sessões de mentoria 1:1 incluídas
   studentCount: number
   coverUrl?: string | null
   createdAt: string
@@ -187,6 +215,82 @@ export interface EnrolledCourseDTO {
   enrolledAt: string
   completedLessonIds: string[]
   course: CourseListItemDTO
+}
+
+// ==================== TRILHAS ====================
+
+export interface TrackItemSummaryDTO {
+  id: string
+  type: 'COURSE' | 'MENTORSHIP' | string
+  title: string
+  sessionCount: number
+  courseId: string | null
+}
+
+export interface TrackListItemDTO {
+  id: string
+  title: string
+  description: string
+  category: string
+  level: 'INICIANTE' | 'INTERMEDIARIO' | 'AVANCADO' | string
+  price: number // 0 = gratuita
+  coverUrl?: string | null
+  isPublished: boolean
+  createdAt: string
+  updatedAt: string
+  mentor: {
+    id: string
+    userId: string
+    name: string
+    headline: string
+    rating: number
+    reviewCount: number
+    avatarUrl?: string | null
+  }
+  courseCount: number
+  mentorshipSessions: number
+  lessonCount: number
+  liveCount: number
+  totalDurationMin: number
+  studentCount: number
+  items: TrackItemSummaryDTO[]
+}
+
+export interface TrackDetailItemDTO {
+  id: string
+  type: 'COURSE' | 'MENTORSHIP' | string
+  title: string
+  description: string
+  courseId: string | null
+  coverUrl?: string | null
+  lessonCount: number
+  liveCount: number
+  totalDurationMin: number
+  mentorshipCount: number
+  studentCount: number
+  sessionCount: number
+}
+
+export interface TrackDetailDTO extends TrackListItemDTO {
+  items: TrackDetailItemDTO[]
+  myEnrollment: { createdAt: string } | null
+  courseProgress: Record<string, { completed: number; total: number }>
+}
+
+export interface MyTrackDTO extends TrackListItemDTO {
+  enrolledAt: string | null
+  percent: number
+  perCourse: { courseId: string; completed: number; total: number }[]
+}
+
+// ==================== TRILHA — ENTRADA DE ITEM (onboarding) ====================
+
+export interface TrackItemInput {
+  type: 'COURSE' | 'MENTORSHIP'
+  courseId?: string
+  title?: string
+  description?: string
+  sessionCount?: number
 }
 
 // ==================== LP DO MENTOR (tráfego pago) ====================
@@ -228,8 +332,8 @@ export interface PaymentMethod {
 
 export interface OrderDTO {
   id: string
-  courseId: string
-  courseTitle: string
+  itemKind: 'COURSE' | 'TRACK' | string
+  itemTitle: string
   amount: number
   paymentMethod: string
   status: string

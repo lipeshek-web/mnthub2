@@ -7,6 +7,8 @@ import { PlatformFooter } from '@/components/platform/footer'
 import { MarketplaceView } from '@/components/platform/marketplace'
 import { MentorProfileView } from '@/components/platform/mentor-profile'
 import { CourseView } from '@/components/platform/course-view'
+import { ClassroomView } from '@/components/platform/classroom'
+import { TrackView } from '@/components/platform/track-view'
 import { MeetingRoomView } from '@/components/platform/meeting-room'
 import DashboardView from '@/components/platform/dashboard'
 import OnboardingView from '@/components/platform/onboarding'
@@ -99,14 +101,19 @@ export default function Home() {
         {view.name === 'marketplace' && <MarketplaceView />}
         {view.name === 'mentor' && <MentorProfileView mentorId={view.mentorId} />}
         {view.name === 'course' && <CourseView courseId={view.courseId} />}
+        {view.name === 'classroom' && <ClassroomView courseId={view.courseId} />}
+        {view.name === 'track' && <TrackView trackId={view.trackId} />}
         {view.name === 'dashboard' && <DashboardView />}
         {view.name === 'meeting' && <MeetingRoomView bookingId={view.bookingId} />}
         {view.name === 'onboarding' && <OnboardingView />}
         {view.name === 'mentor-lp' && <MentorLpView slug={view.slug} />}
-        {view.name === 'checkout' && <CheckoutView courseId={view.courseId} />}
+        {view.name === 'checkout' && (
+          <CheckoutView courseId={view.courseId} trackId={view.trackId} />
+        )}
       </main>
 
-      <PlatformFooter />
+      {/* Sala de aula: tela cheia, só o header da plataforma permanece */}
+      {view.name !== 'classroom' && <PlatformFooter />}
       <Toaster position="top-center" richColors closeButton />
     </div>
   )

@@ -105,11 +105,13 @@ export async function GET(req: NextRequest) {
       .slice(0, 8)
 
     const ordersByCourse = aggregate(
-      orders.map((o) => ({ key: o.courseId, amount: o.amount }))
+      orders
+        .filter((o) => o.courseId)
+        .map((o) => ({ key: o.courseId as string, amount: o.amount }))
     )
     const byCourse = Array.from(ordersByCourse.entries())
       .map(([courseId, v]) => {
-        const title = orders.find((o) => o.courseId === courseId)?.course.title ?? 'Curso'
+        const title = orders.find((o) => o.courseId === courseId)?.course?.title ?? 'Curso'
         return { courseId, title, purchases: v.count, revenue: Math.round(v.revenue * 100) / 100 }
       })
       .sort((a, b) => b.revenue - a.revenue)

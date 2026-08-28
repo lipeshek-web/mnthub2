@@ -1,13 +1,15 @@
 'use client'
 
-// Checkout de curso pago — pagamento DEMONSTRATIVO (nenhuma cobrança real).
+// Checkout de curso OU trilha pago — pagamento DEMONSTRATIVO (nenhuma cobrança real).
 // Fluxo: resumo do pedido → forma de pagamento (PIX/Cartão) → confirmação,
 // com funil de rastreamento (begin_checkout na montagem, purchase no sucesso).
+// A loja navega { name: 'checkout', courseId } ou { name: 'checkout', trackId }.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   AlertCircle,
   ArrowLeft,
+  BookOpen,
   CheckCircle2,
   CreditCard,
   Info,
@@ -16,7 +18,9 @@ import {
   Lock,
   LogIn,
   QrCode,
+  Route,
   ShieldCheck,
+  Users,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -32,7 +36,7 @@ import { api } from '@/lib/api'
 import { LEVEL_LABELS, avatarGradient, currencyBRL } from '@/lib/helpers'
 import { getAttribution, loadTrackingScripts, trackEvent } from '@/lib/tracking'
 import { useAppStore } from '@/lib/store'
-import type { CheckoutResultDTO, CourseDetailDTO } from '@/lib/types'
+import type { CheckoutResultDTO, CourseDetailDTO, TrackDetailDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 type PaymentMethodValue = 'PIX' | 'CREDIT_CARD'
@@ -42,11 +46,34 @@ const METHOD_LABEL: Record<string, string> = {
   CREDIT_CARD: 'Cartão de crédito',
 }
 
-export function CheckoutView({ courseId }: { courseId: string }) {
+/** Resumo normalizado do item em checkout (curso ou trilha) */
+interface ItemSummary {
+  kind: 'course' | 'track'
+  id: string
+  title: string
+  coverUrl: string | null
+  category: string
+  level: string
+  price: number
+  mentor: {
+    id: string
+    name: string
+    rating: number
+    reviewCount: number
+    avatarUrl?: string | null
+  }
+  isEnrolled: boolean
+  /** Presente apenas em trilhas: composição da jornada */
+  trackStats?: { courseCount: number; mentorshipSessions: number }
+}
+
+export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId?: string }) {
   const navigate = useAppStore((s) => s.navigate)
+  const setExploreTab = useAppStore((s) => s.setExploreTab)
   const user = useAppStore((s) => s.user)
 
   const [course, setCourse] = useState<CourseDetailDTO | null>(null)
+  const [track, setTrack] = useState<TrackDetailDTO | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -59,51 +86,77 @@ export function CheckoutView({ courseId }: { courseId: string }) {
   // (evita duplicidade em re-render/StrictMode)
   const trackedRef = useRef(false)
 
-  const fetchCourse = useCallback(async () => {
+  const fetchSummary = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const d = await api.getCourse(courseId, user?.id)
-      setCourse(d)
+      if (trackId) {
+        const d = await api.getTrack(trackId, user?.id)
+        setTrack(d)
+        setCourse(null)
 
-      // Pixels do mentor recebem as conversões deste checkout
-      if (!trackedRef.current) {
-        trackedRef.current = true
-        loadTrackingScripts({
-          mentorGaId: d.mentor.tracking?.gaMeasurementId,
-          mentorPixelId: d.mentor.tracking?.metaPixelId,
-        })
-        trackEvent('begin_checkout', {
-          mentorId: d.mentor.id,
-          courseId: d.id,
-          value: d.price,
-          contentName: d.title,
-        })
+        // Pixels da plataforma recebem as conversões deste checkout
+        if (!trackedRef.current) {
+          trackedRef.current = true
+          loadTrackingScripts()
+          trackEvent('begin_checkout', {
+            mentorId: d.mentor.id,
+            value: d.price,
+            contentName: d.title,
+          })
+        }
+      } else if (courseId) {
+        const d = await api.getCourse(courseId, user?.id)
+        setCourse(d)
+        setTrack(null)
+
+        // Pixels do mentor recebem as conversões deste checkout
+        if (!trackedRef.current) {
+          trackedRef.current = true
+          loadTrackingScripts({
+            mentorGaId: d.mentor.tracking?.gaMeasurementId,
+            mentorPixelId: d.mentor.tracking?.metaPixelId,
+          })
+          trackEvent('begin_checkout', {
+            mentorId: d.mentor.id,
+            courseId: d.id,
+            value: d.price,
+            contentName: d.title,
+          })
+        }
+      } else {
+        setError('Item não encontrado.')
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Não foi possível carregar o curso.')
+      setError(err instanceof Error ? err.message : 'Não foi possível carregar o checkout.')
     } finally {
       setLoading(false)
     }
-  }, [courseId, user?.id])
+  }, [courseId, trackId, user?.id])
 
   useEffect(() => {
-    void fetchCourse()
-  }, [fetchCourse])
+    void fetchSummary()
+  }, [fetchSummary])
 
   /* ---------- Ações ---------- */
 
   const doEnrollFree = async () => {
-    if (!user || !course) return
+    if (!user || !item) return
     setFreeEnrolling(true)
     try {
-      const res = await api.enrollCourse(course.id, user.id)
-      toast.success(
-        res.alreadyEnrolled
-          ? 'Você já estava inscrito neste curso.'
-          : 'Inscrição realizada! Boa jornada 🎉'
-      )
-      navigate({ name: 'course', courseId: course.id })
+      if (item.kind === 'track') {
+        await api.enrollTrack(item.id, user.id)
+        toast.success('Inscrição realizada! Boa jornada 🎉')
+        navigate({ name: 'track', trackId: item.id })
+      } else {
+        const res = await api.enrollCourse(item.id, user.id)
+        toast.success(
+          res.alreadyEnrolled
+            ? 'Você já estava inscrito neste curso.'
+            : 'Inscrição realizada! Boa jornada 🎉'
+        )
+        navigate({ name: 'course', courseId: item.id })
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao realizar inscrição.')
     } finally {
@@ -112,25 +165,26 @@ export function CheckoutView({ courseId }: { courseId: string }) {
   }
 
   const doPay = async () => {
-    if (!user || !course || paying) return
+    if (!user || !item || paying) return
     setPaying(true)
     try {
       // A atribuição (utm/gclid/fbclid/canal/landing) viaja no mesmo corpo —
       // o servidor lê body.attribution para o pedido e o evento purchase.
       const payload = {
         userId: user.id,
-        courseId: course.id,
+        courseId: item.kind === 'course' ? item.id : undefined,
+        trackId: item.kind === 'track' ? item.id : undefined,
         paymentMethod,
         attribution: getAttribution(),
       }
       const result = await api.checkout(payload)
 
       trackEvent('purchase', {
-        mentorId: course.mentor.id,
-        courseId: course.id,
-        value: course.price,
+        mentorId: item.mentor.id,
+        courseId: item.kind === 'course' ? item.id : null,
+        value: item.price,
         transactionId: result.order.id,
-        contentName: course.title,
+        contentName: item.title,
       })
       toast.success('Pagamento aprovado! 🎉')
       setOrder(result)
@@ -138,7 +192,7 @@ export function CheckoutView({ courseId }: { courseId: string }) {
       const message = err instanceof Error ? err.message : 'Não foi possível concluir o pagamento.'
       toast.error(message)
       // Matrícula já existia (409): recarrega para exibir o estado "já inscrito"
-      if (message.includes('já tem acesso')) void fetchCourse()
+      if (message.includes('já tem acesso')) void fetchSummary()
     } finally {
       setPaying(false)
     }
@@ -158,7 +212,7 @@ export function CheckoutView({ courseId }: { courseId: string }) {
   }
 
   /* ---------- Erro ---------- */
-  if (error || !course) {
+  if (error || (!course && !track)) {
     return (
       <div className="mx-auto w-full max-w-3xl px-4 py-16">
         <Card className="mx-auto max-w-md border-dashed">
@@ -168,9 +222,9 @@ export function CheckoutView({ courseId }: { courseId: string }) {
             </span>
             <p className="font-bold text-stone-900">Não foi possível carregar o checkout</p>
             <p className="max-w-sm text-sm leading-relaxed text-stone-500">
-              {error ?? 'Curso não encontrado.'}
+              {error ?? 'Item não encontrado.'}
             </p>
-            <Button variant="outline" className="rounded-full" onClick={() => void fetchCourse()}>
+            <Button variant="outline" className="rounded-full" onClick={() => void fetchSummary()}>
               Tentar novamente
             </Button>
           </CardContent>
@@ -178,6 +232,53 @@ export function CheckoutView({ courseId }: { courseId: string }) {
       </div>
     )
   }
+
+  /* ---------- Resumo normalizado (curso ou trilha) ---------- */
+  const item: ItemSummary | null = track
+    ? {
+        kind: 'track',
+        id: track.id,
+        title: track.title,
+        coverUrl: track.coverUrl ?? null,
+        category: track.category,
+        level: track.level,
+        price: track.price,
+        mentor: {
+          id: track.mentor.id,
+          name: track.mentor.name,
+          rating: track.mentor.rating,
+          reviewCount: track.mentor.reviewCount,
+          avatarUrl: track.mentor.avatarUrl,
+        },
+        isEnrolled: track.myEnrollment !== null,
+        trackStats: {
+          courseCount: track.courseCount,
+          mentorshipSessions: track.mentorshipSessions,
+        },
+      }
+    : course
+      ? {
+          kind: 'course',
+          id: course.id,
+          title: course.title,
+          coverUrl: course.coverUrl ?? null,
+          category: course.category,
+          level: course.level,
+          price: course.price,
+          mentor: {
+            id: course.mentor.id,
+            name: course.mentor.name,
+            rating: course.mentor.rating,
+            reviewCount: course.mentor.reviewCount,
+            avatarUrl: course.mentor.avatarUrl,
+          },
+          isEnrolled: course.enrollment !== null,
+        }
+      : null
+
+  if (!item) return null
+
+  const isTrack = item.kind === 'track'
 
   /* ---------- Tela de SUCESSO (substitui o formulário) ---------- */
   if (order) {
@@ -193,7 +294,7 @@ export function CheckoutView({ courseId }: { courseId: string }) {
             </h1>
             <p className="text-sm leading-relaxed text-stone-500">
               Você já tem acesso a{' '}
-              <span className="font-semibold text-stone-700">“{course.title}”</span>
+              <span className="font-semibold text-stone-700">“{order.order.itemTitle}”</span>
             </p>
 
             <dl className="mt-5 w-full space-y-2 rounded-xl border border-stone-200 bg-stone-50/60 p-4 text-left text-sm">
@@ -213,19 +314,42 @@ export function CheckoutView({ courseId }: { courseId: string }) {
               </div>
             </dl>
 
-            <Button
-              onClick={() => navigate({ name: 'course', courseId })}
-              className="mt-6 h-12 w-full rounded-full font-bold"
-            >
-              Acessar o curso
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => navigate({ name: 'marketplace' })}
-              className="w-full rounded-full"
-            >
-              Explorar mais cursos
-            </Button>
+            {isTrack ? (
+              <>
+                <Button
+                  onClick={() => navigate({ name: 'track', trackId: item.id })}
+                  className="mt-6 h-12 w-full rounded-full font-bold"
+                >
+                  Acessar a trilha
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setExploreTab('tracks')
+                    navigate({ name: 'marketplace' })
+                  }}
+                  className="w-full rounded-full"
+                >
+                  Explorar mais trilhas
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  onClick={() => navigate({ name: 'course', courseId: item.id })}
+                  className="mt-6 h-12 w-full rounded-full font-bold"
+                >
+                  Acessar o curso
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate({ name: 'marketplace' })}
+                  className="w-full rounded-full"
+                >
+                  Explorar mais cursos
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -233,16 +357,20 @@ export function CheckoutView({ courseId }: { courseId: string }) {
   }
 
   /* ---------- Checkout ---------- */
-  const isEnrolled = course.enrollment !== null
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-8">
       <Button
         variant="ghost"
-        onClick={() => navigate({ name: 'course', courseId })}
+        onClick={() =>
+          isTrack
+            ? navigate({ name: 'track', trackId: item.id })
+            : navigate({ name: 'course', courseId: item.id })
+        }
         className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 hover:text-stone-900"
       >
-        <ArrowLeft aria-hidden className="h-4 w-4" /> Voltar ao curso
+        <ArrowLeft aria-hidden className="h-4 w-4" />
+        {isTrack ? 'Voltar à trilha' : 'Voltar ao curso'}
       </Button>
       <h1 className="mt-1 text-xl font-extrabold tracking-tight text-stone-900 sm:text-2xl">
         Checkout
@@ -258,37 +386,46 @@ export function CheckoutView({ courseId }: { courseId: string }) {
             <p className="font-bold text-stone-900">Entre para concluir a compra</p>
             <p className="max-w-sm text-sm leading-relaxed text-stone-500">
               Entre com uma conta no topo da página (menu Entrar) para concluir a compra de “
-              {course.title}”.
+              {item.title}”.
             </p>
           </CardContent>
         </Card>
       )}
 
       {/* Já inscrito: acesso liberado */}
-      {user && isEnrolled && (
+      {user && item.isEnrolled && (
         <Card className="mt-5 rounded-2xl border-emerald-200 bg-emerald-50/40">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
             <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
               <CheckCircle2 aria-hidden className="h-7 w-7 text-emerald-700" />
             </span>
-            <p className="font-bold text-stone-900">Você já tem acesso a este curso</p>
+            <p className="font-bold text-stone-900">
+              {isTrack ? 'Você já tem acesso a esta trilha' : 'Você já tem acesso a este curso'}
+            </p>
             <p className="max-w-sm text-sm leading-relaxed text-stone-500">
-              Sua matrícula em “{course.title}” já está ativa — bons estudos!
+              Sua matrícula em “{item.title}” já está ativa — bons estudos!
             </p>
             <Button
-              onClick={() => navigate({ name: 'course', courseId })}
+              onClick={() =>
+                isTrack
+                  ? navigate({ name: 'track', trackId: item.id })
+                  : navigate({ name: 'course', courseId: item.id })
+              }
               className="mt-1 h-11 rounded-full px-6 font-bold"
             >
-              Ir para o curso
+              {isTrack ? 'Acessar a trilha' : 'Ir para o curso'}
             </Button>
           </CardContent>
         </Card>
       )}
 
-      {/* Curso gratuito: matrícula direta */}
-      {user && !isEnrolled && course.price === 0 && (
+      {/* Item gratuito: matrícula direta (defensivo — trilhas gratuitas normalmente
+          são inscritas direto na tela da trilha, sem passar pelo checkout) */}
+      {user && !item.isEnrolled && item.price === 0 && (
         <div className="mt-5 flex flex-col items-center gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-8 text-center">
-          <p className="font-bold text-stone-900">Este curso é gratuito</p>
+          <p className="font-bold text-stone-900">
+            {isTrack ? 'Esta trilha é gratuita' : 'Este curso é gratuito'}
+          </p>
           <p className="max-w-sm text-sm leading-relaxed text-stone-500">
             Não é preciso pagar nada: matricule-se e comece a aprender agora mesmo.
           </p>
@@ -303,51 +440,70 @@ export function CheckoutView({ courseId }: { courseId: string }) {
         </div>
       )}
 
-      {/* Fluxo de pagamento (curso pago + logado + não inscrito) */}
-      {user && !isEnrolled && course.price > 0 && (
+      {/* Fluxo de pagamento (item pago + logado + não inscrito) */}
+      {user && !item.isEnrolled && item.price > 0 && (
         <>
           {/* ---- RESUMO DO PEDIDO ---- */}
           <Card className="mt-5 gap-0 overflow-hidden rounded-2xl py-0">
-            {course.coverUrl ? (
+            {item.coverUrl ? (
               <img
-                src={course.coverUrl}
-                alt={`Capa do curso ${course.title}`}
+                src={item.coverUrl}
+                alt={`Capa ${isTrack ? 'da trilha' : 'do curso'} ${item.title}`}
                 className="h-28 w-full object-cover"
               />
             ) : (
               <div
                 aria-hidden
                 className="flex h-28 w-full items-center justify-center"
-                style={avatarGradient(course.title)}
+                style={avatarGradient(item.title)}
               >
-                <Library className="h-8 w-8 text-white/20" />
+                {isTrack ? (
+                  <Route className="h-8 w-8 text-white/20" />
+                ) : (
+                  <Library className="h-8 w-8 text-white/20" />
+                )}
               </div>
             )}
 
             <div className="p-5 sm:p-6">
               <div className="flex flex-wrap items-center gap-1.5">
                 <Badge className="rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
-                  {course.category}
+                  {item.category}
                 </Badge>
                 <Badge variant="outline" className="rounded-full border-stone-300 text-stone-600">
-                  {LEVEL_LABELS[course.level] ?? course.level}
+                  {LEVEL_LABELS[item.level] ?? item.level}
                 </Badge>
               </div>
 
               <h2 className="mt-2.5 text-lg font-extrabold leading-snug text-stone-900">
-                {course.title}
+                {item.title}
               </h2>
 
+              {isTrack && item.trackStats && (
+                <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-stone-500">
+                  <span className="inline-flex items-center gap-1.5">
+                    <BookOpen aria-hidden className="h-4 w-4 text-stone-400" />
+                    Trilha com {item.trackStats.courseCount}{' '}
+                    {item.trackStats.courseCount === 1 ? 'curso' : 'cursos'}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Users aria-hidden className="h-4 w-4 text-stone-400" />e{' '}
+                    {item.trackStats.mentorshipSessions}{' '}
+                    {item.trackStats.mentorshipSessions === 1 ? 'mentoria' : 'mentorias'} 1:1
+                  </span>
+                </p>
+              )}
+
               <div className="mt-3 flex items-center gap-3">
-                <Avatar name={course.mentor.name} src={course.mentor.avatarUrl} size="sm" />
+                <Avatar name={item.mentor.name} src={item.mentor.avatarUrl} size="sm" />
                 <div>
-                  <p className="text-sm font-bold text-stone-800">{course.mentor.name}</p>
-                  {course.mentor.rating > 0 && (
+                  <p className="text-sm font-bold text-stone-800">{item.mentor.name}</p>
+                  {item.mentor.rating > 0 && (
                     <div className="mt-0.5 flex items-center gap-1.5">
-                      <Stars rating={course.mentor.rating} size={12} />
+                      <Stars rating={item.mentor.rating} size={12} />
                       <span className="text-xs text-stone-400">
-                        ({course.mentor.reviewCount}{' '}
-                        {course.mentor.reviewCount === 1 ? 'avaliação' : 'avaliações'})
+                        ({item.mentor.reviewCount}{' '}
+                        {item.mentor.reviewCount === 1 ? 'avaliação' : 'avaliações'})
                       </span>
                     </div>
                   )}
@@ -359,7 +515,7 @@ export function CheckoutView({ courseId }: { courseId: string }) {
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-medium text-stone-500">Total</span>
                 <span className="text-2xl font-extrabold tracking-tight text-stone-900">
-                  {currencyBRL(course.price)}
+                  {currencyBRL(item.price)}
                 </span>
               </div>
               <p className="mt-2 text-xs text-stone-400">
@@ -513,7 +669,7 @@ export function CheckoutView({ courseId }: { courseId: string }) {
               </>
             ) : (
               <>
-                <Lock aria-hidden className="h-4 w-4" /> Pagar {currencyBRL(course.price)}
+                <Lock aria-hidden className="h-4 w-4" /> Pagar {currencyBRL(item.price)}
               </>
             )}
           </Button>

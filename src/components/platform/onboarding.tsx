@@ -25,8 +25,10 @@ import {
   LogIn,
   Megaphone,
   Newspaper,
+  Paperclip,
   Pencil,
   Plus,
+  Radio,
   RefreshCw,
   Save,
   ShoppingCart,
@@ -82,6 +84,7 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Avatar, Stars } from '@/components/platform/avatar'
+import { TracksManager } from './tracks-manager'
 import { api } from '@/lib/api'
 import {
   CATEGORIES,
@@ -89,6 +92,8 @@ import {
   LEVEL_LABELS,
   WEEKDAYS_FULL_PT,
   currencyBRL,
+  formatDayLabel,
+  formatTimeLabel,
   hourToLabel,
   labelToHour,
 } from '@/lib/helpers'
@@ -99,6 +104,7 @@ import type {
   ContentPostDTO,
   CourseLessonDTO,
   CourseListItemDTO,
+  LessonAttachmentDTO,
   MentorDetailDTO,
   SocialLinksDTO,
   TrackingStatsDTO,
@@ -1096,6 +1102,7 @@ function CoursesManager({
   const [category, setCategory] = useState<string>('')
   const [level, setLevel] = useState<string>('INICIANTE')
   const [price, setPrice] = useState('0')
+  const [mentorshipCount, setMentorshipCount] = useState('0')
   const [saving, setSaving] = useState(false)
   const [formErrors, setFormErrors] = useState<CourseFormErrors>({})
 
@@ -1134,6 +1141,7 @@ function CoursesManager({
     setCategory('')
     setLevel('INICIANTE')
     setPrice('0')
+    setMentorshipCount('0')
     setCoverUrl(null)
     setFormErrors({})
     setDialogOpen(true)
@@ -1146,6 +1154,7 @@ function CoursesManager({
     setCategory(course.category)
     setLevel(course.level)
     setPrice(String(course.price))
+    setMentorshipCount(String(course.mentorshipCount ?? 0))
     setCoverUrl(course.coverUrl ?? null)
     setFormErrors({})
     setDialogOpen(true)
@@ -1183,6 +1192,7 @@ function CoursesManager({
 
     setSaving(true)
     try {
+      const mentorships = Math.max(0, Math.min(20, Math.round(Number(mentorshipCount) || 0)))
       if (editing) {
         await api.updateCourse(editing.id, {
           userId,
@@ -1192,6 +1202,7 @@ function CoursesManager({
           level,
           price: priceNum,
           coverUrl,
+          mentorshipCount: mentorships,
         })
         toast.success('Curso atualizado!')
         setDialogOpen(false)
@@ -1205,6 +1216,7 @@ function CoursesManager({
           level,
           price: priceNum,
           coverUrl,
+          mentorshipCount: mentorships,
         })
         toast.success('Curso criado! Agora adicione aulas.')
         setDialogOpen(false)
@@ -1318,9 +1330,11 @@ function CoursesManager({
                   </div>
                   <h4 className="mt-2 font-semibold leading-snug">{course.title}</h4>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'} ·{' '}
+                    {course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'}
+                    {course.liveCount > 0 ? ` · ${course.liveCount} ao vivo` : ''} ·{' '}
                     {course.price === 0 ? 'Gratuito' : currencyBRL(course.price)} · {course.studentCount}{' '}
                     {course.studentCount === 1 ? 'aluno' : 'alunos'}
+                    {course.mentorshipCount > 0 ? ` · ${course.mentorshipCount} mentoria${course.mentorshipCount > 1 ? 's' : ''}` : ''}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
@@ -1484,6 +1498,21 @@ function CoursesManager({
               )}
             </div>
             <div className="flex flex-col gap-2">
+              <Label htmlFor="course-mentorships">Mentorias 1:1 inclusas</Label>
+              <Input
+                id="course-mentorships"
+                type="number"
+                min={0}
+                max={20}
+                step={1}
+                value={mentorshipCount}
+                onChange={(event) => setMentorshipCount(event.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Sessões de mentoria que o aluno pode agendar com você (0 = nenhuma).
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
               <Label>Capa do curso</Label>
               {coverUrl ? (
                 <div className="h-24 w-full overflow-hidden rounded-xl border border-stone-200 bg-stone-100">
@@ -1594,6 +1623,8 @@ interface LessonFormErrors {
   title?: string
   durationMin?: string
   material?: string
+  startsAt?: string
+  meetingUrl?: string
 }
 
 function LessonsManagerDialog({
@@ -1617,6 +1648,11 @@ function LessonsManagerDialog({
   const [videoUrl, setVideoUrl] = useState('')
   const [description, setDescription] = useState('')
   const [content, setContent] = useState('')
+  const [kind, setKind] = useState<'RECORDED' | 'TEXT' | 'LIVE'>('RECORDED')
+  const [startsAt, setStartsAt] = useState('')
+  const [meetingUrl, setMeetingUrl] = useState('')
+  const [attachments, setAttachments] = useState<LessonAttachmentDTO[]>([])
+  const [uploadingAttachment, setUploadingAttachment] = useState(false)
   const [saving, setSaving] = useState(false)
   const [formErrors, setFormErrors] = useState<LessonFormErrors>({})
 
@@ -1635,6 +1671,10 @@ function LessonsManagerDialog({
     setVideoUrl('')
     setDescription('')
     setContent('')
+    setKind('RECORDED')
+    setStartsAt('')
+    setMeetingUrl('')
+    setAttachments([])
     setFormErrors({})
     fetchLessons()
       .catch((err: unknown) => {
@@ -1659,8 +1699,15 @@ function LessonsManagerDialog({
     if (durationMin.trim() === '' || Number.isNaN(duration) || duration <= 0) {
       errs.durationMin = 'Informe a duração em minutos.'
     }
-    if (!videoUrl.trim() && !content.trim()) {
-      errs.material = 'A aula precisa de um vídeo ou de conteúdo textual.'
+    if (kind === 'LIVE') {
+      if (!startsAt.trim()) {
+        errs.startsAt = 'Informe data e hora da live.'
+      }
+      if (!meetingUrl.trim() && !videoUrl.trim()) {
+        errs.meetingUrl = 'A live precisa do link da transmissão (ou da gravação).'
+      }
+    } else if (!videoUrl.trim() && !content.trim() && attachments.length === 0) {
+      errs.material = 'A aula precisa de um vídeo, conteúdo textual ou anexos.'
     }
     setFormErrors(errs)
     if (Object.values(errs).some(Boolean)) return
@@ -1671,22 +1718,47 @@ function LessonsManagerDialog({
         userId,
         title: title.trim(),
         description: description.trim() || undefined,
+        kind,
         videoUrl: videoUrl.trim() || undefined,
         content: content.trim() || undefined,
+        startsAt: kind === 'LIVE' ? startsAt.trim() : undefined,
+        meetingUrl: meetingUrl.trim() || undefined,
+        attachments: attachments.length > 0 ? attachments : undefined,
         durationMin: duration,
       })
-      toast.success('Aula adicionada!')
+      toast.success(kind === 'LIVE' ? 'Aula ao vivo agendada!' : 'Aula adicionada!')
       setTitle('')
       setDurationMin('15')
       setVideoUrl('')
       setDescription('')
       setContent('')
+      setStartsAt('')
+      setMeetingUrl('')
+      setAttachments([])
       setAdding(false)
       await Promise.all([fetchLessons(), onChanged()])
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Não foi possível adicionar a aula.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleAttachmentFile = async (file: File | null | undefined) => {
+    if (!file || uploadingAttachment) return
+    if (attachments.length >= 10) {
+      toast.error('Máximo de 10 anexos por aula.')
+      return
+    }
+    setUploadingAttachment(true)
+    try {
+      const uploaded = await api.uploadAttachment(file)
+      setAttachments((prev) => [...prev, uploaded])
+      toast.success('Anexo enviado!')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível enviar o anexo.')
+    } finally {
+      setUploadingAttachment(false)
     }
   }
 
@@ -1733,13 +1805,32 @@ function LessonsManagerDialog({
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{lesson.title}</p>
                     <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                      {lesson.videoUrl ? (
-                        <Video className="size-3" aria-hidden />
+                      {lesson.kind === 'LIVE' ? (
+                        <>
+                          <Radio className="size-3 text-rose-500" aria-hidden />
+                          <span>
+                            Ao vivo ·{' '}
+                            {lesson.startsAt
+                              ? `${formatDayLabel(lesson.startsAt)} ${formatTimeLabel(lesson.startsAt)}`
+                              : 'agendada'}
+                          </span>
+                        </>
+                      ) : lesson.videoUrl ? (
+                        <>
+                          <Video className="size-3" aria-hidden />
+                          <span>Vídeo · {lesson.durationMin} min</span>
+                        </>
                       ) : (
-                        <FileText className="size-3" aria-hidden />
+                        <>
+                          <FileText className="size-3" aria-hidden />
+                          <span>Texto · {lesson.durationMin} min</span>
+                        </>
                       )}
-                      {lesson.durationMin} min
-                      {lesson.videoUrl ? ' · Vídeo' : lesson.content ? ' · Texto' : ''}
+                      {lesson.hasAttachments ? (
+                        <span className="inline-flex items-center gap-0.5">
+                          <Paperclip className="size-3" aria-hidden /> {lesson.attachments.length}
+                        </span>
+                      ) : null}
                     </p>
                   </div>
                   <Button
@@ -1769,47 +1860,196 @@ function LessonsManagerDialog({
                 />
                 {formErrors.title ? <p className="text-xs text-rose-600">{formErrors.title}</p> : null}
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+
+              {/* Tipo de aula */}
+              <div className="flex flex-col gap-2">
+                <Label>Tipo de aula</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      { value: 'RECORDED', label: 'Vídeo', icon: Video },
+                      { value: 'TEXT', label: 'Leitura', icon: FileText },
+                      { value: 'LIVE', label: 'Ao vivo', icon: Radio },
+                    ] as const
+                  ).map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setKind(opt.value)}
+                      aria-pressed={kind === opt.value}
+                      className={cn(
+                        'flex min-h-11 items-center justify-center gap-1.5 rounded-lg border text-sm font-semibold transition-colors',
+                        kind === opt.value
+                          ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                          : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-100'
+                      )}
+                    >
+                      <opt.icon className="size-4" aria-hidden /> {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {kind === 'LIVE' ? (
+                <>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="lesson-starts">Data e hora da live</Label>
+                      <Input
+                        id="lesson-starts"
+                        type="datetime-local"
+                        value={startsAt}
+                        onChange={(event) => setStartsAt(event.target.value)}
+                        aria-invalid={Boolean(formErrors.startsAt)}
+                      />
+                      {formErrors.startsAt ? (
+                        <p className="text-xs text-rose-600">{formErrors.startsAt}</p>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="lesson-duration">Duração (min)</Label>
+                      <Input
+                        id="lesson-duration"
+                        type="number"
+                        min={1}
+                        step={5}
+                        value={durationMin}
+                        onChange={(event) => setDurationMin(event.target.value)}
+                        aria-invalid={Boolean(formErrors.durationMin)}
+                      />
+                      {formErrors.durationMin ? (
+                        <p className="text-xs text-rose-600">{formErrors.durationMin}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="lesson-meeting">Link da transmissão</Label>
+                    <Input
+                      id="lesson-meeting"
+                      value={meetingUrl}
+                      onChange={(event) => setMeetingUrl(event.target.value)}
+                      placeholder="https://meet.google.com/... ou https://youtube.com/live/..."
+                      autoComplete="off"
+                      aria-invalid={Boolean(formErrors.meetingUrl)}
+                    />
+                    {formErrors.meetingUrl ? (
+                      <p className="text-xs text-rose-600">{formErrors.meetingUrl}</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Meet, Zoom, YouTube — aberto pelos alunos no horário da live.
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="lesson-video">Gravação (URL opcional)</Label>
+                    <Input
+                      id="lesson-video"
+                      value={videoUrl}
+                      onChange={(event) => setVideoUrl(event.target.value)}
+                      placeholder="Cole depois da live, para quem perdeu"
+                      autoComplete="off"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="lesson-duration">Duração (min)</Label>
+                    <Input
+                      id="lesson-duration"
+                      type="number"
+                      min={1}
+                      step={5}
+                      value={durationMin}
+                      onChange={(event) => setDurationMin(event.target.value)}
+                      aria-invalid={Boolean(formErrors.durationMin)}
+                    />
+                    {formErrors.durationMin ? (
+                      <p className="text-xs text-rose-600">{formErrors.durationMin}</p>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="lesson-video">Vídeo (URL{kind === 'TEXT' ? ' opcional' : ''})</Label>
+                    <Input
+                      id="lesson-video"
+                      value={videoUrl}
+                      onChange={(event) => setVideoUrl(event.target.value)}
+                      placeholder="https://youtube.com/watch?v=..."
+                      autoComplete="off"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {kind !== 'LIVE' ? (
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="lesson-duration">Duração (min)</Label>
-                  <Input
-                    id="lesson-duration"
-                    type="number"
-                    min={1}
-                    step={5}
-                    value={durationMin}
-                    onChange={(event) => setDurationMin(event.target.value)}
-                    aria-invalid={Boolean(formErrors.durationMin)}
+                  <Label htmlFor="lesson-content">Conteúdo textual (opcional)</Label>
+                  <Textarea
+                    id="lesson-content"
+                    rows={3}
+                    value={content}
+                    onChange={(event) => setContent(event.target.value)}
+                    placeholder="Cole aqui o material da aula ou escreva o conteúdo..."
+                    aria-invalid={Boolean(formErrors.material)}
                   />
-                  {formErrors.durationMin ? (
-                    <p className="text-xs text-rose-600">{formErrors.durationMin}</p>
+                  {formErrors.material ? (
+                    <p className="text-xs text-rose-600">{formErrors.material}</p>
                   ) : null}
                 </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="lesson-video">Vídeo (URL opcional)</Label>
-                  <Input
-                    id="lesson-video"
-                    value={videoUrl}
-                    onChange={(event) => setVideoUrl(event.target.value)}
-                    placeholder="https://youtube.com/watch?v=..."
-                    autoComplete="off"
+              ) : null}
+
+              {/* Anexos para download */}
+              <div className="flex flex-col gap-2">
+                <Label>Anexos para download (opcional)</Label>
+                {attachments.length > 0 ? (
+                  <ul className="space-y-1.5">
+                    {attachments.map((att, i) => (
+                      <li
+                        key={`${att.url}-${i}`}
+                        className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5"
+                      >
+                        <Paperclip className="size-3.5 shrink-0 text-stone-400" aria-hidden />
+                        <span className="min-w-0 flex-1 truncate text-xs font-medium text-stone-700">
+                          {att.name}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label={`Remover anexo ${att.name}`}
+                          className="rounded p-1 text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+                          onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
+                        >
+                          <X className="size-3.5" aria-hidden />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                <div className="flex items-center gap-2">
+                  {uploadingAttachment ? (
+                    <Button type="button" size="sm" variant="outline" disabled>
+                      Enviando...
+                    </Button>
+                  ) : (
+                    <Button type="button" size="sm" variant="outline" asChild>
+                      <Label htmlFor="lesson-attachment-upload" className="cursor-pointer">
+                        <Paperclip className="size-3.5" aria-hidden /> Adicionar anexo
+                      </Label>
+                    </Button>
+                  )}
+                  <span className="text-xs text-muted-foreground">PDF, ZIP, DOC(X), PPT(X), até 20MB</span>
+                  <input
+                    id="lesson-attachment-upload"
+                    type="file"
+                    className="hidden"
+                    tabIndex={-1}
+                    onChange={(event) => {
+                      void handleAttachmentFile(event.target.files?.[0])
+                      event.target.value = ''
+                    }}
                   />
                 </div>
               </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="lesson-content">Conteúdo textual (opcional)</Label>
-                <Textarea
-                  id="lesson-content"
-                  rows={3}
-                  value={content}
-                  onChange={(event) => setContent(event.target.value)}
-                  placeholder="Cole aqui o material da aula ou escreva o conteúdo..."
-                  aria-invalid={Boolean(formErrors.material)}
-                />
-                {formErrors.material ? (
-                  <p className="text-xs text-rose-600">{formErrors.material}</p>
-                ) : null}
-              </div>
+
               <div className="flex flex-col gap-2">
                 <Label htmlFor="lesson-description">Resumo (opcional)</Label>
                 <Input
@@ -1825,7 +2065,7 @@ function LessonsManagerDialog({
                   Cancelar
                 </Button>
                 <Button size="sm" onClick={() => void handleAdd()} disabled={saving}>
-                  {saving ? 'Adicionando...' : 'Adicionar aula'}
+                  {saving ? 'Adicionando...' : kind === 'LIVE' ? 'Agendar aula ao vivo' : 'Adicionar aula'}
                 </Button>
               </div>
             </div>
@@ -2690,6 +2930,9 @@ export default function OnboardingView() {
 
       {/* 6. Cursos */}
       <CoursesManager userId={user.id} onChanged={reload} onCoursesChange={handleCoursesChange} />
+
+      {/* 7. Trilhas */}
+      <TracksManager userId={user.id} onChanged={reload} />
     </div>
   )
 }

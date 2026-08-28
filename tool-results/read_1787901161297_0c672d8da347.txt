@@ -1,0 +1,722 @@
+     1→  1077→function CoursesManager({
+     2→  1078→  userId,
+     3→  1079→  onChanged,
+     4→  1080→  onCoursesChange,
+     5→  1081→}: {
+     6→  1082→  userId: string
+     7→  1083→  onChanged: () => Promise<void>
+     8→  1084→  /** Notifica o pai com a lista de cursos (usada pelo gerador de links) */
+     9→  1085→  onCoursesChange?: (courses: CourseListItemDTO[]) => void
+    10→  1086→}) {
+    11→  1087→  const [courses, setCourses] = useState<CourseListItemDTO[]>([])
+    12→  1088→  const [loading, setLoading] = useState(true)
+    13→  1089→  const [dialogOpen, setDialogOpen] = useState(false)
+    14→  1090→  const [editing, setEditing] = useState<CourseListItemDTO | null>(null)
+    15→  1091→  const [toDelete, setToDelete] = useState<CourseListItemDTO | null>(null)
+    16→  1092→  const [deleting, setDeleting] = useState(false)
+    17→  1093→  const [togglingId, setTogglingId] = useState<string | null>(null)
+    18→  1094→  const [lessonsCourse, setLessonsCourse] = useState<CourseListItemDTO | null>(null)
+    19→  1095→  const [lessonsOpen, setLessonsOpen] = useState(false)
+    20→  1096→  const [coverUrl, setCoverUrl] = useState<string | null>(null)
+    21→  1097→  const [uploadingCover, setUploadingCover] = useState(false)
+    22→  1098→
+    23→  1099→  const [title, setTitle] = useState('')
+    24→  1100→  const [description, setDescription] = useState('')
+    25→  1101→  const [category, setCategory] = useState<string>('')
+    26→  1102→  const [level, setLevel] = useState<string>('INICIANTE')
+    27→  1103→  const [price, setPrice] = useState('0')
+    28→  1104→  const [mentorshipCount, setMentorshipCount] = useState('0')
+    29→  1105→  const [saving, setSaving] = useState(false)
+    30→  1106→  const [formErrors, setFormErrors] = useState<CourseFormErrors>({})
+    31→  1107→
+    32→  1108→  const fetchCourses = useCallback(async (): Promise<CourseListItemDTO[]> => {
+    33→  1109→    const list = await api.listCourses({ mentorUserId: userId })
+    34→  1110→    setCourses(list)
+    35→  1111→    onCoursesChange?.(list)
+    36→  1112→    return list
+    37→  1113→  }, [userId, onCoursesChange])
+    38→  1114→
+    39→  1115→  useEffect(() => {
+    40→  1116→    let active = true
+    41→  1117→    fetchCourses()
+    42→  1118→      .catch((err: unknown) => {
+    43→  1119→        if (active) {
+    44→  1120→          toast.error(err instanceof Error ? err.message : 'Não foi possível carregar seus cursos.')
+    45→  1121→        }
+    46→  1122→      })
+    47→  1123→      .finally(() => {
+    48→  1124→        if (active) setLoading(false)
+    49→  1125→      })
+    50→  1126→    return () => {
+    51→  1127→      active = false
+    52→  1128→    }
+    53→  1129→  }, [fetchCourses])
+    54→  1130→
+    55→  1131→  /** Recarrega os cursos locais e os dados do perfil (contagens) no pai */
+    56→  1132→  const refreshAll = useCallback(async () => {
+    57→  1133→    await Promise.all([onChanged(), fetchCourses()])
+    58→  1134→  }, [onChanged, fetchCourses])
+    59→  1135→
+    60→  1136→  const openCreate = () => {
+    61→  1137→    setEditing(null)
+    62→  1138→    setTitle('')
+    63→  1139→    setDescription('')
+    64→  1140→    setCategory('')
+    65→  1141→    setLevel('INICIANTE')
+    66→  1142→    setPrice('0')
+    67→  1143→    setMentorshipCount('0')
+    68→  1144→    setCoverUrl(null)
+    69→  1145→    setFormErrors({})
+    70→  1146→    setDialogOpen(true)
+    71→  1147→  }
+    72→  1148→
+    73→  1149→  const openEdit = (course: CourseListItemDTO) => {
+    74→  1150→    setEditing(course)
+    75→  1151→    setTitle(course.title)
+    76→  1152→    setDescription(course.description)
+    77→  1153→    setCategory(course.category)
+    78→  1154→    setLevel(course.level)
+    79→  1155→    setPrice(String(course.price))
+    80→  1156→    setMentorshipCount(String(course.mentorshipCount ?? 0))
+    81→  1157→    setCoverUrl(course.coverUrl ?? null)
+    82→  1158→    setFormErrors({})
+    83→  1159→    setDialogOpen(true)
+    84→  1160→  }
+    85→  1161→
+    86→  1162→  const handleCourseCoverFile = async (file: File | null | undefined) => {
+    87→  1163→    if (!file || uploadingCover) return
+    88→  1164→    setUploadingCover(true)
+    89→  1165→    const url = await uploadImageFile(file)
+    90→  1166→    if (url) setCoverUrl(url)
+    91→  1167→    setUploadingCover(false)
+    92→  1168→  }
+    93→  1169→
+    94→  1170→  const copyCourseLink = (course: CourseListItemDTO) => {
+    95→  1171→    copyToClipboard(buildCourseUrl(course.id), 'Link de impulsionamento copiado!')
+    96→  1172→  }
+    97→  1173→
+    98→  1174→  const handleSubmit = async () => {
+    99→  1175→    const errs: CourseFormErrors = {}
+   100→  1176→    if (title.trim().length < 5) {
+   101→  1177→      errs.title = 'O título do curso precisa de ao menos 5 caracteres.'
+   102→  1178→    }
+   103→  1179→    if (description.trim().length < 30) {
+   104→  1180→      errs.description = 'Descreva o curso com pelo menos 30 caracteres.'
+   105→  1181→    }
+   106→  1182→    if (!category) {
+   107→  1183→      errs.category = 'Selecione a categoria do curso.'
+   108→  1184→    }
+   109→  1185→    const priceNum = Number(price)
+   110→  1186→    if (price.trim() === '' || Number.isNaN(priceNum) || priceNum < 0) {
+   111→  1187→      errs.price = 'Informe um preço válido (0 = gratuito).'
+   112→  1188→    }
+   113→  1189→    setFormErrors(errs)
+   114→  1190→    if (Object.values(errs).some(Boolean)) return
+   115→  1191→
+   116→  1192→    setSaving(true)
+   117→  1193→    try {
+   118→  1194→      const mentorships = Math.max(0, Math.min(20, Math.round(Number(mentorshipCount) || 0)))
+   119→  1195→      if (editing) {
+   120→  1196→        await api.updateCourse(editing.id, {
+   121→  1197→          userId,
+   122→  1198→          title: title.trim(),
+   123→  1199→          description: description.trim(),
+   124→  1200→          category,
+   125→  1201→          level,
+   126→  1202→          price: priceNum,
+   127→  1203→          coverUrl,
+   128→  1204→          mentorshipCount: mentorships,
+   129→  1205→        })
+   130→  1206→        toast.success('Curso atualizado!')
+   131→  1207→        setDialogOpen(false)
+   132→  1208→        await refreshAll()
+   133→  1209→      } else {
+   134→  1210→        const created = await api.createCourse({
+   135→  1211→          userId,
+   136→  1212→          title: title.trim(),
+   137→  1213→          description: description.trim(),
+   138→  1214→          category,
+   139→  1215→          level,
+   140→  1216→          price: priceNum,
+   141→  1217→          coverUrl,
+   142→  1218→          mentorshipCount: mentorships,
+   143→  1219→        })
+   144→  1220→        toast.success('Curso criado! Agora adicione aulas.')
+   145→  1221→        setDialogOpen(false)
+   146→  1222→        const [, list] = await Promise.all([onChanged(), fetchCourses()])
+   147→  1223→        const fresh = list.find((c) => c.id === created.id) ?? null
+   148→  1224→        if (fresh) {
+   149→  1225→          setLessonsCourse(fresh)
+   150→  1226→          setLessonsOpen(true)
+   151→  1227→        }
+   152→  1228→      }
+   153→  1229→    } catch (err) {
+   154→  1230→      toast.error(err instanceof Error ? err.message : 'Não foi possível salvar o curso.')
+   155→  1231→    } finally {
+   156→  1232→      setSaving(false)
+   157→  1233→    }
+   158→  1234→  }
+   159→  1235→
+   160→  1236→  const togglePublish = async (course: CourseListItemDTO) => {
+   161→  1237→    setTogglingId(course.id)
+   162→  1238→    try {
+   163→  1239→      await api.updateCourse(course.id, { userId, isPublished: !course.isPublished })
+   164→  1240→      toast.success(
+   165→  1241→        course.isPublished ? 'Curso movido para rascunho.' : 'Curso publicado! Ele já aparece no Explorar.'
+   166→  1242→      )
+   167→  1243→      await refreshAll()
+   168→  1244→    } catch (err) {
+   169→  1245→      toast.error(err instanceof Error ? err.message : 'Não foi possível atualizar o curso.')
+   170→  1246→    } finally {
+   171→  1247→      setTogglingId(null)
+   172→  1248→    }
+   173→  1249→  }
+   174→  1250→
+   175→  1251→  const handleDelete = async () => {
+   176→  1252→    if (!toDelete) return
+   177→  1253→    setDeleting(true)
+   178→  1254→    try {
+   179→  1255→      await api.deleteCourse(toDelete.id, userId)
+   180→  1256→      toast.success('Curso excluído.')
+   181→  1257→      setToDelete(null)
+   182→  1258→      await refreshAll()
+   183→  1259→    } catch (err) {
+   184→  1260→      toast.error(err instanceof Error ? err.message : 'Não foi possível excluir o curso.')
+   185→  1261→    } finally {
+   186→  1262→      setDeleting(false)
+   187→  1263→    }
+   188→  1264→  }
+   189→  1265→
+   190→  1266→  return (
+   191→  1267→    <Card>
+   192→  1268→      <CardHeader>
+   193→  1269→        <CardTitle className="flex items-center gap-2 text-lg">
+   194→  1270→          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+   195→  1271→            <GraduationCap className="size-4" aria-hidden />
+   196→  1272→          </span>
+   197→  1273→          Meus cursos
+   198→  1274→        </CardTitle>
+   199→  1275→        <CardDescription>
+   200→  1276→          Crie cursos com aulas em vídeo ou texto e publique para os alunos se matricularem.
+   201→  1277→        </CardDescription>
+   202→  1278→        <CardAction>
+   203→  1279→          <Button size="sm" onClick={openCreate}>
+   204→  1280→            <Plus className="size-4" aria-hidden /> Novo curso
+   205→  1281→          </Button>
+   206→  1282→        </CardAction>
+   207→  1283→      </CardHeader>
+   208→  1284→      <CardContent className="flex flex-col gap-4">
+   209→  1285→        {loading ? (
+   210→  1286→          <div className="space-y-3">
+   211→  1287→            <Skeleton className="h-28 rounded-lg" />
+   212→  1288→            <Skeleton className="h-28 rounded-lg" />
+   213→  1289→          </div>
+   214→  1290→        ) : courses.length === 0 ? (
+   215→  1291→          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-stone-300 py-10 text-center">
+   216→  1292→            <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 text-stone-400 ring-1 ring-stone-200">
+   217→  1293→              <GraduationCap className="size-6" aria-hidden />
+   218→  1294→            </div>
+   219→  1295→            <h3 className="mt-2 text-base font-semibold">Nenhum curso criado</h3>
+   220→  1296→            <p className="max-w-sm text-sm text-muted-foreground">
+   221→  1297→              Estruture suas aulas em um curso — em vídeo ou texto — e publique quando estiver pronto.
+   222→  1298→            </p>
+   223→  1299→          </div>
+   224→  1300→        ) : (
+   225→  1301→          <div className="max-h-96 space-y-3 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
+   226→  1302→            {courses.map((course) => (
+   227→  1303→              <div
+   228→  1304→                key={course.id}
+   229→  1305→                className="flex items-start justify-between gap-3 rounded-lg border border-stone-200 bg-white p-4"
+   230→  1306→              >
+   231→  1307→                {course.coverUrl ? (
+   232→  1308→                  <img
+   233→  1309→                    src={course.coverUrl}
+   234→  1310→                    alt=""
+   235→  1311→                    className="h-12 w-20 shrink-0 rounded-lg object-cover ring-1 ring-stone-200"
+   236→  1312→                  />
+   237→  1313→                ) : null}
+   238→  1314→                <div className="min-w-0 flex-1">
+   239→  1315→                  <div className="flex flex-wrap items-center gap-2">
+   240→  1316→                    <Badge variant="outline" className="border-stone-200 text-stone-600">
+   241→  1317→                      {course.category}
+   242→  1318→                    </Badge>
+   243→  1319→                    <Badge variant="outline" className="border-stone-200 text-stone-500">
+   244→  1320→                      {LEVEL_LABELS[course.level] ?? course.level}
+   245→  1321→                    </Badge>
+   246→  1322→                    {course.isPublished ? (
+   247→  1323→                      <Badge className="bg-emerald-100 text-emerald-800">Publicado</Badge>
+   248→  1324→                    ) : (
+   249→  1325→                      <Badge variant="secondary" className="bg-stone-100 text-stone-600">
+   250→  1326→                        Rascunho
+   251→  1327→                      </Badge>
+   252→  1328→                    )}
+   253→  1329→                  </div>
+   254→  1330→                  <h4 className="mt-2 font-semibold leading-snug">{course.title}</h4>
+   255→  1331→                  <p className="mt-1 text-sm text-muted-foreground">
+   256→  1332→                    {course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'}
+   257→  1333→                    {course.liveCount > 0 ? ` · ${course.liveCount} ao vivo` : ''} ·{' '}
+   258→  1334→                    {course.price === 0 ? 'Gratuito' : currencyBRL(course.price)} · {course.studentCount}{' '}
+   259→  1335→                    {course.studentCount === 1 ? 'aluno' : 'alunos'}
+   260→  1336→                    {course.mentorshipCount > 0 ? ` · ${course.mentorshipCount} mentoria${course.mentorshipCount > 1 ? 's' : ''}` : ''}
+   261→  1337→                  </p>
+   262→  1338→                </div>
+   263→  1339→                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+   264→  1340→                  <Button
+   265→  1341→                    variant="ghost"
+   266→  1342→                    size="sm"
+   267→  1343→                    className="text-stone-600"
+   268→  1344→                    aria-label={`Copiar link de impulsionamento de ${course.title}`}
+   269→  1345→                    onClick={() => copyCourseLink(course)}
+   270→  1346→                  >
+   271→  1347→                    <Link2 className="size-4" aria-hidden /> Link
+   272→  1348→                  </Button>
+   273→  1349→                  <Button
+   274→  1350→                    variant="ghost"
+   275→  1351→                    size="sm"
+   276→  1352→                    className="text-stone-600"
+   277→  1353→                    aria-label={`Gerenciar aulas de ${course.title}`}
+   278→  1354→                    onClick={() => {
+   279→  1355→                      setLessonsCourse(course)
+   280→  1356→                      setLessonsOpen(true)
+   281→  1357→                    }}
+   282→  1358→                  >
+   283→  1359→                    <ListVideo className="size-4" aria-hidden /> Aulas
+   284→  1360→                  </Button>
+   285→  1361→                  <Button
+   286→  1362→                    variant="ghost"
+   287→  1363→                    size="icon"
+   288→  1364→                    aria-label={`Editar curso ${course.title}`}
+   289→  1365→                    onClick={() => openEdit(course)}
+   290→  1366→                  >
+   291→  1367→                    <Pencil className="size-4" aria-hidden />
+   292→  1368→                  </Button>
+   293→  1369→                  <Button
+   294→  1370→                    variant="ghost"
+   295→  1371→                    size="icon"
+   296→  1372→                    disabled={togglingId === course.id}
+   297→  1373→                    aria-label={
+   298→  1374→                      course.isPublished ? `Despublicar curso ${course.title}` : `Publicar curso ${course.title}`
+   299→  1375→                    }
+   300→  1376→                    onClick={() => void togglePublish(course)}
+   301→  1377→                  >
+   302→  1378→                    {course.isPublished ? (
+   303→  1379→                      <EyeOff className="size-4" aria-hidden />
+   304→  1380→                    ) : (
+   305→  1381→                      <Eye className="size-4" aria-hidden />
+   306→  1382→                    )}
+   307→  1383→                  </Button>
+   308→  1384→                  <Button
+   309→  1385→                    variant="ghost"
+   310→  1386→                    size="icon"
+   311→  1387→                    className="text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+   312→  1388→                    aria-label={`Excluir curso ${course.title}`}
+   313→  1389→                    onClick={() => setToDelete(course)}
+   314→  1390→                  >
+   315→  1391→                    <Trash2 className="size-4" aria-hidden />
+   316→  1392→                  </Button>
+   317→  1393→                </div>
+   318→  1394→              </div>
+   319→  1395→            ))}
+   320→  1396→          </div>
+   321→  1397→        )}
+   322→  1398→      </CardContent>
+   323→  1399→
+   324→  1400→      {/* Dialog: novo/editar curso */}
+   325→  1401→      <Dialog
+   326→  1402→        open={dialogOpen}
+   327→  1403→        onOpenChange={(open) => {
+   328→  1404→          setDialogOpen(open)
+   329→  1405→          if (open) setFormErrors({})
+   330→  1406→        }}
+   331→  1407→      >
+   332→  1408→        <DialogContent className="sm:max-w-lg">
+   333→  1409→          <DialogHeader>
+   334→  1410→            <DialogTitle>{editing ? 'Editar curso' : 'Novo curso'}</DialogTitle>
+   335→  1411→            <DialogDescription>
+   336→  1412→              {editing
+   337→  1413→                ? 'Atualize as informações do curso. As aulas são gerenciadas separadamente.'
+   338→  1414→                : 'Crie a estrutura do curso. Depois de salvar, você adiciona as aulas.'}
+   339→  1415→            </DialogDescription>
+   340→  1416→          </DialogHeader>
+   341→  1417→          <div className="flex flex-col gap-4">
+   342→  1418→            <div className="flex flex-col gap-2">
+   343→  1419→              <Label htmlFor="course-title">Título</Label>
+   344→  1420→              <Input
+   345→  1421→                id="course-title"
+   346→  1422→                value={title}
+   347→  1423→                onChange={(event) => setTitle(event.target.value)}
+   348→  1424→                placeholder="Ex.: Arquitetura de Software na prática"
+   349→  1425→                aria-invalid={Boolean(formErrors.title)}
+   350→  1426→              />
+   351→  1427→              {formErrors.title ? <p className="text-xs text-rose-600">{formErrors.title}</p> : null}
+   352→  1428→            </div>
+   353→  1429→            <div className="flex flex-col gap-2">
+   354→  1430→              <Label htmlFor="course-description">Descrição</Label>
+   355→  1431→              <Textarea
+   356→  1432→                id="course-description"
+   357→  1433→                rows={3}
+   358→  1434→                value={description}
+   359→  1435→                onChange={(event) => setDescription(event.target.value)}
+   360→  1436→                placeholder="O que o aluno vai aprender e para quem é o curso..."
+   361→  1437→                aria-invalid={Boolean(formErrors.description)}
+   362→  1438→              />
+   363→  1439→              {formErrors.description ? (
+   364→  1440→                <p className="text-xs text-rose-600">{formErrors.description}</p>
+   365→  1441→              ) : null}
+   366→  1442→            </div>
+   367→  1443→            <div className="grid gap-4 sm:grid-cols-2">
+   368→  1444→              <div className="flex flex-col gap-2">
+   369→  1445→                <Label htmlFor="course-category">Categoria</Label>
+   370→  1446→                <Select
+   371→  1447→                  value={category}
+   372→  1448→                  onValueChange={(value) => {
+   373→  1449→                    setCategory(value)
+   374→  1450→                    setFormErrors((prev) => ({ ...prev, category: undefined }))
+   375→  1451→                  }}
+   376→  1452→                >
+   377→  1453→                  <SelectTrigger id="course-category" className="w-full" aria-invalid={Boolean(formErrors.category)}>
+   378→  1454→                    <SelectValue placeholder="Selecione..." />
+   379→  1455→                  </SelectTrigger>
+   380→  1456→                  <SelectContent>
+   381→  1457→                    {CATEGORIES.map((c) => (
+   382→  1458→                      <SelectItem key={c} value={c}>
+   383→  1459→                        {c}
+   384→  1460→                      </SelectItem>
+   385→  1461→                    ))}
+   386→  1462→                  </SelectContent>
+   387→  1463→                </Select>
+   388→  1464→                {formErrors.category ? <p className="text-xs text-rose-600">{formErrors.category}</p> : null}
+   389→  1465→              </div>
+   390→  1466→              <div className="flex flex-col gap-2">
+   391→  1467→                <Label htmlFor="course-level">Nível</Label>
+   392→  1468→                <Select value={level} onValueChange={setLevel}>
+   393→  1469→                  <SelectTrigger id="course-level" className="w-full">
+   394→  1470→                    <SelectValue />
+   395→  1471→                  </SelectTrigger>
+   396→  1472→                  <SelectContent>
+   397→  1473→                    {CONTENT_LEVELS.map((l) => (
+   398→  1474→                      <SelectItem key={l} value={l}>
+   399→  1475→                        {LEVEL_LABELS[l] ?? l}
+   400→  1476→                      </SelectItem>
+   401→  1477→                    ))}
+   402→  1478→                  </SelectContent>
+   403→  1479→                </Select>
+   404→  1480→              </div>
+   405→  1481→            </div>
+   406→  1482→            <div className="flex flex-col gap-2">
+   407→  1483→              <Label htmlFor="course-price">Preço (R$)</Label>
+   408→  1484→              <Input
+   409→  1485→                id="course-price"
+   410→  1486→                type="number"
+   411→  1487→                min={0}
+   412→  1488→                step={10}
+   413→  1489→                value={price}
+   414→  1490→                onChange={(event) => setPrice(event.target.value)}
+   415→  1491→                aria-invalid={Boolean(formErrors.price)}
+   416→  1492→              />
+   417→  1493→              {formErrors.price ? (
+   418→  1494→                <p className="text-xs text-rose-600">{formErrors.price}</p>
+   419→  1495→              ) : (
+   420→  1496→                <p className="text-xs text-muted-foreground">Deixe 0 para tornar o curso gratuito.</p>
+   421→  1497→              )}
+   422→  1498→            </div>
+   423→  1499→            <div className="flex flex-col gap-2">
+   424→  1500→              <Label htmlFor="course-mentorships">Mentorias 1:1 inclusas</Label>
+   425→  1501→              <Input
+   426→  1502→                id="course-mentorships"
+   427→  1503→                type="number"
+   428→  1504→                min={0}
+   429→  1505→                max={20}
+   430→  1506→                step={1}
+   431→  1507→                value={mentorshipCount}
+   432→  1508→                onChange={(event) => setMentorshipCount(event.target.value)}
+   433→  1509→              />
+   434→  1510→              <p className="text-xs text-muted-foreground">
+   435→  1511→                Sessões de mentoria que o aluno pode agendar com você (0 = nenhuma).
+   436→  1512→              </p>
+   437→  1513→            </div>
+   438→  1514→            <div className="flex flex-col gap-2">
+   439→  1515→              <Label>Capa do curso</Label>
+   440→  1516→              {coverUrl ? (
+   441→  1517→                <div className="h-24 w-full overflow-hidden rounded-xl border border-stone-200 bg-stone-100">
+   442→  1518→                  <img src={coverUrl} alt="Capa do curso" className="h-full w-full object-cover" />
+   443→  1519→                </div>
+   444→  1520→              ) : (
+   445→  1521→                <div className="flex h-24 w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-stone-300 bg-stone-50">
+   446→  1522→                  <ImagePlus className="size-5 text-stone-400" aria-hidden />
+   447→  1523→                  <p className="text-xs text-stone-500">Capa 1280×720 recomendada</p>
+   448→  1524→                </div>
+   449→  1525→              )}
+   450→  1526→              <div className="flex flex-wrap items-center gap-2">
+   451→  1527→                {uploadingCover ? (
+   452→  1528→                  <Button type="button" size="sm" variant="outline" disabled>
+   453→  1529→                    Enviando...
+   454→  1530→                  </Button>
+   455→  1531→                ) : (
+   456→  1532→                  <Button type="button" size="sm" variant="outline" asChild>
+   457→  1533→                    <Label htmlFor="course-cover-upload" className="cursor-pointer">
+   458→  1534→                      Enviar capa
+   459→  1535→                    </Label>
+   460→  1536→                  </Button>
+   461→  1537→                )}
+   462→  1538→                {coverUrl ? (
+   463→  1539→                  <Button
+   464→  1540→                    type="button"
+   465→  1541→                    size="sm"
+   466→  1542→                    variant="ghost"
+   467→  1543→                    disabled={uploadingCover}
+   468→  1544→                    onClick={() => setCoverUrl(null)}
+   469→  1545→                  >
+   470→  1546→                    Remover
+   471→  1547→                  </Button>
+   472→  1548→                ) : null}
+   473→  1549→                <input
+   474→  1550→                  id="course-cover-upload"
+   475→  1551→                  type="file"
+   476→  1552→                  accept="image/*"
+   477→  1553→                  className="hidden"
+   478→  1554→                  tabIndex={-1}
+   479→  1555→                  onChange={(event) => {
+   480→  1556→                    void handleCourseCoverFile(event.target.files?.[0])
+   481→  1557→                    event.target.value = ''
+   482→  1558→                  }}
+   483→  1559→                />
+   484→  1560→              </div>
+   485→  1561→            </div>
+   486→  1562→          </div>
+   487→  1563→          <DialogFooter>
+   488→  1564→            <Button variant="ghost" onClick={() => setDialogOpen(false)} disabled={saving}>
+   489→  1565→              Cancelar
+   490→  1566→            </Button>
+   491→  1567→            <Button onClick={() => void handleSubmit()} disabled={saving}>
+   492→  1568→              {saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Criar curso'}
+   493→  1569→            </Button>
+   494→  1570→          </DialogFooter>
+   495→  1571→        </DialogContent>
+   496→  1572→      </Dialog>
+   497→  1573→
+   498→  1574→      {/* Dialog: aulas do curso */}
+   499→  1575→      {lessonsCourse && (
+   500→  1576→        <LessonsManagerDialog
+   501→  1577→          course={lessonsCourse}
+   502→  1578→          userId={userId}
+   503→  1579→          open={lessonsOpen}
+   504→  1580→          onOpenChange={setLessonsOpen}
+   505→  1581→          onChanged={refreshAll}
+   506→  1582→        />
+   507→  1583→      )}
+   508→  1584→
+   509→  1585→      {/* AlertDialog: excluir curso */}
+   510→  1586→      <AlertDialog
+   511→  1587→        open={toDelete !== null}
+   512→  1588→        onOpenChange={(open) => {
+   513→  1589→          if (!open) setToDelete(null)
+   514→  1590→        }}
+   515→  1591→      >
+   516→  1592→        <AlertDialogContent>
+   517→  1593→          <AlertDialogHeader>
+   518→  1594→            <AlertDialogTitle>Excluir curso?</AlertDialogTitle>
+   519→  1595→            <AlertDialogDescription>
+   520→  1596→              &quot;{toDelete?.title}&quot; remove o curso, todas as aulas e o progresso dos alunos
+   521→  1597→              permanentemente. Esta ação não pode ser desfeita.
+   522→  1598→            </AlertDialogDescription>
+   523→  1599→          </AlertDialogHeader>
+   524→  1600→          <AlertDialogFooter>
+   525→  1601→            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+   526→  1602→            <AlertDialogAction
+   527→  1603→              className="bg-rose-600 text-white hover:bg-rose-700"
+   528→  1604→              disabled={deleting}
+   529→  1605→              onClick={(event) => {
+   530→  1606→                event.preventDefault()
+   531→  1607→                void handleDelete()
+   532→  1608→              }}
+   533→  1609→            >
+   534→  1610→              {deleting ? 'Excluindo...' : 'Excluir'}
+   535→  1611→            </AlertDialogAction>
+   536→  1612→          </AlertDialogFooter>
+   537→  1613→        </AlertDialogContent>
+   538→  1614→      </AlertDialog>
+   539→  1615→    </Card>
+   540→  1616→  )
+   541→  1617→}
+   542→  1618→
+   543→  1619→// ---------- Dialog de aulas do curso ----------
+   544→  1620→
+   545→  1621→interface LessonFormErrors {
+   546→  1622→  title?: string
+   547→  1623→  durationMin?: string
+   548→  1624→  material?: string
+   549→  1625→  startsAt?: string
+   550→  1626→  meetingUrl?: string
+   551→  1627→}
+   552→  1628→
+   553→  1629→function LessonsManagerDialog({
+   554→  1630→  course,
+   555→  1631→  userId,
+   556→  1632→  open,
+   557→  1633→  onOpenChange,
+   558→  1634→  onChanged,
+   559→  1635→}: {
+   560→  1636→  course: CourseListItemDTO
+   561→  1637→  userId: string
+   562→  1638→  open: boolean
+   563→  1639→  onOpenChange: (open: boolean) => void
+   564→  1640→  onChanged: () => Promise<void>
+   565→  1641→}) {
+   566→  1642→  const [lessons, setLessons] = useState<CourseLessonDTO[]>([])
+   567→  1643→  const [loading, setLoading] = useState(true)
+   568→  1644→  const [adding, setAdding] = useState(false)
+   569→  1645→  const [title, setTitle] = useState('')
+   570→  1646→  const [durationMin, setDurationMin] = useState('15')
+   571→  1647→  const [videoUrl, setVideoUrl] = useState('')
+   572→  1648→  const [description, setDescription] = useState('')
+   573→  1649→  const [content, setContent] = useState('')
+   574→  1650→  const [kind, setKind] = useState<'RECORDED' | 'TEXT' | 'LIVE'>('RECORDED')
+   575→  1651→  const [startsAt, setStartsAt] = useState('')
+   576→  1652→  const [meetingUrl, setMeetingUrl] = useState('')
+   577→  1653→  const [attachments, setAttachments] = useState<LessonAttachmentDTO[]>([])
+   578→  1654→  const [uploadingAttachment, setUploadingAttachment] = useState(false)
+   579→  1655→  const [saving, setSaving] = useState(false)
+   580→  1656→  const [formErrors, setFormErrors] = useState<LessonFormErrors>({})
+   581→  1657→
+   582→  1658→  const fetchLessons = useCallback(async () => {
+   583→  1659→    const detail = await api.getCourse(course.id)
+   584→  1660→    setLessons(detail.lessons)
+   585→  1661→  }, [course.id])
+   586→  1662→
+   587→  1663→  useEffect(() => {
+   588→  1664→    if (!open) return
+   589→  1665→    let active = true
+   590→  1666→    setLoading(true)
+   591→  1667→    setAdding(false)
+   592→  1668→    setTitle('')
+   593→  1669→    setDurationMin('15')
+   594→  1670→    setVideoUrl('')
+   595→  1671→    setDescription('')
+   596→  1672→    setContent('')
+   597→  1673→    setKind('RECORDED')
+   598→  1674→    setStartsAt('')
+   599→  1675→    setMeetingUrl('')
+   600→  1676→    setAttachments([])
+   601→  1677→    setFormErrors({})
+   602→  1678→    fetchLessons()
+   603→  1679→      .catch((err: unknown) => {
+   604→  1680→        if (active) {
+   605→  1681→          toast.error(err instanceof Error ? err.message : 'Não foi possível carregar as aulas.')
+   606→  1682→        }
+   607→  1683→      })
+   608→  1684→      .finally(() => {
+   609→  1685→        if (active) setLoading(false)
+   610→  1686→      })
+   611→  1687→    return () => {
+   612→  1688→      active = false
+   613→  1689→    }
+   614→  1690→  }, [open, fetchLessons])
+   615→  1691→
+   616→  1692→  const handleAdd = async () => {
+   617→  1693→    const errs: LessonFormErrors = {}
+   618→  1694→    if (title.trim().length < 3) {
+   619→  1695→      errs.title = 'Dê um título à aula (mínimo 3 caracteres).'
+   620→  1696→    }
+   621→  1697→    const duration = Number(durationMin)
+   622→  1698→    if (durationMin.trim() === '' || Number.isNaN(duration) || duration <= 0) {
+   623→  1699→      errs.durationMin = 'Informe a duração em minutos.'
+   624→  1700→    }
+   625→  1701→    if (kind === 'LIVE') {
+   626→  1702→      if (!startsAt.trim()) {
+   627→  1703→        errs.startsAt = 'Informe data e hora da live.'
+   628→  1704→      }
+   629→  1705→      if (!meetingUrl.trim() && !videoUrl.trim()) {
+   630→  1706→        errs.meetingUrl = 'A live precisa do link da transmissão (ou da gravação).'
+   631→  1707→      }
+   632→  1708→    } else if (!videoUrl.trim() && !content.trim() && attachments.length === 0) {
+   633→  1709→      errs.material = 'A aula precisa de um vídeo, conteúdo textual ou anexos.'
+   634→  1710→    }
+   635→  1711→    setFormErrors(errs)
+   636→  1712→    if (Object.values(errs).some(Boolean)) return
+   637→  1713→
+   638→  1714→    setSaving(true)
+   639→  1715→    try {
+   640→  1716→      await api.createLesson(course.id, {
+   641→  1717→        userId,
+   642→  1718→        title: title.trim(),
+   643→  1719→        description: description.trim() || undefined,
+   644→  1720→        kind,
+   645→  1721→        videoUrl: videoUrl.trim() || undefined,
+   646→  1722→        content: content.trim() || undefined,
+   647→  1723→        startsAt: kind === 'LIVE' ? startsAt.trim() : undefined,
+   648→  1724→        meetingUrl: meetingUrl.trim() || undefined,
+   649→  1725→        attachments: attachments.length > 0 ? attachments : undefined,
+   650→  1726→        durationMin: duration,
+   651→  1727→      })
+   652→  1728→      toast.success(kind === 'LIVE' ? 'Aula ao vivo agendada!' : 'Aula adicionada!')
+   653→  1729→      setTitle('')
+   654→  1730→      setDurationMin('15')
+   655→  1731→      setVideoUrl('')
+   656→  1732→      setDescription('')
+   657→  1733→      setContent('')
+   658→  1734→      setStartsAt('')
+   659→  1735→      setMeetingUrl('')
+   660→  1736→      setAttachments([])
+   661→  1737→      setAdding(false)
+   662→  1738→      await Promise.all([fetchLessons(), onChanged()])
+   663→  1739→    } catch (err) {
+   664→  1740→      toast.error(err instanceof Error ? err.message : 'Não foi possível adicionar a aula.')
+   665→  1741→    } finally {
+   666→  1742→      setSaving(false)
+   667→  1743→    }
+   668→  1744→  }
+   669→  1745→
+   670→  1746→  const handleAttachmentFile = async (file: File | null | undefined) => {
+   671→  1747→    if (!file || uploadingAttachment) return
+   672→  1748→    if (attachments.length >= 10) {
+   673→  1749→      toast.error('Máximo de 10 anexos por aula.')
+   674→  1750→      return
+   675→  1751→    }
+   676→  1752→    setUploadingAttachment(true)
+   677→  1753→    try {
+   678→  1754→      const uploaded = await api.uploadAttachment(file)
+   679→  1755→      setAttachments((prev) => [...prev, uploaded])
+   680→  1756→      toast.success('Anexo enviado!')
+   681→  1757→    } catch (err) {
+   682→  1758→      toast.error(err instanceof Error ? err.message : 'Não foi possível enviar o anexo.')
+   683→  1759→    } finally {
+   684→  1760→      setUploadingAttachment(false)
+   685→  1761→    }
+   686→  1762→  }
+   687→  1763→
+   688→  1764→  const handleDeleteLesson = async (lesson: CourseLessonDTO) => {
+   689→  1765→    try {
+   690→  1766→      await api.deleteLesson(course.id, lesson.id, userId)
+   691→  1767→      toast.success('Aula removida.')
+   692→  1768→      await Promise.all([fetchLessons(), onChanged()])
+   693→  1769→    } catch (err) {
+   694→  1770→      toast.error(err instanceof Error ? err.message : 'Não foi possível remover a aula.')
+   695→  1771→    }
+   696→  1772→  }
+   697→  1773→
+   698→  1774→  return (
+   699→  1775→    <Dialog open={open} onOpenChange={onOpenChange}>
+   700→  1776→      <DialogContent className="sm:max-w-lg">
+   701→  1777→        <DialogHeader>
+   702→  1778→          <DialogTitle>Aulas do curso</DialogTitle>
+   703→  1779→          <DialogDescription>
+   704→  1780→            {course.title} · {lessons.length} {lessons.length === 1 ? 'aula' : 'aulas'} — exibidas nesta ordem
+   705→  1781→            para os alunos.
+   706→  1782→          </DialogDescription>
+   707→  1783→        </DialogHeader>
+   708→  1784→        <div className="flex flex-col gap-3">
+   709→  1785→          {loading ? (
+   710→  1786→            <div className="space-y-2">
+   711→  1787→              <Skeleton className="h-14 rounded-lg" />
+   712→  1788→              <Skeleton className="h-14 rounded-lg" />
+   713→  1789→            </div>
+   714→  1790→          ) : lessons.length === 0 ? (
+   715→  1791→            <p className="rounded-lg border border-dashed border-stone-300 py-6 text-center text-sm text-muted-foreground">
+   716→  1792→              Nenhuma aula ainda — adicione a primeira abaixo.
+   717→  1793→            </p>
+   718→  1794→          ) : (
+   719→  1795→            <div className="max-h-64 space-y-2 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
+   720→  1796→              {lessons.map((lesson) => (
+   721→
+   722→[showing lines 1077-1796 of 2935; use offset=1797 with limit to continue reading]

@@ -13,7 +13,7 @@ function baseInclude() {
         reviews: { select: { rating: true } },
       },
     },
-    lessons: { select: { durationMin: true } },
+    lessons: { select: { durationMin: true, kind: true } },
     enrollments: { select: { id: true } },
   }
 }
@@ -29,6 +29,7 @@ function serialize(course: {
   isPublished: boolean
   createdAt: Date
   updatedAt: Date
+  mentorshipCount: number
   mentor: {
     id: string
     userId: string
@@ -36,7 +37,7 @@ function serialize(course: {
     user: { id: string; name: string; avatarUrl: string | null }
     reviews: { rating: number }[]
   }
-  lessons: { durationMin: number }[]
+  lessons: { durationMin: number; kind: string }[]
   enrollments: { id: string }[]
 }) {
   const rating =
@@ -67,6 +68,8 @@ function serialize(course: {
     },
     lessonCount: course.lessons.length,
     totalDurationMin: course.lessons.reduce((a, l) => a + l.durationMin, 0),
+    liveCount: course.lessons.filter((l) => l.kind === 'LIVE').length,
+    mentorshipCount: course.mentorshipCount,
     studentCount: course.enrollments.length,
   }
 }
@@ -157,6 +160,7 @@ export async function POST(req: NextRequest) {
     const level = LEVELS.includes(body?.level) ? body.level : 'INICIANTE'
     const price = Number(body?.price ?? 0)
     const coverUrl = body?.coverUrl ? String(body.coverUrl).trim().slice(0, 300) : null
+    const mentorshipCount = Math.max(0, Math.min(20, Math.round(Number(body?.mentorshipCount ?? 0) || 0)))
 
     if (title.length < 5) {
       return NextResponse.json(
@@ -175,7 +179,7 @@ export async function POST(req: NextRequest) {
     }
 
     const created = await db.course.create({
-      data: { mentorId: mentor.id, title, description, category, level, price, coverUrl },
+      data: { mentorId: mentor.id, title, description, category, level, price, coverUrl, mentorshipCount },
     })
     return NextResponse.json({ id: created.id, ok: true })
   } catch (err) {

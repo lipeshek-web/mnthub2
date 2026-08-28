@@ -19,6 +19,11 @@ async function main() {
   await db.trackingEvent.deleteMany()
   await db.order.deleteMany()
   await db.enrollment.deleteMany()
+  await db.trackItem.deleteMany()
+  await db.trackEnrollment.deleteMany()
+  await db.track.deleteMany()
+  await db.lessonQuestion.deleteMany()
+  await db.lessonNote.deleteMany()
   await db.lesson.deleteMany()
   await db.course.deleteMany()
   await db.review.deleteMany()
@@ -237,19 +242,36 @@ async function main() {
 
   const course = async (
     mentorId: string,
-    data: { title: string; description: string; category: string; level: string; price: number; coverUrl?: string },
-    lessons: { title: string; description: string; videoUrl?: string; content?: string; durationMin: number }[]
+    data: { title: string; description: string; category: string; level: string; price: number; coverUrl?: string; mentorshipCount?: number },
+    lessons: {
+      title: string
+      description: string
+      videoUrl?: string
+      content?: string
+      durationMin: number
+      kind?: 'RECORDED' | 'TEXT' | 'LIVE'
+      startsAt?: string
+      meetingUrl?: string
+      attachments?: { name: string; url: string }[]
+    }[]
   ) => {
-    const c = await db.course.create({ data: { mentorId, ...data } })
+    const c = await db.course.create({
+      data: { mentorId, ...data, mentorshipCount: data.mentorshipCount ?? 0 },
+    })
     for (let i = 0; i < lessons.length; i++) {
       const l = lessons[i]
+      const kind = l.kind ?? (l.videoUrl ? 'RECORDED' : 'TEXT')
       await db.lesson.create({
         data: {
           courseId: c.id,
           title: l.title,
           description: l.description,
+          kind,
           videoUrl: l.videoUrl ?? null,
           content: l.content ?? null,
+          startsAt: l.startsAt ?? null,
+          meetingUrl: l.meetingUrl ?? null,
+          attachments: l.attachments ? JSON.stringify(l.attachments) : '[]',
           durationMin: l.durationMin,
           order: i + 1,
         },
@@ -268,6 +290,7 @@ async function main() {
       level: 'INTERMEDIARIO',
       coverUrl: '/uploads/seed/course-arquitetura.png',
       price: 189,
+      mentorshipCount: 2,
     },
     [
       {
@@ -281,6 +304,10 @@ async function main() {
         title: 'Camadas e fronteiras: organizando um app real',
         description: 'A divisão em camadas que sobrevive ao crescimento: UI, aplicação, domínio e infraestrutura.',
         durationMin: 20,
+        attachments: [
+          { name: 'Checklist de arquitetura (PDF)', url: '/uploads/seed/anexo-checklist-arquitetura.txt' },
+          { name: 'Template de projeto em camadas', url: '/uploads/seed/anexo-template-camadas.txt' },
+        ],
         content:
           'O problema de quase todo projeto: tudo misturado\n\nVocê abre o projeto e o componente React chama a API, formata moeda, decide regras de negócio e salva no cache — tudo na mesma função. Funciona... até a segunda tela, o segundo dev ou o segundo ano.\n\nA solução: 4 camadas com responsabilidades claras\n\n1. UI (interface): componentes, telas, estados visuais. Não sabe nada sobre banco de dados ou regras de negócio — só exibe e coleta informação.\n2. Aplicação (use cases): orquestra fluxos. "Criar pedido" é um caso de uso: valida, chama o domínio, persiste, dispara efeitos. É a camada mais importante e a mais esquecida.\n3. Domínio: as regras que fazem seu negócio ser seu negócio. Cálculo de preço, status possíveis de um pedido, invariantes. Puro, sem dependências de framework.\n4. Infraestrutura: HTTP, banco de dados, filas, cache. Detalhe, não protagonista.\n\nA regra de ouro\n\nDependências apontam para dentro: UI → Aplicação → Domínio, e a infraestrutura é plugada na aplicação. O domínio nunca importa React nem o SDK do banco.\n\nChecklist para aplicar hoje\n\n• Escolha UMA regra de negócio que vive espalhada e centralize-a em um módulo próprio.\n• Crie uma pasta de "services" ou "use cases" e mova a orquestração para lá.\n• Seu componente ficou só com display e chamada ao use case? Perfeito.\n\nNa próxima aula, refatoramos um app real gravado ao vivo.',
       },
@@ -311,6 +338,14 @@ async function main() {
         content:
           'Parabéns por chegar até aqui!\n\nO checklist de revisão (use em todo projeto novo)\n\n□ As regras de negócio vivem em um lugar só?\n□ Os componentes UI chamam casos de uso (ou hooks que os envolvem) — e nada mais?\n□ As dependências apontam para dentro (domínio não importa framework)?\n□ Existe uma estratégia de cache escrita em uma linha por tipo de dado?\n□ Erros de negócio são diferenciados de erros técnicos?\n□ O time usa os mesmos nomes do código nas conversas?\n\nPróximos passos\n\n1. Aplique o checklist no seu projeto atual e liste 3 dívidas de arquitetura priorizadas por dor real.\n2. Refatore UMA por semana, com testes por perto.\n3. Traga o resultado para uma mentoria 1:1 — revisamos juntos e destravamos o que travar.\n\nObrigado pela jornada. Agora é prática!',
       },
+      {
+        title: 'Office hour ao vivo: revisão de arquiteturas dos alunos',
+        description: 'Sessão mensal ao vivo: traga seu projeto e revisamos a arquitetura juntos, com Q&A aberto.',
+        durationMin: 60,
+        kind: 'LIVE',
+        startsAt: at(3, 19, 0),
+        meetingUrl: 'https://meet.google.com/mentorhub-officehour',
+      },
     ]
   )
 
@@ -324,6 +359,7 @@ async function main() {
       level: 'INICIANTE',
       coverUrl: '/uploads/seed/course-product-manager.png',
       price: 0,
+      mentorshipCount: 0,
     },
     [
       {
@@ -360,6 +396,15 @@ async function main() {
         content:
           'Transição é processo, não salto\n\nPlano de 90 dias (ajuste ao seu ritmo; 5–8h/semana):\n\nMês 1 — Fundamentos e vocabulário\n\n• Estude os conceitos deste curso e o material complementar (Inspired, do Marty Cagan, e os blogs de Lenny Rachitsky e Julie Zhuo).\n• Reescreva seu currículo em linguagem de produto: impacto e métricas, não tarefas.\n• Marque 2 mentorias para calibrar narrativa (posso ajudar aqui!).\n\nMês 2 — Experiência prática\n\n• Adote produto no trabalho atual: ofereça-se para um discovery, uma análise de métricas ou um teste A/B — mesmo sem o cargo.\n• Escreva 1 case documentado: problema → processo → resultado (números!).\n• Participe de comunidades de produto; ajude alguém com menos bagagem (ensinar consolida).\n\nMês 3 — Posicionamento e entrevistas\n\n• Ajuste LinkedIn para a vaga-alvo (título e headline contam mais que você imagina).\n• Ensaios de entrevista: product sense, métricas e comportamental — simule com colegas e com mentor.\n• Aplique para 5–10 vagas com case adaptado por empresa. Qualidade > volume.\n\nRegra de ouro: ninguém é contratado por "querer ser PM". É contratado por evidência de que já pensa como PM. Este plano é exatamente sobre gerar essa evidência.',
       },
+      {
+        title: 'Live de encerramento: dúvidas de transição (edição #3)',
+        description: 'Ao vivo com a turma: as perguntas mais frequentes de quem está migrando para produto.',
+        durationMin: 45,
+        kind: 'LIVE',
+        startsAt: at(-2, 20, 0),
+        meetingUrl: 'https://meet.google.com/mentorhub-pm-live',
+        videoUrl: 'https://www.youtube.com/watch?v=8nMKRTaD4-E',
+      },
     ]
   )
 
@@ -373,6 +418,7 @@ async function main() {
       level: 'INTERMEDIARIO',
       coverUrl: '/uploads/seed/course-design-systems.png',
       price: 199,
+      mentorshipCount: 1,
     },
     [
       {
@@ -415,6 +461,7 @@ async function main() {
       level: 'INTERMEDIARIO',
       coverUrl: '/uploads/seed/course-growth.png',
       price: 149,
+      mentorshipCount: 1,
     },
     [
       {
@@ -444,6 +491,14 @@ async function main() {
         content:
           'Growth é processo, não inspiração\n\nO motor do growth é o ciclo de experimentos: idear → priorizar → testar → aprender → repetir. Sem cadência, tudo vira opinião.\n\nO template de hipótese (copie e use)\n\n"Como [área do funil] está com [problema medido], acreditamos que [mudança específica] vai [efeito esperado]. Saberemos que funcionou se [métrica] subir de X para Y em [prazo]."\n\nPriorização por ICE\n\nImpact (1–10) × Confidence (1–10) × Ease (1–10) = score. Diferente do RICE de produto, ICE é rápido de propósito: o objetivo é ordenar a fila em 15 minutos, não achismar.\n\nThreshold de decisão (defina ANTES de testar)\n\n• Resultado ≥ meta: scale (dobrar a aposta).\n• Resultado neutro: iterar uma variável do mesmo experimento.\n• Resultado negativo: matar sem drama e documentar o aprendizado.\n\nCadência\n\n2–3 experimentos por semana em time pequeno. Documente TUDO numa planilha viva (hipótese, score, resultado, aprendizado). Em 12 semanas você terá o ativo mais valioso de marketing: conhecimento sobre SEU público que nenhum concorrente copia.\n\nPróximo passo: monte sua primeira fila com 10 hipóteses usando o template — e leve para revisarmos na mentoria.',
       },
+      {
+        title: 'Live mensal: auditoria de funis dos alunos',
+        description: 'Traga seu funil: analisamos métricas ao vivo e saímos com um diagnóstico por aluno.',
+        durationMin: 50,
+        kind: 'LIVE',
+        startsAt: at(2, 20, 30),
+        meetingUrl: 'https://youtube.com/live/mentorhub-growth',
+      },
     ]
   )
 
@@ -457,6 +512,7 @@ async function main() {
       level: 'INICIANTE',
       coverUrl: '/uploads/seed/course-english.png',
       price: 89,
+      mentorshipCount: 2,
     },
     [
       {
@@ -609,8 +665,177 @@ async function main() {
     }
   }
 
+  // ==================== Q&A E ANOTAÇÕES (classroom) ====================
+  console.log('💬 Perguntas e anotações...')
+
+  const lessonArq = await db.lesson.findMany({ where: { courseId: cursoArquitetura.id }, orderBy: { order: 'asc' } })
+  const lessonPM = await db.lesson.findMany({ where: { courseId: cursoPM.id }, orderBy: { order: 'asc' } })
+
+  await db.lessonQuestion.create({
+    data: {
+      lessonId: lessonArq[1].id,
+      courseId: cursoArquitetura.id,
+      userId: lucas.id,
+      body: 'Carlos, no caso de uso "InscreverAluno", a validação de vaga esgotada deve lançar exceção ou retornar um Result? Vi times diferentes fazendo os dois.',
+      answer:
+        'Ótima pergunta, Lucas! Regra dos meus times: erro de NEGÓCIO esperado (vaga esgotada, já inscrito) retorna um Result tipado — o cliente precisa tratar como fluxo normal. Erro de PROGRAMAção (referência nula, banco fora) lança exceção e vira 500. Se o cliente não pode fazer nada com o erro, é exceção; se ele pode agir em cima, é resultado.',
+      answeredAt: new Date(),
+    },
+  })
+  await db.lessonQuestion.create({
+    data: {
+      lessonId: lessonArq[1].id,
+      courseId: cursoArquitetura.id,
+      userId: julia.id,
+      body: 'Este checklist vale também para apps mobile com Flutter? As camadas mudam alguma coisa?',
+    },
+  })
+  await db.lessonQuestion.create({
+    data: {
+      lessonId: lessonPM[1].id,
+      courseId: cursoPM.id,
+      userId: ana.id,
+      body: 'Marina, quando o stakeholder não aceita o resultado do RICE, qual o seu playbook para resolver o impasse?',
+      answer:
+        'Ana, primeiro investigue o porquê: geralmente é confiança nos números, não o método. mostro os dados brutos por trás dos scores e transformo a conversa de "meu score é maior" para "o que precisaria ser verdade para essa iniciativa virar prioritária?". Se o desempate for estratégico, documento como decisão de negócio — RICE ordena, não decide.',
+      answeredAt: new Date(),
+    },
+  })
+
+  await db.lessonNote.create({
+    data: {
+      lessonId: lessonPM[2].id,
+      userId: ana.id,
+      body: 'RICE do meu case (app de bem-estar):\n- Reach: 8k usuários/mês\n- Impact: 1 (médio)\n- Confidence: 80% (dados de entrevista fracos — revalidar!)\n- Effort: 0.5 pessoa-mês\n\nAção: revalidar evidência antes de apresentar pro time. Levar na mentoria de sexta.',
+    },
+  })
+  await db.lessonNote.create({
+    data: {
+      lessonId: lessonArq[1].id,
+      userId: lucas.id,
+      body: 'Meu projeto atual viola a regra de ouro: o componente de checkout chama o banco direto.\n\nPlano: extrair "FinalizarPedido" como use case e mover a chamada pra lá essa semana.',
+    },
+  })
+
+  // ==================== TRILHAS ====================
+  console.log('🛤️  Trilhas...')
+
+  const trilhaFront = await db.track.create({
+    data: {
+      mentorId: carlosProfile.id,
+      title: 'Trilha Engenharia Sênior: Arquitetura + Mentoria',
+      description:
+        'O caminho completo para virar referência técnica: o curso de Arquitetura de Software, 3 sessões de mentoria 1:1 para revisar SEU projeto e um plano de evolução guiado. A combinação que mais acelera a transição de júnior/pleno para sênior.',
+      category: 'Tecnologia',
+      level: 'INTERMEDIARIO',
+      price: 349,
+      items: {
+        create: [
+          { type: 'COURSE', courseId: cursoArquitetura.id, order: 1 },
+          {
+            type: 'MENTORSHIP',
+            title: 'Mentorias de arquitetura e carreira (1:1)',
+            description: '3 sessões individuais de 60min para revisar a arquitetura do seu projeto, destravar dívidas técnicas e calibrar seu plano de crescimento.',
+            sessionCount: 3,
+            order: 2,
+          },
+        ],
+      },
+    },
+  })
+
+  const trilhaPM = await db.track.create({
+    data: {
+      mentorId: marina.id,
+      title: 'Trilha Do Zero a PM: Curso + Sessões Guiadas',
+      description:
+        'Tudo o que você precisa para fazer a transição para produto com evidência: o curso gratuito completo, 2 sessões de mentoria 1:1 para calibrar narrativa e case, e revisão do seu plano de 90 dias. Inclui acesso vitalício e o material de entrevistas.',
+      category: 'Carreira',
+      level: 'INICIANTE',
+      price: 249,
+      items: {
+        create: [
+          { type: 'COURSE', courseId: cursoPM.id, order: 1 },
+          {
+            type: 'MENTORSHIP',
+            title: 'Sessões de transição guiada (1:1)',
+            description: '2 sessões individuais: na primeira, calibramos sua narrativa e plano de 90 dias; na segunda, revisamos seu case e simulamos a entrevista.',
+            sessionCount: 2,
+            order: 2,
+          },
+        ],
+      },
+    },
+  })
+
+  const trilhaGrowth = await db.track.create({
+    data: {
+      mentorId: rafael.id,
+      title: 'Trilha Growth: Sistema de Aquisição Completo',
+      description:
+        'O pacote que transforma marketing em sistema: o curso de Aquisição Previsível + 2 mentorias de diagnóstico do SEU funil com plano de experimentos pronto para rodar. Para founders e marketers que querem previsibilidade em 90 dias.',
+      category: 'Marketing',
+      level: 'INTERMEDIARIO',
+      price: 399,
+      items: {
+        create: [
+          { type: 'COURSE', courseId: cursoGrowth.id, order: 1 },
+          {
+            type: 'MENTORSHIP',
+            title: 'Diagnóstico de funil ao vivo (1:1)',
+            description: '2 sessões individuais: análise completa do seu funil com instrumentação recomendada e um roadmap de experimentos priorizado por ICE.',
+            sessionCount: 2,
+            order: 2,
+          },
+        ],
+      },
+    },
+  })
+
+  // Matrículas nas trilhas (com acesso aos cursos liberado)
+  await db.trackEnrollment.create({ data: { trackId: trilhaFront.id, studentId: lucas.id } })
+  await db.trackEnrollment.create({ data: { trackId: trilhaPM.id, studentId: ana.id } })
+  // Ana já estava matriculada no curso PM; matrícula individual do Lucas na arquitetura já existe
+
+  // Pedido demo de trilha (tráfego pago, atribuição segregada por trilha)
+  const trackOrderDate = new Date()
+  trackOrderDate.setDate(trackOrderDate.getDate() - 6)
+  trackOrderDate.setHours(15, 45, 0, 0)
+  await db.order.create({
+    data: {
+      trackId: trilhaFront.id,
+      studentId: lucas.id,
+      mentorId: carlosProfile.id,
+      amount: trilhaFront.price,
+      paymentMethod: 'PIX',
+      status: 'PAID',
+      utmSource: 'instagram',
+      utmMedium: 'cpc',
+      utmCampaign: 'trilha-engenharia-boost-01',
+      fbclid: 'IwARDemoTrackFb01',
+      channel: 'paid_social',
+      landingPage: 'mentor_lp',
+      createdAt: trackOrderDate,
+    },
+  })
+  await db.trackingEvent.create({
+    data: {
+      name: 'purchase',
+      mentorId: carlosProfile.id,
+      userId: lucas.id,
+      valueCents: Math.round(trilhaFront.price * 100),
+      utmSource: 'instagram',
+      utmMedium: 'cpc',
+      utmCampaign: 'trilha-engenharia-boost-01',
+      fbclid: 'IwARDemoTrackFb01',
+      channel: 'paid_social',
+      path: '/?mentor=carlos-ferreira',
+      createdAt: trackOrderDate,
+    },
+  })
+
   console.log('✅ Seed concluído!')
-  console.log({ ana: ana.email, mentors: 7, cursos: 5, bookings: 11, reviews: 6 })
+  console.log({ ana: ana.email, mentors: 7, cursos: 5, trilhas: 3, bookings: 11, reviews: 6 })
 }
 
 main()

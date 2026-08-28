@@ -1,0 +1,813 @@
+     1→'use client'
+     2→
+     3→import { useCallback, useEffect, useState, type ReactNode } from 'react'
+     4→import {
+     5→  CalendarDays,
+     6→  CalendarOff,
+     7→  Check,
+     8→  CheckCheck,
+     9→  CheckCircle2,
+    10→  Clock,
+    11→  Compass,
+    12→  History,
+    13→  Inbox,
+    14→  Library,
+    15→  LogIn,
+    16→  PlayCircle,
+    17→  Star,
+    18→  Users,
+    19→  Video,
+    20→  Wallet,
+    21→  X,
+    22→  type LucideIcon,
+    23→} from 'lucide-react'
+    24→import { toast } from 'sonner'
+    25→
+    26→import {
+    27→  AlertDialog,
+    28→  AlertDialogAction,
+    29→  AlertDialogCancel,
+    30→  AlertDialogContent,
+    31→  AlertDialogDescription,
+    32→  AlertDialogFooter,
+    33→  AlertDialogHeader,
+    34→  AlertDialogTitle,
+    35→} from '@/components/ui/alert-dialog'
+    36→import { Badge } from '@/components/ui/badge'
+    37→import { Button } from '@/components/ui/button'
+    38→import { Card, CardContent } from '@/components/ui/card'
+    39→import {
+    40→  Dialog,
+    41→  DialogContent,
+    42→  DialogDescription,
+    43→  DialogFooter,
+    44→  DialogHeader,
+    45→  DialogTitle,
+    46→} from '@/components/ui/dialog'
+    47→import { Input } from '@/components/ui/input'
+    48→import { Label } from '@/components/ui/label'
+    49→import { Progress } from '@/components/ui/progress'
+    50→import { Skeleton } from '@/components/ui/skeleton'
+    51→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    52→import { Textarea } from '@/components/ui/textarea'
+    53→import { Avatar } from '@/components/platform/avatar'
+    54→import { api } from '@/lib/api'
+    55→import {
+    56→  STATUS_META,
+    57→  LEVEL_LABELS,
+    58→  addMinutesToTime,
+    59→  avatarGradient,
+    60→  currencyBRL,
+    61→  formatDayLabelLong,
+    62→  formatTimeLabel,
+    63→  formatTotalDuration,
+    64→  nowNaive,
+    65→  relativeDayLabel,
+    66→} from '@/lib/helpers'
+    67→import { useAppStore } from '@/lib/store'
+    68→import type { BookingDTO, EnrolledCourseDTO, MentorDetailDTO } from '@/lib/types'
+    69→import { cn } from '@/lib/utils'
+    70→
+    71→type ConfirmKind = 'reject' | 'complete' | 'cancel'
+    72→
+    73→// ---------- Componentes auxiliares ----------
+    74→
+    75→function EmptyState({
+    76→  icon: Icon,
+    77→  title,
+    78→  text,
+    79→  children,
+    80→}: {
+    81→  icon: LucideIcon
+    82→  title: string
+    83→  text: string
+    84→  children?: ReactNode
+    85→}) {
+    86→  return (
+    87→    <Card className="p-6">
+    88→      <div className="flex flex-col items-center gap-2 py-8 text-center">
+    89→        <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 text-stone-400 ring-1 ring-stone-200">
+    90→          <Icon className="size-6" aria-hidden />
+    91→        </div>
+    92→        <h3 className="mt-2 text-base font-semibold">{title}</h3>
+    93→        <p className="max-w-sm text-sm text-muted-foreground">{text}</p>
+    94→        {children ? <div className="mt-3">{children}</div> : null}
+    95→      </div>
+    96→    </Card>
+    97→  )
+    98→}
+    99→
+   100→function CountPill({ n, className }: { n: number; className?: string }) {
+   101→  return (
+   102→    <span
+   103→      className={cn(
+   104→        'ml-1 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold',
+   105→        className
+   106→      )}
+   107→    >
+   108→      {n}
+   109→    </span>
+   110→  )
+   111→}
+   112→
+   113→function PendingRequestRow({
+   114→  booking: b,
+   115→  busy,
+   116→  onConfirm,
+   117→  onReject,
+   118→}: {
+   119→  booking: BookingDTO
+   120→  busy: boolean
+   121→  onConfirm: (booking: BookingDTO) => void
+   122→  onReject: (booking: BookingDTO) => void
+   123→}) {
+   124→  const [rejectOpen, setRejectOpen] = useState(false)
+   125→  const relative = relativeDayLabel(b.startsAt)
+   126→
+   127→  return (
+   128→    <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+   129→      <div className="flex min-w-0 items-start gap-3">
+   130→        <Avatar name={b.mentee.name} size="md" />
+   131→        <div className="min-w-0">
+   132→          <p className="font-semibold leading-tight">{b.mentee.name}</p>
+   133→          <p className="truncate text-sm text-muted-foreground">{b.topic}</p>
+   134→          <p className="mt-1 text-xs text-stone-500">
+   135→            {relative ? `${relative} · ` : ''}
+   136→            {formatDayLabelLong(b.startsAt)} · {formatTimeLabel(b.startsAt)} →{' '}
+   137→            {addMinutesToTime(b.startsAt, b.durationMin)} · {b.durationMin} min · {currencyBRL(b.price)}
+   138→          </p>
+   139→        </div>
+   140→      </div>
+   141→      <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+   142→        <Button size="sm" disabled={busy} onClick={() => onConfirm(b)}>
+   143→          <Check className="size-4" aria-hidden /> Confirmar
+   144→        </Button>
+   145→        <Button size="sm" variant="outline" disabled={busy} onClick={() => setRejectOpen(true)}>
+   146→          <X className="size-4" aria-hidden /> Recusar
+   147→        </Button>
+   148→      </div>
+   149→
+   150→      <AlertDialog open={rejectOpen} onOpenChange={(open) => { if (!open) setRejectOpen(false) }}>
+   151→        <AlertDialogContent>
+   152→          <AlertDialogHeader>
+   153→            <AlertDialogTitle>Recusar solicitação?</AlertDialogTitle>
+   154→            <AlertDialogDescription>
+   155→              A solicitação de {b.mentee.name} sobre &quot;{b.topic}&quot; será cancelada e o horário será
+   156→              liberado na sua agenda.
+   157→            </AlertDialogDescription>
+   158→          </AlertDialogHeader>
+   159→          <AlertDialogFooter>
+   160→            <AlertDialogCancel>Voltar</AlertDialogCancel>
+   161→            <AlertDialogAction
+   162→              className="bg-rose-600 text-white hover:bg-rose-700"
+   163→              disabled={busy}
+   164→              onClick={() => {
+   165→                setRejectOpen(false)
+   166→                onReject(b)
+   167→              }}
+   168→            >
+   169→              Recusar
+   170→            </AlertDialogAction>
+   171→          </AlertDialogFooter>
+   172→        </AlertDialogContent>
+   173→      </AlertDialog>
+   174→    </div>
+   175→  )
+   176→}
+   177→
+   178→function BookingCard({
+   179→  booking: b,
+   180→  userId,
+   181→  busy,
+   182→  onConfirm,
+   183→  onReject,
+   184→  onComplete,
+   185→  onCancel,
+   186→  onJoin,
+   187→  onReview,
+   188→}: {
+   189→  booking: BookingDTO
+   190→  userId: string
+   191→  busy: boolean
+   192→  onConfirm: (booking: BookingDTO) => void
+   193→  onReject: (booking: BookingDTO) => void
+   194→  onComplete: (booking: BookingDTO) => void
+   195→  onCancel: (booking: BookingDTO) => void
+   196→  onJoin: (booking: BookingDTO) => void
+   197→  onReview: (booking: BookingDTO, rating: number, comment: string) => Promise<void>
+   198→}) {
+   199→  const isMentorSide = b.mentor.userId === userId
+   200→  const otherName = isMentorSide ? b.mentee.name : b.mentor.name
+   201→  const relative = relativeDayLabel(b.startsAt)
+   202→  const statusMeta = STATUS_META[b.status] ?? {
+   203→    label: b.status,
+   204→    className: 'bg-stone-100 text-stone-600 border-stone-200',
+   205→  }
+   206→
+   207→  const [dialogAction, setDialogAction] = useState<ConfirmKind | null>(null)
+   208→  const [reviewOpen, setReviewOpen] = useState(false)
+   209→  const [rating, setRating] = useState(0)
+   210→  const [hoverRating, setHoverRating] = useState(0)
+   211→  const [comment, setComment] = useState('')
+   212→  const [submitting, setSubmitting] = useState(false)
+   213→
+   214→  const canJoin = b.status === 'CONFIRMED'
+   215→  const canReview = !isMentorSide && b.status === 'COMPLETED' && !b.reviewed
+   216→
+   217→  const dialogContent: Record<ConfirmKind, { title: string; description: string; actionLabel: string }> = {
+   218→    reject: {
+   219→      title: 'Recusar solicitação?',
+   220→      description: `A solicitação de ${b.mentee.name} sobre "${b.topic}" será cancelada e o horário será liberado na sua agenda.`,
+   221→      actionLabel: 'Recusar',
+   222→    },
+   223→    complete: {
+   224→      title: 'Marcar como concluída?',
+   225→      description: `Confirme que a sessão com ${b.mentee.name} aconteceu. Ela irá para o histórico e o aluno poderá avaliá-la.`,
+   226→      actionLabel: 'Concluir sessão',
+   227→    },
+   228→    cancel: {
+   229→      title: 'Cancelar sessão?',
+   230→      description: `Sua sessão com ${b.mentor.name} será cancelada e o horário será liberado para outras pessoas.`,
+   231→      actionLabel: 'Cancelar sessão',
+   232→    },
+   233→  }
+   234→  const currentDialog = dialogAction ? dialogContent[dialogAction] : null
+   235→
+   236→  const submitReview = async () => {
+   237→    if (rating < 1) {
+   238→      toast.error('Escolha uma nota de 1 a 5 estrelas antes de enviar.')
+   239→      return
+   240→    }
+   241→    setSubmitting(true)
+   242→    try {
+   243→      await onReview(b, rating, comment.trim())
+   244→      setReviewOpen(false)
+   245→      setRating(0)
+   246→      setHoverRating(0)
+   247→      setComment('')
+   248→    } catch (err) {
+   249→      toast.error(err instanceof Error ? err.message : 'Não foi possível enviar sua avaliação.')
+   250→    } finally {
+   251→      setSubmitting(false)
+   252→    }
+   253→  }
+   254→
+   255→  return (
+   256→    <Card className="gap-4 py-6">
+   257→      <CardContent className="flex flex-col gap-4 px-6">
+   258→        <div className="flex flex-wrap items-start justify-between gap-3">
+   259→          <div className="flex min-w-0 items-start gap-3">
+   260→            <Avatar name={otherName} size="lg" />
+   261→            <div className="min-w-0">
+   262→              <div className="flex flex-wrap items-center gap-2">
+   263→                <p className="font-semibold leading-tight">{otherName}</p>
+   264→                <Badge
+   265→                  className={
+   266→                    isMentorSide
+   267→                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+   268→                      : 'border-stone-200 bg-stone-100 text-stone-600'
+   269→                  }
+   270→                >
+   271→                  {isMentorSide ? 'Como mentor' : 'Como aluno'}
+   272→                </Badge>
+   273→              </div>
+   274→              {!isMentorSide && b.mentor.headline ? (
+   275→                <p className="mt-0.5 text-sm text-muted-foreground">{b.mentor.headline}</p>
+   276→              ) : null}
+   277→              <p className="mt-1.5 font-medium">{b.topic}</p>
+   278→              {b.notes ? <p className="mt-1 text-sm text-muted-foreground">{b.notes}</p> : null}
+   279→            </div>
+   280→          </div>
+   281→          <Badge variant="outline" className={statusMeta.className}>
+   282→            {statusMeta.label}
+   283→          </Badge>
+   284→        </div>
+   285→
+   286→        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+   287→          <span className="inline-flex items-center gap-1.5">
+   288→            <CalendarDays className="size-4 text-emerald-600" aria-hidden />
+   289→            {relative ? `${relative} · ` : ''}
+   290→            {formatDayLabelLong(b.startsAt)} · {formatTimeLabel(b.startsAt)} →{' '}
+   291→            {addMinutesToTime(b.startsAt, b.durationMin)}
+   292→          </span>
+   293→          <span className="inline-flex items-center gap-1.5">
+   294→            <Clock className="size-4" aria-hidden /> {b.durationMin} min
+   295→          </span>
+   296→          <span className="inline-flex items-center gap-1.5">
+   297→            <Wallet className="size-4" aria-hidden /> {currencyBRL(b.price)}
+   298→          </span>
+   299→        </div>
+   300→
+   301→        <div className="flex flex-wrap gap-2">
+   302→          {isMentorSide && b.status === 'PENDING' ? (
+   303→            <>
+   304→              <Button size="sm" disabled={busy} onClick={() => onConfirm(b)}>
+   305→                <Check className="size-4" aria-hidden /> Confirmar
+   306→              </Button>
+   307→              <Button size="sm" variant="outline" disabled={busy} onClick={() => setDialogAction('reject')}>
+   308→                <X className="size-4" aria-hidden /> Recusar
+   309→              </Button>
+   310→            </>
+   311→          ) : null}
+   312→
+   313→          {isMentorSide && b.status === 'CONFIRMED' ? (
+   314→            <Button size="sm" variant="outline" disabled={busy} onClick={() => setDialogAction('complete')}>
+   315→              <CheckCheck className="size-4" aria-hidden /> Marcar como concluída
+   316→            </Button>
+   317→          ) : null}
+   318→
+   319→          {canJoin ? (
+   320→            <Button size="sm" onClick={() => onJoin(b)}>
+   321→              <Video className="size-4" aria-hidden /> Entrar na sala
+   322→            </Button>
+   323→          ) : null}
+   324→
+   325→          {!isMentorSide && (b.status === 'PENDING' || b.status === 'CONFIRMED') ? (
+   326→            <Button
+   327→              size="sm"
+   328→              variant="ghost"
+   329→              className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+   330→              disabled={busy}
+   331→              onClick={() => setDialogAction('cancel')}
+   332→            >
+   333→              Cancelar sessão
+   334→            </Button>
+   335→          ) : null}
+   336→
+   337→          {canReview ? (
+   338→            <Button size="sm" variant="outline" onClick={() => setReviewOpen(true)}>
+   339→              <Star className="size-4 fill-amber-400 text-amber-400" aria-hidden /> Avaliar sessão
+   340→            </Button>
+   341→          ) : null}
+   342→        </div>
+   343→      </CardContent>
+   344→
+   345→      {/* Confirmações: recusar / concluir / cancelar */}
+   346→      <AlertDialog
+   347→        open={dialogAction !== null}
+   348→        onOpenChange={(open) => {
+   349→          if (!open) setDialogAction(null)
+   350→        }}
+   351→      >
+   352→        <AlertDialogContent>
+   353→          <AlertDialogHeader>
+   354→            <AlertDialogTitle>{currentDialog?.title}</AlertDialogTitle>
+   355→            <AlertDialogDescription>{currentDialog?.description}</AlertDialogDescription>
+   356→          </AlertDialogHeader>
+   357→          <AlertDialogFooter>
+   358→            <AlertDialogCancel>Voltar</AlertDialogCancel>
+   359→            <AlertDialogAction
+   360→              className="bg-rose-600 text-white hover:bg-rose-700"
+   361→              disabled={busy}
+   362→              onClick={() => {
+   363→                const action = dialogAction
+   364→                setDialogAction(null)
+   365→                if (action === 'reject') onReject(b)
+   366→                else if (action === 'complete') onComplete(b)
+   367→                else if (action === 'cancel') onCancel(b)
+   368→              }}
+   369→            >
+   370→              {currentDialog?.actionLabel}
+   371→            </AlertDialogAction>
+   372→          </AlertDialogFooter>
+   373→        </AlertDialogContent>
+   374→      </AlertDialog>
+   375→
+   376→      {/* Avaliar sessão */}
+   377→      <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
+   378→        <DialogContent className="sm:max-w-md">
+   379→          <DialogHeader>
+   380→            <DialogTitle>Avaliar sessão</DialogTitle>
+   381→            <DialogDescription>
+   382→              Como foi sua mentoria com {b.mentor.name} sobre &quot;{b.topic}&quot;? Seu feedback ajuda outros
+   383→              alunos.
+   384→            </DialogDescription>
+   385→          </DialogHeader>
+   386→          <div className="flex flex-col gap-4">
+   387→            <div className="flex items-center justify-center gap-1" role="radiogroup" aria-label="Nota da avaliação">
+   388→              {[1, 2, 3, 4, 5].map((value) => {
+   389→                const active = (hoverRating || rating) >= value
+   390→                return (
+   391→                  <button
+   392→                    key={value}
+   393→                    type="button"
+   394→                    role="radio"
+   395→                    aria-checked={rating === value}
+   396→                    aria-label={`${value} ${value === 1 ? 'estrela' : 'estrelas'}`}
+   397→                    onClick={() => setRating(value)}
+   398→                    onMouseEnter={() => setHoverRating(value)}
+   399→                    onMouseLeave={() => setHoverRating(0)}
+   400→                    className="rounded-full p-1 transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-amber-500"
+   401→                  >
+   402→                    <Star
+   403→                      size={28}
+   404→                      className={cn(
+   405→                        'transition-colors',
+   406→                        active ? 'fill-amber-400 text-amber-400' : 'fill-stone-200 text-stone-300'
+   407→                      )}
+   408→                      aria-hidden
+   409→                    />
+   410→                  </button>
+   411→                )
+   412→              })}
+   413→            </div>
+   414→            <div className="flex flex-col gap-2">
+   415→              <Label htmlFor={`review-comment-${b.id}`}>Como foi sua experiência?</Label>
+   416→              <Textarea
+   417→                id={`review-comment-${b.id}`}
+   418→                rows={4}
+   419→                value={comment}
+   420→                onChange={(event) => setComment(event.target.value)}
+   421→                placeholder="Conte o que funcionou bem e o que pode melhorar..."
+   422→              />
+   423→            </div>
+   424→          </div>
+   425→          <DialogFooter>
+   426→            <Button variant="ghost" onClick={() => setReviewOpen(false)} disabled={submitting}>
+   427→              Cancelar
+   428→            </Button>
+   429→            <Button onClick={() => void submitReview()} disabled={submitting}>
+   430→              {submitting ? 'Enviando...' : 'Enviar avaliação'}
+   431→            </Button>
+   432→          </DialogFooter>
+   433→        </DialogContent>
+   434→      </Dialog>
+   435→    </Card>
+   436→  )
+   437→}
+   438→
+   439→// ---------- View principal ----------
+   440→
+   441→export default function DashboardView() {
+   442→  const user = useAppStore((state) => state.user)
+   443→  const navigate = useAppStore((state) => state.navigate)
+   444→  const userId = user?.id ?? null
+   445→
+   446→  const [bookings, setBookings] = useState<BookingDTO[] | null>(null)
+   447→  const [mentorProfile, setMentorProfile] = useState<MentorDetailDTO | null>(null)
+   448→  const [enrollments, setEnrollments] = useState<EnrolledCourseDTO[]>([])
+   449→  const [loading, setLoading] = useState(true)
+   450→  const [actingId, setActingId] = useState<string | null>(null)
+   451→
+   452→  const refetch = useCallback(async () => {
+   453→    if (!userId) return
+   454→    try {
+   455→      const [bookingsRes, profileRes, enrollmentsRes] = await Promise.all([
+   456→        api.listBookings(userId),
+   457→        api
+   458→          .getMyMentorProfile(userId)
+   459→          .then((res) => res.profile)
+   460→          .catch(() => null),
+   461→        api.listMyEnrollments(userId).catch(() => []),
+   462→      ])
+   463→      setBookings(bookingsRes)
+   464→      setMentorProfile(profileRes)
+   465→      setEnrollments(enrollmentsRes)
+   466→    } catch (err) {
+   467→      toast.error(err instanceof Error ? err.message : 'Não foi possível carregar suas sessões.')
+   468→      setBookings((prev) => prev ?? [])
+   469→    } finally {
+   470→      setLoading(false)
+   471→    }
+   472→  }, [userId])
+   473→
+   474→  useEffect(() => {
+   475→    if (!userId) return
+   476→    setLoading(true)
+   477→    void refetch()
+   478→  }, [userId, refetch])
+   479→
+   480→  const runAction = useCallback(
+   481→    async (booking: BookingDTO, action: 'confirm' | 'cancel' | 'complete', successMsg: string) => {
+   482→      if (!userId) return
+   483→      setActingId(booking.id)
+   484→      try {
+   485→        await api.updateBooking(booking.id, { userId, action })
+   486→        toast.success(successMsg)
+   487→        await refetch()
+   488→      } catch (err) {
+   489→        toast.error(err instanceof Error ? err.message : 'Não foi possível atualizar a sessão.')
+   490→      } finally {
+   491→        setActingId(null)
+   492→      }
+   493→    },
+   494→    [userId, refetch]
+   495→  )
+   496→
+   497→  const handleConfirm = useCallback(
+   498→    (booking: BookingDTO) => void runAction(booking, 'confirm', `Sessão com ${booking.mentee.name} confirmada!`),
+   499→    [runAction]
+   500→  )
+   501→  const handleReject = useCallback(
+   502→    (booking: BookingDTO) => void runAction(booking, 'cancel', 'Solicitação recusada.'),
+   503→    [runAction]
+   504→  )
+   505→  const handleComplete = useCallback(
+   506→    (booking: BookingDTO) =>
+   507→      void runAction(booking, 'complete', 'Sessão marcada como concluída! Ela foi para o histórico.'),
+   508→    [runAction]
+   509→  )
+   510→  const handleCancel = useCallback(
+   511→    (booking: BookingDTO) => void runAction(booking, 'cancel', 'Sessão cancelada. O horário foi liberado.'),
+   512→    [runAction]
+   513→  )
+   514→  const handleJoin = useCallback(
+   515→    (booking: BookingDTO) => navigate({ name: 'meeting', bookingId: booking.id }),
+   516→    [navigate]
+   517→  )
+   518→  const handleReview = useCallback(
+   519→    async (booking: BookingDTO, rating: number, comment: string) => {
+   520→      if (!userId) return
+   521→      await api.createReview({ bookingId: booking.id, userId, rating, comment })
+   522→      toast.success('Avaliação enviada. Obrigado pelo feedback!')
+   523→      await refetch()
+   524→    },
+   525→    [userId, refetch]
+   526→  )
+   527→
+   528→  // ---------- Guardas de render ----------
+   529→
+   530→  if (!user) {
+   531→    return (
+   532→      <div className="flex min-h-[70vh] items-center justify-center px-4 py-10">
+   533→        <Card className="w-full max-w-md p-6 text-center">
+   534→          <div className="flex flex-col items-center gap-3">
+   535→            <div className="flex size-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200">
+   536→              <LogIn className="size-6" aria-hidden />
+   537→            </div>
+   538→            <h1 className="text-xl font-semibold">Você precisa entrar</h1>
+   539→            <p className="max-w-xs text-sm text-muted-foreground">
+   540→              Selecione um usuário no seletor do topo da página para ver e gerenciar suas sessões de mentoria.
+   541→            </p>
+   542→          </div>
+   543→        </Card>
+   544→      </div>
+   545→    )
+   546→  }
+   547→
+   548→  if (loading || bookings === null) {
+   549→    return (
+   550→      <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
+   551→        <div className="flex items-center justify-between gap-4">
+   552→          <div className="space-y-2">
+   553→            <Skeleton className="h-7 w-48" />
+   554→            <Skeleton className="h-4 w-72 max-w-full" />
+   555→          </div>
+   556→          <Skeleton className="h-9 w-40 rounded-md" />
+   557→        </div>
+   558→        <Skeleton className="mt-6 h-10 w-full max-w-sm rounded-lg" />
+   559→        <div className="mt-6 flex flex-col gap-4">
+   560→          {[0, 1, 2].map((i) => (
+   561→            <Card key={i} className="p-6">
+   562→              <div className="flex items-start gap-4">
+   563→                <Skeleton className="size-12 rounded-full" />
+   564→                <div className="flex-1 space-y-2">
+   565→                  <Skeleton className="h-4 w-40" />
+   566→                  <Skeleton className="h-3 w-56 max-w-full" />
+   567→                  <Skeleton className="h-3 w-72 max-w-full" />
+   568→                </div>
+   569→                <Skeleton className="h-6 w-28 rounded-md" />
+   570→              </div>
+   571→            </Card>
+   572→          ))}
+   573→        </div>
+   574→      </div>
+   575→    )
+   576→  }
+   577→
+   578→  // ---------- Derivações das abas ----------
+   579→
+   580→  const now = nowNaive()
+   581→  const bookingsList = bookings
+   582→
+   583→  const pendingRequests = mentorProfile
+   584→    ? bookingsList.filter((b) => b.mentor.userId === user.id && b.status === 'PENDING')
+   585→    : []
+   586→
+   587→  const upcoming = bookingsList
+   588→    .filter((b) => (b.status === 'PENDING' || b.status === 'CONFIRMED') && b.startsAt >= now)
+   589→    .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+   590→
+   591→  const toReview = bookingsList.filter(
+   592→    (b) => b.status === 'COMPLETED' && b.mentee.id === user.id && !b.reviewed
+   593→  )
+   594→
+   595→  const upcomingIds = new Set(upcoming.map((b) => b.id))
+   596→  const reviewIds = new Set(toReview.map((b) => b.id))
+   597→  const history = bookingsList
+   598→    .filter((b) => !upcomingIds.has(b.id) && !reviewIds.has(b.id))
+   599→    .sort((a, b) => b.startsAt.localeCompare(a.startsAt))
+   600→
+   601→  const cardProps = {
+   602→    userId: user.id,
+   603→    onConfirm: handleConfirm,
+   604→    onReject: handleReject,
+   605→    onComplete: handleComplete,
+   606→    onCancel: handleCancel,
+   607→    onJoin: handleJoin,
+   608→    onReview: handleReview,
+   609→  }
+   610→
+   611→  return (
+   612→    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
+   613→      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+   614→        <div>
+   615→          <h1 className="text-2xl font-bold tracking-tight">Minhas sessões</h1>
+   616→          <p className="mt-1 text-sm text-muted-foreground">
+   617→            Acompanhe solicitações recebidas, próximas sessões e seu histórico de mentorias.
+   618→          </p>
+   619→        </div>
+   620→        <Button
+   621→          variant="outline"
+   622→          className="shrink-0 self-start sm:self-auto"
+   623→          onClick={() => navigate({ name: 'marketplace' })}
+   624→        >
+   625→          <Compass className="size-4" aria-hidden /> Explorar mentores
+   626→        </Button>
+   627→      </header>
+   628→
+   629→      {pendingRequests.length > 0 ? (
+   630→        <Card className="border-amber-300 bg-amber-50/70">
+   631→          <CardContent className="flex flex-col gap-4 px-6">
+   632→            <div className="flex items-center gap-2">
+   633→              <Inbox className="size-5 text-amber-600" aria-hidden />
+   634→              <h2 className="font-semibold text-amber-900">Solicitações recebidas</h2>
+   635→              <Badge className="border-amber-200 bg-amber-100 text-amber-800">
+   636→                {pendingRequests.length}
+   637→              </Badge>
+   638→            </div>
+   639→            <p className="text-sm text-amber-800/90">
+   640→              Alunos aguardando sua confirmação. Responda para reservar o horário na sua agenda.
+   641→            </p>
+   642→            <div className="flex flex-col gap-3">
+   643→              {pendingRequests.map((b) => (
+   644→                <PendingRequestRow
+   645→                  key={b.id}
+   646→                  booking={b}
+   647→                  busy={actingId === b.id}
+   648→                  onConfirm={handleConfirm}
+   649→                  onReject={handleReject}
+   650→                />
+   651→              ))}
+   652→            </div>
+   653→          </CardContent>
+   654→        </Card>
+   655→      ) : null}
+   656→
+   657→      <Tabs defaultValue="upcoming" className="gap-6">
+   658→        <TabsList className="h-auto w-full flex-wrap sm:w-auto">
+   659→          <TabsTrigger value="upcoming">
+   660→            Próximas
+   661→            <CountPill n={upcoming.length} className="bg-emerald-100 text-emerald-700" />
+   662→          </TabsTrigger>
+   663→          <TabsTrigger value="courses">
+   664→            Meus cursos
+   665→            <CountPill n={enrollments.length} className="bg-emerald-100 text-emerald-700" />
+   666→          </TabsTrigger>
+   667→          <TabsTrigger value="review">
+   668→            Para avaliar
+   669→            <CountPill n={toReview.length} className="bg-amber-100 text-amber-800" />
+   670→          </TabsTrigger>
+   671→          <TabsTrigger value="history">
+   672→            Histórico
+   673→            <CountPill n={history.length} className="bg-stone-200 text-stone-600" />
+   674→          </TabsTrigger>
+   675→        </TabsList>
+   676→
+   677→        <TabsContent value="upcoming" className="flex flex-col gap-4">
+   678→          {upcoming.length === 0 ? (
+   679→            <EmptyState
+   680→              icon={CalendarOff}
+   681→              title="Nenhuma sessão agendada"
+   682→              text="Quando você agendar uma mentoria ou receber solicitações de alunos, elas aparecerão aqui."
+   683→            >
+   684→              <Button onClick={() => navigate({ name: 'marketplace' })}>
+   685→                <Compass className="size-4" aria-hidden /> Explorar mentores
+   686→              </Button>
+   687→            </EmptyState>
+   688→          ) : (
+   689→            upcoming.map((b) => (
+   690→              <BookingCard key={b.id} booking={b} busy={actingId === b.id} {...cardProps} />
+   691→            ))
+   692→          )}
+   693→        </TabsContent>
+   694→
+   695→        <TabsContent value="courses" className="flex flex-col gap-4">
+   696→          {enrollments.length === 0 ? (
+   697→            <EmptyState
+   698→              icon={Library}
+   699→              title="Você ainda não se inscreveu em cursos"
+   700→              text="Cursos são aulas gravadas e materiais dos mentores, no seu ritmo. Explore o catálogo e comece hoje."
+   701→            >
+   702→              <Button
+   703→                onClick={() => {
+   704→                  useAppStore.getState().setExploreTab('courses')
+   705→                  navigate({ name: 'marketplace' })
+   706→                }}
+   707→              >
+   708→                <Library className="size-4" aria-hidden /> Explorar cursos
+   709→              </Button>
+   710→            </EmptyState>
+   711→          ) : (
+   712→            enrollments.map((enr) => (
+   713→              <EnrolledCourseCard
+   714→                key={enr.courseId}
+   715→                enrollment={enr}
+   716→                onOpen={() => navigate({ name: 'course', courseId: enr.courseId })}
+   717→              />
+   718→            ))
+   719→          )}
+   720→        </TabsContent>
+   721→
+   722→        <TabsContent value="review" className="flex flex-col gap-4">
+   723→          {toReview.length === 0 ? (
+   724→            <EmptyState
+   725→              icon={Star}
+   726→              title="Você não tem sessões para avaliar"
+   727→              text="Após concluir uma mentoria como aluno, você poderá avaliar a experiência com esta aba."
+   728→            />
+   729→          ) : (
+   730→            toReview.map((b) => <BookingCard key={b.id} booking={b} busy={actingId === b.id} {...cardProps} />)
+   731→          )}
+   732→        </TabsContent>
+   733→
+   734→        <TabsContent value="history" className="flex flex-col gap-4">
+   735→          {history.length === 0 ? (
+   736→            <EmptyState
+   737→              icon={History}
+   738→              title="Sem histórico ainda"
+   739→              text="Sessões concluídas e canceladas serão arquivadas aqui automaticamente."
+   740→            />
+   741→          ) : (
+   742→            history.map((b) => <BookingCard key={b.id} booking={b} busy={actingId === b.id} {...cardProps} />)
+   743→          )}
+   744→        </TabsContent>
+   745→      </Tabs>
+   746→    </div>
+   747→  )
+   748→}
+   749→
+   750→// ---------- Card de curso matriculado (aba Meus cursos) ----------
+   751→
+   752→function EnrolledCourseCard({
+   753→  enrollment,
+   754→  onOpen,
+   755→}: {
+   756→  enrollment: EnrolledCourseDTO
+   757→  onOpen: () => void
+   758→}) {
+   759→  const { course, completedLessonIds } = enrollment
+   760→  const total = Math.max(course.lessonCount, 1)
+   761→  const completed = completedLessonIds.length
+   762→  const pct = Math.round((completed / total) * 100)
+   763→  const isDone = completed >= course.lessonCount && course.lessonCount > 0
+   764→
+   765→  return (
+   766→    <Card className="overflow-hidden p-0">
+   767→      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
+   768→        {course.coverUrl ? (
+   769→          <img
+   770→            src={course.coverUrl}
+   771→            alt=""
+   772→            aria-hidden
+   773→            className="h-14 w-14 shrink-0 rounded-2xl object-cover"
+   774→          />
+   775→        ) : (
+   776→          <span
+   777→            aria-hidden
+   778→            style={avatarGradient(course.title)}
+   779→            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white"
+   780→          >
+   781→            <Library className="size-6" />
+   782→          </span>
+   783→        )}
+   784→
+   785→        <div className="min-w-0 flex-1">
+   786→          <div className="flex flex-wrap items-center gap-2">
+   787→            <p className="truncate font-bold text-stone-900">{course.title}</p>
+   788→            {isDone && (
+   789→              <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800">
+   790→                <CheckCircle2 className="size-3" aria-hidden /> Concluído
+   791→              </Badge>
+   792→            )}
+   793→          </div>
+   794→          <p className="mt-0.5 text-xs text-muted-foreground">
+   795→            por {course.mentor.name} · {course.lessonCount} aulas ·{' '}
+   796→            {formatTotalDuration(course.totalDurationMin)}
+   797→          </p>
+   798→          <div className="mt-2.5 flex items-center gap-3">
+   799→            <Progress value={pct} aria-label={`${pct}% do curso concluído`} className="h-2 max-w-64 flex-1" />
+   800→            <span className="shrink-0 text-xs font-semibold text-stone-500">
+   801→              {completed}/{course.lessonCount} aulas
+   802→            </span>
+   803→          </div>
+   804→        </div>
+   805→
+   806→        <Button onClick={onOpen} className="shrink-0 self-start rounded-full sm:self-auto">
+   807→          <PlayCircle className="size-4" aria-hidden /> {isDone ? 'Revisar curso' : 'Continuar'}
+   808→        </Button>
+   809→      </div>
+   810→    </Card>
+   811→  )
+   812→}
+   813→

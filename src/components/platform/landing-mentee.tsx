@@ -2,7 +2,18 @@
 
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, BadgeCheck, BookOpen, Clock, Library, Quote, Search, Sparkles } from 'lucide-react'
+import {
+  ArrowRight,
+  BadgeCheck,
+  BookOpen,
+  Clock,
+  Library,
+  Quote,
+  Route,
+  Search,
+  Sparkles,
+  Users,
+} from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,7 +28,7 @@ import {
   formatTotalDuration,
 } from '@/lib/helpers'
 import { useAppStore } from '@/lib/store'
-import type { CourseListItemDTO, MentorListItemDTO } from '@/lib/types'
+import type { CourseListItemDTO, MentorListItemDTO, TrackListItemDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const STEPS = [
@@ -64,6 +75,8 @@ export function LandingMenteeView() {
   const [loading, setLoading] = useState(true)
   const [courses, setCourses] = useState<CourseListItemDTO[]>([])
   const [coursesLoading, setCoursesLoading] = useState(true)
+  const [tracks, setTracks] = useState<TrackListItemDTO[]>([])
+  const [tracksLoading, setTracksLoading] = useState(true)
   const [term, setTerm] = useState('')
 
   useEffect(() => {
@@ -103,6 +116,25 @@ export function LandingMenteeView() {
     }
   }, [])
 
+  // Trilhas populares para a seção "Trilhas em destaque" (efeito separado)
+  useEffect(() => {
+    let active = true
+    api
+      .listTracks({ sort: 'popular' })
+      .then((data) => {
+        if (active) setTracks(data)
+      })
+      .catch(() => {
+        if (active) setTracks([])
+      })
+      .finally(() => {
+        if (active) setTracksLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
   const stats = useMemo(
     () => ({
       sessions: mentors.reduce((acc, m) => acc + m.totalSessions, 0),
@@ -132,6 +164,9 @@ export function LandingMenteeView() {
     [courses]
   )
 
+  // Top 3 trilhas (a API já devolve ordenada por popularidade)
+  const topTracks = useMemo(() => tracks.slice(0, 3), [tracks])
+
   const handleSearch = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setExploreQuery(term.trim())
@@ -140,6 +175,11 @@ export function LandingMenteeView() {
 
   const handleVerCursos = () => {
     setExploreTab('courses')
+    navigate({ name: 'marketplace' })
+  }
+
+  const handleVerTrilhas = () => {
+    setExploreTab('tracks')
     navigate({ name: 'marketplace' })
   }
 
@@ -397,6 +437,64 @@ export function LandingMenteeView() {
         </motion.section>
       )}
 
+      {/* ---------- TRILHAS EM DESTAQUE ---------- */}
+      {(tracksLoading || topTracks.length > 0) && (
+        <motion.section
+          aria-labelledby="trilhas-destaque-title"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: 0.5 }}
+          className="mx-auto w-full max-w-6xl px-4 pb-14 sm:pb-20"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2
+                id="trilhas-destaque-title"
+                className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl"
+              >
+                Trilhas em destaque
+              </h2>
+              <p className="mt-2 text-sm text-stone-500">
+                Jornadas guiadas que combinam cursos e mentorias 1:1 dos nossos mentores.
+              </p>
+            </div>
+            <Button
+              variant="link"
+              onClick={handleVerTrilhas}
+              className="gap-1 px-0 font-semibold text-emerald-700"
+            >
+              Ver todas as trilhas
+              <ArrowRight aria-hidden className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {tracksLoading
+              ? Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    aria-hidden
+                    className="overflow-hidden rounded-2xl border border-stone-200"
+                  >
+                    <Skeleton className="h-36 w-full rounded-none" />
+                    <div className="space-y-2.5 p-5">
+                      <div className="flex gap-1.5">
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                        <Skeleton className="h-5 w-20 rounded-full" />
+                      </div>
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                      <Skeleton className="h-3 w-1/3" />
+                      <Skeleton className="mt-3 h-9 w-full rounded-full" />
+                    </div>
+                  </div>
+                ))
+              : topTracks.map((t) => <FeaturedTrackCard key={t.id} track={t} />)}
+          </div>
+        </motion.section>
+      )}
+
       {/* ---------- DEPOIMENTOS ---------- */}
       <motion.section
         aria-labelledby="depoimentos-title"
@@ -601,5 +699,101 @@ function FeaturedCourseCard({ course }: { course: CourseListItemDTO }) {
         </div>
       </div>
     </div>
+  )
+}
+
+function FeaturedTrackCard({ track }: { track: TrackListItemDTO }) {
+  const navigate = useAppStore((s) => s.navigate)
+
+  return (
+    <article
+      className="group flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition hover:border-emerald-300 hover:shadow-md"
+      onClick={() => navigate({ name: 'track', trackId: track.id })}
+    >
+      {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
+      <div className="relative h-36 w-full bg-stone-100">
+        {track.coverUrl ? (
+          <img
+            src={track.coverUrl}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={avatarGradient(track.title)}
+          >
+            <Route className="pointer-events-none absolute -bottom-2 right-2 h-16 w-16 text-white/20" />
+          </div>
+        )}
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col p-5">
+        <div className="flex flex-wrap gap-1.5">
+          <Badge className="rounded-full border border-teal-200 bg-teal-50 text-[11px] text-teal-700">
+            Trilha
+          </Badge>
+          <Badge className="rounded-full bg-stone-100 text-[11px] text-stone-600">
+            {track.category}
+          </Badge>
+        </div>
+
+        <p className="mt-2.5 line-clamp-2 min-h-10 font-bold leading-snug text-stone-900">
+          {track.title}
+        </p>
+
+        <div className="mt-2 flex items-center gap-3 text-xs text-stone-400">
+          <span className="inline-flex items-center gap-1">
+            <BookOpen aria-hidden className="h-3.5 w-3.5" />
+            {track.courseCount} {track.courseCount === 1 ? 'curso' : 'cursos'}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Users aria-hidden className="h-3.5 w-3.5" />
+            {track.mentorshipSessions} {track.mentorshipSessions === 1 ? 'mentoria' : 'mentorias'}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Clock aria-hidden className="h-3.5 w-3.5" />
+            {formatTotalDuration(track.totalDurationMin)}
+          </span>
+        </div>
+
+        <div className="mt-2.5 flex items-center gap-1.5">
+          <Avatar
+            name={track.mentor.name}
+            src={track.mentor.avatarUrl}
+            size="sm"
+            className="h-5 w-5 text-[8px] ring-0"
+          />
+          <span className="truncate text-xs font-medium text-stone-600">
+            por {firstName(track.mentor.name)}
+          </span>
+          <Stars rating={track.mentor.rating} size={11} />
+        </div>
+
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-3">
+          <p
+            className={cn(
+              'text-sm font-extrabold',
+              track.price === 0 ? 'text-emerald-700' : 'text-stone-900'
+            )}
+          >
+            {track.price === 0 ? 'Grátis' : currencyBRL(track.price)}
+          </p>
+          <Button
+            size="sm"
+            className="h-9 rounded-full px-4 font-semibold"
+            onClick={(e) => {
+              e.stopPropagation()
+              navigate({ name: 'track', trackId: track.id })
+            }}
+            aria-label={`Ver trilha ${track.title}`}
+          >
+            Ver trilha
+          </Button>
+        </div>
+      </div>
+    </article>
   )
 }

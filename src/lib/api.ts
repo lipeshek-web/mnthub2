@@ -7,11 +7,18 @@ import type {
   CourseLessonDTO,
   CourseListItemDTO,
   EnrolledCourseDTO,
+  LessonAttachmentDTO,
+  LessonNoteDTO,
+  LessonQuestionDTO,
   MentorDetailDTO,
   MentorListItemDTO,
   MentorLpDTO,
+  MyTrackDTO,
   ReviewDTO,
   SocialLinksDTO,
+  TrackDetailDTO,
+  TrackItemInput,
+  TrackListItemDTO,
   TrackingStatsDTO,
   UserDTO,
 } from './types'
@@ -128,6 +135,7 @@ export const api = {
     level: string
     price: number
     coverUrl?: string | null
+    mentorshipCount?: number
   }) => request<{ id: string }>('/api/courses', { method: 'POST', body: JSON.stringify(data) }),
   updateCourse: (
     id: string,
@@ -139,6 +147,7 @@ export const api = {
       level?: string
       price?: number
       coverUrl?: string | null
+      mentorshipCount?: number
       isPublished?: boolean
     }
   ) => request<{ ok: boolean }>(`/api/courses/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
@@ -150,8 +159,12 @@ export const api = {
       userId: string
       title: string
       description?: string
+      kind?: 'RECORDED' | 'TEXT' | 'LIVE'
       videoUrl?: string
       content?: string
+      startsAt?: string
+      meetingUrl?: string
+      attachments?: LessonAttachmentDTO[]
       durationMin: number
     }
   ) =>
@@ -178,23 +191,104 @@ export const api = {
   listMyEnrollments: (userId: string) =>
     request<EnrolledCourseDTO[]>(`/api/enrollments${qs({ userId })}`),
 
-  // Upload de imagens (avatar, capa, capa de curso)
+  // Classroom pro: Q&A e anotações da aula
+  listLessonQuestions: (lessonId: string, userId: string) =>
+    request<LessonQuestionDTO[]>(`/api/lessons/${lessonId}/questions${qs({ userId })}`),
+  askLessonQuestion: (lessonId: string, data: { userId: string; body: string }) =>
+    request<LessonQuestionDTO>(`/api/lessons/${lessonId}/questions`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  answerQuestion: (questionId: string, data: { userId: string; answer: string }) =>
+    request<{ id: string; answer: string | null; answeredAt: string | null }>(
+      `/api/questions/${questionId}`,
+      { method: 'PATCH', body: JSON.stringify(data) }
+    ),
+  deleteQuestion: (questionId: string, userId: string) =>
+    request<{ ok: boolean }>(`/api/questions/${questionId}${qs({ userId })}`, { method: 'DELETE' }),
+  getLessonNote: (lessonId: string, userId: string) =>
+    request<LessonNoteDTO>(`/api/lessons/${lessonId}/note${qs({ userId })}`),
+  saveLessonNote: (lessonId: string, data: { userId: string; body: string }) =>
+    request<LessonNoteDTO>(`/api/lessons/${lessonId}/note`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  // Trilhas
+  listTracks: (params: { search?: string; category?: string; sort?: string; mentorUserId?: string }) =>
+    request<TrackListItemDTO[]>(`/api/tracks${qs(params)}`),
+  getTrack: (id: string, userId?: string) =>
+    request<TrackDetailDTO>(`/api/tracks/${id}${qs({ userId })}`),
+  createTrack: (data: {
+    userId: string
+    title: string
+    description: string
+    category: string
+    level: string
+    price: number
+    coverUrl?: string | null
+    items: TrackItemInput[]
+  }) => request<{ id: string }>('/api/tracks', { method: 'POST', body: JSON.stringify(data) }),
+  updateTrack: (
+    id: string,
+    data: {
+      userId: string
+      title?: string
+      description?: string
+      category?: string
+      level?: string
+      price?: number
+      coverUrl?: string | null
+      isPublished?: boolean
+      items?: TrackItemInput[]
+    }
+  ) => request<{ ok: boolean }>(`/api/tracks/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteTrack: (id: string, userId: string) =>
+    request<{ ok: boolean }>(`/api/tracks/${id}${qs({ userId })}`, { method: 'DELETE' }),
+  enrollTrack: (trackId: string, userId: string) =>
+    request<{ ok: boolean }>(`/api/tracks/${trackId}/enroll`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    }),
+  listMyTracks: (userId: string) =>
+    request<MyTrackDTO[]>(`/api/tracks/mine${qs({ userId })}`),
+
+  // Upload de arquivos (imagens: avatar/capas · documentos: anexos de aula)
   uploadImage: (file: File) => {
     const fd = new FormData()
     fd.append('file', file)
     return fetch('/api/upload', { method: 'POST', body: fd, cache: 'no-store' }).then(async (res) => {
       const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string }
-      if (!res.ok || !json.url) throw new Error(json.error || 'Falha no upload da imagem.')
+      if (!res.ok || !json.url) throw new Error(json.error || 'Falha no upload do arquivo.')
       return json.url
+    })
+  },
+
+  // Upload de anexo de aula (documento/vídeo/áudio) → { url, name }
+  uploadAttachment: (file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return fetch('/api/upload', { method: 'POST', body: fd, cache: 'no-store' }).then(async (res) => {
+      const json = (await res.json().catch(() => ({}))) as {
+        url?: string
+        name?: string
+        error?: string
+      }
+      if (!res.ok || !json.url) throw new Error(json.error || 'Falha no upload do anexo.')
+      return { url: json.url, name: json.name || file.name }
     })
   },
 
   // LP pública do mentor (tráfego pago) — por slug
   getMentorBySlug: (slug: string) => request<MentorLpDTO>(`/api/mentors/by-slug/${encodeURIComponent(slug)}`),
 
-  // Checkout (pagamento demonstrativo) + pedido
-  checkout: (data: { userId: string; courseId: string; paymentMethod: 'PIX' | 'CREDIT_CARD' }) =>
-    request<CheckoutResultDTO>('/api/checkout', { method: 'POST', body: JSON.stringify(data) }),
+  // Checkout (pagamento demonstrativo) — curso ou trilha
+  checkout: (data: {
+    userId: string
+    courseId?: string
+    trackId?: string
+    paymentMethod: 'PIX' | 'CREDIT_CARD'
+  }) => request<CheckoutResultDTO>('/api/checkout', { method: 'POST', body: JSON.stringify(data) }),
 
   // Estatísticas de tráfego do mentor (dashboard)
   trackingStats: (mentorUserId: string) =>

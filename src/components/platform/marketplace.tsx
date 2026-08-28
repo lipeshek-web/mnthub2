@@ -10,6 +10,7 @@ import {
   Globe2,
   GraduationCap,
   Library,
+  Route,
   Search,
   SearchX,
   Star,
@@ -17,6 +18,7 @@ import {
   Video,
   X,
 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -38,7 +40,7 @@ import {
   formatTotalDuration,
 } from '@/lib/helpers'
 import { useAppStore, type ExploreTab } from '@/lib/store'
-import type { CourseListItemDTO, MentorListItemDTO } from '@/lib/types'
+import type { CourseListItemDTO, MentorListItemDTO, TrackListItemDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const SPOTLIGHT_INTERVAL_MS = 6000
@@ -65,6 +67,11 @@ export function MarketplaceView() {
   const [courses, setCourses] = useState<CourseListItemDTO[]>([])
   const [coursesLoading, setCoursesLoading] = useState(false)
   const [courseSort, setCourseSort] = useState('relevance')
+  // Trilhas: base completa (contagens/destaque/stats) e lista filtrada
+  const [baseTracks, setBaseTracks] = useState<TrackListItemDTO[]>([])
+  const [tracks, setTracks] = useState<TrackListItemDTO[]>([])
+  const [tracksLoading, setTracksLoading] = useState(false)
+  const [trackSort, setTrackSort] = useState('relevance')
 
   // Consome termo vindo de outra tela (hero da home) uma única vez
   useEffect(() => {
@@ -113,6 +120,14 @@ export function MarketplaceView() {
       .catch(() => {})
   }, [])
 
+  // Base de trilhas: alimenta destaque, contagens e stats (busca única)
+  useEffect(() => {
+    api
+      .listTracks({})
+      .then(setBaseTracks)
+      .catch(() => {})
+  }, [])
+
   // Lista filtrada de cursos — só carrega enquanto a aba Cursos está ativa
   const loadCourses = useCallback(async () => {
     setCoursesLoading(true)
@@ -129,6 +144,23 @@ export function MarketplaceView() {
   useEffect(() => {
     if (tab === 'courses') void loadCourses()
   }, [tab, loadCourses])
+
+  // Lista filtrada de trilhas — só carrega enquanto a aba Trilhas está ativa
+  const loadTracks = useCallback(async () => {
+    setTracksLoading(true)
+    try {
+      const data = await api.listTracks({ search, category, sort: trackSort })
+      setTracks(data)
+    } catch {
+      setTracks([])
+    } finally {
+      setTracksLoading(false)
+    }
+  }, [search, category, trackSort])
+
+  useEffect(() => {
+    if (tab === 'tracks') void loadTracks()
+  }, [tab, loadTracks])
 
   // Atalho "/" foca a busca (sensação de app nativo)
   useEffect(() => {
@@ -227,16 +259,42 @@ export function MarketplaceView() {
     )[0]
   }, [baseCourses])
 
+  // ---------- Derivados das trilhas ----------
+
+  const trackCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const t of baseTracks) counts.set(t.category, (counts.get(t.category) ?? 0) + 1)
+    return counts
+  }, [baseTracks])
+
+  const baseTracksReady = baseTracks.length > 0
+
+  const trackStats = useMemo(
+    () => ({
+      published: baseTracks.length,
+      students: baseTracks.reduce((acc, t) => acc + t.studentCount, 0),
+      mentorships: baseTracks.reduce((acc, t) => acc + t.mentorshipSessions, 0),
+    }),
+    [baseTracks]
+  )
+
+  const topTrack = useMemo(() => {
+    if (baseTracks.length === 0) return null
+    return [...baseTracks].sort(
+      (a, b) => b.studentCount - a.studentCount || b.mentor.rating - a.mentor.rating
+    )[0]
+  }, [baseTracks])
+
   return (
     <div>
       {/* ---------- BARRA SUPERIOR: título, ordenação, busca e categorias ---------- */}
       <section className="border-b border-stone-200/70 bg-white">
         <div className="mx-auto max-w-6xl px-4 py-7 sm:py-9">
-          {/* Controle segmentado: Mentores | Cursos */}
+          {/* Controle segmentado: Mentores | Cursos | Trilhas */}
           <div
             role="tablist"
-            aria-label="Explorar mentores ou cursos"
-            className="inline-flex rounded-full bg-stone-100 p-1"
+            aria-label="Explorar mentores, cursos ou trilhas"
+            className="inline-flex max-w-full flex-wrap rounded-full bg-stone-100 p-1"
           >
             <button
               role="tab"
@@ -264,6 +322,19 @@ export function MarketplaceView() {
             >
               <BookOpen aria-hidden className="h-4 w-4" /> Cursos
             </button>
+            <button
+              role="tab"
+              aria-selected={tab === 'tracks'}
+              onClick={() => setTab('tracks')}
+              className={cn(
+                'inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-all',
+                tab === 'tracks'
+                  ? 'bg-white text-stone-900 shadow-sm'
+                  : 'text-stone-500 hover:text-stone-700'
+              )}
+            >
+              <Route aria-hidden className="h-4 w-4" /> Trilhas
+            </button>
           </div>
 
           <div className="mt-5 flex flex-wrap items-end justify-between gap-3">
@@ -281,7 +352,7 @@ export function MarketplaceView() {
                         } para mentoria 1:1`}
                   </p>
                 </>
-              ) : (
+              ) : tab === 'courses' ? (
                 <>
                   <h1 className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
                     Explorar cursos
@@ -292,15 +363,34 @@ export function MarketplaceView() {
                       : `${courses.length} ${courses.length === 1 ? 'curso publicado' : 'cursos publicados'}`}
                   </p>
                 </>
+              ) : (
+                <>
+                  <h1 className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
+                    Explorar trilhas
+                  </h1>
+                  <p className="mt-1 text-sm text-stone-500" aria-live="polite">
+                    {tracksLoading
+                      ? 'Carregando trilhas...'
+                      : `${tracks.length} ${tracks.length === 1 ? 'trilha publicada' : 'trilhas publicadas'}`}
+                  </p>
+                </>
               )}
             </div>
             <div className="w-44">
               <Select
-                value={tab === 'mentors' ? sort : courseSort}
-                onValueChange={tab === 'mentors' ? setSort : setCourseSort}
+                value={tab === 'mentors' ? sort : tab === 'courses' ? courseSort : trackSort}
+                onValueChange={
+                  tab === 'mentors' ? setSort : tab === 'courses' ? setCourseSort : setTrackSort
+                }
               >
                 <SelectTrigger
-                  aria-label={tab === 'mentors' ? 'Ordenar mentores' : 'Ordenar cursos'}
+                  aria-label={
+                    tab === 'mentors'
+                      ? 'Ordenar mentores'
+                      : tab === 'courses'
+                        ? 'Ordenar cursos'
+                        : 'Ordenar trilhas'
+                  }
                   className="bg-white"
                 >
                   <SelectValue placeholder="Ordenar" />
@@ -340,9 +430,17 @@ export function MarketplaceView() {
               placeholder={
                 tab === 'mentors'
                   ? 'Busque por nome, especialidade ou área...'
-                  : 'Busque por curso, tema ou mentor...'
+                  : tab === 'courses'
+                    ? 'Busque por curso, tema ou mentor...'
+                    : 'Busque por trilha, tema ou mentor...'
               }
-              aria-label={tab === 'mentors' ? 'Buscar mentores' : 'Buscar cursos'}
+              aria-label={
+                tab === 'mentors'
+                  ? 'Buscar mentores'
+                  : tab === 'courses'
+                    ? 'Buscar cursos'
+                    : 'Buscar trilhas'
+              }
               className="h-12 rounded-2xl border-stone-200 bg-white pl-11 pr-16 text-stone-900 shadow-none placeholder:text-stone-400 focus-visible:border-emerald-400 focus-visible:ring-emerald-200"
             />
             {inputValue ? (
@@ -379,7 +477,15 @@ export function MarketplaceView() {
               const count =
                 tab === 'mentors'
                   ? (categoryCounts.get(c) ?? 0)
-                  : (courseCounts.get(c) ?? 0)
+                  : tab === 'courses'
+                    ? (courseCounts.get(c) ?? 0)
+                    : (trackCounts.get(c) ?? 0)
+              const countsReady =
+                tab === 'mentors'
+                  ? baseReady
+                  : tab === 'courses'
+                    ? baseCoursesReady
+                    : baseTracksReady
               return (
                 <button
                   key={c}
@@ -392,7 +498,7 @@ export function MarketplaceView() {
                   )}
                 >
                   {c}
-                  {(tab === 'mentors' ? baseReady : baseCoursesReady) && (
+                  {countsReady && (
                     <span className={cn('ml-1.5 text-[10px]', category === c ? 'text-emerald-100' : 'text-stone-400')}>
                       {count}
                     </span>
@@ -415,8 +521,14 @@ export function MarketplaceView() {
               ) : (
                 <div className="h-full min-h-56 animate-pulse rounded-2xl bg-emerald-950/90" aria-hidden />
               )
-            ) : topCourse ? (
-              <CourseSpotlightCard course={topCourse} />
+            ) : tab === 'courses' ? (
+              topCourse ? (
+                <CourseSpotlightCard course={topCourse} />
+              ) : (
+                <div className="h-full min-h-56 animate-pulse rounded-2xl bg-emerald-950/90" aria-hidden />
+              )
+            ) : topTrack ? (
+              <TrackSpotlightCard track={topTrack} />
             ) : (
               <div className="h-full min-h-56 animate-pulse rounded-2xl bg-emerald-950/90" aria-hidden />
             )}
@@ -434,11 +546,17 @@ export function MarketplaceView() {
                   label="nota média da comunidade"
                 />
               </>
-            ) : (
+            ) : tab === 'courses' ? (
               <>
                 <StatTile icon={<Library className="h-4.5 w-4.5" />} value={`+${courseStats.published}`} label="cursos publicados" />
                 <StatTile icon={<Users className="h-4.5 w-4.5" />} value={`+${courseStats.students}`} label="alunos inscritos" />
                 <StatTile icon={<BookOpen className="h-4.5 w-4.5" />} value={`+${courseStats.lessons}`} label="aulas publicadas" />
+              </>
+            ) : (
+              <>
+                <StatTile icon={<Route className="h-4.5 w-4.5" />} value={`+${trackStats.published}`} label="trilhas publicadas" />
+                <StatTile icon={<Users className="h-4.5 w-4.5" />} value={`+${trackStats.students}`} label="alunos em trilhas" />
+                <StatTile icon={<Video className="h-4.5 w-4.5" />} value={`+${trackStats.mentorships}`} label="mentorias inclusas" />
               </>
             )}
           </div>
@@ -449,9 +567,13 @@ export function MarketplaceView() {
       <section aria-labelledby="resultado-title" className="mx-auto w-full max-w-6xl px-4 pb-12 pt-8">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <h2 id="resultado-title" className="text-lg font-extrabold tracking-tight text-stone-900">
-            {tab === 'mentors' ? 'Todos os mentores' : 'Todos os cursos'}
+            {tab === 'mentors'
+              ? 'Todos os mentores'
+              : tab === 'courses'
+                ? 'Todos os cursos'
+                : 'Todas as trilhas'}
           </h2>
-          {!(tab === 'mentors' ? loading : coursesLoading) && (
+          {!(tab === 'mentors' ? loading : tab === 'courses' ? coursesLoading : tracksLoading) && (
             <p className="text-xs font-medium text-stone-400">
               {search || category ? 'Resultado da busca' : 'Ordenado por relevância'}
             </p>
@@ -507,7 +629,7 @@ export function MarketplaceView() {
               </div>
             )}
           </>
-        ) : (
+        ) : tab === 'courses' ? (
           <>
             <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {coursesLoading
@@ -534,6 +656,56 @@ export function MarketplaceView() {
                 <p className="font-bold text-stone-900">Nenhum curso encontrado</p>
                 <p className="max-w-sm text-sm leading-relaxed text-stone-500">
                   Tente remover os filtros ou buscar por outro tema — temos cursos em várias áreas.
+                </p>
+                <Button
+                  variant="outline"
+                  className="rounded-full"
+                  onClick={() => {
+                    setSearch('')
+                    setInputValue('')
+                    setCategory('')
+                  }}
+                >
+                  Limpar filtros
+                </Button>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="mt-5 grid min-w-0 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {tracksLoading
+                ? Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="overflow-hidden rounded-2xl border border-stone-200">
+                      <Skeleton className="h-36 w-full rounded-none" />
+                      <div className="space-y-3 p-4">
+                        <div className="flex gap-1.5">
+                          <Skeleton className="h-5 w-16 rounded-full" />
+                          <Skeleton className="h-5 w-20 rounded-full" />
+                          <Skeleton className="h-5 w-16 rounded-full" />
+                        </div>
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-full" />
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-6 w-6 rounded-full" />
+                          <Skeleton className="h-3 w-1/2" />
+                        </div>
+                        <Skeleton className="mt-3 h-11 w-full rounded-full" />
+                      </div>
+                    </div>
+                  ))
+                : tracks.map((t) => <TrackCard key={t.id} track={t} />)}
+            </div>
+
+            {!tracksLoading && tracks.length === 0 && (
+              <div className="mt-2 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 px-6 py-14 text-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100">
+                  <SearchX className="h-7 w-7 text-stone-400" />
+                </span>
+                <p className="font-bold text-stone-900">Nenhuma trilha encontrada</p>
+                <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+                  Tente remover os filtros ou buscar por outro tema — temos trilhas combinando cursos
+                  e mentorias 1:1 em várias áreas.
                 </p>
                 <Button
                   variant="outline"
@@ -949,6 +1121,221 @@ function CourseCard({ course }: { course: CourseListItemDTO }) {
         >
           Ver curso
         </Button>
+      </div>
+    </article>
+  )
+}
+
+/* ---------- Spotlight de trilha (bento da aba Trilhas) ---------- */
+
+function TrackSpotlightCard({ track }: { track: TrackListItemDTO }) {
+  const navigate = useAppStore((s) => s.navigate)
+
+  return (
+    <div className="relative flex h-full min-h-56 flex-col overflow-hidden rounded-2xl bg-emerald-950 p-5 text-white sm:p-6">
+      {track.coverUrl && (
+        <img
+          src={track.coverUrl}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover opacity-40"
+        />
+      )}
+      {track.coverUrl && <div aria-hidden className="absolute inset-0 bg-emerald-950/40" />}
+      <div
+        aria-hidden
+        className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="absolute -bottom-24 left-10 h-48 w-48 rounded-full bg-teal-400/10 blur-3xl"
+      />
+
+      <span className="relative inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-300" />
+        </span>
+        Trilha em destaque
+      </span>
+
+      <div className="relative mt-5 flex flex-1 flex-col justify-center">
+        <div className="flex items-center gap-4">
+          {/* Miniatura da capa com anel gradiente determinístico do título */}
+          <span
+            aria-hidden
+            className="shrink-0 rounded-2xl p-0.5"
+            style={avatarGradient(track.title)}
+          >
+            <span className="flex h-13 w-13 items-center justify-center overflow-hidden rounded-[14px] bg-emerald-950/80">
+              {track.coverUrl ? (
+                <img src={track.coverUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <Route className="h-6 w-6 text-emerald-300" />
+              )}
+            </span>
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-lg font-bold">{track.title}</p>
+            <div className="mt-0.5 flex items-center gap-1.5">
+              <span className="truncate text-xs text-emerald-100/80">por {track.mentor.name}</span>
+              <Stars rating={track.mentor.rating} size={12} />
+              <span className="text-xs font-semibold text-emerald-50">
+                {track.mentor.rating > 0 ? track.mentor.rating.toFixed(1) : 'Novo'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-emerald-50/90">
+          {track.description}
+        </p>
+
+        <div className="mt-3.5 flex flex-wrap gap-1.5">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100">
+            <BookOpen aria-hidden className="h-3.5 w-3.5" />
+            {track.courseCount} {track.courseCount === 1 ? 'curso' : 'cursos'}
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100">
+            <Users aria-hidden className="h-3.5 w-3.5" />
+            {track.mentorshipSessions} {track.mentorshipSessions === 1 ? 'mentoria' : 'mentorias'}
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100">
+            <Clock aria-hidden className="h-3.5 w-3.5" />
+            {formatTotalDuration(track.totalDurationMin)}
+          </span>
+        </div>
+      </div>
+
+      <div className="relative mt-5 flex items-center justify-between gap-3 border-t border-emerald-400/15 pt-4">
+        <p className="text-xl font-extrabold tracking-tight">
+          {track.price === 0 ? (
+            <span className="text-emerald-300">Grátis</span>
+          ) : (
+            currencyBRL(track.price)
+          )}
+        </p>
+        <Button
+          size="sm"
+          onClick={() => navigate({ name: 'track', trackId: track.id })}
+          aria-label={`Ver trilha ${track.title}`}
+          className="rounded-full bg-white font-bold text-emerald-950 hover:bg-emerald-100"
+        >
+          Ver trilha <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/* ---------- Card de trilha (grade da aba Trilhas) ---------- */
+
+function TrackCard({ track }: { track: TrackListItemDTO }) {
+  const navigate = useAppStore((s) => s.navigate)
+
+  return (
+    <article
+      className="group flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white p-0 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+      onClick={() => navigate({ name: 'track', trackId: track.id })}
+    >
+      {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
+      <div className="relative h-36 w-full bg-stone-100">
+        {track.coverUrl ? (
+          <img
+            src={track.coverUrl}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={avatarGradient(track.title)}
+          >
+            <Route className="pointer-events-none absolute -bottom-3 right-3 h-20 w-20 text-white/20" />
+          </div>
+        )}
+        <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-0.5 text-[11px] font-semibold text-stone-700">
+          {LEVEL_LABELS[track.level] ?? track.level}
+        </span>
+        {track.price === 0 ? (
+          <span className="absolute right-3 top-3 rounded-full bg-emerald-700 px-2.5 py-0.5 text-[11px] font-bold text-white">
+            Grátis
+          </span>
+        ) : (
+          <span className="absolute right-3 top-3 rounded-full bg-white px-2.5 py-0.5 text-[11px] font-bold text-stone-900">
+            {currencyBRL(track.price)}
+          </span>
+        )}
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col p-4">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge className="rounded-full border border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-50">
+            Trilha
+          </Badge>
+          <Badge variant="outline" className="rounded-full border-stone-200 text-stone-600">
+            {track.category}
+          </Badge>
+        </div>
+
+        <p className="mt-2 line-clamp-1 font-bold text-stone-900">{track.title}</p>
+
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-500">
+          <span className="inline-flex items-center gap-1">
+            <BookOpen aria-hidden className="h-3.5 w-3.5" />
+            {track.courseCount} {track.courseCount === 1 ? 'curso' : 'cursos'}
+          </span>
+          <span aria-hidden className="text-stone-300">
+            ·
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Users aria-hidden className="h-3.5 w-3.5" />
+            {track.mentorshipSessions} {track.mentorshipSessions === 1 ? 'mentoria' : 'mentorias'}
+          </span>
+          <span aria-hidden className="text-stone-300">
+            ·
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Clock aria-hidden className="h-3.5 w-3.5" />
+            {formatTotalDuration(track.totalDurationMin)}
+          </span>
+        </div>
+
+        <div className="mt-2.5 flex items-center gap-1.5">
+          <Avatar
+            name={track.mentor.name}
+            src={track.mentor.avatarUrl}
+            size="sm"
+            className="h-5 w-5 text-[8px] ring-0"
+          />
+          <span className="truncate text-xs font-medium text-stone-600">
+            por {firstName(track.mentor.name)}
+          </span>
+          <Stars rating={track.mentor.rating} size={11} />
+        </div>
+
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-3.5">
+          <p
+            className={cn(
+              'text-sm font-extrabold',
+              track.price === 0 ? 'text-emerald-700' : 'text-stone-900'
+            )}
+          >
+            {track.price === 0 ? 'Grátis' : currencyBRL(track.price)}
+          </p>
+          <Button
+            className="h-11 rounded-full px-5 font-semibold"
+            onClick={(e) => {
+              e.stopPropagation()
+              navigate({ name: 'track', trackId: track.id })
+            }}
+            aria-label={`Ver trilha ${track.title}`}
+          >
+            Ver trilha
+          </Button>
+        </div>
       </div>
     </article>
   )

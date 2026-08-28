@@ -229,3 +229,24 @@ export function formatTotalDuration(totalMin: number): string {
   if (m === 0) return `${h}h`
   return `${h}h ${m}min`
 }
+
+// ---------- Aulas ao vivo ----------
+
+export type LiveStatus = 'upcoming' | 'live' | 'ended'
+
+/** Estado da live com base na data/hora agendada + duração (datas naive locais) */
+export function liveStatus(startsAt: string, durationMin: number): LiveStatus {
+  const now = new Date()
+  const start = parseNaive(startsAt)
+  const end = new Date(start.getTime() + durationMin * 60_000)
+  if (now.getTime() < start.getTime()) return 'upcoming'
+  if (now.getTime() <= end.getTime()) return 'live'
+  return 'ended'
+}
+
+/** Rótulo curto do tipo de aula */
+export const LESSON_KIND_LABELS: Record<string, string> = {
+  RECORDED: 'Vídeo',
+  TEXT: 'Leitura',
+  LIVE: 'Ao vivo',
+}

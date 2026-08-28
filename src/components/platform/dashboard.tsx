@@ -14,6 +14,7 @@ import {
   Library,
   LogIn,
   PlayCircle,
+  Route,
   Star,
   Users,
   Video,
@@ -65,7 +66,7 @@ import {
   relativeDayLabel,
 } from '@/lib/helpers'
 import { useAppStore } from '@/lib/store'
-import type { BookingDTO, EnrolledCourseDTO, MentorDetailDTO } from '@/lib/types'
+import type { BookingDTO, EnrolledCourseDTO, MentorDetailDTO, MyTrackDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 type ConfirmKind = 'reject' | 'complete' | 'cancel'
@@ -446,23 +447,26 @@ export default function DashboardView() {
   const [bookings, setBookings] = useState<BookingDTO[] | null>(null)
   const [mentorProfile, setMentorProfile] = useState<MentorDetailDTO | null>(null)
   const [enrollments, setEnrollments] = useState<EnrolledCourseDTO[]>([])
+  const [myTracks, setMyTracks] = useState<MyTrackDTO[]>([])
   const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<string | null>(null)
 
   const refetch = useCallback(async () => {
     if (!userId) return
     try {
-      const [bookingsRes, profileRes, enrollmentsRes] = await Promise.all([
+      const [bookingsRes, profileRes, enrollmentsRes, tracksRes] = await Promise.all([
         api.listBookings(userId),
         api
           .getMyMentorProfile(userId)
           .then((res) => res.profile)
           .catch(() => null),
         api.listMyEnrollments(userId).catch(() => []),
+        api.listMyTracks(userId).catch(() => []),
       ])
       setBookings(bookingsRes)
       setMentorProfile(profileRes)
       setEnrollments(enrollmentsRes)
+      setMyTracks(tracksRes)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Não foi possível carregar suas sessões.')
       setBookings((prev) => prev ?? [])
@@ -693,6 +697,23 @@ export default function DashboardView() {
         </TabsContent>
 
         <TabsContent value="courses" className="flex flex-col gap-4">
+          {/* Minhas trilhas (no topo da aba) — oculto quando não há trilhas */}
+          {myTracks.length > 0 && (
+            <section aria-labelledby="minhas-trilhas-title" className="flex flex-col gap-3">
+              <h2 id="minhas-trilhas-title" className="text-base font-semibold">
+                Minhas trilhas
+              </h2>
+              {myTracks.map((t) => (
+                <MyTrackCard
+                  key={t.id}
+                  track={t}
+                  onOpenTrack={() => navigate({ name: 'track', trackId: t.id })}
+                  onContinueCourse={(courseId) => navigate({ name: 'classroom', courseId })}
+                />
+              ))}
+            </section>
+          )}
+
           {enrollments.length === 0 ? (
             <EmptyState
               icon={Library}
@@ -806,6 +827,87 @@ function EnrolledCourseCard({
         <Button onClick={onOpen} className="shrink-0 self-start rounded-full sm:self-auto">
           <PlayCircle className="size-4" aria-hidden /> {isDone ? 'Revisar curso' : 'Continuar'}
         </Button>
+      </div>
+    </Card>
+  )
+}
+
+// ---------- Card de trilha matriculada (bloco Minhas trilhas) ----------
+
+function MyTrackCard({
+  track,
+  onOpenTrack,
+  onContinueCourse,
+}: {
+  track: MyTrackDTO
+  onOpenTrack: () => void
+  onContinueCourse: (courseId: string) => void
+}) {
+  const isDone = track.percent >= 100
+  // Próximo curso incompleto da trilha (primeiro com aulas restantes)
+  const nextCourse = track.perCourse.find((c) => c.completed < c.total)
+
+  return (
+    <Card className="overflow-hidden p-0">
+      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
+        {track.coverUrl ? (
+          <img
+            src={track.coverUrl}
+            alt=""
+            aria-hidden
+            className="h-14 w-14 shrink-0 rounded-2xl object-cover"
+          />
+        ) : (
+          <span
+            aria-hidden
+            style={avatarGradient(track.title)}
+            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white"
+          >
+            <Route className="size-6" />
+          </span>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate font-bold text-stone-900">{track.title}</p>
+            <Badge className="border-teal-200 bg-teal-50 text-teal-700">{track.category}</Badge>
+            {isDone && (
+              <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800">
+                <CheckCircle2 className="size-3" aria-hidden /> Trilha concluída 🎉
+              </Badge>
+            )}
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            por {track.mentor.name} · {track.courseCount}{' '}
+            {track.courseCount === 1 ? 'curso' : 'cursos'} ·{' '}
+            {formatTotalDuration(track.totalDurationMin)}
+          </p>
+          <div className="mt-2.5 flex items-center gap-3">
+            <Progress
+              value={track.percent}
+              aria-label={`${track.percent}% da trilha concluído`}
+              className="h-2 max-w-64 flex-1"
+            />
+            <span className="shrink-0 text-xs font-semibold text-stone-500">
+              {track.percent}% concluído
+            </span>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 flex-wrap gap-2 self-start sm:self-auto">
+          <Button onClick={onOpenTrack} className="rounded-full">
+            <Route className="size-4" aria-hidden /> Abrir trilha
+          </Button>
+          {!isDone && nextCourse && (
+            <Button
+              variant="outline"
+              className="rounded-full"
+              onClick={() => onContinueCourse(nextCourse.courseId)}
+            >
+              <PlayCircle className="size-4" aria-hidden /> Continuar curso
+            </Button>
+          )}
+        </div>
       </div>
     </Card>
   )

@@ -509,16 +509,26 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
 function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
   const navigate = useAppStore((s) => s.navigate)
   const user = useAppStore((s) => s.user)
+  const bookingTopic = useAppStore((s) => s.bookingTopic)
+  const setBookingTopic = useAppStore((s) => s.setBookingTopic)
 
   const days = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i))
   const [selectedDate, setSelectedDate] = useState(() => dateKey(new Date()))
   const [slots, setSlots] = useState<string[]>([])
   const [slotsLoading, setSlotsLoading] = useState(true)
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
-  const [topic, setTopic] = useState('')
+  const [topic, setTopic] = useState(() => bookingTopic)
   const [notes, setNotes] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+
+  // Consome o pré-preenchimento (mentoria inclusa em curso/trilha) uma única vez
+  useEffect(() => {
+    if (bookingTopic) {
+      setTopic((prev) => prev || bookingTopic)
+      setBookingTopic('')
+    }
+  }, [bookingTopic, setBookingTopic])
 
   const loadSlots = useCallback(async (date: string) => {
     setSlotsLoading(true)
