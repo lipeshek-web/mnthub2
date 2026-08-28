@@ -23,6 +23,7 @@ import {
   ImagePlus,
   Library,
   Link2,
+  ListChecks,
   ListVideo,
   LogIn,
   Megaphone,
@@ -77,6 +78,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   Select,
   SelectContent,
@@ -124,6 +126,7 @@ import type {
   LibraryItemDTO,
   LessonAttachmentDTO,
   MentorDetailDTO,
+  QuizDTO,
   SocialLinksDTO,
   TrackingStatsDTO,
 } from '@/lib/types'
@@ -1929,6 +1932,9 @@ function LessonsManagerDialog({
   const [newThemeTitle, setNewThemeTitle] = useState('')
   const [creatingTheme, setCreatingTheme] = useState(false)
   const [movingId, setMovingId] = useState<string | null>(null)
+  // Quiz da aula — gerenciador de perguntas (correção automática)
+  const [quizLesson, setQuizLesson] = useState<CourseLessonDTO | null>(null)
+  const [quizOpen, setQuizOpen] = useState(false)
   // Conteúdos da Biblioteca do mentor (para aulas READING)
   const [libraryItems, setLibraryItems] = useState<LibraryItemDTO[] | null>(null)
   const [libraryItemId, setLibraryItemId] = useState('')
@@ -2068,6 +2074,15 @@ function LessonsManagerDialog({
       await Promise.all([fetchLessons(), onChanged()])
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Não foi possível remover a aula.')
+    }
+  }
+
+  /** Abre/fecha o gerenciador de quiz; ao fechar, atualiza a contagem de perguntas na lista */
+  const handleQuizOpenChange = (next: boolean) => {
+    setQuizOpen(next)
+    if (!next) {
+      setQuizLesson(null)
+      fetchLessons().catch(() => {})
     }
   }
 
@@ -2233,6 +2248,23 @@ function LessonsManagerDialog({
                       </div>
                     </PopoverContent>
                   </Popover>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative size-8 shrink-0 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
+                    aria-label={`Gerenciar quiz de ${lesson.title}`}
+                    onClick={() => {
+                      setQuizLesson(lesson)
+                      setQuizOpen(true)
+                    }}
+                  >
+                    <ListChecks className="size-3.5" aria-hidden />
+                    {lesson.quizCount > 0 ? (
+                      <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold leading-none text-white">
+                        {lesson.quizCount}
+                      </span>
+                    ) : null}
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -2596,6 +2628,452 @@ function LessonsManagerDialog({
             </Button>
           )}
         </div>
+      </DialogContent>
+
+      {/* Dialog: quiz da aula (perguntas com correção automática) */}
+      {quizLesson && (
+        <QuizManagerDialog
+          course={course}
+          lesson={quizLesson}
+          user={{ id: userId }}
+          open={quizOpen}
+          onOpenChange={handleQuizOpenChange}
+        />
+      )}
+    </Dialog>
+  )
+}
+
+// ---------- Dialog de quiz da aula (mentor) ----------
+
+const QUIZ_OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'] as const
+
+interface QuizFormErrors {
+  prompt?: string
+  options?: string
+  correctIndex?: string
+}
+
+/** Gerencia as perguntas de quiz de uma aula: listar, criar, editar e excluir. */
+function QuizManagerDialog({
+  course,
+  lesson,
+  user,
+  open,
+  onOpenChange,
+}: {
+  course: CourseListItemDTO
+  lesson: CourseLessonDTO
+  /** Basta o id do mentor para as chamadas de API do quiz */
+  user: { id: string }
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const [quizzes, setQuizzes] = useState<QuizDTO[] | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [toDelete, setToDelete] = useState<QuizDTO | null>(null)
+  // Formulário compartilhado entre criar (formOpen) e editar (editingId)
+  const [formOpen, setFormOpen] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [prompt, setPrompt] = useState('')
+  const [options, setOptions] = useState<string[]>(['', ''])
+  const [correctIndex, setCorrectIndex] = useState<number | null>(null)
+  const [explanation, setExplanation] = useState('')
+  const [formErrors, setFormErrors] = useState<QuizFormErrors>({})
+
+  const fetchQuizzes = useCallback(async () => {
+    const list = await api.listLessonQuizzes(lesson.id, user.id)
+    setQuizzes(list)
+  }, [lesson.id, user.id])
+
+  const resetForm = useCallback(() => {
+    setPrompt('')
+    setOptions(['', ''])
+    setCorrectIndex(null)
+    setExplanation('')
+    setFormErrors({})
+  }, [])
+
+  // Carrega as perguntas sempre que o diálogo abre
+  useEffect(() => {
+    if (!open) return
+    let active = true
+    setQuizzes(null)
+    setFormOpen(false)
+    setEditingId(null)
+    resetForm()
+    api
+      .listLessonQuizzes(lesson.id, user.id)
+      .then((list) => {
+        if (active) setQuizzes(list)
+      })
+      .catch((err: unknown) => {
+        if (active) {
+          toast.error(err instanceof Error ? err.message : 'Não foi possível carregar o quiz.')
+          setQuizzes([])
+        }
+      })
+    return () => {
+      active = false
+    }
+  }, [open, lesson.id, user.id, resetForm])
+
+  const openCreate = () => {
+    setEditingId(null)
+    resetForm()
+    setFormOpen(true)
+  }
+
+  const openEdit = (quiz: QuizDTO) => {
+    setEditingId(quiz.id)
+    setPrompt(quiz.prompt)
+    setOptions(quiz.options.length >= 2 ? [...quiz.options] : [...quiz.options, ''])
+    setCorrectIndex(quiz.correctIndex)
+    setExplanation(quiz.explanation ?? '')
+    setFormErrors({})
+    setFormOpen(true)
+  }
+
+  const cancelForm = () => {
+    setFormOpen(false)
+    setEditingId(null)
+    resetForm()
+  }
+
+  const addOption = () => {
+    setOptions((prev) => (prev.length >= 6 ? prev : [...prev, '']))
+  }
+
+  /** Remove uma alternativa e reajusta o índice da correta (mínimo de 2 alternativas) */
+  const removeOption = (index: number) => {
+    setOptions((prev) => (prev.length <= 2 ? prev : prev.filter((_, i) => i !== index)))
+    setCorrectIndex((prev) => {
+      if (prev === null) return null
+      if (prev === index) return null // a correta foi removida — é preciso marcar outra
+      if (prev > index) return prev - 1
+      return prev
+    })
+  }
+
+  const handleSave = async () => {
+    // Validação client — mensagens do servidor têm prioridade (chegam via toast)
+    const errs: QuizFormErrors = {}
+    if (prompt.trim().length < 5) {
+      errs.prompt = 'Escreva a pergunta (mínimo 5 caracteres).'
+    }
+    if (options.length < 2 || options.length > 6 || options.some((o) => o.trim() === '')) {
+      errs.options = 'Informe de 2 a 6 alternativas, todas preenchidas.'
+    }
+    if (correctIndex === null || correctIndex < 0 || correctIndex >= options.length) {
+      errs.correctIndex = 'Marque qual alternativa é a correta.'
+    }
+    setFormErrors(errs)
+    if (Object.values(errs).some(Boolean)) return
+
+    setSaving(true)
+    try {
+      const payload = {
+        userId: user.id,
+        prompt: prompt.trim(),
+        options: options.map((o) => o.trim()),
+        correctIndex: correctIndex as number,
+        explanation: explanation.trim(),
+      }
+      if (editingId) {
+        await api.updateQuiz(editingId, payload)
+        toast.success('Pergunta atualizada!')
+        setEditingId(null)
+        setFormOpen(false)
+      } else {
+        await api.createQuiz(lesson.id, payload)
+        toast.success('Pergunta adicionada ao quiz')
+        setFormOpen(false)
+      }
+      resetForm()
+      await fetchQuizzes()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível salvar a pergunta.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!toDelete) return
+    setDeleting(true)
+    try {
+      await api.deleteQuiz(toDelete.id, user.id)
+      toast.success('Pergunta removida do quiz.')
+      setToDelete(null)
+      await fetchQuizzes()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível remover a pergunta.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const formVisible = formOpen || editingId !== null
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[85dvh] flex-col gap-4 sm:max-w-lg">
+        <DialogHeader className="shrink-0">
+          <DialogTitle>Quiz da aula</DialogTitle>
+          <DialogDescription>
+            {course.title} · {lesson.title}
+            {quizzes === null
+              ? ''
+              : ` · ${quizzes.length} ${quizzes.length === 1 ? 'pergunta' : 'perguntas'} · correção automática (+5 XP por acerto)`}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
+          {quizzes === null ? (
+            <div className="space-y-3" aria-hidden>
+              <Skeleton className="h-32 rounded-2xl" />
+              <Skeleton className="h-32 rounded-2xl" />
+            </div>
+          ) : (
+            <>
+              {quizzes.length === 0 ? (
+                <p className="rounded-2xl border border-dashed border-stone-300 px-4 py-8 text-center text-sm text-muted-foreground">
+                  Nenhuma pergunta ainda — crie a primeira para ajudar a fixar o aprendizado.
+                </p>
+              ) : (
+                quizzes.map((quiz, index) => (
+                  <div key={quiz.id} className="rounded-2xl border border-stone-200 bg-white p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-stone-400">
+                          Pergunta {index + 1}
+                        </p>
+                        <p className="mt-0.5 text-sm font-semibold break-words text-stone-900">
+                          {quiz.prompt}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-0.5">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
+                          aria-label={`Editar pergunta ${index + 1}`}
+                          onClick={() => openEdit(quiz)}
+                        >
+                          <Pencil className="size-3.5" aria-hidden />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+                          aria-label={`Excluir pergunta ${index + 1}`}
+                          disabled={deleting}
+                          onClick={() => setToDelete(quiz)}
+                        >
+                          <Trash2 className="size-3.5" aria-hidden />
+                        </Button>
+                      </div>
+                    </div>
+                    <ul className="mt-3 space-y-1.5">
+                      {quiz.options.map((option, i) => {
+                        const correct = i === quiz.correctIndex
+                        return (
+                          <li
+                            key={`${quiz.id}-option-${i}`}
+                            className={cn(
+                              'flex items-center gap-2 rounded-xl border px-3 py-2 text-sm',
+                              correct
+                                ? 'border-emerald-300 bg-emerald-50 font-medium text-emerald-900'
+                                : 'border-stone-200 bg-stone-50 text-stone-700'
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                'flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold',
+                                correct ? 'bg-emerald-600 text-white' : 'bg-stone-200 text-stone-600'
+                              )}
+                            >
+                              {QUIZ_OPTION_LETTERS[i] ?? i + 1}
+                            </span>
+                            <span className="min-w-0 flex-1 break-words">{option}</span>
+                            {correct ? (
+                              <Check
+                                className="size-4 shrink-0 text-emerald-600"
+                                aria-label="Alternativa correta"
+                              />
+                            ) : null}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                    {quiz.explanation ? (
+                      <p className="mt-3 rounded-xl bg-stone-50 p-3 text-xs leading-relaxed text-stone-600">
+                        <span className="font-semibold text-stone-700">Explicação: </span>
+                        {quiz.explanation}
+                      </p>
+                    ) : null}
+                  </div>
+                ))
+              )}
+
+              {formVisible ? (
+                <form
+                  className="flex flex-col gap-4 rounded-2xl border border-stone-200 bg-stone-50 p-4"
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    void handleSave()
+                  }}
+                >
+                  <p className="text-sm font-bold text-stone-900">
+                    {editingId ? 'Editar pergunta' : 'Nova pergunta'}
+                  </p>
+
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="quiz-prompt">Pergunta</Label>
+                    <Textarea
+                      id="quiz-prompt"
+                      rows={2}
+                      value={prompt}
+                      onChange={(event) => setPrompt(event.target.value)}
+                      placeholder="Ex.: O que define o escopo de um MVP?"
+                      aria-invalid={Boolean(formErrors.prompt)}
+                    />
+                    {formErrors.prompt ? (
+                      <p className="text-xs text-rose-600">{formErrors.prompt}</p>
+                    ) : null}
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Label>Alternativas — marque a correta</Label>
+                    <RadioGroup
+                      value={correctIndex === null ? '' : String(correctIndex)}
+                      onValueChange={(value) => setCorrectIndex(Number(value))}
+                      className="flex flex-col gap-2"
+                      aria-label="Marque a alternativa correta"
+                    >
+                      {options.map((option, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <RadioGroupItem
+                            value={String(i)}
+                            aria-label={`Marcar alternativa ${QUIZ_OPTION_LETTERS[i]} como correta`}
+                            className="shrink-0 border-stone-300 text-emerald-600"
+                          />
+                          <Input
+                            value={option}
+                            onChange={(event) =>
+                              setOptions((prev) =>
+                                prev.map((o, j) => (j === i ? event.target.value : o))
+                              )
+                            }
+                            placeholder={`Alternativa ${QUIZ_OPTION_LETTERS[i]}`}
+                            aria-label={`Alternativa ${QUIZ_OPTION_LETTERS[i]}`}
+                            className="min-w-0 flex-1"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 shrink-0 text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+                            aria-label={`Remover alternativa ${QUIZ_OPTION_LETTERS[i]}`}
+                            disabled={options.length <= 2}
+                            onClick={() => removeOption(i)}
+                          >
+                            <X className="size-3.5" aria-hidden />
+                          </Button>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full border-dashed"
+                      onClick={addOption}
+                      disabled={options.length >= 6}
+                    >
+                      <Plus className="size-4" aria-hidden /> Adicionar alternativa ({options.length}/6)
+                    </Button>
+                    {formErrors.options ? (
+                      <p className="text-xs text-rose-600">{formErrors.options}</p>
+                    ) : null}
+                    {formErrors.correctIndex ? (
+                      <p className="text-xs text-rose-600">{formErrors.correctIndex}</p>
+                    ) : null}
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="quiz-explanation">Explicação (opcional)</Label>
+                    <Input
+                      id="quiz-explanation"
+                      value={explanation}
+                      onChange={(event) => setExplanation(event.target.value)}
+                      placeholder="Exibida ao aluno após responder"
+                      autoComplete="off"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Aparece junto do resultado — certo ou errado — para reforçar o aprendizado.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="ghost" size="sm" onClick={cancelForm} disabled={saving}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={saving}
+                      className="bg-emerald-700 hover:bg-emerald-800"
+                    >
+                      {saving ? 'Salvando...' : 'Salvar pergunta'}
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full border-dashed"
+                  onClick={openCreate}
+                >
+                  <Plus className="size-4" aria-hidden /> Adicionar pergunta
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* AlertDialog: excluir pergunta do quiz */}
+        <AlertDialog
+          open={toDelete !== null}
+          onOpenChange={(next) => {
+            if (!next) setToDelete(null)
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir pergunta?</AlertDialogTitle>
+              <AlertDialogDescription>
+                &quot;{toDelete?.prompt}&quot; sai do quiz desta aula. O histórico de quem já respondeu é
+                mantido. Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-rose-600 text-white hover:bg-rose-700"
+                disabled={deleting}
+                onClick={(event) => {
+                  event.preventDefault()
+                  void handleDelete()
+                }}
+              >
+                {deleting ? 'Excluindo...' : 'Excluir'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   )

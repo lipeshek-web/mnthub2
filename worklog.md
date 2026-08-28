@@ -691,3 +691,126 @@ Stage Summary:
 - Bundle inicial muito menor: 12 chunks pesados (vídeo/PDF/WebRTC/dashboard/fontes/sonner) viraram dynamic imports carregados só na navegação
 - Landing transformada em página de conversão: hero com preview real do produto, prova social, features, FAQ e CTA duplo de audiência (aprender/ensinar)
 - Aprendizados: MultiEdit NÃO é atômico neste ambiente — edições sequenciais anteriores ao old_str que falha PERSISTEM; ao falhar, sempre re-listar o estado real do arquivo antes de continuar
+---
+Task ID: 9-c
+Agent: frontend-styling-expert
+Task: Aba "Quiz" na sala de aula (classroom.tsx) — trigger/tabs, badge violeta no header e componente LessonQuiz completo (responder, feedback, retry, persistido, gabarito do mentor)
+
+Work Log:
+- Lidos worklog.md (Tasks 5/6/8: auto-retry da sala, padrões visuais stone/emerald, aprendizados de grid mobile) e contratos: types.ts (QuizDTO com isMine/myAttempt, QuizAttemptResultDTO, CourseLessonDTO.quizCount), api.ts (listLessonQuizzes, answerQuiz), padrão dos irmãos LessonQuestions/LessonNotes no fim do arquivo
+- classroom.tsx (ÚNICO arquivo editado):
+  - Imports: +ListChecks, +Lightbulb, +XCircle (lucide) e +QuizDTO/QuizAttemptResultDTO (types) — sem duplicações
+  - Tabs do corpo da aula: novo trigger `quiz` (ListChecks h-4 + "Quiz (N)") renderizado somente quando currentLesson.quizCount > 0, entre Perguntas e Anotações; TabsContent correspondente monta <LessonQuiz key={currentLesson.id} lessonId user isOwner /> (remontagem por aula via key, igual LessonNotes)
+  - Header da aula: Badge violeta "bg-violet-100 text-violet-800" com ListChecks h-3 + "Quiz" quando quizCount > 0 (junto aos badges Ao vivo/Vídeo/Leitura/Concluída)
+  - LessonQuiz (padrão dos irmãos): GET api.listLessonQuizzes(lessonId, user.id) no mount; skeleton duplo h-40 no loading; erro → card inline border-dashed com AlertCircle rose + botão "Tentar novamente" (re-fetch); user null → card "Entre com uma conta..."; vazia → isOwner: convite curto para criar perguntas no painel / aluno: "O mentor ainda não publicou perguntas para esta aula." (border-dashed, estilo dos vazios)
+  - Card por quiz (rounded-2xl border bg-white p-5): eyebrow "PERGUNTA N" + prompt font-semibold text-stone-900; alternativas como Button variant="outline" (h-auto min-h-11 w-full justify-start rounded-xl, letra A/B/C/D em círculo h-6 w-6 bg-stone-100 text-xs font-bold) com radiogroup semântico (role="radiogroup" aria-label={prompt}, role="radio" + aria-checked por opção); textos longos quebram (whitespace-normal)
+  - Estados por quiz: (1) myAttempt persistido → escolha emerald-500/bg-emerald-50 (acerto) ou rose-300/bg-rose-50 (erro), badge "Você acertou" (emerald) ou "Respondeu — revise a explicação" (stone), interação desabilitada (aria-disabled + tabIndex -1 + pointer-events-none, sem opacity-50 para manter cores legíveis); (2) isMine (mentor dono) → gabarito: correta destacada + badge violeta "Gabarito" + explanation, sem botão de responder (evita 403 do backend); (3) aluno sem attempt → seleção única + "Responder" (h-10 rounded-full bg-emerald-700 hover:bg-emerald-800 font-bold, desabilitado sem seleção; "Verificando…" durante envio)
+  - Pós-POST answerQuiz: acerto → card verde border-emerald-200 bg-emerald-50/80 com CheckCircle2 "Isso! +N XP" (N quando xpAwarded>0) + toast.success("Você acertou! +N XP ⚡") e card travado; erro → card vermelho border-rose-200 bg-rose-50/80 com XCircle "Não foi dessa vez — a correta é: {opção}" + "Tentar de novo" (limpa feedback, mantém seleção editável — retake permitido) + toast.error("Resposta incorreta — veja a explicação."); correta revelada em emerald no estado de erro; explanation (da resposta ou do DTO) em bloco rounded-xl bg-stone-50 p-3 text-sm text-stone-600 com Lightbulb âmbar
+  - Rodapé: "X de Y respondidas · Z acertos" (text-xs text-stone-400); para o mentor dono mostra "N pergunta(s) · gabarito visível apenas para você"
+- Material/Perguntas/Anotações, modo foco, navegação, certificado e ContentsNav: intocados
+- Ambiente: dev server MORREU no meio da sessão (dev.log truncado em "✓ Starting...", porta 3000 recusava conexão; não fui eu — sessão paralela). Relancei com o script do projeto (`bun run dev`) desanexado via setsid; voltou a responder 200. Credenciais do demo: o e-mail correto é ana@demo.com (ana@test.com do briefing não existe no seed; senha demo123 OK)
+- Validação E2E além do previsto: criei 1 quiz via API como a mentora Marina (dona do curso "Do Zero a Product Manager") na aula 3 para testar o fluxo completo e APAGUEI ao final (estado restaurado: nenhuma aula com quizCount>0)
+
+Validation (tsc/lint/dev.log + agent-browser E2E):
+- bunx tsc --noEmit: limpo em src/ (só erros pré-existentes em examples/ e skills/); checagem filtrada sem nenhum erro em classroom.tsx
+- bun run lint: 0 erros / 0 warnings; dev.log sem erros de compilação (✓ Compiled, rotas 200)
+- Browser como Ana (aluna inscrita): aula com quiz → tab "Quiz (1)" + badge violeta no header; aba ausente em aula sem quiz (comportamento correto); radiogroup/role=radio/aria-checked + aria-label no grupo confirmados no snapshot; min-height 44px e rounded-xl confirmados via getComputedStyle
+- Fluxo completo: resposta errada (SWOT) → card vermelho "Não foi dessa vez — a correta é: RICE" + toast error + rodapé "1 de 1 respondidas · 0 acertos"; "Tentar de novo" limpa feedback mantendo seleção; resposta correta (RICE) → "Isso! +5 XP" + toast success + explanation + "1 de 1 respondidas · 1 acertos"; recarreguei a página → estado persistido do servidor (badge "Você acertou", RICE emerald, tudo desabilitado)
+- Mobile 390x844: sw=cw=390 (zero overflow horizontal) na aba Quiz; console sem erros (apenas logs HMR/Fast Refresh)
+
+Stage Summary:
+- Sala de aula ganhou a aba Quiz: trigger com contagem só em aulas com quizCount>0, badge violeta no header e LessonQuiz com correção no servidor (aluno nunca vê gabarito antes de responder), feedback verde/vermelho com XP, explicação do mentor, retry em erro, estado persistido entre sessões e visão de gabarito para o mentor dono
+- Acessibilidade radiogroup semântica e mobile sem overflow; nenhum outro recurso da sala foi alterado
+
+---
+Task ID: 9-f
+Agent: frontend-styling-expert
+Task: Card "Sua jornada de aprendizado" (XP/ofensiva/recorde/nível) no topo do dashboard do aluno
+
+Work Log:
+- Lidos worklog.md (Tasks 5/6/8 — lições de turbopack stale, grids mobile, dev server), dashboard.tsx (914 linhas — estrutura: header "Minhas sessões" → solicitações → Tabs Próximas/Meus cursos/Para avaliar/Histórico), api.ts (xpStats), types.ts (XpStatsDTO), helpers.ts (XP_LEVELS/levelFromXp), ui/progress.tsx, ui/card.tsx, /api/xp/route.ts e src/lib/xp.ts antes de codar
+- Descoberta de ambiente: /api/xp retornava 500 — `Unknown field 'xp'`: o schema Prisma JÁ declara xp/studyStreak/longestStreak/lastStudyDate e o db:push tinha rodado, mas o Prisma Client NÃO tinha sido regenerado (cliente in-memory do dev server era stale; singleton globalThis em db.ts impede hot-reload). Rodei `bun run db:generate` (sem editar código backend) e confirmei em processo fresco (bun -e) que o cliente novo lê os campos. O servidor rodando só passa a usar o cliente novo após restart do `bun run dev` — restart executado (mesmo comando, dev.log backup em dev.log.bak-9f); /api/xp passou a responder 200
+- dashboard.tsx (ÚNICO arquivo editado):
+  - Imports: Flame/Trophy/Zap (lucide), levelFromXp (helpers), XpStatsDTO (types)
+  - Estado hoisted no DashboardView: xpStats/xpFailed + useEffect próprio (fetch api.xpStats(userId) no mount, flag `alive` contra race no unmount; catch → xpFailed SEM toast/log — falha silenciosa por design)
+  - XpJourneyCard({stats, failed}): failed → return null (card nem renderiza); stats null → skeletons espelhando o layout (Skeleton); dados → card rounded-2xl border bg-white p-5 shadow-sm com role="group" aria-label="Progresso de gamificação" e tabular-nums herdado no root
+  - Header: ícone Flame em círculo bg-orange-100 text-orange-600 + título text-lg font-extrabold
+  - KPIs grid grid-cols-3 gap-3 sm:flex sm:gap-6 (itens min-w-0 sm:flex-1): XP total (Zap emerald, número text-xl sm:text-2xl font-extrabold), Ofensiva (Flame laranja quando streak>0, cinza stone-300 quando 0, label "dias seguidos"/"estude hoje!"), Recorde (Trophy amber-500 + longestStreak); labels text-xs text-stone-400; aria-labels por número
+  - Nível: "Nível atual: {label}" font-bold + Progress (progressPct, aria-label "% do caminho para o nível X") + "Faltam {xpToNext} XP para {next.label}"; next===null → "Nível máximo alcançado! 🏆" sem barra
+  - Micro-proof: "+10 XP por aula concluída · +5 por quiz acertado · +50 por curso completo" (text-xs text-stone-400, border-t stone-100)
+  - Posicionamento: primeiro card da área de conteúdo, logo após o header (acima de solicitações/Tabs) — topo da visão geral, visível em todas as tabs; nenhuma outra seção movida
+- Credenciais do enunciado: ana@test.com NÃO existe (login 401) — aluno demo real é ana@demo.com (senha demo123); E2E feito com ela
+
+Validation (agent-browser, sessão autenticada como ana@demo.com):
+- /api/xp → 200 {xp:5, streak:1, longestStreak:1, lastStudyDate:today} (XP pré-existente de quiz do dia; 0 também seria válido)
+- Card renderiza no dashboard com: "5 XP total", "1 dias seguidos" (Flame text-orange-500 ativo), "1 recorde", "Nível atual: Aprendiz", Progress indicator translateX(-95%) = 5% com aria-label "5% do caminho para o nível Explorador", "Faltam 95 XP para Explorador" (matemática do levelFromXp correta), micro-proof completo; role/aria/tabular-nums/rounded-2xl confirmados via DOM
+- Tabs intactas: Próximas(4)/Meus cursos(1)/Para avaliar(1)/Histórico(2); aba Meus cursos lista Minhas trilhas (29%) + curso (2/7 aulas); solicitações recebidas e BookingCards normais
+- Console sem erros (só logs HMR/Fast Refresh); rede: GET /api/xp 200; page errors vazio
+- Screenshots: tool-results/shot-26-dashboard-xp-desktop.png (1440x900) e shot-27-dashboard-xp-mobile.png (390x844); overflow horizontal ZERO em ambos (scrollWidth=clientWidth=1440 e 390)
+- bunx tsc --noEmit limpo (só erros pré-existentes fora src/); bun run lint 0/0; dev.log saudável com SELECT das colunas novas e GET /api/xp 200; dev server rodando na 3000 (restart documentado acima)
+
+Stage Summary:
+- Dashboard do aluno ganhou o card de gamificação "Sua jornada de aprendizado" (XP total, ofensiva com chama viva/apagada, recorde, nível com Progress até o próximo nível e micro-proof das regras de XP) — com skeleton, falha silenciosa em erro, a11y (role group + aria-labels + tabular-nums) e zero overflow em 390px/1440px
+- Ambiente corrigido no caminho: Prisma Client regenerado (db:generate faltava após o schema novo) e dev server reiniciado para carregá-lo — /api/xp saiu de 500 para 200; sem nenhuma edição em código backend
+- Demo: credencial correta do aluno é ana@demo.com/demo123 (ana@test.com do enunciado não existe)
+---
+Task ID: 9-d
+Agent: general-purpose
+Task: Botão "Quiz" por aula no LessonsManagerDialog + QuizManagerDialog completo (criar/editar/excluir perguntas) no painel do mentor (onboarding.tsx)
+
+Work Log:
+- Lidos worklog.md (Tasks 5/6/8, 9-c/9-f: padrões stone/emerald, quiz na sala de aula, armadilhas de credenciais demo) e contratos: types.ts (QuizDTO, CourseLessonDTO.quizCount), api.ts (listLessonQuizzes/createQuiz/updateQuiz/deleteQuiz), rotas backend (mensagens de erro reais para espelhar na validação client), ui/radio-group.tsx, ui/dialog.tsx e ui/button.tsx antes de codar
+- onboarding.tsx (ÚNICO arquivo editado):
+  - Imports: +ListChecks (lucide), +RadioGroup/RadioGroupItem (@/components/ui/radio-group), +QuizDTO (types) — sem duplicações
+  - LessonsManagerDialog: estado quizLesson/quizOpen + handleQuizOpenChange (ao fechar o quiz, refaz fetchLessons para atualizar o badge de contagem); novo botão por aula na linha (entre o Popover "mover tema" e o Trash de remover): ghost/size-icon size-8, ListChecks size-3.5 + badge emerald-600 absoluto (h-4, text-[10px] bold) com lesson.quizCount quando > 0, aria-label "Gerenciar quiz de {título}"; monta <QuizManagerDialog course lesson user={{id: userId}} open onOpenChange> condicional (padrão lessonsCourse)
+  - QuizManagerDialog (novo componente após LessonsManagerDialog, ~420 linhas): props { course, lesson, user: {id}, open, onOpenChange } (user só precisa do id para as APIs); GET listLessonQuizzes no open (flag active contra race, erro → toast + lista vazia); header "Quiz da aula" + descrição "{curso} · {aula} · N pergunta(s) · correção automática (+5 XP por acerto)"
+  - Lista: card rounded-2xl por pergunta (eyebrow "PERGUNTA N", prompt semibold, Editar/Excluir ghost size-8 com Pencil/Trash2 + aria-labels), alternativas em rounded-xl com letra A-F em círculo — correta em border-emerald-300 bg-emerald-50 + Check emerald com aria-label, explicação em bloco bg-stone-50
+  - Form único para criar/editar (toggle "Adicionar pergunta" dashed outline quando fechado): Textarea prompt, RadioGroup Radix com radio + Input por linha (placeholder "Alternativa A/B/C..."), botões add (disabled em 6) / remover (disabled em 2) — correctIndex reajusta ao remover (null se a correta foi removida), Input "Explicação (opcional)", "Salvar pergunta" (bg-emerald-700) via <form onSubmit>; validação client espelha o servidor (prompt ≥ 5, 2-6 alternativas preenchidas, correta marcada) — erros do servidor chegam via toast e têm prioridade
+  - Criar → api.createQuiz + toast 'Pergunta adicionada ao quiz' + refresh; Editar → form pré-preenchido + api.updateQuiz + toast 'Pergunta atualizada!' + refresh; Excluir → AlertDialog (padrão do projeto, botão rose) + api.deleteQuiz + toast 'Pergunta removida do quiz.' + refresh; loading → 2 Skeletons h-32 rounded-2xl; vazio → "Nenhuma pergunta ainda — crie a primeira para ajudar a fixar o aprendizado."
+  - DialogContent flex max-h-[85dvh] flex-col (tailwind-merge resolve grid→flex) + corpo min-h-0 flex-1 overflow-y-auto com scrollbar estilizada igual à lista de aulas
+  - Temas, anexos, tipo de aula, leitura e todo o resto do painel: intocados
+- Ajuste pós-E2E: no fluxo de EDITAR, o form não fechava após salvar (formOpen permanecia true) — adicionado setFormOpen(false) no branch de update, igualando o fluxo de criar; revalidado no browser
+- Ambiente: dev server NÃO reiniciado (200 na :3000 o tempo todo); E2E confirmou que carlos@mentoria.com do briefing NÃO existe (login falha) — mentor demo real é carlos@demo.com/demo123 (mesmo padrão do ana@test→ana@demo da Task 9-c)
+
+Validation (tsc/lint/dev.log + agent-browser E2E desktop 1440x900 e mobile 390x844):
+- bunx tsc --noEmit: limpo em src/ (só erros pré-existentes em examples/ e skills/); bun run lint: 0 erros / 0 warnings; dev.log saudável (GET/POST/DELETE de quizzes 200, sem ⨯; EADDRINUSE no log é histórico de restart anterior)
+- Desktop: login Carlos → Painel do mentor → Aulas do curso (9 aulas) → botão "Gerenciar quiz" presente em todas as linhas; diálogo abre com contagem no header e estado vazio correto
+- Validação client: salvar vazio exibe os 3 erros inline (prompt/alternativas/correta) sem tocar no servidor
+- Criar com 3 alternativas: radio A/B/C, "(3/6)" no botão add, remover desabilitado em 2; POST 200 → toast 'Pergunta adicionada ao quiz' capturado, header "1 pergunta · correção automática (+5 XP por acerto)", card na lista com a correta (C) em emerald + Check (getComputedStyle/DOM confirmado), badge emerald "1" no botão da aula (fetchLessons no close)
+- Editar: form 100% pré-preenchido (prompt, 3 opções, correta C marcada, explicação) → PATCH 200 → toast 'Pergunta atualizada!' → lista atualizada
+- Excluir: AlertDialog "Excluir pergunta?" com o prompt citado → DELETE 200 → toast 'Pergunta removida do quiz.' → estado vazio restaurado, header "0 perguntas", badge some
+- Mobile 390x844: docScrollW = docClientW = 390 (zero overflow horizontal) com o form aberto; diálogo 358px de largura; criar/excluir re-feitos no mobile com sucesso
+- Console sem erros de página; nenhuma requisição DELETE acidental; estado do demo restaurado (curso do Carlos sem quizzes ao final — pergunta de teste criada e excluída)
+
+Stage Summary:
+- Painel do mentor agora gerencia o quiz de cada aula: botão ListChecks com contagem emerald por aula, diálogo de quiz com lista (gabarito destacado), criação/edição com RadioGroup de correta que se reajusta ao remover alternativas, exclusão com AlertDialog, validação client alinhada ao servidor e toasts em todos os fluxos
+- Completa o ciclo com a Task 9-c: o mentor cria as perguntas no painel e o aluno responde na sala de aula com correção automática (+5 XP)
+- Credencial do mentor demo corrigida para referência futura: carlos@demo.com/demo123
+
+---
+Task ID: 9 (feature pack: quiz + gamificação XP/ofensiva)
+Agent: main (Z.ai Code) + frontend-styling-expert (9-c, 9-f) + general-purpose (9-d)
+Task: Implementar mais coisas de aprendizagem — quiz por aula (correção no servidor), gamificação XP + ofensiva de estudos com níveis, e integração em sala de aula/painel/dashboard; polimento visual leve
+
+Work Log:
+- SCHEMA (9-a): models Quiz (prompt/options JSON/correctIndex/explanation/order), QuizAttempt (@@unique quizId+userId, retake substitui), XpEvent (ledger anti-farm @@unique userId+kind+refId); User ganhou xp/studyStreak/longestStreak/lastStudyDate; Enrollment ganhou bonusAwarded/completedAt → db:push + regeneração do client (nota: singleton do db.ts exige restart do dev após gerar)
+- XP (src/lib/xp.ts NOVO): awardXp() com ledger create-catch-P2002 (skipDuplicates NÃO existe no SQLite); XP_LESSON=10, XP_QUIZ=5, XP_COURSE=50; ofensiva calculada no fuso America/Bahia (en-CA = YYYY-MM-DD), streak ativa se estudou hoje/ontem (activeStreak)
+- APIs NOVAS: GET/POST /api/lessons/[lessonId]/quizzes (acesso inscrito/dono; gabarito SÓ para o dono), PATCH/DELETE /api/quizzes/[id] (dono), POST /api/quizzes/[id]/attempt (correção no servidor — gabarito nunca vai ao cliente antes de responder; upsert + XP na 1ª correta), GET /api/xp?userId= (xp, streak ativa, recorde); PATCH /api/courses/[id]/enroll agora retorna { xpAwarded, courseCompleted } e concede XP de aula + bônus de 100% (guard bonusAwarded + completedAt)
+- CONTRATOS: types.ts (QuizDTO com correctIndex|null para aluno, QuizAttemptResultDTO, XpStatsDTO, CourseLessonDTO.quizCount); api.ts (listLessonQuizzes/createQuiz/updateQuiz/deleteQuiz/answerQuiz/xpStats); helpers.ts (XP_LEVELS Aprendiz→Mestre 0/100/250/500/1000 + levelFromXp com progresso); /api/courses/[id] inclui quizCount por aula
+- CLASSROOM (9-c, agente): aba "Quiz (N)" condicionada a quizCount>0, badge violeta no header da aula, componente LessonQuiz (radiogroup acessível role=radio/aria-checked, alternativa A-D com círculo, responder → feedback verde "+N XP"/vermelho com gabarito+explicação e retry, estado persistido do servidor travado após acerto, rodapé "X de Y · Z acertos", visão de gabarito para o dono); toast de XP ao concluir aula (res.xpAwarded)
+- PAINEL (9-d, agente): botão Quiz por aula no LessonsManagerDialog (badge emerald com contagem) + QuizManagerDialog completo: lista com correta destacada, criar/editar (prompt, 2-6 alternativas com RadioGroup, correctIndex reajusta ao remover, explicação opcional), excluir com AlertDialog, validação client+servidor, "N perguntas · correção automática (+5 XP por acerto)"
+- DASHBOARD (9-f, agente): card "Sua jornada de aprendizado" — 3 KPIs (XP total Zap emerald, ofensiva Flame laranja/estude hoje!, recorde Trophy amber), nível com Progress até o próximo ("Faltam N XP para X", Mestre = máximo 🏆), linha "+10 aula · +5 quiz · +50 curso"; skeleton + falha silenciosa; a11y role=group
+- POLIMENTO (9-h): pluralização "1 dia seguido"/"N dias seguidos" (visível + aria-label)
+- DEMO DATA: prisma/add-demo-quizzes.ts (one-off idempotente) — 6 perguntas reais de arquitetura nas aulas Bem-vindo/Camadas/Modelagem/Cache do curso do Carlos; Ana inscrita no curso de Arquitetura (one-off); prisma/seed.ts atualizado (helper course() aceita quiz[] por aula + cleanup quizAttempt/quiz/xpEvent) para re-seeds futuros
+
+Validation (browser E2E, agente + main, desktop 1440x900 + mobile 390x844):
+- Fluxo do aluno COMPLETO: login ana@demo.com → curso Arquitetura → sala de aula → aba Quiz(1) → respondeu ERRADO de propósito → card vermelho com gabarito + explicação + "Tentar de novo" ✓ → acertou → travado com "1 acertos" ✓ → Concluir aula → +10 XP (xp 10→20 no banco) + auto-avanço ✓ → aba Quiz(2) na aula seguinte ✓
+- Dashboard: card com 20 XP · 1 dia seguido · recorde 1 · Aprendiz 20% · "Faltam 80 XP para Explorador" ✓; mobile 390px sem overflow (sw=cw) ✓
+- Painel do mentor (9-d): criar/editar/excluir pergunta via UI com PATCH/DELETE 200 ✓ (pergunta de teste removida — demo limpo)
+- GET /api/xp 200; toggles retornam xpAwarded; bun run lint 0/0; bunx tsc limpo em src/; dev.log sem erros; console do browser limpo
+
+Stage Summary:
+- Aprendizagem agora tem CICLO COMPLETO: aula → quiz corrigido no servidor (anti-roubo de gabarito) → XP anti-farm via ledger → ofensiva diária por fuso → níveis com progresso → bônus ao concluir curso → certificado (já existente)
+- Mentores criam quizzes direto no painel (correção automática + explicação pedagógica por pergunta)
+- Alunos veem evolução no dashboard (jornada) e feedback imediato na sala de aula
+- Aprendizados: Prisma skipDuplicates não existe no SQLite (use create+catch P2002); regenerar client Prisma exige restart do dev server por causa do singleton globalThis; contas demo: ana@demo.com / carlos@demo.com (senha demo123)

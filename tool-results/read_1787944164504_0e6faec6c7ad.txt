@@ -1,0 +1,710 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+     4→     4→import {
+     5→     5→  AlertCircle,
+     6→     6→  ArrowLeft,
+     7→     7→  BookOpen,
+     8→     8→  Check,
+     9→     9→  CheckCircle2,
+    10→    10→  Clock,
+    11→    11→  ExternalLink,
+    12→    12→  FileText,
+    13→    13→  Folder,
+    14→    14→  Library,
+    15→    15→  Lock,
+    16→    16→  PlayCircle,
+    17→    17→  Radio,
+    18→    18→  UserRound,
+    19→    19→  Users,
+    20→    20→} from 'lucide-react'
+    21→    21→import { toast } from 'sonner'
+    22→    22→import { Badge } from '@/components/ui/badge'
+    23→    23→import { Button } from '@/components/ui/button'
+    24→    24→import { Card } from '@/components/ui/card'
+    25→    25→import { Progress } from '@/components/ui/progress'
+    26→    26→import { Skeleton } from '@/components/ui/skeleton'
+    27→    27→import { Avatar, Stars } from '@/components/platform/avatar'
+    28→    28→import { api } from '@/lib/api'
+    29→    29→import {
+    30→    30→  LEVEL_LABELS,
+    31→    31→  avatarGradient,
+    32→    32→  currencyBRL,
+    33→    33→  formatDayLabel,
+    34→    34→  formatTimeLabel,
+    35→    35→  formatTotalDuration,
+    36→    36→  toVideoEmbedUrl,
+    37→    37→} from '@/lib/helpers'
+    38→    38→import { loadTrackingScripts, trackEvent } from '@/lib/tracking'
+    39→    39→import { useAppStore } from '@/lib/store'
+    40→    40→import type { CourseDetailDTO, CourseLessonDTO } from '@/lib/types'
+    41→    41→import { cn } from '@/lib/utils'
+    42→    42→
+    43→    43→export function CourseView({ courseId }: { courseId: string }) {
+    44→    44→  const navigate = useAppStore((s) => s.navigate)
+    45→    45→  const user = useAppStore((s) => s.user)
+    46→    46→
+    47→    47→  const [data, setData] = useState<CourseDetailDTO | null>(null)
+    48→    48→  const [loading, setLoading] = useState(true)
+    49→    49→  const [error, setError] = useState<string | null>(null)
+    50→    50→
+    51→    51→  // Estado da inscrição (modo visitante)
+    52→    52→  const [enrolling, setEnrolling] = useState(false)
+    53→    53→
+    54→    54→  // Tracking (GA4/Meta Pixel do mentor + view_item) — uma única vez por curso/montagem
+    55→    55→  const trackedCourseRef = useRef<string | null>(null)
+    56→    56→
+    57→    57→  const fetchCourse = useCallback(async () => {
+    58→    58→    setLoading(true)
+    59→    59→    setError(null)
+    60→    60→    try {
+    61→    61→      const d = await api.getCourse(courseId, user?.id)
+    62→    62→      setData(d)
+    63→    63→    } catch (err) {
+    64→    64→      setError(err instanceof Error ? err.message : 'Não foi possível carregar o curso.')
+    65→    65→    } finally {
+    66→    66→      setLoading(false)
+    67→    67→    }
+    68→    68→  }, [courseId, user?.id])
+    69→    69→
+    70→    70→  useEffect(() => {
+    71→    71→    void fetchCourse()
+    72→    72→  }, [fetchCourse])
+    73→    73→
+    74→    74→  const lessons = useMemo<CourseLessonDTO[]>(
+    75→    75→    () => [...(data?.lessons ?? [])].sort((a, b) => a.order - b.order),
+    76→    76→    [data]
+    77→    77→  )
+    78→    78→
+    79→    79→  const course = data
+    80→    80→  const isEnrolled = course?.enrollment != null
+    81→    81→  const isOwner = Boolean(user && course && course.mentor.userId === user.id)
+    82→    82→
+    83→    83→  // Dispara view_item + injeta os pixels do mentor quando os dados do curso chegam
+    84→    84→  // (visitante ou inscrito), no máximo uma vez por curso por montagem.
+    85→    85→  useEffect(() => {
+    86→    86→    if (!course || trackedCourseRef.current === course.id) return
+    87→    87→    trackedCourseRef.current = course.id
+    88→    88→    loadTrackingScripts({
+    89→    89→      mentorGaId: course.mentor.tracking?.gaMeasurementId,
+    90→    90→      mentorPixelId: course.mentor.tracking?.metaPixelId,
+    91→    91→    })
+    92→    92→    trackEvent('view_item', {
+    93→    93→      mentorId: course.mentor.id,
+    94→    94→      courseId: course.id,
+    95→    95→      value: course.price || undefined,
+    96→    96→      contentName: course.title,
+    97→    97→    })
+    98→    98→  }, [course])
+    99→    99→
+   100→   100→  /* ---------- Inscrição (overview) ---------- */
+   101→   101→
+   102→   102→  const doEnroll = async () => {
+   103→   103→    if (!user || !course) return
+   104→   104→    setEnrolling(true)
+   105→   105→    try {
+   106→   106→      const res = await api.enrollCourse(course.id, user.id)
+   107→   107→      if (res.alreadyEnrolled) {
+   108→   108→        toast.info('Você já estava inscrito neste curso.')
+   109→   109→        // Busca novamente com o usuário: enrollment preenchido mostra o modo inscrito
+   110→   110→        const fresh = await api.getCourse(course.id, user.id)
+   111→   111→        setData(fresh)
+   112→   112→      } else {
+   113→   113→        toast.success('Inscrição realizada! Boa jornada 🎉')
+   114→   114→        await api.getCourse(course.id, user.id)
+   115→   115→        // Nova inscrição: entra direto na sala de aula
+   116→   116→        navigate({ name: 'classroom', courseId: course.id })
+   117→   117→      }
+   118→   118→    } catch (err) {
+   119→   119→      toast.error(err instanceof Error ? err.message : 'Erro ao realizar inscrição.')
+   120→   120→    } finally {
+   121→   121→      setEnrolling(false)
+   122→   122→    }
+   123→   123→  }
+   124→   124→
+   125→   125→  const handleEnrollClick = () => {
+   126→   126→    if (!user) {
+   127→   127→      toast.info('Entre com uma conta para se inscrever.')
+   128→   128→      navigate({ name: 'auth', mode: 'login' })
+   129→   129→      return
+   130→   130→    }
+   131→   131→    if (!course) return
+   132→   132→    if (course.price === 0) {
+   133→   133→      void doEnroll()
+   134→   134→    } else {
+   135→   135→      // Curso pago: fluxo completo de checkout (com atribuição e pixels carregados)
+   136→   136→      trackEvent('begin_checkout', {
+   137→   137→        mentorId: course.mentor.id,
+   138→   138→        courseId: course.id,
+   139→   139→        value: course.price || undefined,
+   140→   140→        contentName: course.title,
+   141→   141→      })
+   142→   142→      navigate({ name: 'checkout', courseId: course.id })
+   143→   143→    }
+   144→   144→  }
+   145→   145→
+   146→   146→  /* ---------- Renders auxiliares ---------- */
+   147→   147→
+   148→   148→  if (loading) {
+   149→   149→    return (
+   150→   150→      <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8" aria-busy="true">
+   151→   151→        <Skeleton className="h-9 w-24 rounded-full" />
+   152→   152→        <Skeleton className="mt-4 h-52 w-full rounded-2xl" />
+   153→   153→        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+   154→   154→          <div className="space-y-6 lg:col-span-2">
+   155→   155→            <Skeleton className="h-44 rounded-2xl" />
+   156→   156→            <Skeleton className="h-64 rounded-2xl" />
+   157→   157→          </div>
+   158→   158→          <Skeleton className="h-72 rounded-2xl" />
+   159→   159→        </div>
+   160→   160→        <p className="sr-only">Carregando curso…</p>
+   161→   161→      </div>
+   162→   162→    )
+   163→   163→  }
+   164→   164→
+   165→   165→  if (!course) {
+   166→   166→    return (
+   167→   167→      <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
+   168→   168→        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 px-6 py-14 text-center">
+   169→   169→          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50">
+   170→   170→            <AlertCircle aria-hidden className="h-7 w-7 text-rose-500" />
+   171→   171→          </span>
+   172→   172→          <p className="font-bold text-stone-900">Não foi possível carregar o curso</p>
+   173→   173→          <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+   174→   174→            {error ?? 'Curso não encontrado.'}
+   175→   175→          </p>
+   176→   176→          <Button variant="outline" className="rounded-full" onClick={() => void fetchCourse()}>
+   177→   177→            Tentar novamente
+   178→   178→          </Button>
+   179→   179→        </div>
+   180→   180→      </div>
+   181→   181→    )
+   182→   182→  }
+   183→   183→
+   184→   184→  if (isEnrolled || isOwner) {
+   185→   185→    const done = course.enrollment?.completedLessonIds.length ?? 0
+   186→   186→    const pct = course.lessonCount > 0 ? Math.round((done / course.lessonCount) * 100) : 0
+   187→   187→    return (
+   188→   188→      <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
+   189→   189→        <Button
+   190→   190→          variant="ghost"
+   191→   191→          onClick={() => navigate({ name: 'marketplace' })}
+   192→   192→          className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 hover:text-stone-900"
+   193→   193→        >
+   194→   194→          <ArrowLeft aria-hidden className="h-4 w-4" /> Voltar
+   195→   195→        </Button>
+   196→   196→
+   197→   197→        {/* Hero do aluno inscrito */}
+   198→   198→        <section
+   199→   199→          aria-label="Seu curso"
+   200→   200→          className="relative mt-2 overflow-hidden rounded-3xl bg-emerald-950 p-6 text-white sm:p-8"
+   201→   201→        >
+   202→   202→          <div aria-hidden className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl" />
+   203→   203→          <div aria-hidden className="absolute -bottom-24 left-10 h-48 w-48 rounded-full bg-teal-400/10 blur-3xl" />
+   204→   204→          <p className="relative inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">
+   205→   205→            {isOwner && !isEnrolled ? 'Seu curso' : 'Inscrição ativa'}
+   206→   206→          </p>
+   207→   207→          <h1 className="relative mt-2 max-w-2xl text-2xl font-extrabold tracking-tight sm:text-3xl">
+   208→   208→            {course.title}
+   209→   209→          </h1>
+   210→   210→          <p className="relative mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-emerald-100/80">
+   211→   211→            <span>por {course.mentor.name}</span>
+   212→   212→            <span aria-hidden>·</span>
+   213→   213→            <span>{course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'}</span>
+   214→   214→            <span aria-hidden>·</span>
+   215→   215→            <span>{formatTotalDuration(course.totalDurationMin)}</span>
+   216→   216→          </p>
+   217→   217→          <div className="relative mt-5 flex flex-wrap items-center gap-4">
+   218→   218→            <Button
+   219→   219→              size="lg"
+   220→   220→              onClick={() => navigate({ name: 'classroom', courseId: course.id })}
+   221→   221→              aria-label="Abrir a sala de aula"
+   222→   222→              className="h-12 rounded-full bg-white px-7 font-bold text-emerald-950 hover:bg-emerald-100"
+   223→   223→            >
+   224→   224→              <PlayCircle aria-hidden className="h-5 w-5" />
+   225→   225→              {done > 0 ? 'Continuar curso' : 'Começar agora'}
+   226→   226→            </Button>
+   227→   227→            <div className="min-w-40 flex-1 max-w-xs" aria-hidden>
+   228→   228→              <div className="flex items-center justify-between text-xs font-semibold text-emerald-100/80">
+   229→   229→                <span>Seu progresso</span>
+   230→   230→                <span className="tabular-nums">{pct}%</span>
+   231→   231→              </div>
+   232→   232→              <Progress
+   233→   233→                value={pct}
+   234→   234→                aria-label="Progresso do curso"
+   235→   235→                className="mt-1.5 h-2 bg-white/15 [&_[data-slot=progress-indicator]]:bg-emerald-400"
+   236→   236→              />
+   237→   237→              <p className="mt-1 text-[11px] text-emerald-100/60">
+   238→   238→                {done} de {course.lessonCount} {course.lessonCount === 1 ? 'aula concluída' : 'aulas concluídas'}
+   239→   239→              </p>
+   240→   240→            </div>
+   241→   241→          </div>
+   242→   242→        </section>
+   243→   243→
+   244→   244→        <OverviewContent
+   245→   245→          course={course}
+   246→   246→          lessons={lessons}
+   247→   247→          enrolling={false}
+   248→   248→          isLoggedIn={Boolean(user)}
+   249→   249→          enrolled
+   250→   250→          onContinue={() => navigate({ name: 'classroom', courseId: course.id })}
+   251→   251→          onEnrollClick={handleEnrollClick}
+   252→   252→          onLogin={() => navigate({ name: 'auth', mode: 'login' })}
+   253→   253→          onViewMentor={(mentorId) => navigate({ name: 'mentor', mentorId })}
+   254→   254→        />
+   255→   255→      </div>
+   256→   256→    )
+   257→   257→  }
+   258→   258→
+   259→   259→  return (
+   260→   260→    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
+   261→   261→      <Button
+   262→   262→        variant="ghost"
+   263→   263→        onClick={() => navigate({ name: 'marketplace' })}
+   264→   264→        className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 hover:text-stone-900"
+   265→   265→      >
+   266→   266→        <ArrowLeft aria-hidden className="h-4 w-4" /> Voltar
+   267→   267→      </Button>
+   268→   268→
+   269→   269→      <OverviewContent
+   270→   270→        course={course}
+   271→   271→        lessons={lessons}
+   272→   272→        enrolling={enrolling}
+   273→   273→        isLoggedIn={Boolean(user)}
+   274→   274→        onContinue={
+   275→   275→          course.enrollment || isOwner
+   276→   276→            ? () => navigate({ name: 'classroom', courseId: course.id })
+   277→   277→            : undefined
+   278→   278→        }
+   279→   279→        onEnrollClick={handleEnrollClick}
+   280→   280→        onLogin={() => navigate({ name: 'auth', mode: 'login' })}
+   281→   281→        onViewMentor={(mentorId) => navigate({ name: 'mentor', mentorId })}
+   282→   282→      />
+   283→   283→    </div>
+   284→   284→  )
+   285→   285→}
+   286→   286→
+   287→   287→/* ==================== MODO VISITANTE (overview) ==================== */
+   288→   288→
+   289→   289→function OverviewContent({
+   290→   290→  course,
+   291→   291→  lessons,
+   292→   292→  enrolling,
+   293→   293→  isLoggedIn,
+   294→   294→  enrolled = false,
+   295→   295→  onContinue,
+   296→   296→  onEnrollClick,
+   297→   297→  onLogin,
+   298→   298→  onViewMentor,
+   299→   299→}: {
+   300→   300→  course: CourseDetailDTO
+   301→   301→  lessons: CourseLessonDTO[]
+   302→   302→  enrolling: boolean
+   303→   303→  isLoggedIn: boolean
+   304→   304→  enrolled?: boolean
+   305→   305→  onContinue?: () => void
+   306→   306→  onEnrollClick: () => void
+   307→   307→  onLogin: () => void
+   308→   308→  onViewMentor: (mentorId: string) => void
+   309→   309→}) {
+   310→   310→  // Currículo agrupado por temas (em ordem); aulas sem tema → "Outros conteúdos" no fim
+   311→   311→  const themes = useMemo(
+   312→   312→    () => [...(course.themes ?? [])].sort((a, b) => a.order - b.order),
+   313→   313→    [course]
+   314→   314→  )
+   315→   315→  const curriculumGroups = useMemo(() => {
+   316→   316→    const byTheme = new Map<string, CourseLessonDTO[]>()
+   317→   317→    const loose: CourseLessonDTO[] = []
+   318→   318→    for (const lesson of lessons) {
+   319→   319→      if (lesson.themeId && themes.some((t) => t.id === lesson.themeId)) {
+   320→   320→        const bucket = byTheme.get(lesson.themeId) ?? []
+   321→   321→        bucket.push(lesson)
+   322→   322→        byTheme.set(lesson.themeId, bucket)
+   323→   323→      } else {
+   324→   324→        loose.push(lesson)
+   325→   325→      }
+   326→   326→    }
+   327→   327→    const groups: { key: string; title: string; lessons: CourseLessonDTO[] }[] = themes.map((t) => ({
+   328→   328→      key: t.id,
+   329→   329→      title: t.title,
+   330→   330→      lessons: byTheme.get(t.id) ?? [],
+   331→   331→    }))
+   332→   332→    if (loose.length > 0) groups.push({ key: 'none', title: 'Outros conteúdos', lessons: loose })
+   333→   333→    return groups
+   334→   334→  }, [lessons, themes])
+   335→   335→  return (
+   336→   336→    <>
+   337→   337→      {/* ---------- HERO (oculto no modo inscrito: já existe o hero de progresso) ---------- */}
+   338→   338→      {!enrolled && (
+   339→   339→      <section
+   340→   340→        aria-label={`Curso: ${course.title}`}
+   341→   341→        className="relative overflow-hidden rounded-2xl p-6 text-white sm:p-8"
+   342→   342→        style={avatarGradient(course.title)}
+   343→   343→      >
+   344→   344→        {course.coverUrl && (
+   345→   345→          <>
+   346→   346→            <img
+   347→   347→              src={course.coverUrl}
+   348→   348→              alt=""
+   349→   349→              aria-hidden
+   350→   350→              className="absolute inset-0 h-full w-full object-cover"
+   351→   351→            />
+   352→   352→            <div aria-hidden className="absolute inset-0 bg-stone-950/55" />
+   353→   353→          </>
+   354→   354→        )}
+   355→   355→        {!course.coverUrl && (
+   356→   356→          <Library aria-hidden className="pointer-events-none absolute -right-6 -top-10 h-48 w-48 text-white/15" />
+   357→   357→        )}
+   358→   358→        <div className="relative">
+   359→   359→          <div className="flex flex-wrap items-center gap-2">
+   360→   360→            <Badge className="rounded-full border-white/25 bg-white/15 text-white hover:bg-white/15">
+   361→   361→              {course.category}
+   362→   362→            </Badge>
+   363→   363→            <Badge className="rounded-full border-white/25 bg-stone-900/30 text-white hover:bg-stone-900/30">
+   364→   364→              {LEVEL_LABELS[course.level] ?? course.level}
+   365→   365→            </Badge>
+   366→   366→          </div>
+   367→   367→          <h1 className="mt-4 text-2xl font-extrabold tracking-tight sm:text-3xl">{course.title}</h1>
+   368→   368→          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/85 sm:text-[15px]">
+   369→   369→            {course.description}
+   370→   370→          </p>
+   371→   371→          <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/90">
+   372→   372→            <span className="inline-flex items-center gap-1.5">
+   373→   373→              <BookOpen aria-hidden className="h-4 w-4" />
+   374→   374→              {course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'}
+   375→   375→            </span>
+   376→   376→            {course.liveCount > 0 ? (
+   377→   377→              <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/25 px-2.5 py-0.5 font-semibold">
+   378→   378→                <Radio aria-hidden className="h-4 w-4" />
+   379→   379→                {course.liveCount} ao vivo
+   380→   380→              </span>
+   381→   381→            ) : null}
+   382→   382→            <span className="inline-flex items-center gap-1.5">
+   383→   383→              <Clock aria-hidden className="h-4 w-4" />
+   384→   384→              {formatTotalDuration(course.totalDurationMin)}
+   385→   385→            </span>
+   386→   386→            {course.mentorshipCount > 0 ? (
+   387→   387→              <span className="inline-flex items-center gap-1.5">
+   388→   388→                <UserRound aria-hidden className="h-4 w-4" />
+   389→   389→                {course.mentorshipCount} mentoria{course.mentorshipCount > 1 ? 's' : ''} 1:1
+   390→   390→              </span>
+   391→   391→            ) : null}
+   392→   392→            <span className="inline-flex items-center gap-1.5">
+   393→   393→              <Users aria-hidden className="h-4 w-4" />
+   394→   394→              {course.studentCount} {course.studentCount === 1 ? 'aluno' : 'alunos'}
+   395→   395→            </span>
+   396→   396→            <span className="font-extrabold">
+   397→   397→              {course.price === 0 ? 'Grátis' : currencyBRL(course.price)}
+   398→   398→            </span>
+   399→   399→          </div>
+   400→   400→        </div>
+   401→   401→      </section>
+   402→   402→      )}
+   403→   403→
+   404→   404→      {/* ---------- CONTEÚDO ---------- */}
+   405→   405→      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+   406→   406→        <div className="space-y-6 lg:col-span-2">
+   407→   407→          {/* O que você vai aprender */}
+   408→   408→          <section
+   409→   409→            aria-labelledby="aprender-title"
+   410→   410→            className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6"
+   411→   411→          >
+   412→   412→            <h2 id="aprender-title" className="text-lg font-extrabold tracking-tight text-stone-900">
+   413→   413→              O que você vai aprender
+   414→   414→            </h2>
+   415→   415→            {lessons.length > 0 ? (
+   416→   416→              <ul className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+   417→   417→                {lessons.slice(0, 6).map((lesson) => (
+   418→   418→                  <li key={lesson.id} className="flex items-start gap-2.5 text-sm text-stone-700">
+   419→   419→                    <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+   420→   420→                    <span className="leading-snug">{lesson.title}</span>
+   421→   421→                  </li>
+   422→   422→                ))}
+   423→   423→              </ul>
+   424→   424→            ) : (
+   425→   425→              <p className="mt-3 text-sm text-stone-400">
+   426→   426→                As aulas deste curso estão sendo preparadas.
+   427→   427→              </p>
+   428→   428→            )}
+   429→   429→          </section>
+   430→   430→
+   431→   431→          {/* Currículo */}
+   432→   432→          <section
+   433→   433→            aria-labelledby="curriculo-title"
+   434→   434→            className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6"
+   435→   435→          >
+   436→   436→            <div className="flex flex-wrap items-center justify-between gap-2">
+   437→   437→              <h2 id="curriculo-title" className="text-lg font-extrabold tracking-tight text-stone-900">
+   438→   438→                Currículo do curso
+   439→   439→              </h2>
+   440→   440→              {lessons.length > 0 && (
+   441→   441→                <span className="text-xs font-medium text-stone-400">
+   442→   442→                  {lessons.length} {lessons.length === 1 ? 'aula' : 'aulas'} ·{' '}
+   443→   443→                  {formatTotalDuration(course.totalDurationMin)}
+   444→   444→                </span>
+   445→   445→              )}
+   446→   446→            </div>
+   447→   447→            {themes.length > 0 ? (
+   448→   448→              <div className="mt-4 space-y-6">
+   449→   449→                {curriculumGroups.map((group, gi) => {
+   450→   450→                  const groupDuration = group.lessons.reduce((acc, l) => acc + l.durationMin, 0)
+   451→   451→                  return (
+   452→   452→                    <section key={group.key} aria-label={`Tema: ${group.title}`}>
+   453→   453→                      <header className="flex items-center gap-3">
+   454→   454→                        {group.key === 'none' ? (
+   455→   455→                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-stone-100">
+   456→   456→                            <Folder aria-hidden className="h-4 w-4 text-stone-500" />
+   457→   457→                          </span>
+   458→   458→                        ) : (
+   459→   459→                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-sm font-bold text-white">
+   460→   460→                            {gi + 1}
+   461→   461→                          </span>
+   462→   462→                        )}
+   463→   463→                        <div className="min-w-0 flex-1">
+   464→   464→                          <p className="truncate text-sm font-bold text-stone-900">{group.title}</p>
+   465→   465→                          <p className="text-xs text-stone-400">
+   466→   466→                            {group.lessons.length} {group.lessons.length === 1 ? 'aula' : 'aulas'} ·{' '}
+   467→   467→                            {formatTotalDuration(groupDuration)}
+   468→   468→                          </p>
+   469→   469→                        </div>
+   470→   470→                      </header>
+   471→   471→                      <ol className="mt-1 divide-y divide-stone-100">
+   472→   472→                        {group.lessons.map((lesson) => (
+   473→   473→                          <li key={lesson.id} className="flex items-center gap-3 py-3 first:pt-3 last:pb-0">
+   474→   474→                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100">
+   475→   475→                              {lesson.kind === 'LIVE' ? (
+   476→   476→                                <Radio aria-hidden className="h-3.5 w-3.5 text-rose-500" />
+   477→   477→                              ) : lesson.kind === 'READING' ? (
+   478→   478→                                <BookOpen aria-hidden className="h-3.5 w-3.5 text-amber-600" />
+   479→   479→                              ) : lesson.videoUrl ? (
+   480→   480→                                <PlayCircle aria-hidden className="h-3.5 w-3.5 text-stone-500" />
+   481→   481→                              ) : (
+   482→   482→                                <FileText aria-hidden className="h-3.5 w-3.5 text-stone-500" />
+   483→   483→                              )}
+   484→   484→                            </span>
+   485→   485→                            <div className="min-w-0 flex-1">
+   486→   486→                              <p className="truncate text-sm font-semibold text-stone-800">{lesson.title}</p>
+   487→   487→                              <p className="mt-0.5 line-clamp-1 text-xs text-stone-400">{lesson.description}</p>
+   488→   488→                            </div>
+   489→   489→                            {lesson.kind === 'LIVE' ? (
+   490→   490→                              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-600">
+   491→   491→                                <Radio aria-hidden className="h-3 w-3" />
+   492→   492→                                {lesson.startsAt
+   493→   493→                                  ? `${formatDayLabel(lesson.startsAt)} · ${formatTimeLabel(lesson.startsAt)}`
+   494→   494→                                  : 'Ao vivo'}
+   495→   495→                              </span>
+   496→   496→                            ) : null}
+   497→   497→                            {lesson.kind === 'READING' ? (
+   498→   498→                              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">
+   499→   499→                                <BookOpen aria-hidden className="h-3 w-3" />
+   500→   500→                                {lesson.reading?.kind === 'BOOK' ? 'Livro' : 'Artigo'}
+   501→   501→                              </span>
+   502→   502→                            ) : null}
+   503→   503→                            {lesson.kind !== 'LIVE' ? (
+   504→   504→                              <span className="hidden shrink-0 items-center gap-1 text-xs text-stone-400 sm:inline-flex">
+   505→   505→                                {lesson.durationMin} min
+   506→   506→                              </span>
+   507→   507→                            ) : null}
+   508→   508→                            <Lock
+   509→   509→                              aria-label="Aula bloqueada — inscreva-se para acessar"
+   510→   510→                              className="h-3.5 w-3.5 shrink-0 text-stone-300"
+   511→   511→                            />
+   512→   512→                          </li>
+   513→   513→                        ))}
+   514→   514→                      </ol>
+   515→   515→                    </section>
+   516→   516→                  )
+   517→   517→                })}
+   518→   518→              </div>
+   519→   519→            ) : (
+   520→   520→              <ol className="mt-3 divide-y divide-stone-100">
+   521→   521→                {lessons.map((lesson, i) => (
+   522→   522→                  <li key={lesson.id} className="flex items-center gap-3 py-3.5 first:pt-4 last:pb-0">
+   523→   523→                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-bold text-stone-500">
+   524→   524→                      {i + 1}
+   525→   525→                    </span>
+   526→   526→                    <div className="min-w-0 flex-1">
+   527→   527→                      <p className="truncate text-sm font-semibold text-stone-800">{lesson.title}</p>
+   528→   528→                      <p className="mt-0.5 line-clamp-1 text-xs text-stone-400">{lesson.description}</p>
+   529→   529→                    </div>
+   530→   530→                    {lesson.kind === 'LIVE' ? (
+   531→   531→                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-600">
+   532→   532→                        <Radio aria-hidden className="h-3 w-3" />
+   533→   533→                        {lesson.startsAt
+   534→   534→                          ? `${formatDayLabel(lesson.startsAt)} · ${formatTimeLabel(lesson.startsAt)}`
+   535→   535→                          : 'Ao vivo'}
+   536→   536→                      </span>
+   537→   537→                    ) : (
+   538→   538→                      <span className="hidden shrink-0 items-center gap-1 text-xs text-stone-400 sm:inline-flex">
+   539→   539→                        {lesson.kind === 'READING' ? (
+   540→   540→                          <BookOpen aria-hidden className="h-4 w-4 text-amber-500" />
+   541→   541→                        ) : lesson.videoUrl ? (
+   542→   542→                          <PlayCircle aria-hidden className="h-4 w-4" />
+   543→   543→                        ) : (
+   544→   544→                          <FileText aria-hidden className="h-4 w-4" />
+   545→   545→                        )}
+   546→   546→                        {lesson.durationMin} min
+   547→   547→                      </span>
+   548→   548→                    )}
+   549→   549→                    <Lock
+   550→   550→                      aria-label="Aula bloqueada — inscreva-se para acessar"
+   551→   551→                      className="h-3.5 w-3.5 shrink-0 text-stone-300"
+   552→   552→                    />
+   553→   553→                  </li>
+   554→   554→                ))}
+   555→   555→              </ol>
+   556→   556→            )}
+   557→   557→            {lessons.length === 0 && (
+   558→   558→              <p className="py-4 text-sm text-stone-400">Nenhuma aula publicada ainda.</p>
+   559→   559→            )}
+   560→   560→          </section>
+   561→   561→
+   562→   562→          {/* Mentor */}
+   563→   563→          <section
+   564→   564→            aria-label="Mentor do curso"
+   565→   565→            className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6"
+   566→   566→          >
+   567→   567→            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+   568→   568→              <Avatar name={course.mentor.name} src={course.mentor.avatarUrl} size="lg" />
+   569→   569→              <div className="min-w-0 flex-1">
+   570→   570→                <p className="font-bold text-stone-900">{course.mentor.name}</p>
+   571→   571→                <p className="line-clamp-1 text-sm text-stone-500">{course.mentor.headline}</p>
+   572→   572→                <div className="mt-1.5 flex items-center gap-1.5">
+   573→   573→                  <Stars rating={course.mentor.rating} size={13} />
+   574→   574→                  <span className="text-xs font-semibold text-stone-700">
+   575→   575→                    {course.mentor.rating > 0 ? course.mentor.rating.toFixed(1) : 'Novo'}
+   576→   576→                  </span>
+   577→   577→                  <span className="text-xs text-stone-400">
+   578→   578→                    ({course.mentor.reviewCount} {course.mentor.reviewCount === 1 ? 'avaliação' : 'avaliações'})
+   579→   579→                  </span>
+   580→   580→                </div>
+   581→   581→              </div>
+   582→   582→              <Button
+   583→   583→                variant="outline"
+   584→   584→                className="h-10 rounded-full font-semibold"
+   585→   585→                onClick={() => onViewMentor(course.mentor.id)}
+   586→   586→                aria-label={`Ver perfil de ${course.mentor.name}`}
+   587→   587→              >
+   588→   588→                Ver perfil
+   589→   589→              </Button>
+   590→   590→            </div>
+   591→   591→          </section>
+   592→   592→        </div>
+   593→   593→
+   594→   594→        {/* ---------- SIDEBAR DE INSCRIÇÃO ---------- */}
+   595→   595→        <Card className="self-start rounded-2xl border-stone-200 p-6 shadow-none lg:sticky lg:top-6">
+   596→   596→          {enrolled ? (
+   597→   597→            <>
+   598→   598→              <p className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-emerald-800">
+   599→   599→                <Check aria-hidden className="h-5 w-5" /> Você já está inscrito
+   600→   600→              </p>
+   601→   601→              <p className="mt-1 text-sm text-stone-500">
+   602→   602→                Todo o conteúdo, perguntas e anotações estão liberados na sua sala de aula.
+   603→   603→              </p>
+   604→   604→              <Button
+   605→   605→                className="mt-5 h-11 w-full rounded-full font-bold"
+   606→   606→                onClick={onContinue}
+   607→   607→                aria-label="Abrir a sala de aula"
+   608→   608→                disabled={!onContinue}
+   609→   609→              >
+   610→   610→                <PlayCircle aria-hidden className="h-4.5 w-4.5" /> Continuar curso
+   611→   611→              </Button>
+   612→   612→            </>
+   613→   613→          ) : (
+   614→   614→            <>
+   615→   615→              <p
+   616→   616→                className={cn(
+   617→   617→                  'text-3xl font-extrabold tracking-tight',
+   618→   618→                  course.price === 0 ? 'text-emerald-700' : 'text-stone-900'
+   619→   619→                )}
+   620→   620→              >
+   621→   621→                {course.price === 0 ? 'Grátis' : currencyBRL(course.price)}
+   622→   622→              </p>
+   623→   623→              <p className="mt-1 text-sm text-stone-500">
+   624→   624→                {course.price === 0
+   625→   625→                  ? 'Acesso gratuito a todo o conteúdo.'
+   626→   626→                  : 'Pagamento único, acesso ao conteúdo completo.'}
+   627→   627→              </p>
+   628→   628→
+   629→   629→              <Button
+   630→   630→                className="mt-5 h-11 w-full rounded-full font-bold"
+   631→   631→                onClick={onEnrollClick}
+   632→   632→                disabled={enrolling}
+   633→   633→              >
+   634→   634→                {enrolling
+   635→   635→                  ? 'Inscrevendo…'
+   636→   636→                  : course.price === 0
+   637→   637→                    ? 'Inscrever-se gratuitamente'
+   638→   638→                    : 'Inscrever-se no curso'}
+   639→   639→              </Button>
+   640→   640→          {enrolling ? (
+   641→   641→            <p className="mt-2 text-center text-xs text-stone-400">Processando inscrição…</p>
+   642→   642→          ) : !isLoggedIn ? (
+   643→   643→            <p className="mt-2 text-center text-xs text-stone-400">
+   644→   644→              Entre com uma conta para se inscrever.{' '}
+   645→   645→              <button
+   646→   646→                type="button"
+   647→   647→                onClick={onLogin}
+   648→   648→                className="font-semibold text-emerald-700 underline underline-offset-2 transition-colors hover:text-emerald-800"
+   649→   649→              >
+   650→   650→                Entrar
+   651→   651→              </button>
+   652→   652→            </p>
+   653→   653→          ) : null}
+   654→   654→
+   655→   655→          <ul className="mt-5 space-y-2.5 border-t border-stone-100 pt-5 text-sm text-stone-600">
+   656→   656→            <li className="flex items-start gap-2">
+   657→   657→              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+   658→   658→              {course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'} (
+   659→   659→              {formatTotalDuration(course.totalDurationMin)})
+   660→   660→            </li>
+   661→   661→            {course.liveCount > 0 ? (
+   662→   662→              <li className="flex items-start gap-2">
+   663→   663→                <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+   664→   664→                {course.liveCount} aula{course.liveCount > 1 ? 's' : ''} ao vivo com o mentor
+   665→   665→              </li>
+   666→   666→            ) : null}
+   667→   667→            {course.mentorshipCount > 0 ? (
+   668→   668→              <li className="flex items-start gap-2">
+   669→   669→                <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+   670→   670→                {course.mentorshipCount} {course.mentorshipCount > 1 ? 'sessões' : 'sessão'} de mentoria 1:1 inclusa{course.mentorshipCount > 1 ? 's' : ''}
+   671→   671→              </li>
+   672→   672→            ) : null}
+   673→   673→            <li className="flex items-start gap-2">
+   674→   674→              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+   675→   675→              Materiais e anexos para download
+   676→   676→            </li>
+   677→   677→            <li className="flex items-start gap-2">
+   678→   678→              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+   679→   679→              Perguntas respondidas pelo mentor
+   680→   680→            </li>
+   681→   681→          </ul>
+   682→   682→
+   683→   683→          {course.mentorshipCount > 0 ? (
+   684→   684→            <div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+   685→   685→              <p className="flex items-center gap-2 text-sm font-bold text-emerald-900">
+   686→   686→                <UserRound aria-hidden className="h-4 w-4 text-emerald-700" />
+   687→   687→                Mentorias 1:1 inclusas
+   688→   688→              </p>
+   689→   689→              <p className="mt-1 text-xs leading-relaxed text-emerald-800/80">
+   690→   690→                Este curso inclui {course.mentorshipCount} {course.mentorshipCount > 1 ? 'sessões' : 'sessão'} de
+   691→   691→                mentoria individual com {course.mentor.name.split(' ')[0]}. Agende após se inscrever.
+   692→   692→              </p>
+   693→   693→              <Button
+   694→   694→                variant="outline"
+   695→   695→                size="sm"
+   696→   696→                className="mt-3 w-full rounded-full border-emerald-200 bg-white font-semibold text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+   697→   697→                onClick={() => onViewMentor(course.mentor.id)}
+   698→   698→              >
+   699→   699→                Ver disponibilidade do mentor
+   700→   700→              </Button>
+   701→   701→            </div>
+   702→   702→          ) : null}
+   703→   703→            </>
+   704→   704→          )}
+   705→   705→        </Card>
+   706→   706→      </div>
+   707→   707→    </>
+   708→   708→  )
+   709→   709→}
+   710→   710→

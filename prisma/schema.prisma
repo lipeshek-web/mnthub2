@@ -14,6 +14,11 @@ model User {
   bio       String?
   avatarUrl String?
   passwordHash String? // scrypt "salt:hash" (null = conta demo antiga)
+  // Gamificação do aprendizado
+  xp            Int     @default(0)
+  studyStreak   Int     @default(0) // ofensiva atual (dias consecutivos com estudo)
+  longestStreak Int     @default(0)
+  lastStudyDate String? // "YYYY-MM-DD" do último dia com atividade de estudo
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -26,6 +31,8 @@ model User {
   trackEnrollments  TrackEnrollment[]
   lessonQuestions   LessonQuestion[]
   lessonNotes       LessonNote[]
+  quizAttempts      QuizAttempt[]
+  xpEvents          XpEvent[]
 }
 
 model MentorProfile {
@@ -203,6 +210,7 @@ model Lesson {
 
   questions LessonQuestion[]
   notes     LessonNote[]
+  quizzes   Quiz[]
 }
 
 model Enrollment {
@@ -212,9 +220,54 @@ model Enrollment {
   studentId          String
   student            User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
   completedLessonIds String   @default("[]") // JSON array de lesson ids
+  bonusAwarded       Boolean  @default(false) // XP de conclusão (100%) já concedido
+  completedAt        DateTime? // momento em que atingiu 100%
   createdAt          DateTime @default(now())
 
   @@unique([courseId, studentId])
+}
+
+/// Pergunta de quiz vinculada a uma aula (múltipla escolha, corrigida no servidor)
+model Quiz {
+  id           String   @id @default(cuid())
+  lessonId     String
+  lesson       Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  prompt       String
+  options      String   @default("[]") // JSON array de strings (2-6 alternativas)
+  correctIndex Int      @default(0)
+  explanation  String   @default("") // explicação exibida após responder
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  attempts QuizAttempt[]
+}
+
+/// Tentativa do aluno em um quiz (1 por usuário/quiz — retake substitui; XP só na 1ª correta)
+model QuizAttempt {
+  id            String   @id @default(cuid())
+  quizId        String
+  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  selectedIndex Int
+  correct       Boolean
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([quizId, userId])
+}
+
+/// Ledger de XP (garante 1 evento por usuário/tipo/referência — anti-farm)
+model XpEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String // LESSON | QUIZ | COURSE
+  refId     String // lessonId | quizId | courseId
+  amount    Int
+  createdAt DateTime @default(now())
+
+  @@unique([userId, kind, refId])
 }
 
 model LessonQuestion {

@@ -157,6 +157,7 @@ export interface CourseLessonDTO {
   hasAttachments: boolean
   durationMin: number
   questionCount: number
+  quizCount: number
   order: number
   themeId: string | null // tema (módulo) da aula — null = sem tema
   /** Aula de leitura (READING): artigo/livro da Biblioteca (pdfUrl/content só p/ inscritos) */
@@ -166,6 +167,34 @@ export interface CourseLessonDTO {
 export interface LessonAttachmentDTO {
   name: string
   url: string
+}
+
+/** Pergunta de quiz da aula. Para o aluno, correctIndex/explanation chegam null
+ *  (correção no servidor) e são revelados na resposta do attempt. */
+export interface QuizDTO {
+  id: string
+  prompt: string
+  options: string[]
+  correctIndex: number | null // mentor dono: gabarito; aluno: null até responder
+  explanation: string | null
+  order: number
+  isMine: boolean
+  myAttempt: { selectedIndex: number; correct: boolean } | null
+}
+
+export interface QuizAttemptResultDTO {
+  correct: boolean
+  correctIndex: number
+  explanation: string
+  xpAwarded: number
+}
+
+export interface XpStatsDTO {
+  xp: number
+  streak: number
+  longestStreak: number
+  lastStudyDate: string | null
+  today: string
 }
 
 export interface LessonQuestionDTO {

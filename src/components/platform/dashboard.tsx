@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Clock,
   Compass,
+  Flame,
   History,
   Inbox,
   Library,
@@ -16,10 +17,12 @@ import {
   PlayCircle,
   Route,
   Star,
+  Trophy,
   Users,
   Video,
   Wallet,
   X,
+  Zap,
   type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -57,6 +60,7 @@ import {
   STATUS_META,
   LEVEL_LABELS,
   addMinutesToTime,
+  levelFromXp,
   avatarGradient,
   currencyBRL,
   formatDayLabelLong,
@@ -66,7 +70,13 @@ import {
   relativeDayLabel,
 } from '@/lib/helpers'
 import { useAppStore } from '@/lib/store'
-import type { BookingDTO, EnrolledCourseDTO, MentorDetailDTO, MyTrackDTO } from '@/lib/types'
+import type {
+  BookingDTO,
+  EnrolledCourseDTO,
+  MentorDetailDTO,
+  MyTrackDTO,
+  XpStatsDTO,
+} from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 type ConfirmKind = 'reject' | 'complete' | 'cancel'
@@ -437,6 +447,124 @@ function BookingCard({
   )
 }
 
+// ---------- Card de gamificação (Sua jornada de aprendizado) ----------
+
+function XpJourneyCard({ stats, failed }: { stats: XpStatsDTO | null; failed: boolean }) {
+  // Falha silenciosa: em erro o card nem renderiza
+  if (failed) return null
+
+  const lv = stats ? levelFromXp(stats.xp) : null
+
+  return (
+    <div
+      role="group"
+      aria-label="Progresso de gamificação"
+      className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm tabular-nums"
+    >
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <span
+          aria-hidden
+          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600"
+        >
+          <Flame className="size-5" />
+        </span>
+        <h2 className="text-lg font-extrabold tracking-tight text-stone-900">
+          Sua jornada de aprendizado
+        </h2>
+      </div>
+
+      {/* KPIs: XP total · Ofensiva · Recorde */}
+      {stats ? (
+        <div className="mt-4 grid grid-cols-3 gap-3 sm:flex sm:gap-6">
+          <div className="min-w-0 sm:flex-1">
+            <div className="flex items-center gap-1.5">
+              <Zap className="size-4 shrink-0 text-emerald-600" aria-hidden />
+              <p className="text-xl font-extrabold text-stone-900 sm:text-2xl" aria-label={`${stats.xp} XP no total`}>
+                {stats.xp}
+              </p>
+            </div>
+            <p className="mt-0.5 truncate text-xs text-stone-400">XP total</p>
+          </div>
+
+          <div className="min-w-0 sm:flex-1">
+            <div className="flex items-center gap-1.5">
+              <Flame
+                className={cn('size-4 shrink-0', stats.streak > 0 ? 'text-orange-500' : 'text-stone-300')}
+                aria-hidden
+              />
+              <p
+                className="text-xl font-extrabold text-stone-900 sm:text-2xl"
+                aria-label={`${stats.streak} ${stats.streak === 1 ? 'dia seguido' : 'dias seguidos'}`}
+              >
+                {stats.streak}
+              </p>
+            </div>
+            <p className="mt-0.5 truncate text-xs text-stone-400">
+              {stats.streak > 0 ? (stats.streak === 1 ? 'dia seguido' : 'dias seguidos') : 'estude hoje!'}
+            </p>
+          </div>
+
+          <div className="min-w-0 sm:flex-1">
+            <div className="flex items-center gap-1.5">
+              <Trophy className="size-4 shrink-0 text-amber-500" aria-hidden />
+              <p
+                className="text-xl font-extrabold text-stone-900 sm:text-2xl"
+                aria-label={`recorde de ${stats.longestStreak} ${stats.longestStreak === 1 ? 'dia seguido' : 'dias seguidos'}`}
+              >
+                {stats.longestStreak}
+              </p>
+            </div>
+            <p className="mt-0.5 truncate text-xs text-stone-400">recorde</p>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-4 grid grid-cols-3 gap-3 sm:flex sm:gap-6">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="min-w-0 sm:flex-1">
+              <Skeleton className="h-7 w-16 max-w-full" />
+              <Skeleton className="mt-1.5 h-3 w-20 max-w-full" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Nível atual e progresso até o próximo */}
+      {lv ? (
+        <div className="mt-5">
+          <p className="text-sm font-bold text-stone-900">Nível atual: {lv.level.label}</p>
+          {lv.next ? (
+            <>
+              <Progress
+                value={lv.progressPct}
+                aria-label={`${lv.progressPct}% do caminho para o nível ${lv.next.label}`}
+                className="mt-2 h-2"
+              />
+              <p className="mt-1.5 text-xs text-stone-400">
+                Faltam <span className="font-semibold text-stone-500">{lv.xpToNext}</span> XP para{' '}
+                {lv.next.label}
+              </p>
+            </>
+          ) : (
+            <p className="mt-2 text-xs font-semibold text-amber-600">Nível máximo alcançado! 🏆</p>
+          )}
+        </div>
+      ) : (
+        <div className="mt-5">
+          <Skeleton className="h-4 w-44 max-w-full" />
+          <Skeleton className="mt-2.5 h-2 w-full" />
+          <Skeleton className="mt-3 h-3 w-64 max-w-full" />
+        </div>
+      )}
+
+      {/* Micro-proof: como ganhar XP */}
+      <p className="mt-3 border-t border-stone-100 pt-3 text-xs text-stone-400">
+        +10 XP por aula concluída · +5 por quiz acertado · +50 por curso completo
+      </p>
+    </div>
+  )
+}
+
 // ---------- View principal ----------
 
 export default function DashboardView() {
@@ -448,6 +576,8 @@ export default function DashboardView() {
   const [mentorProfile, setMentorProfile] = useState<MentorDetailDTO | null>(null)
   const [enrollments, setEnrollments] = useState<EnrolledCourseDTO[]>([])
   const [myTracks, setMyTracks] = useState<MyTrackDTO[]>([])
+  const [xpStats, setXpStats] = useState<XpStatsDTO | null>(null)
+  const [xpFailed, setXpFailed] = useState(false)
   const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<string | null>(null)
 
@@ -480,6 +610,23 @@ export default function DashboardView() {
     setLoading(true)
     void refetch()
   }, [userId, refetch])
+
+  // Gamificação: XP, ofensiva e recorde (fetch no mount; falha silenciosa esconde o card)
+  useEffect(() => {
+    if (!userId) return
+    let alive = true
+    api
+      .xpStats(userId)
+      .then((res) => {
+        if (alive) setXpStats(res)
+      })
+      .catch(() => {
+        if (alive) setXpFailed(true)
+      })
+    return () => {
+      alive = false
+    }
+  }, [userId])
 
   const runAction = useCallback(
     async (booking: BookingDTO, action: 'confirm' | 'cancel' | 'complete', successMsg: string) => {
@@ -629,6 +776,8 @@ export default function DashboardView() {
           <Compass className="size-4" aria-hidden /> Explorar mentores
         </Button>
       </header>
+
+      <XpJourneyCard stats={xpStats} failed={xpFailed} />
 
       {pendingRequests.length > 0 ? (
         <Card className="border-amber-300 bg-amber-50/70">

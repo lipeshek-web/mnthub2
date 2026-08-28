@@ -25,6 +25,9 @@ async function main() {
   await db.track.deleteMany()
   await db.lessonQuestion.deleteMany()
   await db.lessonNote.deleteMany()
+  await db.quizAttempt.deleteMany()
+  await db.quiz.deleteMany()
+  await db.xpEvent.deleteMany()
   await db.lesson.deleteMany()
   await db.course.deleteMany()
   await db.review.deleteMany()
@@ -257,6 +260,7 @@ async function main() {
       startsAt?: string
       meetingUrl?: string
       attachments?: { name: string; url: string }[]
+      quiz?: { prompt: string; options: string[]; correctIndex: number; explanation: string }[]
     }[]
   ) => {
     const c = await db.course.create({
@@ -265,7 +269,7 @@ async function main() {
     for (let i = 0; i < lessons.length; i++) {
       const l = lessons[i]
       const kind = l.kind ?? (l.videoUrl ? 'RECORDED' : 'TEXT')
-      await db.lesson.create({
+      const created = await db.lesson.create({
         data: {
           courseId: c.id,
           title: l.title,
@@ -280,6 +284,21 @@ async function main() {
           order: i + 1,
         },
       })
+      if (l.quiz && l.quiz.length > 0) {
+        for (let q = 0; q < l.quiz.length; q++) {
+          const item = l.quiz[q]
+          await db.quiz.create({
+            data: {
+              lessonId: created.id,
+              prompt: item.prompt,
+              options: JSON.stringify(item.options),
+              correctIndex: item.correctIndex,
+              explanation: item.explanation,
+              order: q + 1,
+            },
+          })
+        }
+      }
     }
     return c
   }
@@ -303,6 +322,20 @@ async function main() {
         durationMin: 5,
         content:
           'Bem-vindo!\n\nEste curso nasceu das mentorias 1:1 que eu faço há anos. Percebi que 80% das dúvidas de engenharia giram em torno do mesmo tema: como organizar código para que ele continue crescendo sem virar um monstro.\n\nO formato é simples: cada aula traz um princípio, um exemplo real e um checklist para você aplicar no seu projeto ainda hoje. Recomendo fazer uma aula por dia e aplicar antes de avançar.\n\nPré-requisitos: lógica de programação sólida e alguma experiência com qualquer linguagem (os exemplos usam TypeScript/React, mas os conceitos são universais).\n\nBons estudos — e me conte no mural como está indo!',
+        quiz: [
+          {
+            prompt: 'Como aproveitar melhor este curso?',
+            options: [
+              'Assistir tudo em 2x sem praticar',
+              'Aplicar o checklist de cada aula num projeto real seu',
+              'Pular direto para o encerramento',
+              'Fazer só as aulas em vídeo',
+            ],
+            correctIndex: 1,
+            explanation:
+              'Arquitetura se aprende aplicando: use o checklist de cada aula para revisar um projeto seu — e traga dúvidas para a office hour ao vivo.',
+          },
+        ],
       },
       {
         title: 'Camadas e fronteiras: organizando um app real',
@@ -314,6 +347,32 @@ async function main() {
         ],
         content:
           'O problema de quase todo projeto: tudo misturado\n\nVocê abre o projeto e o componente React chama a API, formata moeda, decide regras de negócio e salva no cache — tudo na mesma função. Funciona... até a segunda tela, o segundo dev ou o segundo ano.\n\nA solução: 4 camadas com responsabilidades claras\n\n1. UI (interface): componentes, telas, estados visuais. Não sabe nada sobre banco de dados ou regras de negócio — só exibe e coleta informação.\n2. Aplicação (use cases): orquestra fluxos. "Criar pedido" é um caso de uso: valida, chama o domínio, persiste, dispara efeitos. É a camada mais importante e a mais esquecida.\n3. Domínio: as regras que fazem seu negócio ser seu negócio. Cálculo de preço, status possíveis de um pedido, invariantes. Puro, sem dependências de framework.\n4. Infraestrutura: HTTP, banco de dados, filas, cache. Detalhe, não protagonista.\n\nA regra de ouro\n\nDependências apontam para dentro: UI → Aplicação → Domínio, e a infraestrutura é plugada na aplicação. O domínio nunca importa React nem o SDK do banco.\n\nChecklist para aplicar hoje\n\n• Escolha UMA regra de negócio que vive espalhada e centralize-a em um módulo próprio.\n• Crie uma pasta de "services" ou "use cases" e mova a orquestração para lá.\n• Seu componente ficou só com display e chamada ao use case? Perfeito.\n\nNa próxima aula, refatoramos um app real gravado ao vivo.',
+        quiz: [
+          {
+            prompt: 'Qual é o objetivo principal de separar um app em camadas?',
+            options: [
+              'Deixar o código com mais arquivos',
+              'Isolar responsabilidades e reduzir o impacto de mudanças',
+              'Acelerar o build do frontend',
+              'Facilitar a contratação de devs',
+            ],
+            correctIndex: 1,
+            explanation:
+              'Camadas isolam responsabilidades: quando uma regra muda, a mudança fica contida na camada certa — sem vazar para UI e infraestrutura.',
+          },
+          {
+            prompt: 'Numa arquitetura em camadas, a regra de negócio pura deve depender de…',
+            options: [
+              'do framework de UI (React)',
+              'do banco de dados (SQL)',
+              'de nada externo — só de suas próprias interfaces',
+              'da API de pagamento',
+            ],
+            correctIndex: 2,
+            explanation:
+              'Domínio puro não conhece frameworks, banco nem APIs externas. As dependências apontam PARA dentro (dependência de abstrações).',
+          },
+        ],
       },
       {
         title: 'Refatoração ao vivo: do caos à arquitetura limpa',
@@ -327,6 +386,32 @@ async function main() {
         durationMin: 25,
         content:
           'Antes do código: a linguagem\n\nUm dos sinais mais claros de arquitetura saudável é o time conversar usando as mesmas palavras do código. Se o comercial fala "reserva" e o código tem "BookingEntityV2", algo está errado.\n\nEntidades e invariantes\n\nUma entidade tem identidade e regras que devem sempre valer (invariantes). Um pedido não pode existir sem cliente; uma matrícula não pode ser para um curso despublicado. Coloque essas regras NO ENTIDADE ou no caso de uso — nunca espalhadas em ifs pela UI.\n\nCasos de uso: os verbos do sistema\n\nCada caso de uso é uma intenção: InscreverAluno, CancelarAgendamento, PublicarCurso. Nomeie como o negócio nomeia. Um caso de uso:\n\n1. Valida entrada (dados fazem sentido?).\n2. Aplica regras de negócio (é permitido?).\n3. Executa efeitos (persistir, notificar).\n4. Retorna um resultado claro (sucesso ou erro de negócio — não stack trace cru).\n\nExercício\n\nPegue 3 telas do seu sistema e escreva, em português, quais casos de uso elas chamam. Se uma tela chama 7 coisas diferentes, ela provavelmente esconde dois casos de uso que merecem nomes próprios.',
+        quiz: [
+          {
+            prompt: 'O que é um "invariante" na modelagem de domínio?',
+            options: [
+              'Uma configuração que nunca muda no deploy',
+              'Uma regra que deve ser sempre verdadeira para o estado ser válido',
+              'Uma variável de ambiente',
+              'Um tipo de teste automatizado',
+            ],
+            correctIndex: 1,
+            explanation:
+              'Invariantes são regras que o domínio garante em toda operação (ex.: "toda sessão tem preço >= 0"). Elas definem o que é um estado válido.',
+          },
+          {
+            prompt: 'Um caso de uso (application service) normalmente…',
+            options: [
+              'renderiza componentes de UI',
+              'orquestra domínio e infraestrutura para completar uma ação do usuário',
+              'define o schema do banco',
+              'substitui os testes unitários',
+            ],
+            correctIndex: 1,
+            explanation:
+              'O caso de uso coordena a operação: valida entrada, aciona o domínio e usa a infraestrutura (repositórios, serviços) — sem lógica de negócio própria.',
+          },
+        ],
       },
       {
         title: 'Cache e performance no frontend sem mágica',
@@ -334,6 +419,20 @@ async function main() {
         durationMin: 18,
         content:
           'Performance é arquitetura\n\nGrande parte dos problemas de performance que vejo em mentorias não é algoritmo — é dados sendo buscados e processados mais vezes do que deveriam.\n\nAs 4 camadas de cache que uso\n\n1. Memoização local (useMemo/chave de dependência): para cálculos derivados na renderização.\n2. Cache de estado do servidor (TanStack Query, SWR): deduplica pedidos, mantém dados "frescos por tempo X" e resolve revalidação. É o maior ganho por linha de código do frontend moderno.\n3. HTTP cache: cabeçalhos no backend (Cache-Control, ETag). Muitas equipes ignoram o quanto o browser já ajudaria.\n4. CDN/edge para estáticos: resolvido por padrão na maioria das hospedagens — confira.\n\nInvalidação: a parte difícil\n\nRegra prática: invalide por intenção, não por URL. Quando o usuário publica um comentário, invalide "lista de comentários deste post" — não espere o TTL. Bibliotecas como TanStack Query fazem isso com query keys bem desenhadas: hierárquicas, previsíveis, fáceis de invalidar em lote.\n\nArmadilhas\n\n• Cachear dados que mudam com o contexto do usuário (permissões) em cache global.\n• estados de carregamento sem esqueleto: cache resolve dados, não percepção. Adicione skeletons.\n• TTL infinito "porque nunca muda" — tudo muda.\n\nNa aula final: um checklist para fechar o ciclo.',
+        quiz: [
+          {
+            prompt: 'Qual é a estratégia de cache mais "barata" e que deve vir primeiro?',
+            options: [
+              'Redis cluster',
+              'Memoização de cálculos no cliente',
+              'CDN para arquivos estáticos',
+              'Réplica de banco de dados',
+            ],
+            correctIndex: 2,
+            explanation:
+              'Para assets estáticos, a CDN/HTTP cache é a camada mais barata: evita a requisição inteira. Memoização ajuda em cálculos repetidos no cliente.',
+          },
+        ],
       },
       {
         title: 'Encerramento: checklist e próximos passos',

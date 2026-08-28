@@ -23,7 +23,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         lessons: {
           orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
           include: {
-            _count: { select: { questions: true } },
+            _count: { select: { questions: true, quizzes: true } },
             libraryItem: {
               select: { id: true, title: true, kind: true, pdfUrl: true, content: true },
             },
@@ -126,6 +126,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
           hasAttachments: attachments.length > 0,
           durationMin: l.durationMin,
           questionCount: l._count.questions,
+          quizCount: l._count.quizzes,
           order: l.order,
           themeId: l.themeId,
           // Leitura (artigo/livro da Biblioteca): pdfUrl/content só para inscritos ou dono

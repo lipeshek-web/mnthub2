@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { awardXp, XP_COURSE, XP_LESSON } from '@/lib/xp'
 
 export const dynamic = 'force-dynamic'
 
@@ -64,7 +65,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       completed = []
     }
 
-    const next = completed.includes(lessonId)
+    const wasCompleted = completed.includes(lessonId)
+    const next = wasCompleted
       ? completed.filter((x) => x !== lessonId)
       : [...completed, lessonId]
 
@@ -73,7 +75,27 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       data: { completedLessonIds: JSON.stringify(next) },
     })
 
-    return NextResponse.json({ completedLessonIds: next })
+    // Gamificação: XP por aula concluída (ledger anti-farm) + bônus ao fechar 100%
+    let xpAwarded = 0
+    let courseCompleted = false
+    if (!wasCompleted) {
+      xpAwarded = await awardXp(userId, 'LESSON', lessonId, XP_LESSON)
+      const totalLessons = await db.lesson.count({ where: { courseId: id } })
+      if (totalLessons > 0 && next.length >= totalLessons) {
+        courseCompleted = true
+        const enrData: { completedAt: Date; bonusAwarded?: boolean } = { completedAt: new Date() }
+        if (!enrollment.bonusAwarded) {
+          const bonus = await awardXp(userId, 'COURSE', id, XP_COURSE)
+          if (bonus > 0) {
+            enrData.bonusAwarded = true
+            xpAwarded += bonus
+          }
+        }
+        await db.enrollment.update({ where: { id: enrollment.id }, data: enrData })
+      }
+    }
+
+    return NextResponse.json({ completedLessonIds: next, xpAwarded, courseCompleted })
   } catch (err) {
     console.error('PATCH /api/courses/[id]/enroll', err)
     return NextResponse.json({ error: 'Erro ao atualizar progresso' }, { status: 500 })

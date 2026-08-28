@@ -251,3 +251,38 @@ export const LESSON_KIND_LABELS: Record<string, string> = {
   LIVE: 'Ao vivo',
   READING: 'Artigo/Livro',
 }
+
+// ---------- Gamificação (XP e níveis) ----------
+
+export interface XpLevel {
+  label: string
+  minXp: number
+}
+
+/** Níveis do aprendizado por XP acumulado */
+export const XP_LEVELS: XpLevel[] = [
+  { label: 'Aprendiz', minXp: 0 },
+  { label: 'Explorador', minXp: 100 },
+  { label: 'Dedicado', minXp: 250 },
+  { label: 'Especialista', minXp: 500 },
+  { label: 'Mestre', minXp: 1000 },
+]
+
+/** Nível atual + progresso (0-100) até o próximo — XP máximo dos níveis chega ao fim */
+export function levelFromXp(xp: number): {
+  level: XpLevel
+  levelIndex: number
+  next: XpLevel | null
+  progressPct: number
+  xpToNext: number
+} {
+  let idx = 0
+  for (let i = 0; i < XP_LEVELS.length; i++) {
+    if (xp >= XP_LEVELS[i].minXp) idx = i
+  }
+  const level = XP_LEVELS[idx]
+  const next = idx + 1 < XP_LEVELS.length ? XP_LEVELS[idx + 1] : null
+  const span = next ? next.minXp - level.minXp : 1
+  const progressPct = next ? Math.min(100, Math.round(((xp - level.minXp) / span) * 100)) : 100
+  return { level, levelIndex: idx, next, progressPct, xpToNext: next ? next.minXp - xp : 0 }
+}

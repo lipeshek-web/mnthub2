@@ -19,6 +19,8 @@ import {
   Folder,
   GraduationCap,
   Library,
+  Lightbulb,
+  ListChecks,
   Lock,
   Maximize2,
   MessageCircle,
@@ -32,6 +34,7 @@ import {
   Send,
   Trash2,
   Users,
+  XCircle,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -67,6 +70,8 @@ import type {
   CourseLessonDTO,
   CourseThemeDTO,
   LessonQuestionDTO,
+  QuizAttemptResultDTO,
+  QuizDTO,
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -254,7 +259,10 @@ export function ClassroomView({ courseId }: { courseId: string }) {
       })
       const nowCompleted = res.completedLessonIds.includes(currentLesson.id)
       setCompletedIds(res.completedLessonIds)
-      if (nowCompleted && res.completedLessonIds.length === orderedLessons.length) {
+      if (res.xpAwarded > 0) {
+        toast.success(`+${res.xpAwarded} XP de estudo ⚡`)
+      }
+      if (nowCompleted && res.courseCompleted) {
         toast.success('Curso concluído! Parabéns 🎉')
       } else if (nowCompleted) {
         toast.success('Aula marcada como concluída.')
@@ -491,6 +499,11 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                       Leitura
                     </Badge>
                   )}
+                  {currentLesson.quizCount > 0 ? (
+                    <Badge className="border-transparent bg-violet-100 text-violet-800">
+                      <ListChecks aria-hidden className="h-3 w-3" /> Quiz
+                    </Badge>
+                  ) : null}
                   {completedIds.includes(currentLesson.id) && (
                     <Badge className="border-transparent bg-emerald-100 text-emerald-800">
                       <Check aria-hidden className="h-3 w-3" /> Concluída
@@ -543,6 +556,12 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                       Perguntas
                       {currentLesson.questionCount > 0 ? ` (${currentLesson.questionCount})` : ''}
                     </TabsTrigger>
+                    {currentLesson.quizCount > 0 ? (
+                      <TabsTrigger value="quiz" className="rounded-full">
+                        <ListChecks aria-hidden className="h-4 w-4" />
+                        Quiz ({currentLesson.quizCount})
+                      </TabsTrigger>
+                    ) : null}
                     <TabsTrigger value="notes" className="rounded-full">
                       <PencilLine aria-hidden className="h-4 w-4" />
                       <span className="hidden sm:inline">Anotações</span>
@@ -609,6 +628,17 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                       user={user}
                     />
                   </TabsContent>
+
+                  {currentLesson.quizCount > 0 ? (
+                    <TabsContent value="quiz" className="mt-4">
+                      <LessonQuiz
+                        key={currentLesson.id}
+                        lessonId={currentLesson.id}
+                        user={user}
+                        isOwner={isOwner}
+                      />
+                    </TabsContent>
+                  ) : null}
 
                   <TabsContent value="notes" className="mt-4">
                     <LessonNotes
@@ -1572,6 +1602,318 @@ function LessonNotes({
           <FileDown aria-hidden className="h-4 w-4" /> Baixar .txt
         </Button>
       </div>
+    </div>
+  )
+}
+
+/* ==================== QUIZ DA AULA ==================== */
+
+const QUIZ_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
+
+/** Resposta enviada nesta sessão (por quiz) — permanece até acertar ou recomeçar */
+interface QuizFreshResult {
+  correct: boolean
+  correctIndex: number
+  explanation: string
+  xpAwarded: number
+}
+
+function LessonQuiz({
+  lessonId,
+  user,
+  isOwner,
+  onQuizAnswered,
+}: {
+  lessonId: string
+  user: { id: string; name: string } | null
+  isOwner: boolean
+  onQuizAnswered?: (result: QuizAttemptResultDTO, quizId: string) => void
+}) {
+  const [quizzes, setQuizzes] = useState<QuizDTO[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Record<string, number>>({})
+  const [results, setResults] = useState<Record<string, QuizFreshResult>>({})
+  const [sendingId, setSendingId] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    if (!user) {
+      setQuizzes([])
+      setError(null)
+      return
+    }
+    setError(null)
+    try {
+      const list = await api.listLessonQuizzes(lessonId, user.id)
+      setQuizzes(list)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível carregar o quiz desta aula.')
+    }
+  }, [lessonId, user])
+
+  // Recarrega por aula (o componente é remontado por aula via key)
+  useEffect(() => {
+    setQuizzes(null)
+    setSelected({})
+    setResults({})
+    void load()
+  }, [load])
+
+  const answer = async (quiz: QuizDTO) => {
+    if (!user) return
+    const selectedIndex = selected[quiz.id]
+    if (selectedIndex === undefined) return
+    setSendingId(quiz.id)
+    try {
+      const res = await api.answerQuiz(quiz.id, { userId: user.id, selectedIndex })
+      setResults((prev) => ({
+        ...prev,
+        [quiz.id]: {
+          correct: res.correct,
+          correctIndex: res.correctIndex,
+          explanation: res.explanation ?? '',
+          xpAwarded: res.xpAwarded,
+        },
+      }))
+      if (res.correct) {
+        toast.success(`Você acertou! +${res.xpAwarded} XP ⚡`)
+      } else {
+        toast.error('Resposta incorreta — veja a explicação.')
+      }
+      onQuizAnswered?.(res, quiz.id)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível enviar sua resposta.')
+    } finally {
+      setSendingId(null)
+    }
+  }
+
+  // Limpa o feedback para permitir nova tentativa (a seleção continua editável)
+  const retry = (quizId: string) => {
+    setResults((prev) => {
+      const next = { ...prev }
+      delete next[quizId]
+      return next
+    })
+  }
+
+  if (!user) {
+    return (
+      <div className="rounded-2xl border border-stone-200 bg-white p-6 text-center text-sm text-stone-500">
+        Entre com uma conta para responder o quiz desta aula.
+      </div>
+    )
+  }
+
+  if (quizzes === null) {
+    if (error) {
+      return (
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-10 text-center">
+          <AlertCircle aria-hidden className="h-6 w-6 text-rose-400" />
+          <p className="text-sm text-stone-500">{error}</p>
+          <Button variant="outline" className="rounded-full" onClick={() => void load()}>
+            Tentar novamente
+          </Button>
+        </div>
+      )
+    }
+    return (
+      <div className="space-y-3" aria-busy="true">
+        <Skeleton className="h-40 rounded-2xl" />
+        <Skeleton className="h-40 rounded-2xl" />
+      </div>
+    )
+  }
+
+  if (quizzes.length === 0) {
+    return isOwner ? (
+      <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-10 text-center">
+        <ListChecks aria-hidden className="h-6 w-6 text-stone-300" />
+        <p className="text-sm font-semibold text-stone-600">Nenhuma pergunta de quiz nesta aula.</p>
+        <p className="max-w-xs text-xs leading-relaxed text-stone-400">
+          Crie perguntas no painel do curso para seus alunos praticarem aqui.
+        </p>
+      </div>
+    ) : (
+      <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-10 text-center">
+        <ListChecks aria-hidden className="h-6 w-6 text-stone-300" />
+        <p className="text-sm text-stone-400">O mentor ainda não publicou perguntas para esta aula.</p>
+      </div>
+    )
+  }
+
+  const answeredCount = quizzes.filter((q) => q.myAttempt !== null || results[q.id] !== undefined).length
+  const correctCount = quizzes.filter(
+    (q) => q.myAttempt?.correct === true || results[q.id]?.correct === true
+  ).length
+  const mentorOnly = quizzes.every((q) => q.isMine)
+
+  return (
+    <div className="space-y-4">
+      <ul className="space-y-4">
+        {quizzes.map((quiz, qIndex) => {
+          const fresh = results[quiz.id]
+          const persisted = quiz.myAttempt
+          // Travado = mentor (vê gabarito), já respondido antes ou acertou agora
+          const locked = quiz.isMine || persisted !== null || fresh?.correct === true
+          // Escolha exibida como "sua resposta"
+          const chosenIndex = fresh && !fresh.correct ? selected[quiz.id] : persisted?.selectedIndex ?? selected[quiz.id]
+          // Resposta errada visível (não bloqueia a revelação da correta)
+          const showWrong = (fresh !== undefined && !fresh.correct) || (persisted !== null && !persisted.correct)
+          // Índice da alternativa correta quando conhecido
+          const correctIdx = fresh
+            ? fresh.correctIndex
+            : persisted?.correct
+              ? persisted.selectedIndex
+              : quiz.isMine
+                ? quiz.correctIndex
+                : null
+          const explanation = fresh?.explanation || quiz.explanation || ''
+
+          return (
+            <li key={quiz.id} className="rounded-2xl border border-stone-200 bg-white p-5">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-extrabold uppercase tracking-wide text-stone-400">
+                    Pergunta {qIndex + 1}
+                  </p>
+                  <p className="mt-0.5 font-semibold text-stone-900">{quiz.prompt}</p>
+                </div>
+                {persisted !== null ? (
+                  persisted.correct ? (
+                    <Badge className="shrink-0 border-transparent bg-emerald-100 text-emerald-800">
+                      <CheckCircle2 aria-hidden className="h-3 w-3" /> Você acertou
+                    </Badge>
+                  ) : (
+                    <Badge className="shrink-0 border-transparent bg-stone-100 text-stone-600">
+                      <Lightbulb aria-hidden className="h-3 w-3" /> Respondeu — revise a explicação
+                    </Badge>
+                  )
+                ) : quiz.isMine ? (
+                  <Badge className="shrink-0 border-transparent bg-violet-100 text-violet-800">
+                    <ListChecks aria-hidden className="h-3 w-3" /> Gabarito
+                  </Badge>
+                ) : null}
+              </div>
+
+              <div role="radiogroup" aria-label={quiz.prompt} className="mt-3 space-y-2">
+                {quiz.options.map((opt, idx) => {
+                  const isCorrectReveal = correctIdx !== null && idx === correctIdx
+                  const isWrongReveal = !isCorrectReveal && showWrong && idx === chosenIndex
+                  const isSelected = !locked && idx === selected[quiz.id]
+                  return (
+                    <Button
+                      key={`${quiz.id}-${idx}`}
+                      type="button"
+                      variant="outline"
+                      role="radio"
+                      aria-checked={isSelected || isCorrectReveal || isWrongReveal}
+                      aria-disabled={locked || undefined}
+                      tabIndex={locked ? -1 : undefined}
+                      onClick={() => {
+                        if (locked || sendingId === quiz.id) return
+                        setSelected((prev) => ({ ...prev, [quiz.id]: idx }))
+                      }}
+                      className={cn(
+                        'h-auto min-h-11 w-full justify-start gap-3 whitespace-normal rounded-xl px-3 py-2.5 text-left',
+                        locked && 'pointer-events-none',
+                        isCorrectReveal
+                          ? 'border-emerald-500 bg-emerald-50 text-emerald-900 hover:bg-emerald-50'
+                          : isWrongReveal
+                            ? 'border-rose-300 bg-rose-50 text-rose-900 hover:bg-rose-50'
+                            : isSelected
+                              ? 'border-emerald-600 bg-emerald-50/60 text-stone-900'
+                              : locked
+                                ? 'border-stone-200 bg-stone-50/40 text-stone-500'
+                                : 'text-stone-700 hover:border-emerald-300 hover:bg-emerald-50/40'
+                      )}
+                    >
+                      <span
+                        aria-hidden
+                        className={cn(
+                          'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold',
+                          isCorrectReveal
+                            ? 'bg-emerald-600 text-white'
+                            : isWrongReveal
+                              ? 'bg-rose-400 text-white'
+                              : isSelected
+                                ? 'bg-emerald-700 text-white'
+                                : 'bg-stone-100 text-stone-600'
+                        )}
+                      >
+                        {QUIZ_LETTERS[idx] ?? idx + 1}
+                      </span>
+                      <span className="min-w-0 flex-1 text-sm leading-relaxed">{opt}</span>
+                      {isCorrectReveal ? (
+                        <Check aria-hidden className="h-4 w-4 shrink-0 text-emerald-600" />
+                      ) : isWrongReveal ? (
+                        <XCircle aria-hidden className="h-4 w-4 shrink-0 text-rose-400" />
+                      ) : null}
+                    </Button>
+                  )
+                })}
+              </div>
+
+              {/* Botão de resposta (só para alunos, antes de acertar) */}
+              {!locked ? (
+                <div className="mt-3 flex justify-end">
+                  <Button
+                    className="h-10 rounded-full bg-emerald-700 font-bold text-white hover:bg-emerald-800"
+                    onClick={() => void answer(quiz)}
+                    disabled={selected[quiz.id] === undefined || sendingId === quiz.id}
+                  >
+                    {sendingId === quiz.id ? 'Verificando…' : 'Responder'}
+                  </Button>
+                </div>
+              ) : null}
+
+              {/* Feedback da resposta enviada nesta sessão */}
+              {fresh ? (
+                fresh.correct ? (
+                  <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50/80 p-3.5">
+                    <CheckCircle2 aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                    <p className="min-w-0 flex-1 text-sm font-bold text-emerald-800">
+                      Isso!{fresh.xpAwarded > 0 ? ` +${fresh.xpAwarded} XP` : ''}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50/80 p-3.5">
+                    <div className="flex items-start gap-2.5">
+                      <XCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
+                      <p className="min-w-0 flex-1 text-sm leading-relaxed text-rose-800">
+                        Não foi dessa vez — a correta é:{' '}
+                        <span className="font-bold">{quiz.options[fresh.correctIndex] ?? '—'}</span>
+                      </p>
+                    </div>
+                    <div className="mt-2.5 flex justify-end">
+                      <Button
+                        variant="outline"
+                        className="h-9 rounded-full border-rose-200 bg-white font-semibold text-rose-700 hover:bg-rose-100 hover:text-rose-800"
+                        onClick={() => retry(quiz.id)}
+                      >
+                        Tentar de novo
+                      </Button>
+                    </div>
+                  </div>
+                )
+              ) : null}
+
+              {/* Explicação do mentor */}
+              {explanation ? (
+                <div className="mt-3 flex items-start gap-2 rounded-xl bg-stone-50 p-3">
+                  <Lightbulb aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                  <p className="min-w-0 flex-1 text-sm leading-relaxed text-stone-600">{explanation}</p>
+                </div>
+              ) : null}
+            </li>
+          )
+        })}
+      </ul>
+
+      <p className="text-xs text-stone-400">
+        {mentorOnly
+          ? `${quizzes.length} ${quizzes.length === 1 ? 'pergunta' : 'perguntas'} · gabarito visível apenas para você`
+          : `${answeredCount} de ${quizzes.length} respondidas · ${correctCount} acertos`}
+      </p>
     </div>
   )
 }

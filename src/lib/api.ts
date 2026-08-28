@@ -13,6 +13,9 @@ import type {
   LessonAttachmentDTO,
   LessonNoteDTO,
   LessonQuestionDTO,
+  QuizAttemptResultDTO,
+  QuizDTO,
+  XpStatsDTO,
   MentorDetailDTO,
   MentorListItemDTO,
   MentorLpDTO,
@@ -231,10 +234,44 @@ export const api = {
       body: JSON.stringify({ userId }),
     }),
   toggleLessonComplete: (courseId: string, data: { userId: string; lessonId: string }) =>
-    request<{ completedLessonIds: string[] }>(`/api/courses/${courseId}/enroll`, {
+    request<{
+      completedLessonIds: string[]
+      xpAwarded: number
+      courseCompleted: boolean
+    }>(`/api/courses/${courseId}/enroll`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+
+  // Quiz da aula (correção no servidor + XP)
+  listLessonQuizzes: (lessonId: string, userId?: string) =>
+    request<QuizDTO[]>(`/api/lessons/${lessonId}/quizzes${qs({ userId })}`),
+  createQuiz: (
+    lessonId: string,
+    data: { userId: string; prompt: string; options: string[]; correctIndex: number; explanation: string }
+  ) =>
+    request<QuizDTO>(`/api/lessons/${lessonId}/quizzes`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateQuiz: (
+    quizId: string,
+    data: { userId: string; prompt?: string; options?: string[]; correctIndex?: number; explanation?: string }
+  ) =>
+    request<{ ok: boolean }>(`/api/quizzes/${quizId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteQuiz: (quizId: string, userId: string) =>
+    request<{ ok: boolean }>(`/api/quizzes/${quizId}${qs({ userId })}`, { method: 'DELETE' }),
+  answerQuiz: (quizId: string, data: { userId: string; selectedIndex: number }) =>
+    request<QuizAttemptResultDTO>(`/api/quizzes/${quizId}/attempt`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Gamificação: XP e ofensiva de estudos
+  xpStats: (userId: string) => request<XpStatsDTO>(`/api/xp${qs({ userId })}`),
 
   // Matrículas do usuário
   listMyEnrollments: (userId: string) =>
