@@ -21,10 +21,58 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const description = String(body?.description ?? '').trim()
     const videoUrl = String(body?.videoUrl ?? '').trim() || null
     const content = String(body?.content ?? '').trim() || null
-    const durationMin = Number(body?.durationMin ?? 10)
-    const kind = ['RECORDED', 'TEXT', 'LIVE'].includes(body?.kind) ? body.kind : videoUrl ? 'RECORDED' : content ? 'TEXT' : 'RECORDED'
+    const kindRaw = String(body?.kind ?? '')
+    const kind = ['RECORDED', 'TEXT', 'LIVE', 'READING'].includes(kindRaw)
+      ? kindRaw
+      : videoUrl
+        ? 'RECORDED'
+        : content
+          ? 'TEXT'
+          : 'RECORDED'
     const startsAt = String(body?.startsAt ?? '').trim() || null
     const meetingUrl = String(body?.meetingUrl ?? '').trim() || null
+
+    // Tema (módulo) da aula: se informado, precisa pertencer ao curso
+    let themeId: string | null = null
+    if (body?.themeId) {
+      const theme = await db.courseTheme.findUnique({ where: { id: String(body.themeId) } })
+      if (!theme || theme.courseId !== id) {
+        return NextResponse.json({ error: 'Tema inválido para este curso.' }, { status: 400 })
+      }
+      themeId = theme.id
+    }
+
+    // Aula de leitura: artigo/livro da Biblioteca do próprio mentor do curso
+    let libraryItemId: string | null = null
+    let libraryItem: { title: string; readingMin: number } | null = null
+    if (kind === 'READING') {
+      const itemId = String(body?.libraryItemId ?? '').trim()
+      if (!itemId) {
+        return NextResponse.json(
+          { error: 'Aulas de leitura precisam de um artigo ou livro da Biblioteca.' },
+          { status: 400 }
+        )
+      }
+      const item = await db.libraryItem.findUnique({
+        where: { id: itemId },
+        include: { mentor: { select: { userId: true } } },
+      })
+      if (!item || item.mentor.userId !== course.mentor.userId) {
+        return NextResponse.json(
+          { error: 'O artigo/livro selecionado não pertence à sua Biblioteca.' },
+          { status: 400 }
+        )
+      }
+      libraryItemId = item.id
+      libraryItem = { title: item.title, readingMin: item.readingMin }
+    }
+
+    // Para READING o título pode vir vazio — usa o título do item da Biblioteca
+    const finalTitle = title || libraryItem?.title || ''
+    const durationMin =
+      body?.durationMin === undefined || body?.durationMin === null || body?.durationMin === ''
+        ? libraryItem?.readingMin ?? 10
+        : Number(body.durationMin)
 
     // Anexos: [{ name, url }]
     let attachments: { name: string; url: string }[] = []
@@ -39,7 +87,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         .slice(0, 10)
     }
 
-    if (title.length < 3) {
+    if (finalTitle.length < 3) {
       return NextResponse.json({ error: 'Dê um título à aula (mín. 3 caracteres).' }, { status: 400 })
     }
     if (!Number.isFinite(durationMin) || durationMin <= 0) {
@@ -54,7 +102,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         { status: 400 }
       )
     }
-    if (kind !== 'LIVE' && !videoUrl && !content && attachments.length === 0) {
+    if (kind !== 'LIVE' && kind !== 'READING' && !videoUrl && !content && attachments.length === 0) {
       return NextResponse.json(
         { error: 'A aula precisa de um vídeo, conteúdo textual ou anexos.' },
         { status: 400 }
@@ -65,7 +113,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const lesson = await db.lesson.create({
       data: {
         courseId: id,
-        title,
+        title: finalTitle,
         description,
         kind,
         videoUrl,
@@ -73,8 +121,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         startsAt,
         meetingUrl,
         attachments: JSON.stringify(attachments),
-        durationMin,
+        durationMin: Math.round(durationMin),
         order: (last?.order ?? 0) + 1,
+        themeId,
+        libraryItemId,
+      },
+      include: {
+        libraryItem: { select: { id: true, title: true, kind: true, pdfUrl: true, content: true } },
       },
     })
 
@@ -91,10 +144,80 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       durationMin: lesson.durationMin,
       questionCount: 0,
       order: lesson.order,
+      themeId: lesson.themeId,
+      reading: lesson.libraryItem
+        ? {
+            id: lesson.libraryItem.id,
+            title: lesson.libraryItem.title,
+            kind: lesson.libraryItem.kind,
+            pdfUrl: lesson.libraryItem.pdfUrl,
+            content: lesson.libraryItem.content,
+          }
+        : null,
     })
   } catch (err) {
     console.error('POST /api/courses/[id]/lessons', err)
     return NextResponse.json({ error: 'Erro ao adicionar aula' }, { status: 500 })
+  }
+}
+
+/** PATCH /api/courses/[id]/lessons — move/edita aula (somente dono): {userId, lessonId, themeId?, title?, description?, order?} */
+export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await ctx.params
+    const body = await req.json()
+    const userId = String(body?.userId ?? '')
+    const lessonId = String(body?.lessonId ?? '')
+    if (!userId || !lessonId) {
+      return NextResponse.json({ error: 'Usuário ou aula não informados.' }, { status: 400 })
+    }
+
+    const course = await db.course.findUnique({ where: { id }, include: { mentor: true } })
+    if (!course) return NextResponse.json({ error: 'Curso não encontrado.' }, { status: 404 })
+    if (course.mentor.userId !== userId) {
+      return NextResponse.json({ error: 'Você não tem permissão neste curso.' }, { status: 403 })
+    }
+
+    const lesson = await db.lesson.findUnique({ where: { id: lessonId } })
+    if (!lesson || lesson.courseId !== id) {
+      return NextResponse.json({ error: 'Aula não encontrada.' }, { status: 404 })
+    }
+
+    const data: Record<string, unknown> = {}
+    if (body?.themeId !== undefined) {
+      if (body.themeId === null || body.themeId === '') {
+        data.themeId = null
+      } else {
+        const theme = await db.courseTheme.findUnique({ where: { id: String(body.themeId) } })
+        if (!theme || theme.courseId !== id) {
+          return NextResponse.json({ error: 'Tema inválido para este curso.' }, { status: 400 })
+        }
+        data.themeId = theme.id
+      }
+    }
+    if (body?.title !== undefined) {
+      const title = String(body.title).trim()
+      if (title.length < 3) {
+        return NextResponse.json({ error: 'Dê um título à aula (mín. 3 caracteres).' }, { status: 400 })
+      }
+      data.title = title
+    }
+    if (body?.description !== undefined) {
+      data.description = String(body.description).trim()
+    }
+    if (body?.order !== undefined) {
+      const order = Number(body.order)
+      if (!Number.isFinite(order)) {
+        return NextResponse.json({ error: 'Ordem inválida.' }, { status: 400 })
+      }
+      data.order = Math.round(order)
+    }
+
+    await db.lesson.update({ where: { id: lessonId }, data })
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    console.error('PATCH /api/courses/[id]/lessons', err)
+    return NextResponse.json({ error: 'Erro ao atualizar aula' }, { status: 500 })
   }
 }
 

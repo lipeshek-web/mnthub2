@@ -13,6 +13,7 @@ model User {
   name      String
   bio       String?
   avatarUrl String?
+  passwordHash String? // scrypt "salt:hash" (null = conta demo antiga)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -56,6 +57,7 @@ model MentorProfile {
   contents       ContentPost[]
   courses        Course[]
   tracks         Track[]
+  libraryItems   LibraryItem[]
   bookings       Booking[]      @relation("MentorBookings")
   reviews        Review[]
   orders         Order[]
@@ -133,12 +135,47 @@ model Course {
 
   mentorshipCount Int          @default(0) // sessões de mentoria 1:1 incluídas no curso
 
+  themes         CourseTheme[]
+
   lessons        Lesson[]
   enrollments    Enrollment[]
   orders         Order[]
   trackingEvents TrackingEvent[]
   trackItems     TrackItem[]
   questions      LessonQuestion[]
+}
+
+/// Tema (módulo) do curso: agrupa aulas em uma sequência organizada
+model CourseTheme {
+  id          String  @id @default(cuid())
+  courseId    String
+  course      Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  description String  @default("")
+  order       Int     @default(0)
+
+  lessons Lesson[]
+}
+
+/// Biblioteca: artigos e livros (PDF/texto) publicados pelos mentores
+model LibraryItem {
+  id          String        @id @default(cuid())
+  mentorId    String
+  mentor      MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  kind        String        @default("ARTICLE") // ARTICLE | BOOK
+  title       String
+  description String        @default("")
+  category    String        @default("Tecnologia")
+  level       String        @default("INICIANTE") // INICIANTE | INTERMEDIARIO | AVANCADO
+  coverUrl    String?
+  pdfUrl      String?       // PDF enviado (livros/artigos em PDF)
+  content     String?       // texto do artigo (alternativa ao PDF)
+  readingMin  Int           @default(10)
+  isPublished Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  lessons Lesson[]
 }
 
 model Lesson {
@@ -155,6 +192,10 @@ model Lesson {
   attachments String   @default("[]") // JSON [{ name, url }] — anexos para download
   durationMin Int      @default(10)
   order       Int      @default(0)
+  themeId     String?  // tema (módulo) do curso — null = sem tema
+  theme       CourseTheme? @relation(fields: [themeId], references: [id], onDelete: SetNull)
+  libraryItemId String? // aula de leitura vinculada a um artigo/livro da Biblioteca
+  libraryItem LibraryItem? @relation(fields: [libraryItemId], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
 
   questions LessonQuestion[]

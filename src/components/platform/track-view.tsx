@@ -129,7 +129,8 @@ export function TrackView({ trackId }: { trackId: string }) {
       return
     }
     if (!user) {
-      toast.error('Entre com uma conta no topo da página.')
+      toast.info('Entre com uma conta para continuar.')
+      navigate({ name: 'auth', mode: 'login' })
       return
     }
     if (track.price === 0) {
@@ -437,7 +438,7 @@ export function TrackView({ trackId }: { trackId: string }) {
             <p className="mt-2 text-center text-xs text-stone-400">Processando inscrição…</p>
           ) : !track.myEnrollment && !user ? (
             <p className="mt-2 text-center text-xs text-stone-400">
-              Entre com uma conta no topo da página para se inscrever.
+              Entre com uma conta para se inscrever nesta trilha.
             </p>
           ) : null}
 

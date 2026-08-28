@@ -18,8 +18,10 @@ import {
   EyeOff,
   ExternalLink,
   FileText,
+  FolderInput,
   GraduationCap,
   ImagePlus,
+  Library,
   Link2,
   ListVideo,
   LogIn,
@@ -73,6 +75,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Select,
   SelectContent,
@@ -84,6 +87,7 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Avatar, Stars } from '@/components/platform/avatar'
+import { LibraryManager } from './library-manager'
 import { TracksManager } from './tracks-manager'
 import { api } from '@/lib/api'
 import {
@@ -104,6 +108,8 @@ import type {
   ContentPostDTO,
   CourseLessonDTO,
   CourseListItemDTO,
+  CourseThemeDTO,
+  LibraryItemDTO,
   LessonAttachmentDTO,
   MentorDetailDTO,
   SocialLinksDTO,
@@ -1641,6 +1647,7 @@ function LessonsManagerDialog({
   onChanged: () => Promise<void>
 }) {
   const [lessons, setLessons] = useState<CourseLessonDTO[]>([])
+  const [themes, setThemes] = useState<CourseThemeDTO[]>([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
@@ -1648,17 +1655,27 @@ function LessonsManagerDialog({
   const [videoUrl, setVideoUrl] = useState('')
   const [description, setDescription] = useState('')
   const [content, setContent] = useState('')
-  const [kind, setKind] = useState<'RECORDED' | 'TEXT' | 'LIVE'>('RECORDED')
+  const [kind, setKind] = useState<'RECORDED' | 'TEXT' | 'LIVE' | 'READING'>('RECORDED')
   const [startsAt, setStartsAt] = useState('')
   const [meetingUrl, setMeetingUrl] = useState('')
   const [attachments, setAttachments] = useState<LessonAttachmentDTO[]>([])
   const [uploadingAttachment, setUploadingAttachment] = useState(false)
   const [saving, setSaving] = useState(false)
   const [formErrors, setFormErrors] = useState<LessonFormErrors>({})
+  // Temas (módulos) do curso — seletor na nova aula + mover aula de tema
+  const [themeId, setThemeId] = useState('none')
+  const [showNewTheme, setShowNewTheme] = useState(false)
+  const [newThemeTitle, setNewThemeTitle] = useState('')
+  const [creatingTheme, setCreatingTheme] = useState(false)
+  const [movingId, setMovingId] = useState<string | null>(null)
+  // Conteúdos da Biblioteca do mentor (para aulas READING)
+  const [libraryItems, setLibraryItems] = useState<LibraryItemDTO[] | null>(null)
+  const [libraryItemId, setLibraryItemId] = useState('')
 
   const fetchLessons = useCallback(async () => {
     const detail = await api.getCourse(course.id)
     setLessons(detail.lessons)
+    setThemes([...(detail.themes ?? [])].sort((a, b) => a.order - b.order))
   }, [course.id])
 
   useEffect(() => {
@@ -1676,6 +1693,11 @@ function LessonsManagerDialog({
     setMeetingUrl('')
     setAttachments([])
     setFormErrors({})
+    setThemeId('none')
+    setShowNewTheme(false)
+    setNewThemeTitle('')
+    setLibraryItemId('')
+    setLibraryItems(null)
     fetchLessons()
       .catch((err: unknown) => {
         if (active) {
@@ -1685,10 +1707,19 @@ function LessonsManagerDialog({
       .finally(() => {
         if (active) setLoading(false)
       })
+    // Conteúdos da Biblioteca do próprio mentor (inclui rascunhos)
+    api
+      .listLibrary({ authorUserId: userId })
+      .then((items) => {
+        if (active) setLibraryItems(items)
+      })
+      .catch(() => {
+        if (active) setLibraryItems([])
+      })
     return () => {
       active = false
     }
-  }, [open, fetchLessons])
+  }, [open, fetchLessons, userId])
 
   const handleAdd = async () => {
     const errs: LessonFormErrors = {}
@@ -1699,7 +1730,11 @@ function LessonsManagerDialog({
     if (durationMin.trim() === '' || Number.isNaN(duration) || duration <= 0) {
       errs.durationMin = 'Informe a duração em minutos.'
     }
-    if (kind === 'LIVE') {
+    if (kind === 'READING') {
+      if (!libraryItemId) {
+        errs.material = 'Selecione o artigo ou livro da Biblioteca.'
+      }
+    } else if (kind === 'LIVE') {
       if (!startsAt.trim()) {
         errs.startsAt = 'Informe data e hora da live.'
       }
@@ -1719,11 +1754,13 @@ function LessonsManagerDialog({
         title: title.trim(),
         description: description.trim() || undefined,
         kind,
-        videoUrl: videoUrl.trim() || undefined,
-        content: content.trim() || undefined,
+        videoUrl: kind === 'READING' ? undefined : videoUrl.trim() || undefined,
+        content: kind === 'READING' ? undefined : content.trim() || undefined,
         startsAt: kind === 'LIVE' ? startsAt.trim() : undefined,
         meetingUrl: meetingUrl.trim() || undefined,
-        attachments: attachments.length > 0 ? attachments : undefined,
+        attachments: kind !== 'READING' && attachments.length > 0 ? attachments : undefined,
+        themeId: themeId === 'none' ? null : themeId,
+        libraryItemId: kind === 'READING' ? libraryItemId : undefined,
         durationMin: duration,
       })
       toast.success(kind === 'LIVE' ? 'Aula ao vivo agendada!' : 'Aula adicionada!')
@@ -1735,6 +1772,7 @@ function LessonsManagerDialog({
       setStartsAt('')
       setMeetingUrl('')
       setAttachments([])
+      setLibraryItemId('')
       setAdding(false)
       await Promise.all([fetchLessons(), onChanged()])
     } catch (err) {
@@ -1769,6 +1807,53 @@ function LessonsManagerDialog({
       await Promise.all([fetchLessons(), onChanged()])
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Não foi possível remover a aula.')
+    }
+  }
+
+  const handleCreateTheme = async () => {
+    const trimmed = newThemeTitle.trim()
+    if (trimmed.length < 2) {
+      toast.error('Dê um título ao tema (mínimo 2 caracteres).')
+      return
+    }
+    setCreatingTheme(true)
+    try {
+      const created = await api.createTheme(course.id, { userId, title: trimmed })
+      toast.success('Tema criado!')
+      setNewThemeTitle('')
+      setShowNewTheme(false)
+      // Atualiza a lista de temas com o order autoritativo do backend
+      const detail = await api.getCourse(course.id)
+      setThemes([...(detail.themes ?? [])].sort((a, b) => a.order - b.order))
+      setThemeId(created.id)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível criar o tema.')
+    } finally {
+      setCreatingTheme(false)
+    }
+  }
+
+  const handleMoveLesson = async (lesson: CourseLessonDTO, targetThemeId: string | null) => {
+    setMovingId(lesson.id)
+    try {
+      await api.updateLesson(course.id, lesson.id, { userId, themeId: targetThemeId })
+      toast.success('Aula movida!')
+      await fetchLessons()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível mover a aula.')
+    } finally {
+      setMovingId(null)
+    }
+  }
+
+  const handleLibraryItemChange = (value: string) => {
+    setLibraryItemId(value)
+    setFormErrors((prev) => ({ ...prev, material: undefined }))
+    const item = (libraryItems ?? []).find((i) => i.id === value)
+    if (item) {
+      // Pré-preenche duração com o tempo de leitura e o título (se vazio)
+      if (item.readingMin > 0) setDurationMin(String(item.readingMin))
+      if (!title.trim()) setTitle(item.title)
     }
   }
 
@@ -1815,6 +1900,11 @@ function LessonsManagerDialog({
                               : 'agendada'}
                           </span>
                         </>
+                      ) : lesson.kind === 'READING' ? (
+                        <>
+                          <BookOpen className="size-3 text-amber-600" aria-hidden />
+                          <span>Artigo/Livro · {lesson.durationMin} min</span>
+                        </>
                       ) : lesson.videoUrl ? (
                         <>
                           <Video className="size-3" aria-hidden />
@@ -1832,7 +1922,56 @@ function LessonsManagerDialog({
                         </span>
                       ) : null}
                     </p>
+                    <span className="mt-1 inline-flex max-w-full items-center rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-500">
+                      <span className="truncate">
+                        {themes.find((t) => t.id === lesson.themeId)?.title ?? 'Sem tema'}
+                      </span>
+                    </span>
                   </div>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 shrink-0 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
+                        aria-label={`Mover para tema: ${lesson.title}`}
+                      >
+                        <FolderInput className="size-3.5" aria-hidden />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-56 p-1.5">
+                      <p className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide text-stone-400">
+                        Mover para tema
+                      </p>
+                      <div className="max-h-48 overflow-y-auto">
+                        <button
+                          type="button"
+                          disabled={movingId === lesson.id}
+                          onClick={() => void handleMoveLesson(lesson, null)}
+                          className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-100 disabled:opacity-50"
+                        >
+                          Sem tema
+                          {lesson.themeId === null ? (
+                            <Check className="size-3.5 shrink-0 text-emerald-600" aria-hidden />
+                          ) : null}
+                        </button>
+                        {themes.map((t) => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            disabled={movingId === lesson.id}
+                            onClick={() => void handleMoveLesson(lesson, t.id)}
+                            className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-100 disabled:opacity-50"
+                          >
+                            <span className="truncate">{t.title}</span>
+                            {lesson.themeId === t.id ? (
+                              <Check className="size-3.5 shrink-0 text-emerald-600" aria-hidden />
+                            ) : null}
+                          </button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -1861,15 +2000,71 @@ function LessonsManagerDialog({
                 {formErrors.title ? <p className="text-xs text-rose-600">{formErrors.title}</p> : null}
               </div>
 
+              {/* Tema (módulo) da aula + criação rápida de tema */}
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="lesson-theme">Tema</Label>
+                <div className="flex items-center gap-2">
+                  <Select value={themeId} onValueChange={setThemeId}>
+                    <SelectTrigger id="lesson-theme" className="w-full">
+                      <SelectValue placeholder="Tema da aula" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sem tema</SelectItem>
+                      {themes.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-9 shrink-0"
+                    onClick={() => setShowNewTheme((v) => !v)}
+                    aria-expanded={showNewTheme}
+                  >
+                    <Plus className="size-4" aria-hidden /> Novo tema
+                  </Button>
+                </div>
+                {showNewTheme ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={newThemeTitle}
+                      onChange={(event) => setNewThemeTitle(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault()
+                          void handleCreateTheme()
+                        }
+                      }}
+                      placeholder="Ex.: Módulo 1 — Fundamentos"
+                      aria-label="Título do novo tema"
+                      autoFocus
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-9 shrink-0"
+                      disabled={creatingTheme || newThemeTitle.trim().length < 2}
+                      onClick={() => void handleCreateTheme()}
+                    >
+                      {creatingTheme ? 'Criando...' : 'Criar'}
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+
               {/* Tipo de aula */}
               <div className="flex flex-col gap-2">
                 <Label>Tipo de aula</Label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {(
                     [
                       { value: 'RECORDED', label: 'Vídeo', icon: Video },
                       { value: 'TEXT', label: 'Leitura', icon: FileText },
                       { value: 'LIVE', label: 'Ao vivo', icon: Radio },
+                      { value: 'READING', label: 'Artigo/Livro', icon: BookOpen },
                     ] as const
                   ).map((opt) => (
                     <button
@@ -1951,7 +2146,65 @@ function LessonsManagerDialog({
                     />
                   </div>
                 </>
-              ) : (
+              ) : null}
+
+              {/* Aula de leitura: artigo/livro da Biblioteca */}
+              {kind === 'READING' ? (
+                <>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="lesson-library-item">Conteúdo da Biblioteca</Label>
+                    {libraryItems === null ? (
+                      <Skeleton className="h-10 w-full rounded-lg" />
+                    ) : libraryItems.length === 0 ? (
+                      <p className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-800">
+                        <Library className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                        Você ainda não publicou artigos ou livros. Crie na seção Minha Biblioteca.
+                      </p>
+                    ) : (
+                      <Select value={libraryItemId} onValueChange={handleLibraryItemChange}>
+                        <SelectTrigger
+                          id="lesson-library-item"
+                          className="w-full"
+                          aria-invalid={Boolean(formErrors.material)}
+                        >
+                          <SelectValue placeholder="Selecione um artigo ou livro..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {libraryItems.map((item) => (
+                            <SelectItem key={item.id} value={item.id}>
+                              {item.kind === 'BOOK' ? 'Livro' : 'Artigo'} · {item.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    {formErrors.material ? (
+                      <p className="text-xs text-rose-600">{formErrors.material}</p>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="lesson-duration">Duração (min)</Label>
+                    <Input
+                      id="lesson-duration"
+                      type="number"
+                      min={1}
+                      step={5}
+                      value={durationMin}
+                      onChange={(event) => setDurationMin(event.target.value)}
+                      aria-invalid={Boolean(formErrors.durationMin)}
+                    />
+                    {formErrors.durationMin ? (
+                      <p className="text-xs text-rose-600">{formErrors.durationMin}</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Pré-preenchida com o tempo de leitura do item escolhido.
+                      </p>
+                    )}
+                  </div>
+                </>
+              ) : null}
+
+              {kind === 'RECORDED' || kind === 'TEXT' ? (
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="flex flex-col gap-2">
                     <Label htmlFor="lesson-duration">Duração (min)</Label>
@@ -1979,9 +2232,9 @@ function LessonsManagerDialog({
                     />
                   </div>
                 </div>
-              )}
+              ) : null}
 
-              {kind !== 'LIVE' ? (
+              {kind === 'RECORDED' || kind === 'TEXT' ? (
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="lesson-content">Conteúdo textual (opcional)</Label>
                   <Textarea
@@ -1999,56 +2252,58 @@ function LessonsManagerDialog({
               ) : null}
 
               {/* Anexos para download */}
-              <div className="flex flex-col gap-2">
-                <Label>Anexos para download (opcional)</Label>
-                {attachments.length > 0 ? (
-                  <ul className="space-y-1.5">
-                    {attachments.map((att, i) => (
-                      <li
-                        key={`${att.url}-${i}`}
-                        className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5"
-                      >
-                        <Paperclip className="size-3.5 shrink-0 text-stone-400" aria-hidden />
-                        <span className="min-w-0 flex-1 truncate text-xs font-medium text-stone-700">
-                          {att.name}
-                        </span>
-                        <button
-                          type="button"
-                          aria-label={`Remover anexo ${att.name}`}
-                          className="rounded p-1 text-stone-400 hover:bg-rose-50 hover:text-rose-600"
-                          onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
+              {kind !== 'READING' ? (
+                <div className="flex flex-col gap-2">
+                  <Label>Anexos para download (opcional)</Label>
+                  {attachments.length > 0 ? (
+                    <ul className="space-y-1.5">
+                      {attachments.map((att, i) => (
+                        <li
+                          key={`${att.url}-${i}`}
+                          className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5"
                         >
-                          <X className="size-3.5" aria-hidden />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-                <div className="flex items-center gap-2">
-                  {uploadingAttachment ? (
-                    <Button type="button" size="sm" variant="outline" disabled>
-                      Enviando...
-                    </Button>
-                  ) : (
-                    <Button type="button" size="sm" variant="outline" asChild>
-                      <Label htmlFor="lesson-attachment-upload" className="cursor-pointer">
-                        <Paperclip className="size-3.5" aria-hidden /> Adicionar anexo
-                      </Label>
-                    </Button>
-                  )}
-                  <span className="text-xs text-muted-foreground">PDF, ZIP, DOC(X), PPT(X), até 20MB</span>
-                  <input
-                    id="lesson-attachment-upload"
-                    type="file"
-                    className="hidden"
-                    tabIndex={-1}
-                    onChange={(event) => {
-                      void handleAttachmentFile(event.target.files?.[0])
-                      event.target.value = ''
-                    }}
-                  />
+                          <Paperclip className="size-3.5 shrink-0 text-stone-400" aria-hidden />
+                          <span className="min-w-0 flex-1 truncate text-xs font-medium text-stone-700">
+                            {att.name}
+                          </span>
+                          <button
+                            type="button"
+                            aria-label={`Remover anexo ${att.name}`}
+                            className="rounded p-1 text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+                            onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
+                          >
+                            <X className="size-3.5" aria-hidden />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <div className="flex items-center gap-2">
+                    {uploadingAttachment ? (
+                      <Button type="button" size="sm" variant="outline" disabled>
+                        Enviando...
+                      </Button>
+                    ) : (
+                      <Button type="button" size="sm" variant="outline" asChild>
+                        <Label htmlFor="lesson-attachment-upload" className="cursor-pointer">
+                          <Paperclip className="size-3.5" aria-hidden /> Adicionar anexo
+                        </Label>
+                      </Button>
+                    )}
+                    <span className="text-xs text-muted-foreground">PDF, ZIP, DOC(X), PPT(X), até 20MB</span>
+                    <input
+                      id="lesson-attachment-upload"
+                      type="file"
+                      className="hidden"
+                      tabIndex={-1}
+                      onChange={(event) => {
+                        void handleAttachmentFile(event.target.files?.[0])
+                        event.target.value = ''
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
+              ) : null}
 
               <div className="flex flex-col gap-2">
                 <Label htmlFor="lesson-description">Resumo (opcional)</Label>
@@ -2931,7 +3186,10 @@ export default function OnboardingView() {
       {/* 6. Cursos */}
       <CoursesManager userId={user.id} onChanged={reload} onCoursesChange={handleCoursesChange} />
 
-      {/* 7. Trilhas */}
+      {/* 7. Biblioteca (artigos e livros usáveis como aulas READING) */}
+      <LibraryManager userId={user.id} onChanged={reload} />
+
+      {/* 8. Trilhas */}
       <TracksManager userId={user.id} onChanged={reload} />
     </div>
   )

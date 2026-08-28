@@ -1,0 +1,892 @@
+     1→  1218→          coverUrl,
+     2→  1219→          mentorshipCount: mentorships,
+     3→  1220→        })
+     4→  1221→        toast.success('Curso criado! Agora adicione aulas.')
+     5→  1222→        setDialogOpen(false)
+     6→  1223→        const [, list] = await Promise.all([onChanged(), fetchCourses()])
+     7→  1224→        const fresh = list.find((c) => c.id === created.id) ?? null
+     8→  1225→        if (fresh) {
+     9→  1226→          setLessonsCourse(fresh)
+    10→  1227→          setLessonsOpen(true)
+    11→  1228→        }
+    12→  1229→      }
+    13→  1230→    } catch (err) {
+    14→  1231→      toast.error(err instanceof Error ? err.message : 'Não foi possível salvar o curso.')
+    15→  1232→    } finally {
+    16→  1233→      setSaving(false)
+    17→  1234→    }
+    18→  1235→  }
+    19→  1236→
+    20→  1237→  const togglePublish = async (course: CourseListItemDTO) => {
+    21→  1238→    setTogglingId(course.id)
+    22→  1239→    try {
+    23→  1240→      await api.updateCourse(course.id, { userId, isPublished: !course.isPublished })
+    24→  1241→      toast.success(
+    25→  1242→        course.isPublished ? 'Curso movido para rascunho.' : 'Curso publicado! Ele já aparece no Explorar.'
+    26→  1243→      )
+    27→  1244→      await refreshAll()
+    28→  1245→    } catch (err) {
+    29→  1246→      toast.error(err instanceof Error ? err.message : 'Não foi possível atualizar o curso.')
+    30→  1247→    } finally {
+    31→  1248→      setTogglingId(null)
+    32→  1249→    }
+    33→  1250→  }
+    34→  1251→
+    35→  1252→  const handleDelete = async () => {
+    36→  1253→    if (!toDelete) return
+    37→  1254→    setDeleting(true)
+    38→  1255→    try {
+    39→  1256→      await api.deleteCourse(toDelete.id, userId)
+    40→  1257→      toast.success('Curso excluído.')
+    41→  1258→      setToDelete(null)
+    42→  1259→      await refreshAll()
+    43→  1260→    } catch (err) {
+    44→  1261→      toast.error(err instanceof Error ? err.message : 'Não foi possível excluir o curso.')
+    45→  1262→    } finally {
+    46→  1263→      setDeleting(false)
+    47→  1264→    }
+    48→  1265→  }
+    49→  1266→
+    50→  1267→  return (
+    51→  1268→    <Card>
+    52→  1269→      <CardHeader>
+    53→  1270→        <CardTitle className="flex items-center gap-2 text-lg">
+    54→  1271→          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+    55→  1272→            <GraduationCap className="size-4" aria-hidden />
+    56→  1273→          </span>
+    57→  1274→          Meus cursos
+    58→  1275→        </CardTitle>
+    59→  1276→        <CardDescription>
+    60→  1277→          Crie cursos com aulas em vídeo ou texto e publique para os alunos se matricularem.
+    61→  1278→        </CardDescription>
+    62→  1279→        <CardAction>
+    63→  1280→          <Button size="sm" onClick={openCreate}>
+    64→  1281→            <Plus className="size-4" aria-hidden /> Novo curso
+    65→  1282→          </Button>
+    66→  1283→        </CardAction>
+    67→  1284→      </CardHeader>
+    68→  1285→      <CardContent className="flex flex-col gap-4">
+    69→  1286→        {loading ? (
+    70→  1287→          <div className="space-y-3">
+    71→  1288→            <Skeleton className="h-28 rounded-lg" />
+    72→  1289→            <Skeleton className="h-28 rounded-lg" />
+    73→  1290→          </div>
+    74→  1291→        ) : courses.length === 0 ? (
+    75→  1292→          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-stone-300 py-10 text-center">
+    76→  1293→            <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 text-stone-400 ring-1 ring-stone-200">
+    77→  1294→              <GraduationCap className="size-6" aria-hidden />
+    78→  1295→            </div>
+    79→  1296→            <h3 className="mt-2 text-base font-semibold">Nenhum curso criado</h3>
+    80→  1297→            <p className="max-w-sm text-sm text-muted-foreground">
+    81→  1298→              Estruture suas aulas em um curso — em vídeo ou texto — e publique quando estiver pronto.
+    82→  1299→            </p>
+    83→  1300→          </div>
+    84→  1301→        ) : (
+    85→  1302→          <div className="max-h-96 space-y-3 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
+    86→  1303→            {courses.map((course) => (
+    87→  1304→              <div
+    88→  1305→                key={course.id}
+    89→  1306→                className="flex items-start justify-between gap-3 rounded-lg border border-stone-200 bg-white p-4"
+    90→  1307→              >
+    91→  1308→                {course.coverUrl ? (
+    92→  1309→                  <img
+    93→  1310→                    src={course.coverUrl}
+    94→  1311→                    alt=""
+    95→  1312→                    className="h-12 w-20 shrink-0 rounded-lg object-cover ring-1 ring-stone-200"
+    96→  1313→                  />
+    97→  1314→                ) : null}
+    98→  1315→                <div className="min-w-0 flex-1">
+    99→  1316→                  <div className="flex flex-wrap items-center gap-2">
+   100→  1317→                    <Badge variant="outline" className="border-stone-200 text-stone-600">
+   101→  1318→                      {course.category}
+   102→  1319→                    </Badge>
+   103→  1320→                    <Badge variant="outline" className="border-stone-200 text-stone-500">
+   104→  1321→                      {LEVEL_LABELS[course.level] ?? course.level}
+   105→  1322→                    </Badge>
+   106→  1323→                    {course.isPublished ? (
+   107→  1324→                      <Badge className="bg-emerald-100 text-emerald-800">Publicado</Badge>
+   108→  1325→                    ) : (
+   109→  1326→                      <Badge variant="secondary" className="bg-stone-100 text-stone-600">
+   110→  1327→                        Rascunho
+   111→  1328→                      </Badge>
+   112→  1329→                    )}
+   113→  1330→                  </div>
+   114→  1331→                  <h4 className="mt-2 font-semibold leading-snug">{course.title}</h4>
+   115→  1332→                  <p className="mt-1 text-sm text-muted-foreground">
+   116→  1333→                    {course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'}
+   117→  1334→                    {course.liveCount > 0 ? ` · ${course.liveCount} ao vivo` : ''} ·{' '}
+   118→  1335→                    {course.price === 0 ? 'Gratuito' : currencyBRL(course.price)} · {course.studentCount}{' '}
+   119→  1336→                    {course.studentCount === 1 ? 'aluno' : 'alunos'}
+   120→  1337→                    {course.mentorshipCount > 0 ? ` · ${course.mentorshipCount} mentoria${course.mentorshipCount > 1 ? 's' : ''}` : ''}
+   121→  1338→                  </p>
+   122→  1339→                </div>
+   123→  1340→                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+   124→  1341→                  <Button
+   125→  1342→                    variant="ghost"
+   126→  1343→                    size="sm"
+   127→  1344→                    className="text-stone-600"
+   128→  1345→                    aria-label={`Copiar link de impulsionamento de ${course.title}`}
+   129→  1346→                    onClick={() => copyCourseLink(course)}
+   130→  1347→                  >
+   131→  1348→                    <Link2 className="size-4" aria-hidden /> Link
+   132→  1349→                  </Button>
+   133→  1350→                  <Button
+   134→  1351→                    variant="ghost"
+   135→  1352→                    size="sm"
+   136→  1353→                    className="text-stone-600"
+   137→  1354→                    aria-label={`Gerenciar aulas de ${course.title}`}
+   138→  1355→                    onClick={() => {
+   139→  1356→                      setLessonsCourse(course)
+   140→  1357→                      setLessonsOpen(true)
+   141→  1358→                    }}
+   142→  1359→                  >
+   143→  1360→                    <ListVideo className="size-4" aria-hidden /> Aulas
+   144→  1361→                  </Button>
+   145→  1362→                  <Button
+   146→  1363→                    variant="ghost"
+   147→  1364→                    size="icon"
+   148→  1365→                    aria-label={`Editar curso ${course.title}`}
+   149→  1366→                    onClick={() => openEdit(course)}
+   150→  1367→                  >
+   151→  1368→                    <Pencil className="size-4" aria-hidden />
+   152→  1369→                  </Button>
+   153→  1370→                  <Button
+   154→  1371→                    variant="ghost"
+   155→  1372→                    size="icon"
+   156→  1373→                    disabled={togglingId === course.id}
+   157→  1374→                    aria-label={
+   158→  1375→                      course.isPublished ? `Despublicar curso ${course.title}` : `Publicar curso ${course.title}`
+   159→  1376→                    }
+   160→  1377→                    onClick={() => void togglePublish(course)}
+   161→  1378→                  >
+   162→  1379→                    {course.isPublished ? (
+   163→  1380→                      <EyeOff className="size-4" aria-hidden />
+   164→  1381→                    ) : (
+   165→  1382→                      <Eye className="size-4" aria-hidden />
+   166→  1383→                    )}
+   167→  1384→                  </Button>
+   168→  1385→                  <Button
+   169→  1386→                    variant="ghost"
+   170→  1387→                    size="icon"
+   171→  1388→                    className="text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+   172→  1389→                    aria-label={`Excluir curso ${course.title}`}
+   173→  1390→                    onClick={() => setToDelete(course)}
+   174→  1391→                  >
+   175→  1392→                    <Trash2 className="size-4" aria-hidden />
+   176→  1393→                  </Button>
+   177→  1394→                </div>
+   178→  1395→              </div>
+   179→  1396→            ))}
+   180→  1397→          </div>
+   181→  1398→        )}
+   182→  1399→      </CardContent>
+   183→  1400→
+   184→  1401→      {/* Dialog: novo/editar curso */}
+   185→  1402→      <Dialog
+   186→  1403→        open={dialogOpen}
+   187→  1404→        onOpenChange={(open) => {
+   188→  1405→          setDialogOpen(open)
+   189→  1406→          if (open) setFormErrors({})
+   190→  1407→        }}
+   191→  1408→      >
+   192→  1409→        <DialogContent className="sm:max-w-lg">
+   193→  1410→          <DialogHeader>
+   194→  1411→            <DialogTitle>{editing ? 'Editar curso' : 'Novo curso'}</DialogTitle>
+   195→  1412→            <DialogDescription>
+   196→  1413→              {editing
+   197→  1414→                ? 'Atualize as informações do curso. As aulas são gerenciadas separadamente.'
+   198→  1415→                : 'Crie a estrutura do curso. Depois de salvar, você adiciona as aulas.'}
+   199→  1416→            </DialogDescription>
+   200→  1417→          </DialogHeader>
+   201→  1418→          <div className="flex flex-col gap-4">
+   202→  1419→            <div className="flex flex-col gap-2">
+   203→  1420→              <Label htmlFor="course-title">Título</Label>
+   204→  1421→              <Input
+   205→  1422→                id="course-title"
+   206→  1423→                value={title}
+   207→  1424→                onChange={(event) => setTitle(event.target.value)}
+   208→  1425→                placeholder="Ex.: Arquitetura de Software na prática"
+   209→  1426→                aria-invalid={Boolean(formErrors.title)}
+   210→  1427→              />
+   211→  1428→              {formErrors.title ? <p className="text-xs text-rose-600">{formErrors.title}</p> : null}
+   212→  1429→            </div>
+   213→  1430→            <div className="flex flex-col gap-2">
+   214→  1431→              <Label htmlFor="course-description">Descrição</Label>
+   215→  1432→              <Textarea
+   216→  1433→                id="course-description"
+   217→  1434→                rows={3}
+   218→  1435→                value={description}
+   219→  1436→                onChange={(event) => setDescription(event.target.value)}
+   220→  1437→                placeholder="O que o aluno vai aprender e para quem é o curso..."
+   221→  1438→                aria-invalid={Boolean(formErrors.description)}
+   222→  1439→              />
+   223→  1440→              {formErrors.description ? (
+   224→  1441→                <p className="text-xs text-rose-600">{formErrors.description}</p>
+   225→  1442→              ) : null}
+   226→  1443→            </div>
+   227→  1444→            <div className="grid gap-4 sm:grid-cols-2">
+   228→  1445→              <div className="flex flex-col gap-2">
+   229→  1446→                <Label htmlFor="course-category">Categoria</Label>
+   230→  1447→                <Select
+   231→  1448→                  value={category}
+   232→  1449→                  onValueChange={(value) => {
+   233→  1450→                    setCategory(value)
+   234→  1451→                    setFormErrors((prev) => ({ ...prev, category: undefined }))
+   235→  1452→                  }}
+   236→  1453→                >
+   237→  1454→                  <SelectTrigger id="course-category" className="w-full" aria-invalid={Boolean(formErrors.category)}>
+   238→  1455→                    <SelectValue placeholder="Selecione..." />
+   239→  1456→                  </SelectTrigger>
+   240→  1457→                  <SelectContent>
+   241→  1458→                    {CATEGORIES.map((c) => (
+   242→  1459→                      <SelectItem key={c} value={c}>
+   243→  1460→                        {c}
+   244→  1461→                      </SelectItem>
+   245→  1462→                    ))}
+   246→  1463→                  </SelectContent>
+   247→  1464→                </Select>
+   248→  1465→                {formErrors.category ? <p className="text-xs text-rose-600">{formErrors.category}</p> : null}
+   249→  1466→              </div>
+   250→  1467→              <div className="flex flex-col gap-2">
+   251→  1468→                <Label htmlFor="course-level">Nível</Label>
+   252→  1469→                <Select value={level} onValueChange={setLevel}>
+   253→  1470→                  <SelectTrigger id="course-level" className="w-full">
+   254→  1471→                    <SelectValue />
+   255→  1472→                  </SelectTrigger>
+   256→  1473→                  <SelectContent>
+   257→  1474→                    {CONTENT_LEVELS.map((l) => (
+   258→  1475→                      <SelectItem key={l} value={l}>
+   259→  1476→                        {LEVEL_LABELS[l] ?? l}
+   260→  1477→                      </SelectItem>
+   261→  1478→                    ))}
+   262→  1479→                  </SelectContent>
+   263→  1480→                </Select>
+   264→  1481→              </div>
+   265→  1482→            </div>
+   266→  1483→            <div className="flex flex-col gap-2">
+   267→  1484→              <Label htmlFor="course-price">Preço (R$)</Label>
+   268→  1485→              <Input
+   269→  1486→                id="course-price"
+   270→  1487→                type="number"
+   271→  1488→                min={0}
+   272→  1489→                step={10}
+   273→  1490→                value={price}
+   274→  1491→                onChange={(event) => setPrice(event.target.value)}
+   275→  1492→                aria-invalid={Boolean(formErrors.price)}
+   276→  1493→              />
+   277→  1494→              {formErrors.price ? (
+   278→  1495→                <p className="text-xs text-rose-600">{formErrors.price}</p>
+   279→  1496→              ) : (
+   280→  1497→                <p className="text-xs text-muted-foreground">Deixe 0 para tornar o curso gratuito.</p>
+   281→  1498→              )}
+   282→  1499→            </div>
+   283→  1500→            <div className="flex flex-col gap-2">
+   284→  1501→              <Label htmlFor="course-mentorships">Mentorias 1:1 inclusas</Label>
+   285→  1502→              <Input
+   286→  1503→                id="course-mentorships"
+   287→  1504→                type="number"
+   288→  1505→                min={0}
+   289→  1506→                max={20}
+   290→  1507→                step={1}
+   291→  1508→                value={mentorshipCount}
+   292→  1509→                onChange={(event) => setMentorshipCount(event.target.value)}
+   293→  1510→              />
+   294→  1511→              <p className="text-xs text-muted-foreground">
+   295→  1512→                Sessões de mentoria que o aluno pode agendar com você (0 = nenhuma).
+   296→  1513→              </p>
+   297→  1514→            </div>
+   298→  1515→            <div className="flex flex-col gap-2">
+   299→  1516→              <Label>Capa do curso</Label>
+   300→  1517→              {coverUrl ? (
+   301→  1518→                <div className="h-24 w-full overflow-hidden rounded-xl border border-stone-200 bg-stone-100">
+   302→  1519→                  <img src={coverUrl} alt="Capa do curso" className="h-full w-full object-cover" />
+   303→  1520→                </div>
+   304→  1521→              ) : (
+   305→  1522→                <div className="flex h-24 w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-stone-300 bg-stone-50">
+   306→  1523→                  <ImagePlus className="size-5 text-stone-400" aria-hidden />
+   307→  1524→                  <p className="text-xs text-stone-500">Capa 1280×720 recomendada</p>
+   308→  1525→                </div>
+   309→  1526→              )}
+   310→  1527→              <div className="flex flex-wrap items-center gap-2">
+   311→  1528→                {uploadingCover ? (
+   312→  1529→                  <Button type="button" size="sm" variant="outline" disabled>
+   313→  1530→                    Enviando...
+   314→  1531→                  </Button>
+   315→  1532→                ) : (
+   316→  1533→                  <Button type="button" size="sm" variant="outline" asChild>
+   317→  1534→                    <Label htmlFor="course-cover-upload" className="cursor-pointer">
+   318→  1535→                      Enviar capa
+   319→  1536→                    </Label>
+   320→  1537→                  </Button>
+   321→  1538→                )}
+   322→  1539→                {coverUrl ? (
+   323→  1540→                  <Button
+   324→  1541→                    type="button"
+   325→  1542→                    size="sm"
+   326→  1543→                    variant="ghost"
+   327→  1544→                    disabled={uploadingCover}
+   328→  1545→                    onClick={() => setCoverUrl(null)}
+   329→  1546→                  >
+   330→  1547→                    Remover
+   331→  1548→                  </Button>
+   332→  1549→                ) : null}
+   333→  1550→                <input
+   334→  1551→                  id="course-cover-upload"
+   335→  1552→                  type="file"
+   336→  1553→                  accept="image/*"
+   337→  1554→                  className="hidden"
+   338→  1555→                  tabIndex={-1}
+   339→  1556→                  onChange={(event) => {
+   340→  1557→                    void handleCourseCoverFile(event.target.files?.[0])
+   341→  1558→                    event.target.value = ''
+   342→  1559→                  }}
+   343→  1560→                />
+   344→  1561→              </div>
+   345→  1562→            </div>
+   346→  1563→          </div>
+   347→  1564→          <DialogFooter>
+   348→  1565→            <Button variant="ghost" onClick={() => setDialogOpen(false)} disabled={saving}>
+   349→  1566→              Cancelar
+   350→  1567→            </Button>
+   351→  1568→            <Button onClick={() => void handleSubmit()} disabled={saving}>
+   352→  1569→              {saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Criar curso'}
+   353→  1570→            </Button>
+   354→  1571→          </DialogFooter>
+   355→  1572→        </DialogContent>
+   356→  1573→      </Dialog>
+   357→  1574→
+   358→  1575→      {/* Dialog: aulas do curso */}
+   359→  1576→      {lessonsCourse && (
+   360→  1577→        <LessonsManagerDialog
+   361→  1578→          course={lessonsCourse}
+   362→  1579→          userId={userId}
+   363→  1580→          open={lessonsOpen}
+   364→  1581→          onOpenChange={setLessonsOpen}
+   365→  1582→          onChanged={refreshAll}
+   366→  1583→        />
+   367→  1584→      )}
+   368→  1585→
+   369→  1586→      {/* AlertDialog: excluir curso */}
+   370→  1587→      <AlertDialog
+   371→  1588→        open={toDelete !== null}
+   372→  1589→        onOpenChange={(open) => {
+   373→  1590→          if (!open) setToDelete(null)
+   374→  1591→        }}
+   375→  1592→      >
+   376→  1593→        <AlertDialogContent>
+   377→  1594→          <AlertDialogHeader>
+   378→  1595→            <AlertDialogTitle>Excluir curso?</AlertDialogTitle>
+   379→  1596→            <AlertDialogDescription>
+   380→  1597→              &quot;{toDelete?.title}&quot; remove o curso, todas as aulas e o progresso dos alunos
+   381→  1598→              permanentemente. Esta ação não pode ser desfeita.
+   382→  1599→            </AlertDialogDescription>
+   383→  1600→          </AlertDialogHeader>
+   384→  1601→          <AlertDialogFooter>
+   385→  1602→            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+   386→  1603→            <AlertDialogAction
+   387→  1604→              className="bg-rose-600 text-white hover:bg-rose-700"
+   388→  1605→              disabled={deleting}
+   389→  1606→              onClick={(event) => {
+   390→  1607→                event.preventDefault()
+   391→  1608→                void handleDelete()
+   392→  1609→              }}
+   393→  1610→            >
+   394→  1611→              {deleting ? 'Excluindo...' : 'Excluir'}
+   395→  1612→            </AlertDialogAction>
+   396→  1613→          </AlertDialogFooter>
+   397→  1614→        </AlertDialogContent>
+   398→  1615→      </AlertDialog>
+   399→  1616→    </Card>
+   400→  1617→  )
+   401→  1618→}
+   402→  1619→
+   403→  1620→// ---------- Dialog de aulas do curso ----------
+   404→  1621→
+   405→  1622→interface LessonFormErrors {
+   406→  1623→  title?: string
+   407→  1624→  durationMin?: string
+   408→  1625→  material?: string
+   409→  1626→  startsAt?: string
+   410→  1627→  meetingUrl?: string
+   411→  1628→}
+   412→  1629→
+   413→  1630→function LessonsManagerDialog({
+   414→  1631→  course,
+   415→  1632→  userId,
+   416→  1633→  open,
+   417→  1634→  onOpenChange,
+   418→  1635→  onChanged,
+   419→  1636→}: {
+   420→  1637→  course: CourseListItemDTO
+   421→  1638→  userId: string
+   422→  1639→  open: boolean
+   423→  1640→  onOpenChange: (open: boolean) => void
+   424→  1641→  onChanged: () => Promise<void>
+   425→  1642→}) {
+   426→  1643→  const [lessons, setLessons] = useState<CourseLessonDTO[]>([])
+   427→  1644→  const [loading, setLoading] = useState(true)
+   428→  1645→  const [adding, setAdding] = useState(false)
+   429→  1646→  const [title, setTitle] = useState('')
+   430→  1647→  const [durationMin, setDurationMin] = useState('15')
+   431→  1648→  const [videoUrl, setVideoUrl] = useState('')
+   432→  1649→  const [description, setDescription] = useState('')
+   433→  1650→  const [content, setContent] = useState('')
+   434→  1651→  const [kind, setKind] = useState<'RECORDED' | 'TEXT' | 'LIVE'>('RECORDED')
+   435→  1652→  const [startsAt, setStartsAt] = useState('')
+   436→  1653→  const [meetingUrl, setMeetingUrl] = useState('')
+   437→  1654→  const [attachments, setAttachments] = useState<LessonAttachmentDTO[]>([])
+   438→  1655→  const [uploadingAttachment, setUploadingAttachment] = useState(false)
+   439→  1656→  const [saving, setSaving] = useState(false)
+   440→  1657→  const [formErrors, setFormErrors] = useState<LessonFormErrors>({})
+   441→  1658→
+   442→  1659→  const fetchLessons = useCallback(async () => {
+   443→  1660→    const detail = await api.getCourse(course.id)
+   444→  1661→    setLessons(detail.lessons)
+   445→  1662→  }, [course.id])
+   446→  1663→
+   447→  1664→  useEffect(() => {
+   448→  1665→    if (!open) return
+   449→  1666→    let active = true
+   450→  1667→    setLoading(true)
+   451→  1668→    setAdding(false)
+   452→  1669→    setTitle('')
+   453→  1670→    setDurationMin('15')
+   454→  1671→    setVideoUrl('')
+   455→  1672→    setDescription('')
+   456→  1673→    setContent('')
+   457→  1674→    setKind('RECORDED')
+   458→  1675→    setStartsAt('')
+   459→  1676→    setMeetingUrl('')
+   460→  1677→    setAttachments([])
+   461→  1678→    setFormErrors({})
+   462→  1679→    fetchLessons()
+   463→  1680→      .catch((err: unknown) => {
+   464→  1681→        if (active) {
+   465→  1682→          toast.error(err instanceof Error ? err.message : 'Não foi possível carregar as aulas.')
+   466→  1683→        }
+   467→  1684→      })
+   468→  1685→      .finally(() => {
+   469→  1686→        if (active) setLoading(false)
+   470→  1687→      })
+   471→  1688→    return () => {
+   472→  1689→      active = false
+   473→  1690→    }
+   474→  1691→  }, [open, fetchLessons])
+   475→  1692→
+   476→  1693→  const handleAdd = async () => {
+   477→  1694→    const errs: LessonFormErrors = {}
+   478→  1695→    if (title.trim().length < 3) {
+   479→  1696→      errs.title = 'Dê um título à aula (mínimo 3 caracteres).'
+   480→  1697→    }
+   481→  1698→    const duration = Number(durationMin)
+   482→  1699→    if (durationMin.trim() === '' || Number.isNaN(duration) || duration <= 0) {
+   483→  1700→      errs.durationMin = 'Informe a duração em minutos.'
+   484→  1701→    }
+   485→  1702→    if (kind === 'LIVE') {
+   486→  1703→      if (!startsAt.trim()) {
+   487→  1704→        errs.startsAt = 'Informe data e hora da live.'
+   488→  1705→      }
+   489→  1706→      if (!meetingUrl.trim() && !videoUrl.trim()) {
+   490→  1707→        errs.meetingUrl = 'A live precisa do link da transmissão (ou da gravação).'
+   491→  1708→      }
+   492→  1709→    } else if (!videoUrl.trim() && !content.trim() && attachments.length === 0) {
+   493→  1710→      errs.material = 'A aula precisa de um vídeo, conteúdo textual ou anexos.'
+   494→  1711→    }
+   495→  1712→    setFormErrors(errs)
+   496→  1713→    if (Object.values(errs).some(Boolean)) return
+   497→  1714→
+   498→  1715→    setSaving(true)
+   499→  1716→    try {
+   500→  1717→      await api.createLesson(course.id, {
+   501→  1718→        userId,
+   502→  1719→        title: title.trim(),
+   503→  1720→        description: description.trim() || undefined,
+   504→  1721→        kind,
+   505→  1722→        videoUrl: videoUrl.trim() || undefined,
+   506→  1723→        content: content.trim() || undefined,
+   507→  1724→        startsAt: kind === 'LIVE' ? startsAt.trim() : undefined,
+   508→  1725→        meetingUrl: meetingUrl.trim() || undefined,
+   509→  1726→        attachments: attachments.length > 0 ? attachments : undefined,
+   510→  1727→        durationMin: duration,
+   511→  1728→      })
+   512→  1729→      toast.success(kind === 'LIVE' ? 'Aula ao vivo agendada!' : 'Aula adicionada!')
+   513→  1730→      setTitle('')
+   514→  1731→      setDurationMin('15')
+   515→  1732→      setVideoUrl('')
+   516→  1733→      setDescription('')
+   517→  1734→      setContent('')
+   518→  1735→      setStartsAt('')
+   519→  1736→      setMeetingUrl('')
+   520→  1737→      setAttachments([])
+   521→  1738→      setAdding(false)
+   522→  1739→      await Promise.all([fetchLessons(), onChanged()])
+   523→  1740→    } catch (err) {
+   524→  1741→      toast.error(err instanceof Error ? err.message : 'Não foi possível adicionar a aula.')
+   525→  1742→    } finally {
+   526→  1743→      setSaving(false)
+   527→  1744→    }
+   528→  1745→  }
+   529→  1746→
+   530→  1747→  const handleAttachmentFile = async (file: File | null | undefined) => {
+   531→  1748→    if (!file || uploadingAttachment) return
+   532→  1749→    if (attachments.length >= 10) {
+   533→  1750→      toast.error('Máximo de 10 anexos por aula.')
+   534→  1751→      return
+   535→  1752→    }
+   536→  1753→    setUploadingAttachment(true)
+   537→  1754→    try {
+   538→  1755→      const uploaded = await api.uploadAttachment(file)
+   539→  1756→      setAttachments((prev) => [...prev, uploaded])
+   540→  1757→      toast.success('Anexo enviado!')
+   541→  1758→    } catch (err) {
+   542→  1759→      toast.error(err instanceof Error ? err.message : 'Não foi possível enviar o anexo.')
+   543→  1760→    } finally {
+   544→  1761→      setUploadingAttachment(false)
+   545→  1762→    }
+   546→  1763→  }
+   547→  1764→
+   548→  1765→  const handleDeleteLesson = async (lesson: CourseLessonDTO) => {
+   549→  1766→    try {
+   550→  1767→      await api.deleteLesson(course.id, lesson.id, userId)
+   551→  1768→      toast.success('Aula removida.')
+   552→  1769→      await Promise.all([fetchLessons(), onChanged()])
+   553→  1770→    } catch (err) {
+   554→  1771→      toast.error(err instanceof Error ? err.message : 'Não foi possível remover a aula.')
+   555→  1772→    }
+   556→  1773→  }
+   557→  1774→
+   558→  1775→  return (
+   559→  1776→    <Dialog open={open} onOpenChange={onOpenChange}>
+   560→  1777→      <DialogContent className="sm:max-w-lg">
+   561→  1778→        <DialogHeader>
+   562→  1779→          <DialogTitle>Aulas do curso</DialogTitle>
+   563→  1780→          <DialogDescription>
+   564→  1781→            {course.title} · {lessons.length} {lessons.length === 1 ? 'aula' : 'aulas'} — exibidas nesta ordem
+   565→  1782→            para os alunos.
+   566→  1783→          </DialogDescription>
+   567→  1784→        </DialogHeader>
+   568→  1785→        <div className="flex flex-col gap-3">
+   569→  1786→          {loading ? (
+   570→  1787→            <div className="space-y-2">
+   571→  1788→              <Skeleton className="h-14 rounded-lg" />
+   572→  1789→              <Skeleton className="h-14 rounded-lg" />
+   573→  1790→            </div>
+   574→  1791→          ) : lessons.length === 0 ? (
+   575→  1792→            <p className="rounded-lg border border-dashed border-stone-300 py-6 text-center text-sm text-muted-foreground">
+   576→  1793→              Nenhuma aula ainda — adicione a primeira abaixo.
+   577→  1794→            </p>
+   578→  1795→          ) : (
+   579→  1796→            <div className="max-h-64 space-y-2 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
+   580→  1797→              {lessons.map((lesson) => (
+   581→  1798→                <div
+   582→  1799→                  key={lesson.id}
+   583→  1800→                  className="flex items-center gap-3 rounded-lg border border-stone-200 bg-white px-3 py-2.5"
+   584→  1801→                >
+   585→  1802→                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-bold text-stone-600">
+   586→  1803→                    {lesson.order}
+   587→  1804→                  </span>
+   588→  1805→                  <div className="min-w-0 flex-1">
+   589→  1806→                    <p className="truncate text-sm font-semibold">{lesson.title}</p>
+   590→  1807→                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
+   591→  1808→                      {lesson.kind === 'LIVE' ? (
+   592→  1809→                        <>
+   593→  1810→                          <Radio className="size-3 text-rose-500" aria-hidden />
+   594→  1811→                          <span>
+   595→  1812→                            Ao vivo ·{' '}
+   596→  1813→                            {lesson.startsAt
+   597→  1814→                              ? `${formatDayLabel(lesson.startsAt)} ${formatTimeLabel(lesson.startsAt)}`
+   598→  1815→                              : 'agendada'}
+   599→  1816→                          </span>
+   600→  1817→                        </>
+   601→  1818→                      ) : lesson.videoUrl ? (
+   602→  1819→                        <>
+   603→  1820→                          <Video className="size-3" aria-hidden />
+   604→  1821→                          <span>Vídeo · {lesson.durationMin} min</span>
+   605→  1822→                        </>
+   606→  1823→                      ) : (
+   607→  1824→                        <>
+   608→  1825→                          <FileText className="size-3" aria-hidden />
+   609→  1826→                          <span>Texto · {lesson.durationMin} min</span>
+   610→  1827→                        </>
+   611→  1828→                      )}
+   612→  1829→                      {lesson.hasAttachments ? (
+   613→  1830→                        <span className="inline-flex items-center gap-0.5">
+   614→  1831→                          <Paperclip className="size-3" aria-hidden /> {lesson.attachments.length}
+   615→  1832→                        </span>
+   616→  1833→                      ) : null}
+   617→  1834→                    </p>
+   618→  1835→                  </div>
+   619→  1836→                  <Button
+   620→  1837→                    variant="ghost"
+   621→  1838→                    size="icon"
+   622→  1839→                    className="size-8 shrink-0 text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+   623→  1840→                    aria-label={`Remover aula ${lesson.title}`}
+   624→  1841→                    onClick={() => void handleDeleteLesson(lesson)}
+   625→  1842→                  >
+   626→  1843→                    <Trash2 className="size-3.5" aria-hidden />
+   627→  1844→                  </Button>
+   628→  1845→                </div>
+   629→  1846→              ))}
+   630→  1847→            </div>
+   631→  1848→          )}
+   632→  1849→
+   633→  1850→          {adding ? (
+   634→  1851→            <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
+   635→  1852→              <div className="flex flex-col gap-2">
+   636→  1853→                <Label htmlFor="lesson-title">Título</Label>
+   637→  1854→                <Input
+   638→  1855→                  id="lesson-title"
+   639→  1856→                  value={title}
+   640→  1857→                  onChange={(event) => setTitle(event.target.value)}
+   641→  1858→                  placeholder="Ex.: Boas-vindas e visão geral"
+   642→  1859→                  aria-invalid={Boolean(formErrors.title)}
+   643→  1860→                />
+   644→  1861→                {formErrors.title ? <p className="text-xs text-rose-600">{formErrors.title}</p> : null}
+   645→  1862→              </div>
+   646→  1863→
+   647→  1864→              {/* Tipo de aula */}
+   648→  1865→              <div className="flex flex-col gap-2">
+   649→  1866→                <Label>Tipo de aula</Label>
+   650→  1867→                <div className="grid grid-cols-3 gap-2">
+   651→  1868→                  {(
+   652→  1869→                    [
+   653→  1870→                      { value: 'RECORDED', label: 'Vídeo', icon: Video },
+   654→  1871→                      { value: 'TEXT', label: 'Leitura', icon: FileText },
+   655→  1872→                      { value: 'LIVE', label: 'Ao vivo', icon: Radio },
+   656→  1873→                    ] as const
+   657→  1874→                  ).map((opt) => (
+   658→  1875→                    <button
+   659→  1876→                      key={opt.value}
+   660→  1877→                      type="button"
+   661→  1878→                      onClick={() => setKind(opt.value)}
+   662→  1879→                      aria-pressed={kind === opt.value}
+   663→  1880→                      className={cn(
+   664→  1881→                        'flex min-h-11 items-center justify-center gap-1.5 rounded-lg border text-sm font-semibold transition-colors',
+   665→  1882→                        kind === opt.value
+   666→  1883→                          ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+   667→  1884→                          : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-100'
+   668→  1885→                      )}
+   669→  1886→                    >
+   670→  1887→                      <opt.icon className="size-4" aria-hidden /> {opt.label}
+   671→  1888→                    </button>
+   672→  1889→                  ))}
+   673→  1890→                </div>
+   674→  1891→              </div>
+   675→  1892→
+   676→  1893→              {kind === 'LIVE' ? (
+   677→  1894→                <>
+   678→  1895→                  <div className="grid gap-3 sm:grid-cols-2">
+   679→  1896→                    <div className="flex flex-col gap-2">
+   680→  1897→                      <Label htmlFor="lesson-starts">Data e hora da live</Label>
+   681→  1898→                      <Input
+   682→  1899→                        id="lesson-starts"
+   683→  1900→                        type="datetime-local"
+   684→  1901→                        value={startsAt}
+   685→  1902→                        onChange={(event) => setStartsAt(event.target.value)}
+   686→  1903→                        aria-invalid={Boolean(formErrors.startsAt)}
+   687→  1904→                      />
+   688→  1905→                      {formErrors.startsAt ? (
+   689→  1906→                        <p className="text-xs text-rose-600">{formErrors.startsAt}</p>
+   690→  1907→                      ) : null}
+   691→  1908→                    </div>
+   692→  1909→                    <div className="flex flex-col gap-2">
+   693→  1910→                      <Label htmlFor="lesson-duration">Duração (min)</Label>
+   694→  1911→                      <Input
+   695→  1912→                        id="lesson-duration"
+   696→  1913→                        type="number"
+   697→  1914→                        min={1}
+   698→  1915→                        step={5}
+   699→  1916→                        value={durationMin}
+   700→  1917→                        onChange={(event) => setDurationMin(event.target.value)}
+   701→  1918→                        aria-invalid={Boolean(formErrors.durationMin)}
+   702→  1919→                      />
+   703→  1920→                      {formErrors.durationMin ? (
+   704→  1921→                        <p className="text-xs text-rose-600">{formErrors.durationMin}</p>
+   705→  1922→                      ) : null}
+   706→  1923→                    </div>
+   707→  1924→                  </div>
+   708→  1925→                  <div className="flex flex-col gap-2">
+   709→  1926→                    <Label htmlFor="lesson-meeting">Link da transmissão</Label>
+   710→  1927→                    <Input
+   711→  1928→                      id="lesson-meeting"
+   712→  1929→                      value={meetingUrl}
+   713→  1930→                      onChange={(event) => setMeetingUrl(event.target.value)}
+   714→  1931→                      placeholder="https://meet.google.com/... ou https://youtube.com/live/..."
+   715→  1932→                      autoComplete="off"
+   716→  1933→                      aria-invalid={Boolean(formErrors.meetingUrl)}
+   717→  1934→                    />
+   718→  1935→                    {formErrors.meetingUrl ? (
+   719→  1936→                      <p className="text-xs text-rose-600">{formErrors.meetingUrl}</p>
+   720→  1937→                    ) : (
+   721→  1938→                      <p className="text-xs text-muted-foreground">
+   722→  1939→                        Meet, Zoom, YouTube — aberto pelos alunos no horário da live.
+   723→  1940→                      </p>
+   724→  1941→                    )}
+   725→  1942→                  </div>
+   726→  1943→                  <div className="flex flex-col gap-2">
+   727→  1944→                    <Label htmlFor="lesson-video">Gravação (URL opcional)</Label>
+   728→  1945→                    <Input
+   729→  1946→                      id="lesson-video"
+   730→  1947→                      value={videoUrl}
+   731→  1948→                      onChange={(event) => setVideoUrl(event.target.value)}
+   732→  1949→                      placeholder="Cole depois da live, para quem perdeu"
+   733→  1950→                      autoComplete="off"
+   734→  1951→                    />
+   735→  1952→                  </div>
+   736→  1953→                </>
+   737→  1954→              ) : (
+   738→  1955→                <div className="grid gap-3 sm:grid-cols-2">
+   739→  1956→                  <div className="flex flex-col gap-2">
+   740→  1957→                    <Label htmlFor="lesson-duration">Duração (min)</Label>
+   741→  1958→                    <Input
+   742→  1959→                      id="lesson-duration"
+   743→  1960→                      type="number"
+   744→  1961→                      min={1}
+   745→  1962→                      step={5}
+   746→  1963→                      value={durationMin}
+   747→  1964→                      onChange={(event) => setDurationMin(event.target.value)}
+   748→  1965→                      aria-invalid={Boolean(formErrors.durationMin)}
+   749→  1966→                    />
+   750→  1967→                    {formErrors.durationMin ? (
+   751→  1968→                      <p className="text-xs text-rose-600">{formErrors.durationMin}</p>
+   752→  1969→                    ) : null}
+   753→  1970→                  </div>
+   754→  1971→                  <div className="flex flex-col gap-2">
+   755→  1972→                    <Label htmlFor="lesson-video">Vídeo (URL{kind === 'TEXT' ? ' opcional' : ''})</Label>
+   756→  1973→                    <Input
+   757→  1974→                      id="lesson-video"
+   758→  1975→                      value={videoUrl}
+   759→  1976→                      onChange={(event) => setVideoUrl(event.target.value)}
+   760→  1977→                      placeholder="https://youtube.com/watch?v=..."
+   761→  1978→                      autoComplete="off"
+   762→  1979→                    />
+   763→  1980→                  </div>
+   764→  1981→                </div>
+   765→  1982→              )}
+   766→  1983→
+   767→  1984→              {kind !== 'LIVE' ? (
+   768→  1985→                <div className="flex flex-col gap-2">
+   769→  1986→                  <Label htmlFor="lesson-content">Conteúdo textual (opcional)</Label>
+   770→  1987→                  <Textarea
+   771→  1988→                    id="lesson-content"
+   772→  1989→                    rows={3}
+   773→  1990→                    value={content}
+   774→  1991→                    onChange={(event) => setContent(event.target.value)}
+   775→  1992→                    placeholder="Cole aqui o material da aula ou escreva o conteúdo..."
+   776→  1993→                    aria-invalid={Boolean(formErrors.material)}
+   777→  1994→                  />
+   778→  1995→                  {formErrors.material ? (
+   779→  1996→                    <p className="text-xs text-rose-600">{formErrors.material}</p>
+   780→  1997→                  ) : null}
+   781→  1998→                </div>
+   782→  1999→              ) : null}
+   783→  2000→
+   784→  2001→              {/* Anexos para download */}
+   785→  2002→              <div className="flex flex-col gap-2">
+   786→  2003→                <Label>Anexos para download (opcional)</Label>
+   787→  2004→                {attachments.length > 0 ? (
+   788→  2005→                  <ul className="space-y-1.5">
+   789→  2006→                    {attachments.map((att, i) => (
+   790→  2007→                      <li
+   791→  2008→                        key={`${att.url}-${i}`}
+   792→  2009→                        className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5"
+   793→  2010→                      >
+   794→  2011→                        <Paperclip className="size-3.5 shrink-0 text-stone-400" aria-hidden />
+   795→  2012→                        <span className="min-w-0 flex-1 truncate text-xs font-medium text-stone-700">
+   796→  2013→                          {att.name}
+   797→  2014→                        </span>
+   798→  2015→                        <button
+   799→  2016→                          type="button"
+   800→  2017→                          aria-label={`Remover anexo ${att.name}`}
+   801→  2018→                          className="rounded p-1 text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+   802→  2019→                          onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
+   803→  2020→                        >
+   804→  2021→                          <X className="size-3.5" aria-hidden />
+   805→  2022→                        </button>
+   806→  2023→                      </li>
+   807→  2024→                    ))}
+   808→  2025→                  </ul>
+   809→  2026→                ) : null}
+   810→  2027→                <div className="flex items-center gap-2">
+   811→  2028→                  {uploadingAttachment ? (
+   812→  2029→                    <Button type="button" size="sm" variant="outline" disabled>
+   813→  2030→                      Enviando...
+   814→  2031→                    </Button>
+   815→  2032→                  ) : (
+   816→  2033→                    <Button type="button" size="sm" variant="outline" asChild>
+   817→  2034→                      <Label htmlFor="lesson-attachment-upload" className="cursor-pointer">
+   818→  2035→                        <Paperclip className="size-3.5" aria-hidden /> Adicionar anexo
+   819→  2036→                      </Label>
+   820→  2037→                    </Button>
+   821→  2038→                  )}
+   822→  2039→                  <span className="text-xs text-muted-foreground">PDF, ZIP, DOC(X), PPT(X), até 20MB</span>
+   823→  2040→                  <input
+   824→  2041→                    id="lesson-attachment-upload"
+   825→  2042→                    type="file"
+   826→  2043→                    className="hidden"
+   827→  2044→                    tabIndex={-1}
+   828→  2045→                    onChange={(event) => {
+   829→  2046→                      void handleAttachmentFile(event.target.files?.[0])
+   830→  2047→                      event.target.value = ''
+   831→  2048→                    }}
+   832→  2049→                  />
+   833→  2050→                </div>
+   834→  2051→              </div>
+   835→  2052→
+   836→  2053→              <div className="flex flex-col gap-2">
+   837→  2054→                <Label htmlFor="lesson-description">Resumo (opcional)</Label>
+   838→  2055→                <Input
+   839→  2056→                  id="lesson-description"
+   840→  2057→                  value={description}
+   841→  2058→                  onChange={(event) => setDescription(event.target.value)}
+   842→  2059→                  placeholder="Resumo curto da aula"
+   843→  2060→                  autoComplete="off"
+   844→  2061→                />
+   845→  2062→              </div>
+   846→  2063→              <div className="flex justify-end gap-2">
+   847→  2064→                <Button variant="ghost" size="sm" onClick={() => setAdding(false)} disabled={saving}>
+   848→  2065→                  Cancelar
+   849→  2066→                </Button>
+   850→  2067→                <Button size="sm" onClick={() => void handleAdd()} disabled={saving}>
+   851→  2068→                  {saving ? 'Adicionando...' : kind === 'LIVE' ? 'Agendar aula ao vivo' : 'Adicionar aula'}
+   852→  2069→                </Button>
+   853→  2070→              </div>
+   854→  2071→            </div>
+   855→  2072→          ) : (
+   856→  2073→            <Button
+   857→  2074→              variant="outline"
+   858→  2075→              size="sm"
+   859→  2076→              className="w-full border-dashed"
+   860→  2077→              onClick={() => setAdding(true)}
+   861→  2078→            >
+   862→  2079→              <Plus className="size-4" aria-hidden /> Adicionar aula
+   863→  2080→            </Button>
+   864→  2081→          )}
+   865→  2082→        </div>
+   866→  2083→      </DialogContent>
+   867→  2084→    </Dialog>
+   868→  2085→  )
+   869→  2086→}
+   870→  2087→
+   871→  2088→// ---------- Link público + rastreamento (tráfego pago) ----------
+   872→  2089→
+   873→  2090→const CHANNEL_LABELS: Record<string, string> = {
+   874→  2091→  paid_social: 'Tráfego pago social',
+   875→  2092→  paid_search: 'Google Ads',
+   876→  2093→  social: 'Social orgânico',
+   877→  2094→  email: 'E-mail',
+   878→  2095→  referral: 'Referência',
+   879→  2096→  direct: 'Direto',
+   880→  2097→}
+   881→  2098→
+   882→  2099→function formatPercent(value: number): string {
+   883→  2100→  return `${value.toFixed(1).replace('.', ',')}%`
+   884→  2101→}
+   885→  2102→
+   886→  2103→function TrafficLinksSection({
+   887→  2104→  profile,
+   888→  2105→  courses,
+   889→  2106→  onSaved,
+   890→  2107→}: {
+   891→
+   892→[showing lines 1218-2107 of 2939; use offset=2108 with limit to continue reading]

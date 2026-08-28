@@ -1,0 +1,800 @@
+     1→'use client'
+     2→
+     3→import { type FormEvent, useEffect, useMemo, useState } from 'react'
+     4→import { motion } from 'framer-motion'
+     5→import {
+     6→  ArrowRight,
+     7→  BadgeCheck,
+     8→  BookOpen,
+     9→  Clock,
+    10→  Library,
+    11→  Quote,
+    12→  Route,
+    13→  Search,
+    14→  Sparkles,
+    15→  Users,
+    16→} from 'lucide-react'
+    17→import { Badge } from '@/components/ui/badge'
+    18→import { Button } from '@/components/ui/button'
+    19→import { Input } from '@/components/ui/input'
+    20→import { Skeleton } from '@/components/ui/skeleton'
+    21→import { Avatar, Stars } from '@/components/platform/avatar'
+    22→import { api } from '@/lib/api'
+    23→import {
+    24→  LEVEL_LABELS,
+    25→  avatarGradient,
+    26→  currencyBRL,
+    27→  firstName,
+    28→  formatTotalDuration,
+    29→} from '@/lib/helpers'
+    30→import { useAppStore } from '@/lib/store'
+    31→import type { CourseListItemDTO, MentorListItemDTO, TrackListItemDTO } from '@/lib/types'
+    32→import { cn } from '@/lib/utils'
+    33→
+    34→const STEPS = [
+    35→  {
+    36→    number: '01',
+    37→    title: 'Descubra',
+    38→    text: 'Explore especialistas por área, leia seus murais de conteúdo e veja avaliações reais de outros mentorados.',
+    39→  },
+    40→  {
+    41→    number: '02',
+    42→    title: 'Agende',
+    43→    text: 'Escolha um horário livre na agenda do mentor, descreva seu objetivo e envie sua solicitação.',
+    44→  },
+    45→  {
+    46→    number: '03',
+    47→    title: 'Conecte-se',
+    48→    text: 'A reunião acontece aqui mesmo, com vídeo integrado. Depois, avalie a sessão e acompanhe sua evolução.',
+    49→  },
+    50→]
+    51→
+    52→const TESTIMONIALS = [
+    53→  {
+    54→    quote:
+    55→      'Vinha tentando migrar para gestão de produtos há quase um ano, sem direção nenhuma. Em duas sessões, montamos um plano de 90 dias: o que estudar, o que construir e como me posicionar. Três meses depois, eu assinava meu contrato como PO.',
+    56→    author: 'Lucas Prado · dev em transição',
+    57→  },
+    58→  {
+    59→    quote:
+    60→      'Eu travava em toda reunião em inglês. Na primeira sessão, a Sofia identificou exatamente o que me bloqueava e montou um plano de prática focada. Hoje conduzo dailies com o time de Portugal sem medo.',
+    61→    author: 'Camila R. · analista de marketing',
+    62→  },
+    63→  {
+    64→    quote:
+    65→      'Seis anos no mesmo cargo e nenhuma ideia de como sair. A mentoria de carreira com a Marina me deu clareza: reposicionei meu currículo e LinkedIn, ensaiei entrevistas e recebi duas propostas no mês seguinte.',
+    66→    author: 'Diego M. · analista financeiro',
+    67→  },
+    68→]
+    69→
+    70→export function LandingMenteeView() {
+    71→  const navigate = useAppStore((s) => s.navigate)
+    72→  const setExploreQuery = useAppStore((s) => s.setExploreQuery)
+    73→  const setExploreTab = useAppStore((s) => s.setExploreTab)
+    74→  const [mentors, setMentors] = useState<MentorListItemDTO[]>([])
+    75→  const [loading, setLoading] = useState(true)
+    76→  const [courses, setCourses] = useState<CourseListItemDTO[]>([])
+    77→  const [coursesLoading, setCoursesLoading] = useState(true)
+    78→  const [tracks, setTracks] = useState<TrackListItemDTO[]>([])
+    79→  const [tracksLoading, setTracksLoading] = useState(true)
+    80→  const [term, setTerm] = useState('')
+    81→
+    82→  useEffect(() => {
+    83→    let active = true
+    84→    api
+    85→      .listMentors({})
+    86→      .then((data) => {
+    87→        if (active) setMentors(data)
+    88→      })
+    89→      .catch(() => {
+    90→        if (active) setMentors([])
+    91→      })
+    92→      .finally(() => {
+    93→        if (active) setLoading(false)
+    94→      })
+    95→    return () => {
+    96→      active = false
+    97→    }
+    98→  }, [])
+    99→
+   100→  // Cursos para a seção "Cursos em destaque" (efeito separado)
+   101→  useEffect(() => {
+   102→    let active = true
+   103→    api
+   104→      .listCourses({})
+   105→      .then((data) => {
+   106→        if (active) setCourses(data)
+   107→      })
+   108→      .catch(() => {
+   109→        if (active) setCourses([])
+   110→      })
+   111→      .finally(() => {
+   112→        if (active) setCoursesLoading(false)
+   113→      })
+   114→    return () => {
+   115→      active = false
+   116→    }
+   117→  }, [])
+   118→
+   119→  // Trilhas populares para a seção "Trilhas em destaque" (efeito separado)
+   120→  useEffect(() => {
+   121→    let active = true
+   122→    api
+   123→      .listTracks({ sort: 'popular' })
+   124→      .then((data) => {
+   125→        if (active) setTracks(data)
+   126→      })
+   127→      .catch(() => {
+   128→        if (active) setTracks([])
+   129→      })
+   130→      .finally(() => {
+   131→        if (active) setTracksLoading(false)
+   132→      })
+   133→    return () => {
+   134→      active = false
+   135→    }
+   136→  }, [])
+   137→
+   138→  const stats = useMemo(
+   139→    () => ({
+   140→      sessions: mentors.reduce((acc, m) => acc + m.totalSessions, 0),
+   141→      reviews: mentors.reduce((acc, m) => acc + m.reviewCount, 0),
+   142→    }),
+   143→    [mentors]
+   144→  )
+   145→
+   146→  const featured = useMemo(
+   147→    () =>
+   148→      mentors
+   149→        .filter((m) => m.rating > 0)
+   150→        .sort((a, b) => b.rating - a.rating || b.reviewCount - a.reviewCount)
+   151→        .slice(0, 3),
+   152→    [mentors]
+   153→  )
+   154→
+   155→  // Top 3 cursos por alunos inscritos, desempate pela nota do mentor
+   156→  const topCourses = useMemo(
+   157→    () =>
+   158→      [...courses]
+   159→        .sort(
+   160→          (a, b) =>
+   161→            b.studentCount - a.studentCount || b.mentor.rating - a.mentor.rating
+   162→        )
+   163→        .slice(0, 3),
+   164→    [courses]
+   165→  )
+   166→
+   167→  // Top 3 trilhas (a API já devolve ordenada por popularidade)
+   168→  const topTracks = useMemo(() => tracks.slice(0, 3), [tracks])
+   169→
+   170→  const handleSearch = (e: FormEvent<HTMLFormElement>) => {
+   171→    e.preventDefault()
+   172→    setExploreQuery(term.trim())
+   173→    navigate({ name: 'marketplace' })
+   174→  }
+   175→
+   176→  const handleVerCursos = () => {
+   177→    setExploreTab('courses')
+   178→    navigate({ name: 'marketplace' })
+   179→  }
+   180→
+   181→  const handleVerTrilhas = () => {
+   182→    setExploreTab('tracks')
+   183→    navigate({ name: 'marketplace' })
+   184→  }
+   185→
+   186→  return (
+   187→    <div className="flex flex-col bg-white">
+   188→      {/* ---------- HERO ---------- */}
+   189→      <motion.section
+   190→        aria-labelledby="hero-title"
+   191→        initial={{ opacity: 0, y: 16 }}
+   192→        animate={{ opacity: 1, y: 0 }}
+   193→        transition={{ duration: 0.5 }}
+   194→        className="relative overflow-hidden"
+   195→      >
+   196→        <div
+   197→          aria-hidden
+   198→          className="absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-emerald-50 blur-3xl"
+   199→        />
+   200→        <div className="relative mx-auto max-w-6xl px-4 py-14 sm:py-20">
+   201→          <div className="mx-auto max-w-3xl text-center">
+   202→            <span className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-stone-50 px-3.5 py-1 text-xs font-semibold text-stone-600">
+   203→              <Sparkles aria-hidden className="h-3.5 w-3.5 text-emerald-700" />
+   204→              Mentorias 1:1 ao vivo, direto na plataforma
+   205→            </span>
+   206→            <h1
+   207→              id="hero-title"
+   208→              className="mt-6 text-4xl font-extrabold leading-[1.05] tracking-tight text-stone-900 sm:text-6xl"
+   209→            >
+   210→              Aprenda com quem <span className="text-emerald-700">vive o que ensina</span>
+   211→            </h1>
+   212→            <p className="mt-5 text-lg text-stone-600">
+   213→              Encontre especialistas que viveram o caminho que você quer trilhar. Agende em minutos
+   214→              e encontre-se por vídeo dentro da própria plataforma.
+   215→            </p>
+   216→
+   217→            <form
+   218→              role="search"
+   219→              onSubmit={handleSearch}
+   220→              className="mx-auto mt-8 flex max-w-xl flex-col gap-2.5 sm:flex-row"
+   221→            >
+   222→              <div className="relative flex-1">
+   223→                <Search
+   224→                  aria-hidden
+   225→                  className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400"
+   226→                />
+   227→                <Input
+   228→                  value={term}
+   229→                  onChange={(e) => setTerm(e.target.value)}
+   230→                  placeholder="Qual habilidade você quer dominar?"
+   231→                  aria-label="Buscar mentores por área ou especialidade"
+   232→                  className="h-13 rounded-2xl border-stone-200 bg-white pl-11 text-stone-900 placeholder:text-stone-400 focus-visible:border-emerald-300 focus-visible:ring-emerald-100"
+   233→                />
+   234→              </div>
+   235→              <Button type="submit" className="h-13 rounded-full px-7 font-bold">
+   236→                Explorar mentores
+   237→              </Button>
+   238→            </form>
+   239→
+   240→            <div className="mt-7 flex items-center justify-center gap-3" aria-live="polite">
+   241→              {loading ? (
+   242→                <>
+   243→                  <div className="flex -space-x-2">
+   244→                    {Array.from({ length: 5 }).map((_, i) => (
+   245→                      <Skeleton key={i} className="h-8 w-8 rounded-full ring-2 ring-white" />
+   246→                    ))}
+   247→                  </div>
+   248→                  <p className="text-sm text-stone-400">Carregando mentores…</p>
+   249→                </>
+   250→              ) : mentors.length > 0 ? (
+   251→                <>
+   252→                  <div className="flex -space-x-2">
+   253→                    {mentors.slice(0, 5).map((m, i) => (
+   254→                      <Avatar key={m.id} name={m.name} src={m.avatarUrl} size={i === 0 ? 'md' : 'sm'} />
+   255→                    ))}
+   256→                  </div>
+   257→                  <p className="text-sm text-stone-500">
+   258→                    +{mentors.length} mentores especialistas
+   259→                  </p>
+   260→                </>
+   261→              ) : null}
+   262→            </div>
+   263→          </div>
+   264→        </div>
+   265→      </motion.section>
+   266→
+   267→      {/* ---------- STATS ---------- */}
+   268→      <section aria-label="Números da plataforma" className="border-y border-stone-200 bg-stone-50/50 py-10">
+   269→        <div className="mx-auto max-w-6xl px-4">
+   270→          <div className="grid gap-8 text-center sm:grid-cols-3 sm:divide-x sm:divide-stone-200">
+   271→            <div className="sm:px-8">
+   272→              <p className="text-3xl font-extrabold text-stone-900 sm:text-4xl">+{mentors.length}</p>
+   273→              <p className="mt-1 text-xs uppercase tracking-wider text-stone-500">
+   274→                mentores especialistas
+   275→              </p>
+   276→            </div>
+   277→            <div className="sm:px-8">
+   278→              <p className="text-3xl font-extrabold text-stone-900 sm:text-4xl">+{stats.sessions}</p>
+   279→              <p className="mt-1 text-xs uppercase tracking-wider text-stone-500">
+   280→                sessões realizadas
+   281→              </p>
+   282→            </div>
+   283→            <div className="sm:px-8">
+   284→              <p className="text-3xl font-extrabold text-stone-900 sm:text-4xl">+{stats.reviews}</p>
+   285→              <p className="mt-1 text-xs uppercase tracking-wider text-stone-500">
+   286→                avaliações reais
+   287→              </p>
+   288→            </div>
+   289→          </div>
+   290→        </div>
+   291→      </section>
+   292→
+   293→      {/* ---------- COMO FUNCIONA ---------- */}
+   294→      <motion.section
+   295→        aria-labelledby="como-funciona-title"
+   296→        initial={{ opacity: 0, y: 16 }}
+   297→        whileInView={{ opacity: 1, y: 0 }}
+   298→        viewport={{ once: true, margin: '-80px' }}
+   299→        transition={{ duration: 0.5 }}
+   300→        className="mx-auto w-full max-w-6xl px-4 py-14 sm:py-20"
+   301→      >
+   302→        <h2
+   303→          id="como-funciona-title"
+   304→          className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl"
+   305→        >
+   306→          Como funciona
+   307→        </h2>
+   308→        <p className="mt-2 text-sm text-stone-500">
+   309→          Três passos simples até a sua primeira sessão.
+   310→        </p>
+   311→        <div className="mt-10 grid gap-10 sm:grid-cols-3">
+   312→          {STEPS.map((step) => (
+   313→            <div key={step.number} className="border-t-2 border-emerald-700 pt-6">
+   314→              <p className="text-xs font-bold text-emerald-700">{step.number}</p>
+   315→              <h3 className="mt-2 font-bold text-stone-900">{step.title}</h3>
+   316→              <p className="mt-2 text-sm leading-relaxed text-stone-600">{step.text}</p>
+   317→            </div>
+   318→          ))}
+   319→        </div>
+   320→      </motion.section>
+   321→
+   322→      {/* ---------- MENTORES EM DESTAQUE ---------- */}
+   323→      <motion.section
+   324→        aria-labelledby="destaque-title"
+   325→        initial={{ opacity: 0, y: 16 }}
+   326→        whileInView={{ opacity: 1, y: 0 }}
+   327→        viewport={{ once: true, margin: '-80px' }}
+   328→        transition={{ duration: 0.5 }}
+   329→        className="mx-auto w-full max-w-6xl px-4 pb-14 sm:pb-20"
+   330→      >
+   331→        <div className="flex flex-wrap items-center justify-between gap-3">
+   332→          <h2
+   333→            id="destaque-title"
+   334→            className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl"
+   335→          >
+   336→            Mentores em destaque
+   337→          </h2>
+   338→          <Button
+   339→            variant="link"
+   340→            onClick={() => navigate({ name: 'marketplace' })}
+   341→            className="gap-1 px-0 font-semibold text-emerald-700"
+   342→          >
+   343→            Ver todos
+   344→            <ArrowRight aria-hidden className="h-4 w-4" />
+   345→          </Button>
+   346→        </div>
+   347→
+   348→        <div className="mt-8 grid gap-6 sm:grid-cols-3">
+   349→          {loading
+   350→            ? Array.from({ length: 6 }).map((_, i) => (
+   351→                <div
+   352→                  key={i}
+   353→                  aria-hidden
+   354→                  className="flex flex-col gap-4 rounded-2xl border border-stone-200 p-6"
+   355→                >
+   356→                  <div className="flex items-center gap-3.5">
+   357→                    <Skeleton className="h-16 w-16 rounded-full" />
+   358→                    <div className="flex-1 space-y-2">
+   359→                      <Skeleton className="h-4 w-2/3" />
+   360→                      <Skeleton className="h-3 w-1/2" />
+   361→                    </div>
+   362→                  </div>
+   363→                  <Skeleton className="h-3 w-full" />
+   364→                  <Skeleton className="h-3 w-4/5" />
+   365→                  <div className="flex gap-2">
+   366→                    <Skeleton className="h-5 w-20 rounded-full" />
+   367→                    <Skeleton className="h-5 w-16 rounded-full" />
+   368→                  </div>
+   369→                  <Skeleton className="mt-auto h-8 w-full rounded-full" />
+   370→                </div>
+   371→              ))
+   372→            : featured.map((m) => <FeaturedMentorCard key={m.id} mentor={m} />)}
+   373→
+   374→          {!loading && featured.length === 0 && (
+   375→            <p className="rounded-2xl border border-dashed border-stone-200 p-10 text-center text-sm text-stone-500 sm:col-span-3">
+   376→              Nenhum mentor avaliado por aqui ainda — explore a lista completa.
+   377→            </p>
+   378→          )}
+   379→        </div>
+   380→      </motion.section>
+   381→
+   382→      {/* ---------- CURSOS EM DESTAQUE ---------- */}
+   383→      {(coursesLoading || topCourses.length > 0) && (
+   384→        <motion.section
+   385→          aria-labelledby="cursos-destaque-title"
+   386→          initial={{ opacity: 0, y: 16 }}
+   387→          whileInView={{ opacity: 1, y: 0 }}
+   388→          viewport={{ once: true, margin: '-80px' }}
+   389→          transition={{ duration: 0.5 }}
+   390→          className="mx-auto w-full max-w-6xl px-4 pb-14 sm:pb-20"
+   391→        >
+   392→          <div className="flex flex-wrap items-center justify-between gap-3">
+   393→            <div>
+   394→              <h2
+   395→                id="cursos-destaque-title"
+   396→                className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl"
+   397→              >
+   398→                Cursos em destaque
+   399→              </h2>
+   400→              <p className="mt-2 text-sm text-stone-500">
+   401→                Aprenda no seu ritmo com aulas gravadas e materiais dos nossos mentores.
+   402→              </p>
+   403→            </div>
+   404→            <Button
+   405→              variant="link"
+   406→              onClick={handleVerCursos}
+   407→              className="gap-1 px-0 font-semibold text-emerald-700"
+   408→            >
+   409→              Ver todos os cursos
+   410→              <ArrowRight aria-hidden className="h-4 w-4" />
+   411→            </Button>
+   412→          </div>
+   413→
+   414→          <div className="mt-8 grid gap-6 sm:grid-cols-3">
+   415→            {coursesLoading
+   416→              ? Array.from({ length: 3 }).map((_, i) => (
+   417→                  <div
+   418→                    key={i}
+   419→                    aria-hidden
+   420→                    className="overflow-hidden rounded-2xl border border-stone-200"
+   421→                  >
+   422→                    <Skeleton className="h-24 w-full rounded-none" />
+   423→                    <div className="space-y-2.5 p-5">
+   424→                      <div className="flex gap-1.5">
+   425→                        <Skeleton className="h-5 w-20 rounded-full" />
+   426→                        <Skeleton className="h-5 w-16 rounded-full" />
+   427→                      </div>
+   428→                      <Skeleton className="h-4 w-3/4" />
+   429→                      <Skeleton className="h-3 w-1/3" />
+   430→                      <Skeleton className="h-3 w-1/2" />
+   431→                      <Skeleton className="mt-3 h-8 w-full rounded-full" />
+   432→                    </div>
+   433→                  </div>
+   434→                ))
+   435→              : topCourses.map((c) => <FeaturedCourseCard key={c.id} course={c} />)}
+   436→          </div>
+   437→        </motion.section>
+   438→      )}
+   439→
+   440→      {/* ---------- TRILHAS EM DESTAQUE ---------- */}
+   441→      {(tracksLoading || topTracks.length > 0) && (
+   442→        <motion.section
+   443→          aria-labelledby="trilhas-destaque-title"
+   444→          initial={{ opacity: 0, y: 16 }}
+   445→          whileInView={{ opacity: 1, y: 0 }}
+   446→          viewport={{ once: true, margin: '-80px' }}
+   447→          transition={{ duration: 0.5 }}
+   448→          className="mx-auto w-full max-w-6xl px-4 pb-14 sm:pb-20"
+   449→        >
+   450→          <div className="flex flex-wrap items-center justify-between gap-3">
+   451→            <div>
+   452→              <h2
+   453→                id="trilhas-destaque-title"
+   454→                className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl"
+   455→              >
+   456→                Trilhas em destaque
+   457→              </h2>
+   458→              <p className="mt-2 text-sm text-stone-500">
+   459→                Jornadas guiadas que combinam cursos e mentorias 1:1 dos nossos mentores.
+   460→              </p>
+   461→            </div>
+   462→            <Button
+   463→              variant="link"
+   464→              onClick={handleVerTrilhas}
+   465→              className="gap-1 px-0 font-semibold text-emerald-700"
+   466→            >
+   467→              Ver todas as trilhas
+   468→              <ArrowRight aria-hidden className="h-4 w-4" />
+   469→            </Button>
+   470→          </div>
+   471→
+   472→          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+   473→            {tracksLoading
+   474→              ? Array.from({ length: 3 }).map((_, i) => (
+   475→                  <div
+   476→                    key={i}
+   477→                    aria-hidden
+   478→                    className="overflow-hidden rounded-2xl border border-stone-200"
+   479→                  >
+   480→                    <Skeleton className="h-36 w-full rounded-none" />
+   481→                    <div className="space-y-2.5 p-5">
+   482→                      <div className="flex gap-1.5">
+   483→                        <Skeleton className="h-5 w-16 rounded-full" />
+   484→                        <Skeleton className="h-5 w-20 rounded-full" />
+   485→                      </div>
+   486→                      <Skeleton className="h-4 w-3/4" />
+   487→                      <Skeleton className="h-3 w-1/2" />
+   488→                      <Skeleton className="h-3 w-1/3" />
+   489→                      <Skeleton className="mt-3 h-9 w-full rounded-full" />
+   490→                    </div>
+   491→                  </div>
+   492→                ))
+   493→              : topTracks.map((t) => <FeaturedTrackCard key={t.id} track={t} />)}
+   494→          </div>
+   495→        </motion.section>
+   496→      )}
+   497→
+   498→      {/* ---------- DEPOIMENTOS ---------- */}
+   499→      <motion.section
+   500→        aria-labelledby="depoimentos-title"
+   501→        initial={{ opacity: 0, y: 16 }}
+   502→        whileInView={{ opacity: 1, y: 0 }}
+   503→        viewport={{ once: true, margin: '-80px' }}
+   504→        transition={{ duration: 0.5 }}
+   505→        className="border-y border-stone-200 bg-stone-50/50"
+   506→      >
+   507→        <div className="mx-auto max-w-6xl px-4 py-14 sm:py-20">
+   508→          <h2
+   509→            id="depoimentos-title"
+   510→            className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl"
+   511→          >
+   512→            Depoimentos de mentorados
+   513→          </h2>
+   514→          <p className="mt-2 text-sm text-stone-500">
+   515→            Histórias reais de quem já deu o próximo passo.
+   516→          </p>
+   517→          <div className="mt-8 grid gap-6 sm:grid-cols-3">
+   518→            {TESTIMONIALS.map((t) => (
+   519→              <figure
+   520→                key={t.author}
+   521→                className="flex flex-col rounded-2xl border border-stone-100 bg-stone-50 p-6"
+   522→              >
+   523→                <Quote aria-hidden className="h-6 w-6 fill-emerald-700 text-emerald-700" />
+   524→                <blockquote className="mt-3 text-sm leading-relaxed text-stone-700">
+   525→                  {t.quote}
+   526→                </blockquote>
+   527→                <figcaption className="mt-4 text-xs font-semibold text-stone-500">
+   528→                  {t.author}
+   529→                </figcaption>
+   530→              </figure>
+   531→            ))}
+   532→          </div>
+   533→        </div>
+   534→      </motion.section>
+   535→
+   536→      {/* ---------- CTA FINAL ---------- */}
+   537→      <motion.section
+   538→        aria-labelledby="cta-title"
+   539→        initial={{ opacity: 0, y: 16 }}
+   540→        whileInView={{ opacity: 1, y: 0 }}
+   541→        viewport={{ once: true, margin: '-80px' }}
+   542→        transition={{ duration: 0.5 }}
+   543→        className="mx-auto w-full max-w-6xl px-4 py-14 sm:py-20"
+   544→      >
+   545→        <div className="relative overflow-hidden rounded-3xl bg-emerald-950 px-6 py-14 text-center text-white sm:py-16">
+   546→          <div
+   547→            aria-hidden
+   548→            className="absolute -left-16 -top-16 h-64 w-64 rounded-full bg-emerald-600/30 blur-3xl"
+   549→          />
+   550→          <div className="relative">
+   551→            <h2
+   552→              id="cta-title"
+   553→              className="text-3xl font-extrabold tracking-tight sm:text-4xl"
+   554→            >
+   555→              Pronto para dar o próximo passo?
+   556→            </h2>
+   557→            <p className="mx-auto mt-4 max-w-xl text-emerald-100/90">
+   558→              Explore especialistas, agende em minutos e encontre-se por vídeo aqui mesmo. Sua
+   559→              primeira mentoria pode ser hoje.
+   560→            </p>
+   561→            <Button
+   562→              onClick={() => navigate({ name: 'marketplace' })}
+   563→              className="mt-8 h-12 rounded-full bg-white px-8 font-bold text-emerald-950 hover:bg-emerald-50"
+   564→            >
+   565→              Explorar mentores agora
+   566→            </Button>
+   567→          </div>
+   568→        </div>
+   569→      </motion.section>
+   570→    </div>
+   571→  )
+   572→}
+   573→
+   574→function FeaturedMentorCard({ mentor }: { mentor: MentorListItemDTO }) {
+   575→  const navigate = useAppStore((s) => s.navigate)
+   576→
+   577→  return (
+   578→    <div className="flex flex-col gap-4 rounded-2xl border border-stone-200 p-6 transition hover:border-emerald-300 hover:shadow-md">
+   579→      <div className="flex items-center gap-3.5">
+   580→        <Avatar name={mentor.name} src={mentor.avatarUrl} size="lg" />
+   581→        <div className="min-w-0">
+   582→          <p className="flex items-center gap-1.5 truncate font-bold text-stone-900">
+   583→            {mentor.name}
+   584→            {mentor.rating >= 4.5 && mentor.reviewCount >= 3 && (
+   585→              <BadgeCheck
+   586→                aria-label="Mentor bem avaliado"
+   587→                className="h-4 w-4 shrink-0 text-emerald-600"
+   588→              />
+   589→            )}
+   590→          </p>
+   591→          <p className="text-xs text-stone-500">
+   592→            {firstName(mentor.name)} · {mentor.experienceYears} anos de experiência
+   593→          </p>
+   594→        </div>
+   595→      </div>
+   596→
+   597→      <p className="line-clamp-2 text-sm leading-relaxed text-stone-600">{mentor.headline}</p>
+   598→
+   599→      <div className="flex items-center gap-1.5">
+   600→        <Stars rating={mentor.rating} size={13} />
+   601→        <span className="text-xs font-semibold text-stone-700">{mentor.rating.toFixed(1)}</span>
+   602→        <span className="text-xs text-stone-500">({mentor.reviewCount})</span>
+   603→      </div>
+   604→
+   605→      <div className="flex flex-wrap gap-1.5">
+   606→        {mentor.categories.slice(0, 2).map((c) => (
+   607→          <Badge key={c} className="bg-emerald-50 text-emerald-800">
+   608→            {c}
+   609→          </Badge>
+   610→        ))}
+   611→      </div>
+   612→
+   613→      <div className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-2">
+   614→        <p className="font-extrabold text-stone-900">
+   615→          {currencyBRL(mentor.hourlyRate)}
+   616→          <span className="text-xs font-medium text-stone-500">/h</span>
+   617→        </p>
+   618→        <Button
+   619→          size="sm"
+   620→          className="rounded-full"
+   621→          onClick={() => navigate({ name: 'mentor', mentorId: mentor.id })}
+   622→          aria-label={`Ver perfil de ${mentor.name}`}
+   623→        >
+   624→          Ver perfil
+   625→        </Button>
+   626→      </div>
+   627→    </div>
+   628→  )
+   629→}
+   630→
+   631→function FeaturedCourseCard({ course }: { course: CourseListItemDTO }) {
+   632→  const navigate = useAppStore((s) => s.navigate)
+   633→
+   634→  return (
+   635→    <div className="flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition hover:border-emerald-300 hover:shadow-md">
+   636→      {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
+   637→      <div className="relative h-24 w-full bg-stone-100">
+   638→        {course.coverUrl ? (
+   639→          <img
+   640→            src={course.coverUrl}
+   641→            alt=""
+   642→            aria-hidden
+   643→            className="absolute inset-0 h-full w-full object-cover"
+   644→          />
+   645→        ) : (
+   646→          <div
+   647→            aria-hidden
+   648→            className="absolute inset-0"
+   649→            style={avatarGradient(course.title)}
+   650→          >
+   651→            <Library className="pointer-events-none absolute -bottom-2 right-2 h-16 w-16 text-white/20" />
+   652→          </div>
+   653→        )}
+   654→      </div>
+   655→
+   656→      <div className="flex flex-1 flex-col p-5">
+   657→        <div className="flex flex-wrap gap-1.5">
+   658→          <Badge className="rounded-full bg-emerald-50 text-[11px] text-emerald-800">
+   659→            {course.category}
+   660→          </Badge>
+   661→          <Badge className="rounded-full bg-stone-100 text-[11px] text-stone-600">
+   662→            {LEVEL_LABELS[course.level] ?? course.level}
+   663→          </Badge>
+   664→        </div>
+   665→
+   666→        <p className="mt-2.5 line-clamp-2 min-h-10 font-bold leading-snug text-stone-900">
+   667→          {course.title}
+   668→        </p>
+   669→        <p className="mt-1 truncate text-xs text-stone-500">por {course.mentor.name}</p>
+   670→
+   671→        <div className="mt-2 flex items-center gap-3 text-xs text-stone-400">
+   672→          <span className="inline-flex items-center gap-1">
+   673→            <BookOpen aria-hidden className="h-3.5 w-3.5" />
+   674→            {course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'}
+   675→          </span>
+   676→          <span className="inline-flex items-center gap-1">
+   677→            <Clock aria-hidden className="h-3.5 w-3.5" />
+   678→            {formatTotalDuration(course.totalDurationMin)}
+   679→          </span>
+   680→        </div>
+   681→
+   682→        <div className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-3">
+   683→          <p
+   684→            className={cn(
+   685→              'text-sm font-extrabold',
+   686→              course.price === 0 ? 'text-emerald-700' : 'text-stone-900'
+   687→            )}
+   688→          >
+   689→            {course.price === 0 ? 'Grátis' : currencyBRL(course.price)}
+   690→          </p>
+   691→          <Button
+   692→            size="sm"
+   693→            className="h-9 rounded-full px-4 font-semibold"
+   694→            onClick={() => navigate({ name: 'course', courseId: course.id })}
+   695→            aria-label={`Ver curso ${course.title}`}
+   696→          >
+   697→            Ver curso
+   698→          </Button>
+   699→        </div>
+   700→      </div>
+   701→    </div>
+   702→  )
+   703→}
+   704→
+   705→function FeaturedTrackCard({ track }: { track: TrackListItemDTO }) {
+   706→  const navigate = useAppStore((s) => s.navigate)
+   707→
+   708→  return (
+   709→    <article
+   710→      className="group flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition hover:border-emerald-300 hover:shadow-md"
+   711→      onClick={() => navigate({ name: 'track', trackId: track.id })}
+   712→    >
+   713→      {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
+   714→      <div className="relative h-36 w-full bg-stone-100">
+   715→        {track.coverUrl ? (
+   716→          <img
+   717→            src={track.coverUrl}
+   718→            alt=""
+   719→            aria-hidden
+   720→            className="absolute inset-0 h-full w-full object-cover"
+   721→          />
+   722→        ) : (
+   723→          <div
+   724→            aria-hidden
+   725→            className="absolute inset-0"
+   726→            style={avatarGradient(track.title)}
+   727→          >
+   728→            <Route className="pointer-events-none absolute -bottom-2 right-2 h-16 w-16 text-white/20" />
+   729→          </div>
+   730→        )}
+   731→      </div>
+   732→
+   733→      <div className="flex min-w-0 flex-1 flex-col p-5">
+   734→        <div className="flex flex-wrap gap-1.5">
+   735→          <Badge className="rounded-full border border-teal-200 bg-teal-50 text-[11px] text-teal-700">
+   736→            Trilha
+   737→          </Badge>
+   738→          <Badge className="rounded-full bg-stone-100 text-[11px] text-stone-600">
+   739→            {track.category}
+   740→          </Badge>
+   741→        </div>
+   742→
+   743→        <p className="mt-2.5 line-clamp-2 min-h-10 font-bold leading-snug text-stone-900">
+   744→          {track.title}
+   745→        </p>
+   746→
+   747→        <div className="mt-2 flex items-center gap-3 text-xs text-stone-400">
+   748→          <span className="inline-flex items-center gap-1">
+   749→            <BookOpen aria-hidden className="h-3.5 w-3.5" />
+   750→            {track.courseCount} {track.courseCount === 1 ? 'curso' : 'cursos'}
+   751→          </span>
+   752→          <span className="inline-flex items-center gap-1">
+   753→            <Users aria-hidden className="h-3.5 w-3.5" />
+   754→            {track.mentorshipSessions} {track.mentorshipSessions === 1 ? 'mentoria' : 'mentorias'}
+   755→          </span>
+   756→          <span className="inline-flex items-center gap-1">
+   757→            <Clock aria-hidden className="h-3.5 w-3.5" />
+   758→            {formatTotalDuration(track.totalDurationMin)}
+   759→          </span>
+   760→        </div>
+   761→
+   762→        <div className="mt-2.5 flex items-center gap-1.5">
+   763→          <Avatar
+   764→            name={track.mentor.name}
+   765→            src={track.mentor.avatarUrl}
+   766→            size="sm"
+   767→            className="h-5 w-5 text-[8px] ring-0"
+   768→          />
+   769→          <span className="truncate text-xs font-medium text-stone-600">
+   770→            por {firstName(track.mentor.name)}
+   771→          </span>
+   772→          <Stars rating={track.mentor.rating} size={11} />
+   773→        </div>
+   774→
+   775→        <div className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-3">
+   776→          <p
+   777→            className={cn(
+   778→              'text-sm font-extrabold',
+   779→              track.price === 0 ? 'text-emerald-700' : 'text-stone-900'
+   780→            )}
+   781→          >
+   782→            {track.price === 0 ? 'Grátis' : currencyBRL(track.price)}
+   783→          </p>
+   784→          <Button
+   785→            size="sm"
+   786→            className="h-9 rounded-full px-4 font-semibold"
+   787→            onClick={(e) => {
+   788→              e.stopPropagation()
+   789→              navigate({ name: 'track', trackId: track.id })
+   790→            }}
+   791→            aria-label={`Ver trilha ${track.title}`}
+   792→          >
+   793→            Ver trilha
+   794→          </Button>
+   795→        </div>
+   796→      </div>
+   797→    </article>
+   798→  )
+   799→}
+   800→

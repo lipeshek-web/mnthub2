@@ -6,6 +6,8 @@ export interface UserDTO {
   email: string
   bio?: string | null
   avatarUrl?: string | null
+  /** true quando o usuário possui perfil de mentor cadastrado */
+  isMentor?: boolean
 }
 
 export interface SocialLinksDTO {
@@ -143,7 +145,7 @@ export interface CourseLessonDTO {
   id: string
   title: string
   description: string
-  kind: 'RECORDED' | 'TEXT' | 'LIVE' | string
+  kind: 'RECORDED' | 'TEXT' | 'LIVE' | 'READING' | string
   videoUrl: string | null
   content: string | null
   startsAt: string | null // LIVE: "YYYY-MM-DDTHH:mm"
@@ -153,6 +155,9 @@ export interface CourseLessonDTO {
   durationMin: number
   questionCount: number
   order: number
+  themeId: string | null // tema (módulo) da aula — null = sem tema
+  /** Aula de leitura (READING): artigo/livro da Biblioteca (pdfUrl/content só p/ inscritos) */
+  reading: { id: string; title: string; kind: string; pdfUrl: string | null; content: string | null } | null
 }
 
 export interface LessonAttachmentDTO {
@@ -206,8 +211,17 @@ export interface CourseListItemDTO {
 export interface CourseDetailDTO extends CourseListItemDTO {
   updatedAt: string
   lessons: CourseLessonDTO[]
+  /** Temas (módulos) do curso em ordem — aulas sem tema ficam fora dos grupos */
+  themes: CourseThemeDTO[]
   /** Preenchido quando userId é informado e o usuário está inscrito */
   enrollment: { completedLessonIds: string[] } | null
+}
+
+export interface CourseThemeDTO {
+  id: string
+  title: string
+  description: string
+  order: number
 }
 
 export interface EnrolledCourseDTO {
@@ -291,6 +305,43 @@ export interface TrackItemInput {
   title?: string
   description?: string
   sessionCount?: number
+}
+
+// ==================== BIBLIOTECA (artigos e livros) ====================
+
+export interface LibraryAuthorDTO {
+  id: string
+  userId: string
+  name: string
+  headline: string
+  avatarUrl?: string | null
+}
+
+export interface LibraryItemDTO {
+  id: string
+  kind: 'ARTICLE' | 'BOOK' | string
+  title: string
+  description: string
+  category: string
+  level: 'INICIANTE' | 'INTERMEDIARIO' | 'AVANCADO' | string
+  coverUrl?: string | null
+  readingMin: number
+  isPublished: boolean
+  hasPdf: boolean
+  hasText: boolean
+  createdAt: string
+  author: LibraryAuthorDTO
+  /** nº de aulas de cursos que usam este item como leitura */
+  usageCount: number
+}
+
+export interface LibraryItemDetailDTO extends LibraryItemDTO {
+  /** só preenchido quando o usuário pode ler (publicado, inscrito em curso vinculado ou autor) */
+  pdfUrl: string | null
+  content: string | null
+  canRead: boolean
+  /** cursos (máx. 5) que usam este item como leitura, via aulas vinculadas */
+  linkedCourses?: { id: string; title: string }[]
 }
 
 // ==================== LP DO MENTOR (tráfego pago) ====================

@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { hashPassword } from '../src/lib/password'
 
 const db = new PrismaClient()
 
@@ -174,6 +175,9 @@ async function main() {
       website: 'https://anasouza.design',
     },
   })
+
+  console.log('🔑 Senhas das contas demo (demo123)...')
+  await db.user.updateMany({ data: { passwordHash: hashPassword('demo123') } })
 
   console.log('📅 Disponibilidades...')
   // [Seg, Ter, Qua, Qui, Sex, Sáb, Dom] como pares [weekday, startHour, endHour]
@@ -543,6 +547,198 @@ async function main() {
           'A rotina dos 20 minutos (5 dias/semana)\n\nMinutos 0–10: INPUT ATIVO (shadowing)\n\n1. Escolha 1–2 minutos de áudio autêntico do SEU contexto (entrevistas no YouTube, podcasts de produto/engenharia em inglês).\n2. Ouça uma vez entendendo o geral.\n3. Shadowing: ouça frase por frase e repita IMITANDO ritmo, entonação e pausas — não só as palavras. 4–5 repetições por frase.\n4. Grave sua última repetição e compare com o original.\n\nMinutos 10–20: OUTPUT DIRIGIDO\n\n1. Responda UMA pergunta de entrevista em voz alta (1–2 min), gravando.\n2. Ouça e marque: travadas, muletas ("like", "äh"), uma palavra que você quis dizer e não soube.\n3. Responda DE NOVO a mesma pergunta, melhorando. A segunda versão é sempre visivelmente melhor — esse é o mecanismo de evolução.\n\nBanco de perguntas (rote por temas)\n\n• Tell me about yourself • A project you\'re proud of • A conflict with a colleague • A failure and what you learned • Why this company?\n\nComo acompanhar progresso\n\nGuarde a gravação do dia 1. No dia 30, ouça as duas. A diferença é o seu combustível para os próximos 30 dias.\n\nE quando quiser simulação com correção humana ao vivo — você sabe onde me encontrar: agende uma mentoria e simulamos seu processo real.',
       },
     ]
+  )
+
+  // ==================== TEMAS DOS CURSOS ====================
+  console.log('🗂️  Temas dos cursos...')
+  const addThemes = async (
+    courseId: string,
+    groups: { title: string; description?: string; from: number; to: number }[]
+  ) => {
+    const ls = await db.lesson.findMany({ where: { courseId }, orderBy: { order: 'asc' } })
+    for (let t = 0; t < groups.length; t++) {
+      const g = groups[t]
+      const theme = await db.courseTheme.create({
+        data: { courseId, title: g.title, description: g.description ?? '', order: t + 1 },
+      })
+      for (const lesson of ls.slice(g.from, g.to + 1)) {
+        await db.lesson.update({ where: { id: lesson.id }, data: { themeId: theme.id } })
+      }
+    }
+  }
+
+  await addThemes(cursoArquitetura.id, [
+    { title: 'Fundamentos da arquitetura', description: 'O método do curso, camadas e a linguagem do domínio.', from: 0, to: 1 },
+    { title: 'Prática guiada', description: 'Refatoração ao vivo, domínio e performance com exemplos reais.', from: 2, to: 4 },
+    { title: 'Próximo nível', description: 'Checklist final e revisão das arquiteturas dos alunos.', from: 5, to: 6 },
+  ])
+  await addThemes(cursoPM.id, [
+    { title: 'O papel do PM', description: 'O que é (e o que não é) product management.', from: 0, to: 0 },
+    { title: 'Discovery e priorização', description: 'Entrevistas que geram insight e decisões com RICE.', from: 1, to: 2 },
+    { title: 'Métricas e transição', description: 'North star, plano de 90 dias e próximos passos.', from: 3, to: 5 },
+  ])
+  await addThemes(cursoDS.id, [
+    { title: 'Fundamentos', description: 'Tokens primitivos, semânticos e componentização no Figma.', from: 0, to: 1 },
+    { title: 'Governança e entrega', description: 'Processo para times enxutos e handoff sem atrito.', from: 2, to: 3 },
+  ])
+  await addThemes(cursoGrowth.id, [
+    { title: 'Funil e CRO', description: 'Anatomia de funis e experimentos que convertem.', from: 0, to: 1 },
+    { title: 'Canais e roadmap', description: 'SEO, conteúdo e o plano de experimentos.', from: 2, to: 4 },
+  ])
+  await addThemes(cursoIngles.id, [
+    { title: 'Diagnóstico e método', description: 'Onde focar e a estrutura STAR.', from: 0, to: 1 },
+    { title: 'Prática e rotina', description: 'Simulações comentadas e a rotina dos 20 minutos.', from: 2, to: 3 },
+  ])
+
+  // ==================== BIBLIOTECA (artigos e livros) ====================
+  console.log('📖 Biblioteca (artigos e livros)...')
+  const artigoCamadas = await db.libraryItem.create({
+    data: {
+      mentorId: carlosProfile.id,
+      kind: 'ARTICLE',
+      title: 'O guia rápido de arquitetura em camadas',
+      description:
+        'Um resumo direto ao ponto das 4 camadas que sobrevivem ao crescimento de um app — com o checklist que uso em toda revisão de código.',
+      category: 'Tecnologia',
+      level: 'INTERMEDIARIO',
+      coverUrl: '/uploads/seed/course-arquitetura.png',
+      content:
+        'Arquitetura em 4 camadas, sem teoria demais\n\nDepois de 12 anos revisando sistemas alheios, eu resumi tudo o que importa em quatro perguntas:\n\n## 1. A UI está “burra”?\n\nComponente que decide regra de negócio é componente que vai doer no próximo sprint. A interface só exibe e coleta — o resto mora nos casos de uso.\n\n## 2. Os verbos têm nome de negócio?\n\nInscreverAluno, PublicarCurso, CancelarAgendamento. Se o seu código fala “handlePostV2”, o negócio e o sistema estão falando línguas diferentes.\n\n## 3. As regras moram num lugar só?\n\n“Aluno não pode se inscrever em curso despublicado” é uma regra — e uma regra não pode viver em três ifs espalhados pela UI.\n\n## 4. A infra é plugável?\n\nTrocar Postgres por outro banco deveria tocar pouquíssimos arquivos. Se tocar vinte, a infra virou protagonista.\n\n## O checklist de revisão\n\n- Dependências apontam para dentro?\n- Todo caso de uso retorna sucesso ou erro de negócio — nunca stack trace cru?\n- O domínio roda num script de terminal, sem navegador?\n\nQuatro “sims” e seu sistema está pronto para escalar. É exatamente esse método que aplicamos, aula por aula, no curso Arquitetura de Software na Prática.',
+      readingMin: 12,
+      isPublished: true,
+    },
+  })
+  const livroArquitetura = await db.libraryItem.create({
+    data: {
+      mentorId: carlosProfile.id,
+      kind: 'BOOK',
+      title: 'Arquitetura que Escala — capítulo de amostra',
+      description:
+        'Capítulo de amostra do livro do curso: camadas, domínio, casos de uso e o método de refatoração das duas semanas — em 7 páginas ilustradas.',
+      category: 'Tecnologia',
+      level: 'INTERMEDIARIO',
+      coverUrl: '/uploads/seed/course-arquitetura.png',
+      pdfUrl: '/uploads/seed/livro-arquitetura.pdf',
+      readingMin: 45,
+      isPublished: true,
+    },
+  })
+  const artigoDiscovery = await db.libraryItem.create({
+    data: {
+      mentorId: marina.id,
+      kind: 'ARTICLE',
+      title: 'Discovery em 5 perguntas',
+      description:
+        'O roteiro de entrevistas que eu uso antes de escrever qualquer linha de especificação — com o roteiro pronto para copiar.',
+      category: 'Negócios',
+      level: 'INICIANTE',
+      content:
+        'Discovery em 5 perguntas\n\nA maioria das features fracassadas não morre por falta de execução — morre por ter resolvido o problema errado. O discovery existe para barato: 5 perguntas antes de 5 sprints.\n\n## 1. Qual é o problema de verdade?\n\n“Precisamos de um chat” não é problema. É solução disfarçada. Pergunte “para quê?” até chegar no desconforto real do usuário.\n\n## 2. Quem tem esse problema hoje?\n\nDelimite o segmento. “Todo mundo” significa que ninguém sofre o suficiente.\n\n## 3. Como resolve hoje?\n\nSe a resposta for “com uma planilha horrível”, comemore: existe hábito instalado e dor real. Você vai substituir a planilha, não criar um comportamento novo.\n\n## 4. Qual é o sinal de que valeu a pena?\n\nDefina a métrica ANTES de construir. Se você não sabe como vai medir, não sabe o que está construindo.\n\n## 5. Qual é a versão mais pequena que já testa a hipótese?\n\nNão é o MVP. É o teste. Um link, uma landing, um concierge manual. O objetivo é aprender por R$0 e em uma semana.\n\n## O roteiro da entrevista\n\n- “Me conta a última vez que você precisou fazer X.”\n- “O que foi mais chato nisso?”\n- “O que você já tentou para resolver?”\n- “Se isso sumisse amanhã, o que aconteceria?”\n\nNunca pergunte “você usaria isso?”. Todo mundo diz sim por educação — e aí o produto morre com dados bonitos de pesquisa.',
+      readingMin: 9,
+      isPublished: true,
+    },
+  })
+  const apostilaDados = await db.libraryItem.create({
+    data: {
+      mentorId: beatriz.id,
+      kind: 'BOOK',
+      title: 'Fundamentos de Dados — apostila da trilha',
+      description:
+        'Coleta, limpeza e leitura crítica de dados: a apostila completa com checklists e os erros de leitura que mais enganam times de produto e engenharia.',
+      category: 'Tecnologia',
+      level: 'INICIANTE',
+      pdfUrl: '/uploads/seed/apostila-dados.pdf',
+      readingMin: 30,
+      isPublished: true,
+    },
+  })
+  const artigoExpressoes = await db.libraryItem.create({
+    data: {
+      mentorId: sofia.id,
+      kind: 'ARTICLE',
+      title: '30 expressões para brilhar em entrevistas em inglês',
+      description:
+        'As frases que fazem você soar sênior em qualquer processo internacional — separadas por momento da entrevista.',
+      category: 'Idiomas',
+      level: 'INICIANTE',
+      content:
+        '30 expressões para entrevistas em inglês\n\nVocabulário de entrevista não é sobre falar “bonito” — é sobre soar CLARO e confiante nos momentos que decidem o processo. Separei as 30 que mais uso nas simulações.\n\n## No opening\n\n- “Thank you for making the time — I’m excited to learn more about this role.”\n- “I’ll keep it concise: three things I want you to know about me.”\n\n## Ao contar uma história (STAR)\n\n- “I owned the migration end to end, which meant…”\n- “The trade-off we faced was X versus Y, and I chose Y because…”\n- “The result: we cut latency by 40% and incidents went to zero.”\n\n## Quando não souber a resposta\n\n- “That’s a great question — I haven’t faced that directly, but here’s how I’d think about it…”\n- “I’d start by framing the problem, then validate with data before committing.”\n\n## Para fechar\n\n- “What does success look like for this role in the first 90 days?”\n- “Is there anything about my background that gives you hesitation? I’d love to address it.”\n\n## Como praticar\n\nEscolha 5 expressões por semana e use-as em voz alta nas suas gravações diárias (aula 4 do curso mostra a rotina completa). Em 6 semanas elas serão automáticas — e a diferença na entrevista é perceptível na primeira simulação.',
+      readingMin: 8,
+      isPublished: true,
+    },
+  })
+  const artigoFunil = await db.libraryItem.create({
+    data: {
+      mentorId: rafael.id,
+      kind: 'ARTICLE',
+      title: 'Playbook: os 7 diagnósticos de funil que mais encontram dinheiro',
+      description:
+        'O checklist de auditoria que aplico em toda mentoria de growth — ordenado pelo potencial de impacto na conversão.',
+      category: 'Marketing',
+      level: 'INTERMEDIARIO',
+      content:
+        'Os 7 diagnósticos de funil\n\nAntes de testar cor de botão, audite a sequência. A ordem abaixo é por impacto médio observado em auditorias reais:\n\n## 1. Proposta da landing\n\nEm 5 segundos, um visitante novo entende: o que é, para quem, e qual o próximo passo? Se o título precisa de “saiba mais”, a proposta não está clara.\n\n## 2. Fricção do form\n\nConte os campos. Cada campo além do essencial custa conversão — e cada um precisa justificar sua existência.\n\n## 3. Prova social no ponto da dúvida\n\nDepoimento junto ao CTA, não no rodapé. A dúvida surge no clique — a resposta precisa estar ali.\n\n## 4. Qualificação implícita\n\nO conteúdo já filtra o lead errado? Se todos clicam e ninguém compra, o problema é de promessa, não de tráfego.\n\n## 5. Follow-up\n\nO lead que não comprou recebe algo nos próximos 7 dias? A maioria das receitas está no segundo e terceiro toque.\n\n## 6. Preço versus valor percebido\n\nAncore antes de revelar: o que o lead já entendeu de valor quando chegou no preço?\n\n## 7. Medição\n\nSem evento de begin_checkout, você está otimizando no escuro. Instrumente primeiro, teste depois.',
+      readingMin: 10,
+      isPublished: true,
+    },
+  })
+
+  // ==================== AULAS DE LEITURA (Biblioteca nos cursos) ====================
+  console.log('📚 Aulas de leitura vinculadas à Biblioteca...')
+  const appendReading = async (
+    courseId: string,
+    item: { id: string; title: string; readingMin: number },
+    title: string,
+    description: string
+  ) => {
+    // garante o tema “Leituras complementares” como último tema do curso
+    const lastTheme = await db.courseTheme.findFirst({
+      where: { courseId, title: 'Leituras complementares' },
+    })
+    const themeId =
+      lastTheme?.id ??
+      (
+        await db.courseTheme.create({
+          data: { courseId, title: 'Leituras complementares', description: 'Artigos e livros da Biblioteca para aprofundar o curso.', order: 99 },
+        })
+      ).id
+    const last = await db.lesson.findFirst({ where: { courseId }, orderBy: { order: 'desc' } })
+    await db.lesson.create({
+      data: {
+        courseId,
+        title,
+        description,
+        kind: 'READING',
+        libraryItemId: item.id,
+        durationMin: item.readingMin,
+        order: (last?.order ?? 0) + 1,
+        themeId,
+      },
+    })
+  }
+  await appendReading(
+    cursoArquitetura.id,
+    livroArquitetura,
+    'Leitura: Arquitetura que Escala (capítulo de amostra)',
+    'O capítulo de amostra do livro do curso — camadas, domínio e o método de refatoração das duas semanas.'
+  )
+  await appendReading(
+    cursoArquitetura.id,
+    artigoCamadas,
+    'Leitura: O guia rápido de arquitetura em camadas',
+    'O checklist de revisão de código em 4 perguntas — leitura de 12 minutos para fixar o método.'
+  )
+  await appendReading(
+    cursoPM.id,
+    artigoDiscovery,
+    'Leitura: Discovery em 5 perguntas',
+    'O roteiro de entrevistas da Marina, com as 5 perguntas e o script pronto para a sua próxima feature.'
+  )
+  await appendReading(
+    cursoIngles.id,
+    artigoExpressoes,
+    'Leitura: 30 expressões para entrevistas em inglês',
+    'As frases separadas por momento da entrevista — use junto com a rotina de prática da aula 4.'
   )
 
   // Matrículas com progresso

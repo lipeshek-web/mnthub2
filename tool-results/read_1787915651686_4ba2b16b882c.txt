@@ -1,0 +1,881 @@
+     1→'use client'
+     2→
+     3→import { useCallback, useEffect, useRef, useState } from 'react'
+     4→import {
+     5→  ChevronDown,
+     6→  ChevronUp,
+     7→  Eye,
+     8→  EyeOff,
+     9→  ImagePlus,
+    10→  Pencil,
+    11→  Plus,
+    12→  Route,
+    13→  Trash2,
+    14→  X,
+    15→} from 'lucide-react'
+    16→import { toast } from 'sonner'
+    17→
+    18→import {
+    19→  AlertDialog,
+    20→  AlertDialogAction,
+    21→  AlertDialogCancel,
+    22→  AlertDialogContent,
+    23→  AlertDialogDescription,
+    24→  AlertDialogFooter,
+    25→  AlertDialogHeader,
+    26→  AlertDialogTitle,
+    27→} from '@/components/ui/alert-dialog'
+    28→import { Badge } from '@/components/ui/badge'
+    29→import { Button } from '@/components/ui/button'
+    30→import {
+    31→  Card,
+    32→  CardAction,
+    33→  CardContent,
+    34→  CardDescription,
+    35→  CardHeader,
+    36→  CardTitle,
+    37→} from '@/components/ui/card'
+    38→import {
+    39→  Dialog,
+    40→  DialogContent,
+    41→  DialogDescription,
+    42→  DialogFooter,
+    43→  DialogHeader,
+    44→  DialogTitle,
+    45→} from '@/components/ui/dialog'
+    46→import { Input } from '@/components/ui/input'
+    47→import { Label } from '@/components/ui/label'
+    48→import {
+    49→  Select,
+    50→  SelectContent,
+    51→  SelectItem,
+    52→  SelectTrigger,
+    53→  SelectValue,
+    54→} from '@/components/ui/select'
+    55→import { Skeleton } from '@/components/ui/skeleton'
+    56→import { Textarea } from '@/components/ui/textarea'
+    57→import { api } from '@/lib/api'
+    58→import { CATEGORIES, LEVEL_LABELS, currencyBRL } from '@/lib/helpers'
+    59→import type {
+    60→  CourseListItemDTO,
+    61→  TrackDetailItemDTO,
+    62→  TrackItemInput,
+    63→  TrackItemSummaryDTO,
+    64→  TrackListItemDTO,
+    65→} from '@/lib/types'
+    66→
+    67→const TRACK_LEVELS = ['INICIANTE', 'INTERMEDIARIO', 'AVANCADO'] as const
+    68→
+    69→const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+    70→
+    71→/** Valida o tamanho (máx. 5MB), envia o arquivo e devolve a URL — falhas são exibidas via toast */
+    72→async function uploadImageFile(file: File | null | undefined): Promise<string | null> {
+    73→  if (!file) return null
+    74→  if (file.size > MAX_IMAGE_BYTES) {
+    75→    toast.error('A imagem deve ter no máximo 5MB.')
+    76→    return null
+    77→  }
+    78→  try {
+    79→    return await api.uploadImage(file)
+    80→  } catch (err) {
+    81→    toast.error(err instanceof Error ? err.message : 'Não foi possível enviar a imagem.')
+    82→    return null
+    83→  }
+    84→}
+    85→
+    86→interface TrackFormErrors {
+    87→  title?: string
+    88→  description?: string
+    89→  category?: string
+    90→  price?: string
+    91→  items?: string
+    92→}
+    93→
+    94→/** Item de trilha em edição (cursos resolvem o título pela lista do mentor) */
+    95→interface DraftItem {
+    96→  key: string
+    97→  type: 'COURSE' | 'MENTORSHIP'
+    98→  courseId?: string
+    99→  title: string
+   100→  description: string
+   101→  sessionCount: number
+   102→}
+   103→
+   104→export function TracksManager({
+   105→  userId,
+   106→  onChanged,
+   107→  onTracksChange,
+   108→}: {
+   109→  userId: string
+   110→  onChanged: () => Promise<void>
+   111→  /** Notifica o pai com a lista de trilhas (usado pelo gerador de links) */
+   112→  onTracksChange?: (tracks: TrackListItemDTO[]) => void
+   113→}) {
+   114→  const [tracks, setTracks] = useState<TrackListItemDTO[]>([])
+   115→  const [loading, setLoading] = useState(true)
+   116→  const [dialogOpen, setDialogOpen] = useState(false)
+   117→  const [editing, setEditing] = useState<TrackListItemDTO | null>(null)
+   118→  const [toDelete, setToDelete] = useState<TrackListItemDTO | null>(null)
+   119→  const [deleting, setDeleting] = useState(false)
+   120→  const [togglingId, setTogglingId] = useState<string | null>(null)
+   121→  const [saving, setSaving] = useState(false)
+   122→
+   123→  const [title, setTitle] = useState('')
+   124→  const [description, setDescription] = useState('')
+   125→  const [category, setCategory] = useState<string>('')
+   126→  const [level, setLevel] = useState<string>('INICIANTE')
+   127→  const [price, setPrice] = useState('0')
+   128→  const [coverUrl, setCoverUrl] = useState<string | null>(null)
+   129→  const [uploadingCover, setUploadingCover] = useState(false)
+   130→  const [formErrors, setFormErrors] = useState<TrackFormErrors>({})
+   131→
+   132→  // Itens da trilha em edição + cursos do mentor (para o select "Adicionar curso")
+   133→  const [draftItems, setDraftItems] = useState<DraftItem[]>([])
+   134→  const [mentorCourses, setMentorCourses] = useState<CourseListItemDTO[]>([])
+   135→  const [loadingCourses, setLoadingCourses] = useState(false)
+   136→  const [selectedCourseId, setSelectedCourseId] = useState<string>('')
+   137→  const [msTitle, setMsTitle] = useState('')
+   138→  const [msSessions, setMsSessions] = useState('1')
+   139→  const [msDescription, setMsDescription] = useState('')
+   140→  const [msError, setMsError] = useState('')
+   141→
+   142→  const keyRef = useRef(0)
+   143→  const nextKey = () => {
+   144→    keyRef.current += 1
+   145→    return `draft-item-${keyRef.current}`
+   146→  }
+   147→  // Marca que o mentor já mexeu nos itens (evita sobrescrever com o patch do detalhe)
+   148→  const itemsDirtyRef = useRef(false)
+   149→
+   150→  const fetchTracks = useCallback(async (): Promise<TrackListItemDTO[]> => {
+   151→    const list = await api.listTracks({ mentorUserId: userId })
+   152→    setTracks(list)
+   153→    onTracksChange?.(list)
+   154→    return list
+   155→  }, [userId, onTracksChange])
+   156→
+   157→  useEffect(() => {
+   158→    let active = true
+   159→    fetchTracks()
+   160→      .catch((err: unknown) => {
+   161→        if (active) {
+   162→          toast.error(err instanceof Error ? err.message : 'Não foi possível carregar suas trilhas.')
+   163→        }
+   164→      })
+   165→      .finally(() => {
+   166→        if (active) setLoading(false)
+   167→      })
+   168→    return () => {
+   169→      active = false
+   170→    }
+   171→  }, [fetchTracks])
+   172→
+   173→  /** Recarrega as trilhas locais e os dados do perfil (contagens) no pai */
+   174→  const refreshAll = useCallback(async () => {
+   175→    await Promise.all([onChanged(), fetchTracks()])
+   176→  }, [onChanged, fetchTracks])
+   177→
+   178→  // Cursos do mentor para o select de itens — carregados ao abrir o dialog
+   179→  useEffect(() => {
+   180→    if (!dialogOpen) return
+   181→    let active = true
+   182→    setLoadingCourses(true)
+   183→    api
+   184→      .listCourses({ mentorUserId: userId })
+   185→      .then((list) => {
+   186→        if (active) setMentorCourses(list)
+   187→      })
+   188→      .catch((err: unknown) => {
+   189→        if (active) {
+   190→          toast.error(err instanceof Error ? err.message : 'Não foi possível carregar seus cursos.')
+   191→        }
+   192→      })
+   193→      .finally(() => {
+   194→        if (active) setLoadingCourses(false)
+   195→      })
+   196→    return () => {
+   197→      active = false
+   198→    }
+   199→  }, [dialogOpen, userId])
+   200→
+   201→  const resetMentorshipForm = () => {
+   202→    setMsTitle('')
+   203→    setMsSessions('1')
+   204→    setMsDescription('')
+   205→    setMsError('')
+   206→  }
+   207→
+   208→  const openCreate = () => {
+   209→    setEditing(null)
+   210→    setTitle('')
+   211→    setDescription('')
+   212→    setCategory('')
+   213→    setLevel('INICIANTE')
+   214→    setPrice('0')
+   215→    setCoverUrl(null)
+   216→    setDraftItems([])
+   217→    setSelectedCourseId('')
+   218→    resetMentorshipForm()
+   219→    setFormErrors({})
+   220→    itemsDirtyRef.current = false
+   221→    setDialogOpen(true)
+   222→  }
+   223→
+   224→  const draftFromDetail = (item: TrackDetailItemDTO): DraftItem => ({
+   225→    key: nextKey(),
+   226→    type: item.type === 'MENTORSHIP' ? 'MENTORSHIP' : 'COURSE',
+   227→    courseId: item.courseId ?? undefined,
+   228→    title: item.title,
+   229→    description: item.description ?? '',
+   230→    sessionCount: item.sessionCount,
+   231→  })
+   232→
+   233→  const draftFromSummary = (item: TrackItemSummaryDTO): DraftItem => ({
+   234→    key: nextKey(),
+   235→    type: item.type === 'MENTORSHIP' ? 'MENTORSHIP' : 'COURSE',
+   236→    courseId: item.courseId ?? undefined,
+   237→    title: item.title,
+   238→    description: '',
+   239→    sessionCount: item.sessionCount,
+   240→  })
+   241→
+   242→  const openEdit = (track: TrackListItemDTO) => {
+   243→    setEditing(track)
+   244→    setTitle(track.title)
+   245→    setDescription(track.description)
+   246→    setCategory(track.category)
+   247→    setLevel(track.level)
+   248→    setPrice(String(track.price))
+   249→    setCoverUrl(track.coverUrl ?? null)
+   250→    setDraftItems(track.items.map(draftFromSummary))
+   251→    setSelectedCourseId('')
+   252→    resetMentorshipForm()
+   253→    setFormErrors({})
+   254→    itemsDirtyRef.current = false
+   255→    setDialogOpen(true)
+   256→
+   257→    // Enriquece com as descrições dos blocos de mentoria (o resumo não as traz)
+   258→    api
+   259→      .getTrack(track.id)
+   260→      .then((detail) => {
+   261→        if (itemsDirtyRef.current) return
+   262→        setDraftItems(detail.items.map(draftFromDetail))
+   263→      })
+   264→      .catch(() => {
+   265→        /* mantém os itens do resumo */
+   266→      })
+   267→  }
+   268→
+   269→  const handleCoverFile = async (file: File | null | undefined) => {
+   270→    if (!file || uploadingCover) return
+   271→    setUploadingCover(true)
+   272→    const url = await uploadImageFile(file)
+   273→    if (url) setCoverUrl(url)
+   274→    setUploadingCover(false)
+   275→  }
+   276→
+   277→  const markItemsChanged = () => {
+   278→    itemsDirtyRef.current = true
+   279→    setFormErrors((prev) => ({ ...prev, items: undefined }))
+   280→  }
+   281→
+   282→  const addCourse = () => {
+   283→    if (!selectedCourseId) return
+   284→    const course = mentorCourses.find((c) => c.id === selectedCourseId)
+   285→    if (!course) return
+   286→    if (draftItems.some((d) => d.type === 'COURSE' && d.courseId === course.id)) {
+   287→      toast.info('Este curso já está na trilha.')
+   288→      return
+   289→    }
+   290→    setDraftItems((prev) => [
+   291→      ...prev,
+   292→      { key: nextKey(), type: 'COURSE', courseId: course.id, title: course.title, description: '', sessionCount: 0 },
+   293→    ])
+   294→    setSelectedCourseId('')
+   295→    markItemsChanged()
+   296→  }
+   297→
+   298→  const addMentorshipBlock = () => {
+   299→    const trimmed = msTitle.trim()
+   300→    if (trimmed.length < 3) {
+   301→      setMsError('Dê um título ao bloco de mentoria (mínimo 3 caracteres).')
+   302→      return
+   303→    }
+   304→    const sessions = Math.max(1, Math.min(20, Math.round(Number(msSessions) || 1)))
+   305→    setDraftItems((prev) => [
+   306→      ...prev,
+   307→      { key: nextKey(), type: 'MENTORSHIP', title: trimmed, description: msDescription.trim(), sessionCount: sessions },
+   308→    ])
+   309→    resetMentorshipForm()
+   310→    markItemsChanged()
+   311→  }
+   312→
+   313→  const moveItem = (index: number, direction: -1 | 1) => {
+   314→    setDraftItems((prev) => {
+   315→      const next = [...prev]
+   316→      const target = index + direction
+   317→      if (target < 0 || target >= next.length) return prev
+   318→      const [moved] = next.splice(index, 1)
+   319→      next.splice(target, 0, moved)
+   320→      return next
+   321→    })
+   322→    markItemsChanged()
+   323→  }
+   324→
+   325→  const removeItem = (index: number) => {
+   326→    setDraftItems((prev) => prev.filter((_, i) => i !== index))
+   327→    markItemsChanged()
+   328→  }
+   329→
+   330→  const handleSubmit = async () => {
+   331→    const errs: TrackFormErrors = {}
+   332→    if (title.trim().length < 5) {
+   333→      errs.title = 'O título da trilha precisa de ao menos 5 caracteres.'
+   334→    }
+   335→    if (description.trim().length < 30) {
+   336→      errs.description = 'Descreva a trilha com pelo menos 30 caracteres.'
+   337→    }
+   338→    if (!category) {
+   339→      errs.category = 'Selecione a categoria da trilha.'
+   340→    }
+   341→    const priceNum = Number(price)
+   342→    if (price.trim() === '' || Number.isNaN(priceNum) || priceNum < 0) {
+   343→      errs.price = 'Informe um preço válido (0 = gratuita).'
+   344→    }
+   345→    if (draftItems.length === 0) {
+   346→      errs.items = 'Adicione ao menos um curso ou bloco de mentoria.'
+   347→    }
+   348→    setFormErrors(errs)
+   349→    if (Object.values(errs).some(Boolean)) return
+   350→
+   351→    setSaving(true)
+   352→    try {
+   353→      const items: TrackItemInput[] = draftItems.map((d) =>
+   354→        d.type === 'COURSE'
+   355→          ? { type: 'COURSE', courseId: d.courseId }
+   356→          : { type: 'MENTORSHIP', title: d.title, description: d.description, sessionCount: d.sessionCount }
+   357→      )
+   358→      if (editing) {
+   359→        await api.updateTrack(editing.id, {
+   360→          userId,
+   361→          title: title.trim(),
+   362→          description: description.trim(),
+   363→          category,
+   364→          level,
+   365→          price: priceNum,
+   366→          coverUrl,
+   367→          items, // na edição os itens são sempre reenviados (substituição completa)
+   368→        })
+   369→        toast.success('Trilha atualizada!')
+   370→      } else {
+   371→        await api.createTrack({
+   372→          userId,
+   373→          title: title.trim(),
+   374→          description: description.trim(),
+   375→          category,
+   376→          level,
+   377→          price: priceNum,
+   378→          coverUrl,
+   379→          items,
+   380→        })
+   381→        toast.success('Trilha criada!')
+   382→      }
+   383→      setDialogOpen(false)
+   384→      await refreshAll()
+   385→    } catch (err) {
+   386→      toast.error(err instanceof Error ? err.message : 'Não foi possível salvar a trilha.')
+   387→    } finally {
+   388→      setSaving(false)
+   389→    }
+   390→  }
+   391→
+   392→  const togglePublish = async (track: TrackListItemDTO) => {
+   393→    setTogglingId(track.id)
+   394→    try {
+   395→      await api.updateTrack(track.id, { userId, isPublished: !track.isPublished })
+   396→      toast.success(
+   397→        track.isPublished
+   398→          ? 'Trilha movida para rascunho.'
+   399→          : 'Trilha publicada! Ela já aparece no Explorar.'
+   400→      )
+   401→      await refreshAll()
+   402→    } catch (err) {
+   403→      toast.error(err instanceof Error ? err.message : 'Não foi possível atualizar a trilha.')
+   404→    } finally {
+   405→      setTogglingId(null)
+   406→    }
+   407→  }
+   408→
+   409→  const handleDelete = async () => {
+   410→    if (!toDelete) return
+   411→    setDeleting(true)
+   412→    try {
+   413→      await api.deleteTrack(toDelete.id, userId)
+   414→      toast.success('Trilha excluída.')
+   415→      setToDelete(null)
+   416→      await refreshAll()
+   417→    } catch (err) {
+   418→      toast.error(err instanceof Error ? err.message : 'Não foi possível excluir a trilha.')
+   419→    } finally {
+   420→      setDeleting(false)
+   421→    }
+   422→  }
+   423→
+   424→  return (
+   425→    <Card>
+   426→      <CardHeader>
+   427→        <CardTitle className="flex items-center gap-2 text-lg">
+   428→          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-600 ring-1 ring-teal-100">
+   429→            <Route className="size-4" aria-hidden />
+   430→          </span>
+   431→          Minhas trilhas
+   432→        </CardTitle>
+   433→        <CardDescription>
+   434→          Agrupe cursos e mentorias em jornada completas — perfeito para quem quer um caminho guiado.
+   435→        </CardDescription>
+   436→        <CardAction>
+   437→          <Button size="sm" onClick={openCreate}>
+   438→            <Plus className="size-4" aria-hidden /> Nova trilha
+   439→          </Button>
+   440→        </CardAction>
+   441→      </CardHeader>
+   442→      <CardContent className="flex flex-col gap-4">
+   443→        {loading ? (
+   444→          <div className="space-y-3">
+   445→            <Skeleton className="h-28 rounded-lg" />
+   446→            <Skeleton className="h-28 rounded-lg" />
+   447→          </div>
+   448→        ) : tracks.length === 0 ? (
+   449→          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-stone-300 py-10 text-center">
+   450→            <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 text-stone-400 ring-1 ring-stone-200">
+   451→              <Route className="size-6" aria-hidden />
+   452→            </div>
+   453→            <h3 className="mt-2 text-base font-semibold">Nenhuma trilha criada</h3>
+   454→            <p className="max-w-sm text-sm text-muted-foreground">
+   455→              Combine cursos existentes e blocos de mentoria em uma jornada guiada, com começo, meio e fim.
+   456→            </p>
+   457→          </div>
+   458→        ) : (
+   459→          <div className="max-h-96 space-y-3 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
+   460→            {tracks.map((track) => (
+   461→              <div
+   462→                key={track.id}
+   463→                className="flex items-start justify-between gap-3 rounded-lg border border-stone-200 bg-white p-4"
+   464→              >
+   465→                {track.coverUrl ? (
+   466→                  <img
+   467→                    src={track.coverUrl}
+   468→                    alt=""
+   469→                    className="h-12 w-20 shrink-0 rounded-lg object-cover ring-1 ring-stone-200"
+   470→                  />
+   471→                ) : null}
+   472→                <div className="min-w-0 flex-1">
+   473→                  <div className="flex flex-wrap items-center gap-2">
+   474→                    <Badge variant="outline" className="border-stone-200 text-stone-600">
+   475→                      {track.category}
+   476→                    </Badge>
+   477→                    <Badge variant="outline" className="border-stone-200 text-stone-500">
+   478→                      {LEVEL_LABELS[track.level] ?? track.level}
+   479→                    </Badge>
+   480→                    {track.isPublished ? (
+   481→                      <Badge className="bg-emerald-100 text-emerald-800">Publicado</Badge>
+   482→                    ) : (
+   483→                      <Badge variant="secondary" className="bg-stone-100 text-stone-600">
+   484→                        Rascunho
+   485→                      </Badge>
+   486→                    )}
+   487→                  </div>
+   488→                  <h4 className="mt-2 font-semibold leading-snug">{track.title}</h4>
+   489→                  <p className="mt-1 text-sm text-muted-foreground">
+   490→                    {track.courseCount} {track.courseCount === 1 ? 'curso' : 'cursos'} ·{' '}
+   491→                    {track.mentorshipSessions}{' '}
+   492→                    {track.mentorshipSessions === 1 ? 'mentoria' : 'mentorias'} ·{' '}
+   493→                    {track.price === 0 ? 'Gratuita' : currencyBRL(track.price)} · {track.studentCount}{' '}
+   494→                    {track.studentCount === 1 ? 'aluno' : 'alunos'}
+   495→                  </p>
+   496→                </div>
+   497→                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+   498→                  <Button
+   499→                    variant="ghost"
+   500→                    size="icon"
+   501→                    aria-label={`Editar trilha ${track.title}`}
+   502→                    onClick={() => openEdit(track)}
+   503→                  >
+   504→                    <Pencil className="size-4" aria-hidden />
+   505→                  </Button>
+   506→                  <Button
+   507→                    variant="ghost"
+   508→                    size="icon"
+   509→                    disabled={togglingId === track.id}
+   510→                    aria-label={
+   511→                      track.isPublished ? `Despublicar trilha ${track.title}` : `Publicar trilha ${track.title}`
+   512→                    }
+   513→                    onClick={() => void togglePublish(track)}
+   514→                  >
+   515→                    {track.isPublished ? (
+   516→                      <EyeOff className="size-4" aria-hidden />
+   517→                    ) : (
+   518→                      <Eye className="size-4" aria-hidden />
+   519→                    )}
+   520→                  </Button>
+   521→                  <Button
+   522→                    variant="ghost"
+   523→                    size="icon"
+   524→                    className="text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+   525→                    aria-label={`Excluir trilha ${track.title}`}
+   526→                    onClick={() => setToDelete(track)}
+   527→                  >
+   528→                    <Trash2 className="size-4" aria-hidden />
+   529→                  </Button>
+   530→                </div>
+   531→              </div>
+   532→            ))}
+   533→          </div>
+   534→        )}
+   535→      </CardContent>
+   536→
+   537→      {/* Dialog: nova/editar trilha */}
+   538→      <Dialog
+   539→        open={dialogOpen}
+   540→        onOpenChange={(open) => {
+   541→          setDialogOpen(open)
+   542→          if (open) setFormErrors({})
+   543→        }}
+   544→      >
+   545→        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+   546→          <DialogHeader>
+   547→            <DialogTitle>{editing ? 'Editar trilha' : 'Nova trilha'}</DialogTitle>
+   548→            <DialogDescription>
+   549→              {editing
+   550→                ? 'Atualize as informações e a ordem dos itens da jornada.'
+   551→                : 'Monte a jornada escolhendo cursos seus e blocos de mentoria 1:1.'}
+   552→            </DialogDescription>
+   553→          </DialogHeader>
+   554→          <div className="flex flex-col gap-4">
+   555→            <div className="flex flex-col gap-2">
+   556→              <Label htmlFor="track-title">Título</Label>
+   557→              <Input
+   558→                id="track-title"
+   559→                value={title}
+   560→                onChange={(event) => setTitle(event.target.value)}
+   561→                placeholder="Ex.: Trilha completa de Produto: do zero ao PM pleno"
+   562→                aria-invalid={Boolean(formErrors.title)}
+   563→              />
+   564→              {formErrors.title ? <p className="text-xs text-rose-600">{formErrors.title}</p> : null}
+   565→            </div>
+   566→            <div className="flex flex-col gap-2">
+   567→              <Label htmlFor="track-description">Descrição</Label>
+   568→              <Textarea
+   569→                id="track-description"
+   570→                rows={3}
+   571→                value={description}
+   572→                onChange={(event) => setDescription(event.target.value)}
+   573→                placeholder="Quem é esta trilha, o que ela destrava e como a jornada funciona..."
+   574→                aria-invalid={Boolean(formErrors.description)}
+   575→              />
+   576→              {formErrors.description ? (
+   577→                <p className="text-xs text-rose-600">{formErrors.description}</p>
+   578→              ) : null}
+   579→            </div>
+   580→            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+   581→              <div className="flex flex-col gap-2">
+   582→                <Label htmlFor="track-category">Categoria</Label>
+   583→                <Select
+   584→                  value={category}
+   585→                  onValueChange={(value) => {
+   586→                    setCategory(value)
+   587→                    setFormErrors((prev) => ({ ...prev, category: undefined }))
+   588→                  }}
+   589→                >
+   590→                  <SelectTrigger id="track-category" className="w-full" aria-invalid={Boolean(formErrors.category)}>
+   591→                    <SelectValue placeholder="Selecione..." />
+   592→                  </SelectTrigger>
+   593→                  <SelectContent>
+   594→                    {CATEGORIES.map((c) => (
+   595→                      <SelectItem key={c} value={c}>
+   596→                        {c}
+   597→                      </SelectItem>
+   598→                    ))}
+   599→                  </SelectContent>
+   600→                </Select>
+   601→                {formErrors.category ? <p className="text-xs text-rose-600">{formErrors.category}</p> : null}
+   602→              </div>
+   603→              <div className="flex flex-col gap-2">
+   604→                <Label htmlFor="track-level">Nível</Label>
+   605→                <Select value={level} onValueChange={setLevel}>
+   606→                  <SelectTrigger id="track-level" className="w-full">
+   607→                    <SelectValue />
+   608→                  </SelectTrigger>
+   609→                  <SelectContent>
+   610→                    {TRACK_LEVELS.map((l) => (
+   611→                      <SelectItem key={l} value={l}>
+   612→                        {LEVEL_LABELS[l] ?? l}
+   613→                      </SelectItem>
+   614→                    ))}
+   615→                  </SelectContent>
+   616→                </Select>
+   617→              </div>
+   618→            </div>
+   619→            <div className="flex flex-col gap-2">
+   620→              <Label htmlFor="track-price">Preço (R$)</Label>
+   621→              <Input
+   622→                id="track-price"
+   623→                type="number"
+   624→                min={0}
+   625→                step={10}
+   626→                value={price}
+   627→                onChange={(event) => setPrice(event.target.value)}
+   628→                aria-invalid={Boolean(formErrors.price)}
+   629→              />
+   630→              {formErrors.price ? (
+   631→                <p className="text-xs text-rose-600">{formErrors.price}</p>
+   632→              ) : (
+   633→                <p className="text-xs text-muted-foreground">Deixe 0 para tornar a trilha gratuita.</p>
+   634→              )}
+   635→            </div>
+   636→            <div className="flex flex-col gap-2">
+   637→              <Label>Capa da trilha</Label>
+   638→              {coverUrl ? (
+   639→                <div className="h-24 w-full overflow-hidden rounded-xl border border-stone-200 bg-stone-100">
+   640→                  <img src={coverUrl} alt="Capa da trilha" className="h-full w-full object-cover" />
+   641→                </div>
+   642→              ) : (
+   643→                <div className="flex h-24 w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-stone-300 bg-stone-50">
+   644→                  <ImagePlus className="size-5 text-stone-400" aria-hidden />
+   645→                  <p className="text-xs text-stone-500">Capa 1280×720 recomendada</p>
+   646→                </div>
+   647→              )}
+   648→              <div className="flex flex-wrap items-center gap-2">
+   649→                {uploadingCover ? (
+   650→                  <Button type="button" size="sm" variant="outline" disabled>
+   651→                    Enviando...
+   652→                  </Button>
+   653→                ) : (
+   654→                  <Button type="button" size="sm" variant="outline" asChild>
+   655→                    <Label htmlFor="track-cover-upload" className="cursor-pointer">
+   656→                      Enviar capa
+   657→                    </Label>
+   658→                  </Button>
+   659→                )}
+   660→                {coverUrl ? (
+   661→                  <Button
+   662→                    type="button"
+   663→                    size="sm"
+   664→                    variant="ghost"
+   665→                    disabled={uploadingCover}
+   666→                    onClick={() => setCoverUrl(null)}
+   667→                  >
+   668→                    Remover
+   669→                  </Button>
+   670→                ) : null}
+   671→                <input
+   672→                  id="track-cover-upload"
+   673→                  type="file"
+   674→                  accept="image/*"
+   675→                  className="hidden"
+   676→                  tabIndex={-1}
+   677→                  onChange={(event) => {
+   678→                    void handleCoverFile(event.target.files?.[0])
+   679→                    event.target.value = ''
+   680→                  }}
+   681→                />
+   682→              </div>
+   683→            </div>
+   684→
+   685→            {/* Itens da trilha */}
+   686→            <div className="flex flex-col gap-2">
+   687→              <Label>Itens da trilha</Label>
+   688→              <p className="text-xs text-muted-foreground">
+   689→                Os alunos percorrem os itens de cima para baixo — use as setas para ordenar a jornada.
+   690→              </p>
+   691→              {draftItems.length === 0 ? (
+   692→                <p className="rounded-xl border border-dashed border-stone-300 px-4 py-5 text-center text-sm text-stone-400">
+   693→                  Adicione cursos e blocos de mentoria para montar a jornada.
+   694→                </p>
+   695→              ) : (
+   696→                <ol className="flex flex-col gap-2">
+   697→                  {draftItems.map((item, index) => (
+   698→                    <li
+   699→                      key={item.key}
+   700→                      className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2"
+   701→                    >
+   702→                      <Badge
+   703→                        variant="outline"
+   704→                        className={
+   705→                          item.type === 'COURSE'
+   706→                            ? 'border-stone-200 text-stone-600'
+   707→                            : 'border-teal-200 bg-teal-50 text-teal-700'
+   708→                        }
+   709→                      >
+   710→                        {item.type === 'COURSE' ? 'Curso' : 'Mentoria'}
+   711→                      </Badge>
+   712→                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-stone-800">
+   713→                        {item.title}
+   714→                      </span>
+   715→                      {item.type === 'MENTORSHIP' ? (
+   716→                        <span className="shrink-0 text-xs text-stone-400">
+   717→                          {item.sessionCount} {item.sessionCount === 1 ? 'sessão' : 'sessões'}
+   718→                        </span>
+   719→                      ) : null}
+   720→                      <div className="flex shrink-0 items-center">
+   721→                        <Button
+   722→                          variant="ghost"
+   723→                          size="icon"
+   724→                          className="size-8"
+   725→                          aria-label={`Mover ${item.title} para cima`}
+   726→                          disabled={index === 0}
+   727→                          onClick={() => moveItem(index, -1)}
+   728→                        >
+   729→                          <ChevronUp className="size-4" aria-hidden />
+   730→                        </Button>
+   731→                        <Button
+   732→                          variant="ghost"
+   733→                          size="icon"
+   734→                          className="size-8"
+   735→                          aria-label={`Mover ${item.title} para baixo`}
+   736→                          disabled={index === draftItems.length - 1}
+   737→                          onClick={() => moveItem(index, 1)}
+   738→                        >
+   739→                          <ChevronDown className="size-4" aria-hidden />
+   740→                        </Button>
+   741→                        <Button
+   742→                          variant="ghost"
+   743→                          size="icon"
+   744→                          className="size-8 text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+   745→                          aria-label={`Remover ${item.title} da trilha`}
+   746→                          onClick={() => removeItem(index)}
+   747→                        >
+   748→                          <X className="size-4" aria-hidden />
+   749→                        </Button>
+   750→                      </div>
+   751→                    </li>
+   752→                  ))}
+   753→                </ol>
+   754→              )}
+   755→              {formErrors.items ? <p className="text-xs text-rose-600">{formErrors.items}</p> : null}
+   756→
+   757→              {/* Adicionar curso */}
+   758→              <div className="mt-1 flex flex-col gap-2 sm:flex-row">
+   759→                <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
+   760→                  <SelectTrigger className="w-full" aria-label="Selecionar curso para adicionar à trilha">
+   761→                    <SelectValue
+   762→                      placeholder={
+   763→                        loadingCourses
+   764→                          ? 'Carregando cursos…'
+   765→                          : mentorCourses.length === 0
+   766→                            ? 'Você ainda não tem cursos'
+   767→                            : 'Selecione um curso seu'
+   768→                      }
+   769→                    />
+   770→                  </SelectTrigger>
+   771→                  <SelectContent>
+   772→                    {mentorCourses.map((course) => (
+   773→                      <SelectItem key={course.id} value={course.id}>
+   774→                        {course.title}
+   775→                        {course.isPublished ? '' : ' (rascunho)'}
+   776→                      </SelectItem>
+   777→                    ))}
+   778→                  </SelectContent>
+   779→                </Select>
+   780→                <Button
+   781→                  type="button"
+   782→                  variant="outline"
+   783→                  className="h-11 shrink-0 sm:h-9"
+   784→                  disabled={!selectedCourseId}
+   785→                  onClick={addCourse}
+   786→                >
+   787→                  <Plus className="size-4" aria-hidden /> Adicionar
+   788→                </Button>
+   789→              </div>
+   790→
+   791→              {/* Adicionar bloco de mentoria */}
+   792→              <div className="mt-1 rounded-xl border border-stone-200 bg-stone-50/60 p-3">
+   793→                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_5.5rem]">
+   794→                  <div className="flex flex-col gap-1">
+   795→                    <Input
+   796→                      value={msTitle}
+   797→                      onChange={(event) => {
+   798→                        setMsTitle(event.target.value)
+   799→                        if (msError) setMsError('')
+   800→                      }}
+   801→                      placeholder="Ex.: Mentoria de alinhamento de carreira"
+   802→                      aria-label="Título do bloco de mentoria"
+   803→                      aria-invalid={Boolean(msError)}
+   804→                    />
+   805→                    {msError ? <p className="text-xs text-rose-600">{msError}</p> : null}
+   806→                  </div>
+   807→                  <Input
+   808→                    type="number"
+   809→                    min={1}
+   810→                    max={20}
+   811→                    step={1}
+   812→                    value={msSessions}
+   813→                    onChange={(event) => setMsSessions(event.target.value)}
+   814→                    aria-label="Número de sessões do bloco de mentoria"
+   815→                  />
+   816→                </div>
+   817→                <Textarea
+   818→                  rows={2}
+   819→                  value={msDescription}
+   820→                  onChange={(event) => setMsDescription(event.target.value)}
+   821→                  placeholder="Descrição curta: o que será trabalhado nessas sessões..."
+   822→                  aria-label="Descrição do bloco de mentoria"
+   823→                  className="mt-2"
+   824→                />
+   825→                <Button
+   826→                  type="button"
+   827→                  size="sm"
+   828→                  variant="outline"
+   829→                  className="mt-2"
+   830→                  onClick={addMentorshipBlock}
+   831→                >
+   832→                  <Plus className="size-4" aria-hidden /> Adicionar bloco de mentoria
+   833→                </Button>
+   834→              </div>
+   835→            </div>
+   836→          </div>
+   837→          <DialogFooter>
+   838→            <Button variant="ghost" onClick={() => setDialogOpen(false)} disabled={saving}>
+   839→              Cancelar
+   840→            </Button>
+   841→            <Button onClick={() => void handleSubmit()} disabled={saving}>
+   842→              {saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Criar trilha'}
+   843→            </Button>
+   844→          </DialogFooter>
+   845→        </DialogContent>
+   846→      </Dialog>
+   847→
+   848→      {/* AlertDialog: excluir trilha */}
+   849→      <AlertDialog
+   850→        open={toDelete !== null}
+   851→        onOpenChange={(open) => {
+   852→          if (!open) setToDelete(null)
+   853→        }}
+   854→      >
+   855→        <AlertDialogContent>
+   856→          <AlertDialogHeader>
+   857→            <AlertDialogTitle>Excluir trilha?</AlertDialogTitle>
+   858→            <AlertDialogDescription>
+   859→              &quot;{toDelete?.title}&quot; remove a trilha e todos os itens dela. Os cursos em si não são
+   860→              apagados e continuam disponíveis no painel. Esta ação não pode ser desfeita.
+   861→            </AlertDialogDescription>
+   862→          </AlertDialogHeader>
+   863→          <AlertDialogFooter>
+   864→            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+   865→            <AlertDialogAction
+   866→              className="bg-rose-600 text-white hover:bg-rose-700"
+   867→              disabled={deleting}
+   868→              onClick={(event) => {
+   869→                event.preventDefault()
+   870→                void handleDelete()
+   871→              }}
+   872→            >
+   873→              {deleting ? 'Excluindo...' : 'Excluir'}
+   874→            </AlertDialogAction>
+   875→          </AlertDialogFooter>
+   876→        </AlertDialogContent>
+   877→      </AlertDialog>
+   878→    </Card>
+   879→  )
+   880→}
+   881→

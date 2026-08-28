@@ -249,4 +249,5 @@ export const LESSON_KIND_LABELS: Record<string, string> = {
   RECORDED: 'Vídeo',
   TEXT: 'Leitura',
   LIVE: 'Ao vivo',
+  READING: 'Artigo/Livro',
 }

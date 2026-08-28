@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowRight,
   BadgeCheck,
+  BookMarked,
   BookOpen,
   Clock,
   Globe2,
@@ -40,7 +41,12 @@ import {
   formatTotalDuration,
 } from '@/lib/helpers'
 import { useAppStore, type ExploreTab } from '@/lib/store'
-import type { CourseListItemDTO, MentorListItemDTO, TrackListItemDTO } from '@/lib/types'
+import type {
+  CourseListItemDTO,
+  LibraryItemDTO,
+  MentorListItemDTO,
+  TrackListItemDTO,
+} from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const SPOTLIGHT_INTERVAL_MS = 6000
@@ -72,6 +78,13 @@ export function MarketplaceView() {
   const [tracks, setTracks] = useState<TrackListItemDTO[]>([])
   const [tracksLoading, setTracksLoading] = useState(false)
   const [trackSort, setTrackSort] = useState('relevance')
+  // Biblioteca: base completa (destaque/stats) e lista filtrada
+  const [baseLibItems, setBaseLibItems] = useState<LibraryItemDTO[]>([])
+  const [libItems, setLibItems] = useState<LibraryItemDTO[]>([])
+  const [libLoading, setLibLoading] = useState(false)
+  const [libKind, setLibKind] = useState<'ALL' | 'ARTICLE' | 'BOOK'>('ALL')
+  const [libCategory, setLibCategory] = useState('')
+  const [libSort, setLibSort] = useState('recent')
 
   // Consome termo vindo de outra tela (hero da home) uma única vez
   useEffect(() => {
@@ -128,6 +141,14 @@ export function MarketplaceView() {
       .catch(() => {})
   }, [])
 
+  // Base da Biblioteca: alimenta destaque e stats (busca única)
+  useEffect(() => {
+    api
+      .listLibrary({})
+      .then(setBaseLibItems)
+      .catch(() => {})
+  }, [])
+
   // Lista filtrada de cursos — só carrega enquanto a aba Cursos está ativa
   const loadCourses = useCallback(async () => {
     setCoursesLoading(true)
@@ -161,6 +182,28 @@ export function MarketplaceView() {
   useEffect(() => {
     if (tab === 'tracks') void loadTracks()
   }, [tab, loadTracks])
+
+  // Lista filtrada da Biblioteca — só carrega enquanto a aba Biblioteca está ativa
+  const loadLibrary = useCallback(async () => {
+    setLibLoading(true)
+    try {
+      const data = await api.listLibrary({
+        search,
+        category: libCategory,
+        kind: libKind === 'ALL' ? undefined : libKind,
+        sort: libSort,
+      })
+      setLibItems(data)
+    } catch {
+      setLibItems([])
+    } finally {
+      setLibLoading(false)
+    }
+  }, [search, libCategory, libKind, libSort])
+
+  useEffect(() => {
+    if (tab === 'library') void loadLibrary()
+  }, [tab, loadLibrary])
 
   // Atalho "/" foca a busca (sensação de app nativo)
   useEffect(() => {
@@ -285,6 +328,25 @@ export function MarketplaceView() {
     )[0]
   }, [baseTracks])
 
+  // ---------- Derivados da Biblioteca ----------
+
+  const libStats = useMemo(
+    () => ({
+      total: baseLibItems.length,
+      articles: baseLibItems.filter((i) => i.kind === 'ARTICLE').length,
+      books: baseLibItems.filter((i) => i.kind === 'BOOK').length,
+      authors: new Set(baseLibItems.map((i) => i.author.userId)).size,
+    }),
+    [baseLibItems]
+  )
+
+  const topLibItem = useMemo(() => {
+    if (baseLibItems.length === 0) return null
+    return [...baseLibItems].sort(
+      (a, b) => b.usageCount - a.usageCount || b.createdAt.localeCompare(a.createdAt)
+    )[0]
+  }, [baseLibItems])
+
   return (
     <div>
       {/* ---------- BARRA SUPERIOR: título, ordenação, busca e categorias ---------- */}
@@ -335,6 +397,19 @@ export function MarketplaceView() {
             >
               <Route aria-hidden className="h-4 w-4" /> Trilhas
             </button>
+            <button
+              role="tab"
+              aria-selected={tab === 'library'}
+              onClick={() => setTab('library')}
+              className={cn(
+                'inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-all',
+                tab === 'library'
+                  ? 'bg-white text-stone-900 shadow-sm'
+                  : 'text-stone-500 hover:text-stone-700'
+              )}
+            >
+              <Library aria-hidden className="h-4 w-4" /> Biblioteca
+            </button>
           </div>
 
           <div className="mt-5 flex flex-wrap items-end justify-between gap-3">
@@ -363,7 +438,7 @@ export function MarketplaceView() {
                       : `${courses.length} ${courses.length === 1 ? 'curso publicado' : 'cursos publicados'}`}
                   </p>
                 </>
-              ) : (
+              ) : tab === 'tracks' ? (
                 <>
                   <h1 className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
                     Explorar trilhas
@@ -374,13 +449,38 @@ export function MarketplaceView() {
                       : `${tracks.length} ${tracks.length === 1 ? 'trilha publicada' : 'trilhas publicadas'}`}
                   </p>
                 </>
+              ) : (
+                <>
+                  <h1 className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
+                    Explorar a Biblioteca
+                  </h1>
+                  <p className="mt-1 text-sm text-stone-500" aria-live="polite">
+                    {libLoading
+                      ? 'Carregando conteúdos...'
+                      : `${libItems.length} ${libItems.length === 1 ? 'conteúdo publicado' : 'conteúdos publicados'}`}
+                  </p>
+                </>
               )}
             </div>
             <div className="w-44">
               <Select
-                value={tab === 'mentors' ? sort : tab === 'courses' ? courseSort : trackSort}
+                value={
+                  tab === 'mentors'
+                    ? sort
+                    : tab === 'courses'
+                      ? courseSort
+                      : tab === 'tracks'
+                        ? trackSort
+                        : libSort
+                }
                 onValueChange={
-                  tab === 'mentors' ? setSort : tab === 'courses' ? setCourseSort : setTrackSort
+                  tab === 'mentors'
+                    ? setSort
+                    : tab === 'courses'
+                      ? setCourseSort
+                      : tab === 'tracks'
+                        ? setTrackSort
+                        : setLibSort
                 }
               >
                 <SelectTrigger
@@ -389,7 +489,9 @@ export function MarketplaceView() {
                       ? 'Ordenar mentores'
                       : tab === 'courses'
                         ? 'Ordenar cursos'
-                        : 'Ordenar trilhas'
+                        : tab === 'tracks'
+                          ? 'Ordenar trilhas'
+                          : 'Ordenar conteúdos da Biblioteca'
                   }
                   className="bg-white"
                 >
@@ -403,6 +505,12 @@ export function MarketplaceView() {
                       <SelectItem value="price_asc">Menor preço</SelectItem>
                       <SelectItem value="price_desc">Maior preço</SelectItem>
                       <SelectItem value="experience">Mais experiência</SelectItem>
+                    </>
+                  ) : tab === 'library' ? (
+                    <>
+                      <SelectItem value="recent">Recentes</SelectItem>
+                      <SelectItem value="popular">Populares</SelectItem>
+                      <SelectItem value="title">Título (A–Z)</SelectItem>
                     </>
                   ) : (
                     <>
@@ -432,14 +540,18 @@ export function MarketplaceView() {
                   ? 'Busque por nome, especialidade ou área...'
                   : tab === 'courses'
                     ? 'Busque por curso, tema ou mentor...'
-                    : 'Busque por trilha, tema ou mentor...'
+                    : tab === 'tracks'
+                      ? 'Busque por trilha, tema ou mentor...'
+                      : 'Busque por artigo, livro ou autor...'
               }
               aria-label={
                 tab === 'mentors'
                   ? 'Buscar mentores'
                   : tab === 'courses'
                     ? 'Buscar cursos'
-                    : 'Buscar trilhas'
+                    : tab === 'tracks'
+                      ? 'Buscar trilhas'
+                      : 'Buscar na Biblioteca'
               }
               className="h-12 rounded-2xl border-stone-200 bg-white pl-11 pr-16 text-stone-900 shadow-none placeholder:text-stone-400 focus-visible:border-emerald-400 focus-visible:ring-emerald-200"
             />
@@ -458,10 +570,43 @@ export function MarketplaceView() {
             )}
           </div>
 
-          <div
-            aria-label="Filtrar por categoria"
-            className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
+          {tab === 'library' ? (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Select
+                value={libKind}
+                onValueChange={(value) => setLibKind(value as 'ALL' | 'ARTICLE' | 'BOOK')}
+              >
+                <SelectTrigger aria-label="Filtrar por formato" className="w-44 bg-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Todos os formatos</SelectItem>
+                  <SelectItem value="ARTICLE">Artigos</SelectItem>
+                  <SelectItem value="BOOK">Livros</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={libCategory || 'all'}
+                onValueChange={(value) => setLibCategory(value === 'all' ? '' : value)}
+              >
+                <SelectTrigger aria-label="Filtrar por categoria" className="w-48 bg-white">
+                  <SelectValue placeholder="Todas as áreas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as áreas</SelectItem>
+                  {CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <div
+              aria-label="Filtrar por categoria"
+              className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
             <button
               onClick={() => setCategory('')}
               className={cn(
@@ -506,7 +651,8 @@ export function MarketplaceView() {
                 </button>
               )
             })}
-          </div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -527,15 +673,26 @@ export function MarketplaceView() {
               ) : (
                 <div className="h-full min-h-56 animate-pulse rounded-2xl bg-emerald-950/90" aria-hidden />
               )
-            ) : topTrack ? (
-              <TrackSpotlightCard track={topTrack} />
+            ) : tab === 'tracks' ? (
+              topTrack ? (
+                <TrackSpotlightCard track={topTrack} />
+              ) : (
+                <div className="h-full min-h-56 animate-pulse rounded-2xl bg-emerald-950/90" aria-hidden />
+              )
+            ) : topLibItem ? (
+              <LibrarySpotlightCard item={topLibItem} />
             ) : (
               <div className="h-full min-h-56 animate-pulse rounded-2xl bg-emerald-950/90" aria-hidden />
             )}
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4 lg:grid-cols-1">
+          <div
+            className={cn(
+              'grid gap-4',
+              tab === 'library' ? 'grid-cols-2 lg:grid-cols-1' : 'grid-cols-3 lg:grid-cols-1'
+            )}
+          >
             {tab === 'mentors' ? (
               <>
                 <StatTile icon={<Users className="h-4.5 w-4.5" />} value={`+${stats.mentors}`} label="mentores especialistas" />
@@ -551,6 +708,13 @@ export function MarketplaceView() {
                 <StatTile icon={<Library className="h-4.5 w-4.5" />} value={`+${courseStats.published}`} label="cursos publicados" />
                 <StatTile icon={<Users className="h-4.5 w-4.5" />} value={`+${courseStats.students}`} label="alunos inscritos" />
                 <StatTile icon={<BookOpen className="h-4.5 w-4.5" />} value={`+${courseStats.lessons}`} label="aulas publicadas" />
+              </>
+            ) : tab === 'library' ? (
+              <>
+                <StatTile icon={<Library className="h-4.5 w-4.5" />} value={`+${libStats.total}`} label="itens publicados" />
+                <StatTile icon={<BookOpen className="h-4.5 w-4.5" />} value={`+${libStats.articles}`} label="artigos" />
+                <StatTile icon={<BookMarked className="h-4.5 w-4.5" />} value={`+${libStats.books}`} label="livros" />
+                <StatTile icon={<Users className="h-4.5 w-4.5" />} value={`+${libStats.authors}`} label="mentores autores" />
               </>
             ) : (
               <>
@@ -571,11 +735,25 @@ export function MarketplaceView() {
               ? 'Todos os mentores'
               : tab === 'courses'
                 ? 'Todos os cursos'
-                : 'Todas as trilhas'}
+                : tab === 'tracks'
+                  ? 'Todas as trilhas'
+                  : 'Todos os conteúdos'}
           </h2>
-          {!(tab === 'mentors' ? loading : tab === 'courses' ? coursesLoading : tracksLoading) && (
+          {!(tab === 'mentors'
+            ? loading
+            : tab === 'courses'
+              ? coursesLoading
+              : tab === 'tracks'
+                ? tracksLoading
+                : libLoading) && (
             <p className="text-xs font-medium text-stone-400">
-              {search || category ? 'Resultado da busca' : 'Ordenado por relevância'}
+              {(tab === 'library'
+                ? Boolean(search || libCategory || libKind !== 'ALL')
+                : Boolean(search || category))
+                ? 'Resultado da busca'
+                : tab === 'library'
+                  ? 'Ordenado por recentes'
+                  : 'Ordenado por relevância'}
             </p>
           )}
         </div>
@@ -671,7 +849,7 @@ export function MarketplaceView() {
               </div>
             )}
           </>
-        ) : (
+        ) : tab === 'tracks' ? (
           <>
             <div className="mt-5 grid min-w-0 gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {tracksLoading
@@ -714,6 +892,59 @@ export function MarketplaceView() {
                     setSearch('')
                     setInputValue('')
                     setCategory('')
+                  }}
+                >
+                  Limpar filtros
+                </Button>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="mt-5 grid min-w-0 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {libLoading
+                ? Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="overflow-hidden rounded-2xl border border-stone-200">
+                      <Skeleton className="h-36 w-full rounded-none" />
+                      <div className="space-y-3 p-4">
+                        <div className="flex gap-1.5">
+                          <Skeleton className="h-5 w-16 rounded-full" />
+                          <Skeleton className="h-5 w-20 rounded-full" />
+                        </div>
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-full" />
+                        <Skeleton className="h-3 w-5/6" />
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <Skeleton className="h-6 w-6 rounded-full" />
+                            <Skeleton className="h-3 w-24" />
+                          </div>
+                          <Skeleton className="h-3 w-14" />
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                : libItems.map((item) => <LibraryCard key={item.id} item={item} />)}
+            </div>
+
+            {!libLoading && libItems.length === 0 && (
+              <div className="mt-2 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 px-6 py-14 text-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100">
+                  <SearchX className="h-7 w-7 text-stone-400" />
+                </span>
+                <p className="font-bold text-stone-900">Nenhum conteúdo encontrado na Biblioteca.</p>
+                <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+                  Tente remover os filtros ou buscar por outro tema — temos artigos e livros em
+                  várias áreas.
+                </p>
+                <Button
+                  variant="outline"
+                  className="rounded-full"
+                  onClick={() => {
+                    setSearch('')
+                    setInputValue('')
+                    setLibCategory('')
+                    setLibKind('ALL')
                   }}
                 >
                   Limpar filtros
@@ -1335,6 +1566,187 @@ function TrackCard({ track }: { track: TrackListItemDTO }) {
           >
             Ver trilha
           </Button>
+        </div>
+      </div>
+    </article>
+  )
+}
+
+/* ---------- Spotlight da Biblioteca (bento da aba Biblioteca) ---------- */
+
+function LibrarySpotlightCard({ item }: { item: LibraryItemDTO }) {
+  const navigate = useAppStore((s) => s.navigate)
+
+  return (
+    <div className="relative flex h-full min-h-56 flex-col overflow-hidden rounded-2xl bg-emerald-950 p-5 text-white sm:p-6">
+      {item.coverUrl && (
+        <img
+          src={item.coverUrl}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover opacity-40"
+        />
+      )}
+      {item.coverUrl && <div aria-hidden className="absolute inset-0 bg-emerald-950/40" />}
+      <div
+        aria-hidden
+        className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="absolute -bottom-24 left-10 h-48 w-48 rounded-full bg-teal-400/10 blur-3xl"
+      />
+
+      <span className="relative inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-300" />
+        </span>
+        Mais lido
+      </span>
+
+      <div className="relative mt-5 flex flex-1 flex-col justify-center">
+        <div className="flex items-center gap-4">
+          {/* Miniatura da capa com anel gradiente determinístico do título */}
+          <span
+            aria-hidden
+            className="shrink-0 rounded-2xl p-0.5"
+            style={avatarGradient(item.title)}
+          >
+            <span className="flex h-13 w-13 items-center justify-center overflow-hidden rounded-[14px] bg-emerald-950/80">
+              {item.coverUrl ? (
+                <img src={item.coverUrl} alt="" className="h-full w-full object-cover" />
+              ) : item.kind === 'BOOK' ? (
+                <BookMarked className="h-6 w-6 text-emerald-300" />
+              ) : (
+                <BookOpen className="h-6 w-6 text-emerald-300" />
+              )}
+            </span>
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-lg font-bold">{item.title}</p>
+            <p className="mt-0.5 truncate text-xs text-emerald-100/80">por {item.author.name}</p>
+          </div>
+        </div>
+
+        {item.description && (
+          <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-emerald-50/90">
+            {item.description}
+          </p>
+        )}
+
+        <div className="mt-3.5 flex flex-wrap gap-1.5">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100">
+            <BookOpen aria-hidden className="h-3.5 w-3.5" />
+            {item.kind === 'BOOK' ? 'Livro' : 'Artigo'}
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100">
+            {item.category}
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100">
+            <Clock aria-hidden className="h-3.5 w-3.5" />
+            {item.readingMin} min
+          </span>
+        </div>
+      </div>
+
+      <div className="relative mt-5 flex items-center justify-between gap-3 border-t border-emerald-400/15 pt-4">
+        <p className="text-xs font-medium text-emerald-200/80">
+          {item.usageCount > 0
+            ? `Usado em ${item.usageCount} ${item.usageCount === 1 ? 'aula' : 'aulas'} de cursos`
+            : 'Novo na Biblioteca'}
+        </p>
+        <Button
+          size="sm"
+          onClick={() => navigate({ name: 'reader', itemId: item.id })}
+          aria-label={`Ler agora ${item.title}`}
+          className="rounded-full bg-white font-bold text-emerald-950 hover:bg-emerald-100"
+        >
+          Ler agora <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/* ---------- Card da Biblioteca (grade da aba Biblioteca) ---------- */
+
+function LibraryCard({ item }: { item: LibraryItemDTO }) {
+  const navigate = useAppStore((s) => s.navigate)
+
+  return (
+    <article
+      className="group flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white p-0 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+      onClick={() => navigate({ name: 'reader', itemId: item.id })}
+    >
+      {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
+      <div className="relative h-36 w-full bg-stone-100">
+        {item.coverUrl ? (
+          <img
+            src={item.coverUrl}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={avatarGradient(item.title)}
+          >
+            {item.kind === 'BOOK' ? (
+              <BookMarked className="pointer-events-none absolute -bottom-3 right-3 h-20 w-20 text-white/20" />
+            ) : (
+              <BookOpen className="pointer-events-none absolute -bottom-3 right-3 h-20 w-20 text-white/20" />
+            )}
+          </div>
+        )}
+        <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-0.5 text-[11px] font-semibold text-stone-700">
+          {LEVEL_LABELS[item.level] ?? item.level}
+        </span>
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col p-4">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge
+            className={cn(
+              'rounded-full border',
+              item.kind === 'BOOK'
+                ? 'border-amber-200 bg-amber-100 text-amber-800 hover:bg-amber-100'
+                : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50'
+            )}
+          >
+            {item.kind === 'BOOK' ? 'Livro' : 'Artigo'}
+          </Badge>
+          <Badge variant="outline" className="rounded-full border-stone-200 text-stone-600">
+            {item.category}
+          </Badge>
+        </div>
+
+        <p className="mt-2 line-clamp-1 font-bold text-stone-900">{item.title}</p>
+
+        {item.description && (
+          <p className="mt-1.5 line-clamp-2 min-h-10 text-sm leading-relaxed text-stone-600">
+            {item.description}
+          </p>
+        )}
+
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-3.5">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Avatar
+              name={item.author.name}
+              src={item.author.avatarUrl}
+              size="sm"
+              className="h-6 w-6 text-[9px] ring-0"
+            />
+            <span className="truncate text-xs font-medium text-stone-600">
+              {item.author.name}
+            </span>
+          </div>
+          <span className="inline-flex shrink-0 items-center gap-1 text-xs text-stone-400">
+            <Clock aria-hidden className="h-3.5 w-3.5" />
+            {item.readingMin} min
+          </span>
         </div>
       </div>
     </article>

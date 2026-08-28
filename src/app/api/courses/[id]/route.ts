@@ -22,8 +22,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         },
         lessons: {
           orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
-          include: { _count: { select: { questions: true } } },
+          include: {
+            _count: { select: { questions: true } },
+            libraryItem: {
+              select: { id: true, title: true, kind: true, pdfUrl: true, content: true },
+            },
+          },
         },
+        themes: { orderBy: [{ order: 'asc' }, { title: 'asc' }] },
         enrollments: { select: { id: true } },
       },
     })
@@ -88,6 +94,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       totalDurationMin: course.lessons.reduce((a, l) => a + l.durationMin, 0),
       liveCount: course.lessons.filter((l) => l.kind === 'LIVE').length,
       studentCount: course.enrollments.length,
+      themes: course.themes.map((t) => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        order: t.order,
+      })),
       lessons: course.lessons.map((l) => {
         let attachments: { name: string; url: string }[] = []
         try {
@@ -115,6 +127,17 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
           durationMin: l.durationMin,
           questionCount: l._count.questions,
           order: l.order,
+          themeId: l.themeId,
+          // Leitura (artigo/livro da Biblioteca): pdfUrl/content só para inscritos ou dono
+          reading: l.libraryItem
+            ? {
+                id: l.libraryItem.id,
+                title: l.libraryItem.title,
+                kind: l.libraryItem.kind,
+                pdfUrl: canSeeMaterial ? l.libraryItem.pdfUrl : null,
+                content: canSeeMaterial ? l.libraryItem.content : null,
+              }
+            : null,
         }
       }),
       enrollment,

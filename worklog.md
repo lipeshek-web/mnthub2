@@ -422,3 +422,91 @@ Stage Summary:
 - Verificado no browser E2E: trilha detail/enroll/checkout (pedido #CMTCNTAI, atribuição no Order, auto-enrollment nos cursos), classroom desktop+mobile (2 colunas, footer oculto, sw=cw=390), Q&A pergunta+resposta (mentor Carlos respondeu Júlia), anotações com autosave no DB, live agendada (painel) e encerrada (gravação), anexos baixáveis, aba Trilhas no Explorar, Minhas trilhas no dashboard, TracksManager no onboarding, prefill do tópico de mentoria na agenda do mentor
 - Fixes durante verificação: grid-cols-[1fr,380px]→[1fr_380px] (Tailwind), plural "sessãões", useEffect condicional no course-view, setState em effect no autosave
 - lint 0/0; tsc limpo em src/; dev.log saudável
+
+---
+Task ID: 1 (infra auth/temas/biblioteca)
+Agent: main (Z.ai Code)
+Task: Infra compartilhada para login/cadastro real, temas nos cursos e Biblioteca (artigos/livros + PDF)
+
+Work Log:
+- prisma/schema.prisma: User.passwordHash (scrypt "salt:hash"); models CourseTheme (courseId,title,description,order) e LibraryItem (mentorId, kind ARTICLE|BOOK, title, description, category, level, coverUrl, pdfUrl, content, readingMin, isPublished); Lesson ganhou themeId (SetNull) + libraryItemId (SetNull); db:push OK
+- src/lib/password.ts: hashPassword/verifyPassword (scrypt 64B, timingSafeEqual)
+- APIs: POST /api/auth/register (valida nome/email/senha≥6, 409 duplicado), POST /api/auth/login (401 genérico), GET /api/auth/me?userId= (valida sessão persistida, retorna isMentor via MentorProfile)
+- types.ts: UserDTO.isMentor; CourseLessonDTO.themeId + reading {id,title,kind,pdfUrl,content} (pdfUrl/content só p/ inscritos); CourseDetailDTO.themes: CourseThemeDTO[]; LibraryItemDTO/LibraryItemDetailDTO (hasPdf/hasText/usageCount/author/canRead)
+- api.ts: register/login/me; createLesson + themeId/libraryItemId + kind 'READING'; createTheme/updateTheme/deleteTheme (/api/courses/[id]/themes); listLibrary/getLibraryItem/createLibraryItem/updateLibraryItem/deleteLibraryItem
+- store.ts: views {name:'auth',mode?} e {name:'reader',itemId}; ExploreTab = 'mentors'|'courses'|'tracks'|'library'
+- page.tsx: guard central (dashboard/onboarding/checkout/meeting exigem login → AuthView), validação de sessão no bootstrap (api.me → setUser(null) se conta sumiu), views auth/reader montadas, footer oculto em 'classroom' e 'reader'
+- auth-view.tsx e reader-view.tsx criados como STUBS (agentes 2-a/2-c vão substituir integralmente)
+- checkout.tsx (CTA "Entrar ou criar conta" → navigate auth), track-view.tsx (sem login → toast.info + navigate auth), mentor-lp.tsx (idem), footer.tsx (link Biblioteca → Explorar aba library)
+
+Stage Summary:
+- Contratos prontos: auth register/login/me; temas CRUD + aulas com themeId/kind READING/libraryItemId; biblioteca CRUD + getLibraryItem com canRead (publicado OU inscrito em curso que usa o item OU autor)
+- Padrão de acesso de leitura: pdfUrl/content só vêm no DTO quando canRead; UI deve respeitar
+- Agents 2-a (auth UI), 2-b (temas/classroom), 2-c (biblioteca/reader) podem trabalhar em paralelo a partir daqui
+
+---
+Task ID: 2-a
+Agent: frontend-styling-expert
+Task: AuthView (login/cadastro), Navbar logado/deslogado e landing personalizada
+
+Work Log:
+- Li worklog.md (contratos da Task 1 infra), store.ts (views {name:'auth',mode?}, setUser/navigate), types.ts (UserDTO.isMentor), api.ts (register/login/me/listUsers/listMyEnrollments), page.tsx (guard + montagem de AuthView) e APIs de auth (mensagens 409/401 reais) antes de codar
+- auth-view.tsx: REESCRITO por completo. Layout lg:grid-cols-2 — painel esquerdo com gradiente emerald (from-emerald-800 via-emerald-700 to-teal-700), blobs radiais white/10 aria-hidden, logo (GraduationCap em white/15 rounded-xl + wordmark), headline "Aprenda com quem vive o que ensina.", 3 bullets (Video/Users/Library em círculos white/10) e card de prova social (Stars amber + "4,9 de média · +2.400 alunos..."); no mobile vira header compacto (p-6, headline text-2xl, sem bullets). Painel direito: card branco rounded-2xl border-stone-200 shadow-sm p-6/p-8 max-w-md com Tabs controlada por initialMode ?? 'login' (useEffect sincroniza mudanças de view.mode)
+- Tab Entrar: e-mail + senha com toggle Eye/EyeOff (aria-label "Mostrar/Ocultar senha"), validação inline text-xs text-rose-600 (e-mail válido, senha ≥6), botão h-11 w-full rounded-full com loading Loader2 "Entrando…", bloqueio de duplo submit, erro da API → toast.error + inline, "Esqueceu a senha?" → toast.info; sucesso → setUser + toast "Bem-vindo(a) de volta, {firstName}! 👋" + navigate home
+- Tab Criar conta: nome/e-mail/senha + helper "Mínimo de 6 caracteres", loading "Criando conta…", 409 → inline "Já existe conta com este e-mail. Faça login."; sucesso → toast "Conta criada! Bem-vindo(a), {firstName}! 🎉" + home. Troca de tab limpa erros inline
+- Seção "Contas de demonstração" após divisor "ou continue com": nota "Ideal para conhecer a plataforma · senha: demo123", chips (h-11, flex-wrap, max-h-40 overflow-y-auto scrollbar fino) de api.listUsers() com Avatar; clique → api.login(demo123) → setUser + toast "Entrou como {nome}" + home; falha → toast.info('Esta conta demo ainda está sendo preparada. Crie a sua!')
+- navbar.tsx: REESCRITO. Removido 100% do sistema demo (dropdown "Entrar como", dialog "Criar nova conta", pickUser/createUser/api.listUsers/api.me). Mantidos logo, busca → marketplace, nav desktop com pill layoutId "navbar-nav-pill" e responsividade atuais. Deslogado: ghost "Entrar" (h-9 rounded-full) → auth/login + primário "Criar conta" (size sm rounded-full, UserRoundPlus) → auth/register; <sm mostra só o primário "Entrar" com LogIn. Logado: dropdown do avatar com header (Avatar md + nome + email + Badge "Mentor" secondary text-[10px] se isMentor), itens Minhas sessões/Explorar, condicional isMentor → "Painel do mentor" (LayoutDashboard) : "Criar perfil de mentor" (PlusCircle), ambos → onboarding; Sair (rose) → setUser(null) + toast.info('Você saiu da sua conta. Até logo!') + home
+- landing-mentee.tsx: edições mínimas — (1) headline do hero personalizado quando logado: "Olá, {firstName(user.name)}! Pronto para continuar aprendendo?" (import firstName de @/lib/helpers); (2) faixa "Continuar de onde parou" logo abaixo do hero, só logada e só com inscrições: api.listMyEnrollments(user.id) em try/catch→[], skeleton durante carga, grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 com até 3 Cards rounded-2xl p-4 flex gap-3 (thumb h-20 w-28 rounded-xl capa ou gradiente avatarGradient(title)), título line-clamp-2, Progress (completedLessonIds/lessonCount) text-xs e botão "Continuar" h-9 rounded-full → navigate classroom. Nada mais foi alterado na landing
+- Validações: `bun run lint` → 0 erros/0 warnings (corrigi um react-hooks/set-state-in-effect removendo setState síncrono no efeito de inscrições); `bunx tsc --noEmit` → sem erros em src/ (só pré-existentes em examples/ e skills/); curl POST /api/auth/register → reportado abaixo; dev.log sem erros de compilação (página / responde 200)
+
+Stage Summary:
+- Auth real (login/cadastro/demo) 100% plugada no store: setUser + navigate home, sem localStorage manual; erros da API propagam como toast + mensagem inline
+- Navbar com estados deslogado/logado limpos; validação de sessão continua centralizada no page.tsx (navbar não chama api.me/listUsers)
+- Landing personalizada para logado sem tocar nas seções públicas
+- RESSALVA (ambiente, não código): curl no register/login retornou 500 "Unknown field passwordHash" / library 500 — o schema.prisma e o client gerado em node_modules/.prisma JÁ contêm passwordHash/LibraryItem, mas o dev server em execução (iniciado antes do generate/db:push) segura um client Prisma defasado em memória. Resolve com restart do dev server + db:push/seed (fora do meu escopo: proibido reiniciar/rodar db:push). A UI trata esses 500 graciosamente (toast + inline)
+- Pendência esperada: contas demo só logam com demo123 depois que o seed (com passwordHash) rodar; até lá os chips mostram o toast.info de "conta em preparo"
+
+---
+Task ID: 2-b-frontend
+Agent: frontend-styling-expert
+Task: Classroom com temas/leitura/certificado, course-view por temas e onboarding (temas + READING + LibraryManager)
+
+Work Log:
+- Lidos worklog.md (Task 1 infra temas/biblioteca + padrões 4-a-1/1-7), types.ts (CourseThemeDTO, lesson.themeId, lesson.reading, CourseDetailDTO.themes, LESSON_KIND_LABELS), api.ts (createTheme/updateTheme/deleteTheme, createLesson com themeId/libraryItemId/kind READING, updateLesson PATCH, listLibrary) e os 3 arquivos alvo + library-manager.tsx (props { userId, onChanged? })
+- classroom.tsx:
+  - Sidebar agrupada por temas: themeList (themes por order) + lessonGroups (Map por themeId; aulas sem tema/tema inexistente → grupo virtual "Outros conteúdos" no fim, só quando existir) + orderedLessons (lista achatada themes→lessons) como fonte única do índice global ("Aula X de Y"), prev/next, auto-avançar e percent
+  - Seções colapsáveis (estado local collapsedThemes, default todas expandidas): header clicável min-h-11 com ChevronRight/Down, nº da seção em círculo emerald (Folder para "Outros conteúdos"), título, "x aulas" e mini Progress emerald + "x/y"; selectLesson expande o tema da aula selecionada; aula atual mantém o mesmo destaque de antes; cursos sem nenhum tema continuam com lista plana (legado)
+  - Ícones por tipo nas listas: RECORDED PlayCircle, TEXT FileText, LIVE Radio, READING BookOpen (meta e ícone à direita da linha; badge do player "Artigo"/"Livro" amber para READING)
+  - Leitor READING (componente ReadingMaterial): chip BookOpen "Artigo"/"Livro" + botão "Abrir em tela cheia" → navigate({name:'reader',itemId}); reading.pdfUrl → iframe h-full w-full rounded-xl border bg-white em container aspect-video min-h-[420px]; reading.content → área rolável max-h-[70vh] min-h-[420px] com article max-w-3xl (título text-2xl font-extrabold, parágrafos por \n\n, leading-relaxed text-stone-700); sem pdfUrl/content → Lock "Inscreva-se para acessar este material"; aba Material ganhou nota contextual para READING
+  - Certificado: courseCompleted (100% das aulas) → bloco de celebração no player (CheckCircle2 emerald grande, "Parabéns! Você concluiu este curso 🎉", botão "Emitir certificado") + Dialog decorativo (.certificate-print ring-4 ring-emerald-100 border-emerald-200 rounded-3xl p-8 text-center, GraduationCap em círculo emerald, "CERTIFICADO DE CONCLUSÃO" tracking-widest text-xs, nome font-serif text-3xl, "concluiu com dedicação o curso", título do curso, mentor + formatTotalDuration(totalDurationMin) + data pt-BR, selo circular Award) + botão "Imprimir certificado" (Printer → window.print()) e <style>@media print</style> no topo do return para imprimir só o certificado
+- course-view.tsx: currículo agrupado por temas quando course.themes existe (header com círculo emerald numerado ou Folder, título bold, "x aulas · duração" via formatTotalDuration; aulas com ícone por tipo, chip rose "Ao vivo" (Radio) para LIVE e chip amber "Artigo"/"Livro" (BookOpen) para READING; aulas sem tema → "Outros conteúdos" no fim; visitante segue com Lock); cursos sem temas mantêm a lista numerada legado (com BookOpen para READING); textos/toasts de visitante trocados: toast.info('Entre com uma conta para se inscrever.') + navigate({name:'auth',mode:'login'}) e texto da sidebar com link "Entrar" (mesma navegação); hero/stats/mentor/CTAs intocados
+- onboarding.tsx (SÓ CoursesManager/dialog de aulas + montagem): import { LibraryManager } de './library-manager' e renderização <LibraryManager userId={user.id} onChanged={reload}/> logo após <CoursesManager/> (antes de TracksManager); dialog de aulas: carrega themes via api.getCourse ao abrir (fetchLessons agora também seta themes por order), Select "Tema" ("Sem tema" + temas) com botão "+ Novo tema" (outline h-9) abrindo mini-form inline (Input + Enter/botão criar) → api.createTheme → toast 'Tema criado!' + refresh dos temas + autoseleção; lista de aulas com chip discreto do tema (ou "Sem tema") + botão FolderInput (aria-label "Mover para tema") abrindo Popover com "Sem tema" + temas → updateLesson(courseId, lesson.id, {userId, themeId}) → toast 'Aula movida!' + fetchLessons; tipo READING "Artigo/Livro (Biblioteca)" no seletor de kind (grid 2 col / sm 4 col): Select "Conteúdo da Biblioteca" com api.listLibrary({authorUserId: user.id}) buscado ao abrir (vazio → aviso amber com Library "Você ainda não publicou artigos ou livros. Crie na seção Minha Biblioteca."), pré-preenche duração com readingMin (editável) e título se vazio, envia libraryItemId + kind READING (sem videoUrl/content/anexos) e validação própria "Selecione o artigo ou livro da Biblioteca."
+- Validação: bun run lint → 0 erros/0 warnings; bunx tsc --noEmit → limpo em src/ (restam só os erros pré-existentes em examples/ e skills/); dev server recompilou os 3 arquivos sem erro ("✓ Compiled") e GET / 200; rotas de API não foram tocadas
+
+Stage Summary:
+- Classroom com sidebar por temas (colapsável, com progresso por tema), leitor embutido para aulas READING (PDF em iframe ou texto tipográfico) e certificado de conclusão imprimível; course-view com currículo por temas e chips por tipo; onboarding cria temas, move aulas entre temas e cria aulas READING a partir da Biblioteca, com o LibraryManager montado no painel do mentor
+- Decisões: (1) cursos sem nenhum tema mantêm a lista plana legado (sem header "Outros conteúdos" órfão); (2) numeração das linhas usa lesson.order (índice global estável) e a navegação prev/next/auto-avançar usa a lista achatada themes→lessons; (3) visitante em course-view é levado direto ao login (toast.info + navigate auth), e o texto da sidebar virou link "Entrar"; (4) aulas READING não enviam videoUrl/content/attachments (o material é o item da Biblioteca); (5) kind continua aberto após adicionar aula para facilitar cadastro em lote
+- RESSALVA (ambiente, pré-existente, fora do escopo): o processo do dev server em :3000 está com Prisma client obsoleto em memória — GET /api/courses/[id], POST /api/courses/[id]/themes e GET /api/library retornam 500 ("Unknown field libraryItem" / "Cannot read properties of undefined (reading 'findMany')") embora o client em disco e o schema estejam corretos; é o mesmo caso já documentado na Task 4-a-1 e exige RESTART do dev server (proibido nesta task) para o E2E de temas/reading com dados reais
+
+---
+Task ID: 3 (integração final + seed + verificação E2E)
+Agent: main (Z.ai Code)
+Task: Corrigir APIs da Biblioteca, seed completo (senhas/temas/biblioteca/PDFs), restart do dev server e verificação E2E no browser
+
+Work Log:
+- Recuperação dos agentes 2-a/2-b/2-c que caíram por infra: trabalho deles estava em disco (2-c quase completo com erros de TS; 2-b backend pronto; 2-a nada) — auditei tudo antes de relançar
+- Fix /api/library e /api/library/[id]: mentor select usava name/avatarUrl (campos do User) → mentor.user.name/avatarUrl; tsc 100% limpo
+- Fix page.tsx: eslint-disable unused removido
+- Relancei agentes: 2-a (AuthView login/cadastro completa + Navbar logado/deslogado com menu condicional isMentor + landing com hero personalizado e faixa "Continuar de onde parou") e 2-b-frontend (classroom com temas colapsáveis/leitura inline/certificado imprimível, course-view com currículo por temas e CTAs → auth, onboarding com temas/+Novo tema/mover aula/kind READING com seletor da Biblioteca + LibraryManager montado) — ambos lint 0/0 e tsc limpo
+- prisma/gen-seed-pdfs.ts: gerador de PDF 1.4 raw (capa + páginas, Helvetica, xref correto) → livro-arquitetura.pdf (7 págs, Carlos) e apostila-dados.pdf (6 págs, Beatriz) em public/uploads/seed/
+- prisma/seed.ts: passwordHash demo123 p/ todos os usuários (updateMany), addThemes() com 2-4 temas por curso (inclui "Leituras complementares"), 6 LibraryItems (2 livros PDF + 4 artigos texto de Carlos/Marina/Beatriz/Sofia/Rafael), appendReading() criando aulas READING vinculadas à Biblioteca DENTRO do tema "Leituras complementares" (Arquitetura x2, PM x1, Inglês x1); seed re-run OK
+- Restart do dev server (client Prisma defasado em memória causava 500) → todas as APIs 200
+- Fix classroom: material de texto com "## " renderizava cru → agora vira h3 emerald
+- E2E browser verificado (desktop 1440x900 + mobile 390x844): login demo chips + login manual (lucas@demo.com/demo123) ✓; registro novo usuário (Mariana) com toast/sessão/avatar gradiente ✓; navbar deslogado (Entrar + Criar conta) vs logado (menu com Badge Mentor para Carlos, "Criar perfil de mentor" p/ Lucas) ✓; landing personalizada "Olá, {nome}!" + Continuar de onde parou ✓; guard central (dashboard deslogado → AuthView) ✓; course-view currículo por temas com badges Livro/Artigo/ao vivo ✓; classroom sidebar com temas colapsáveis + progresso por tema (2/2, 3/3), leitura PDF inline com "Abrir em tela cheia", Q&A/anotações mantidos ✓; fluxo completo 9/9 aulas → celebração + certificado (Lucas Prado, 3h 46min, imprimir) ✓; aba Biblioteca no Explorar (spotlight MAIS LIDO, stats 6/4/2, filtros formato/área, busca, sort) ✓; reader PDF (viewer nativo 7 págs + Baixar PDF) e reader artigo (tipografia editorial + autor + progresso) ✓; LibraryManager no onboarding com lista/Novo item dialog completo ✓; dialog de aulas com chips de tema, +Novo tema e tipo Artigo/Livro ✓; mobile sem overflow horizontal (sw=cw=390) em auth/biblioteca/reader ✓; console sem erros, dev.log saudável ✓
+
+Stage Summary:
+- Sistema completo de autenticação real (registro/login/sessão validada, senha scrypt) substituindo o modo demo por seletor de usuário
+- Cursos com temas (módulos) em toda a experiência: gerenciador, página do curso, classroom e certificado de conclusão
+- Biblioteca pública de artigos/livros com leitor fullscreen (PDF nativo + tipografia editorial), aulas de leitura dentro dos cursos (com tema na sequência) e gerenciador do mentor
+- UX/UI condicional por login em toda a plataforma + guard central para views pessoais
+- lint 0/0; tsc limpo em src/; todas as rotas 200; verificado desktop e mobile

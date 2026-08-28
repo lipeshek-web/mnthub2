@@ -1,0 +1,314 @@
+%PDF-1.4
+%âãÏÓ
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R 11 0 R 13 0 R 15 0 R 17 0 R] /Count 7 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 501 >>
+stream
+0.059 0.42 0.478 rg
+0 792 595 50 re f
+0 0 595 12 re f
+BT
+/F2 26 Tf 1 1 1 rg
+64 760 Td (MentorHub · Biblioteca) Tj
+ET
+BT
+/F2 30 Tf 0.12 0.12 0.12 rg
+64 560 Td 34 TL (Arquitetura que Escala) Tj T*
+ET
+BT
+/F1 14 Tf 0.35 0.35 0.35 rg
+64 500 Td (Capítulo de amostra  Camadas, domínio e fronteiras que sobrevivem ao crescimento) Tj
+ET
+BT
+/F1 12 Tf 0.4 0.4 0.4 rg
+64 90 Td (por Carlos Ferreira) Tj
+ET
+BT
+/F1 10 Tf 0.55 0.55 0.55 rg
+64 70 Td (Material de estudo da plataforma MentorHub  mentorhub.demo) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 8 0 R >>
+endobj
+8 0 obj
+<< /Length 1405 >>
+stream
+BT
+/F2 18 Tf 0.059 0.35 0.31 rg
+64 780 Td (1. Por que arquitetura importa \(mesmo no começo\)) Tj
+ET
+0.898 0.898 0.898 RG 1 w 64 764 m 531 764 l S
+BT
+/F1 11 Tf 0.22 0.22 0.22 rg
+64 740 Td 15.5 TL
+(Todo sistema nasce simples. Um par de pastas, um arquivo de rotas, um banco) Tj T*
+(recém-criado. E é exatamente aí que a arquitetura decide o futuro do projeto  não) Tj T*
+(quando ele "fica grande", mas muito antes.) Tj T*
+T*
+(Arquitetura não é sobre diagramas bonitos nem sobre escolher o framework da moda. É) Tj T*
+(sobre **onde as decisões vivem** e **o quão caro é mudar de ideia**. Um sistema bem) Tj T*
+(arquitetado é aquele em que trocar o banco, mudar uma regra de negócio ou redesenhar) Tj T*
+(uma tela toca poucos arquivos  porque as fronteiras já existem.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(O custo invisível da mescla) Tj T*
+0.22 0.22 0.22 rg
+T*
+(Quando a UI fala direto com o banco, cada tela vira um ponto de decisão duplicado.) Tj T*
+(Regras de desconto aparecem em três lugares. Formatação de moeda tem duas) Tj T*
+(implementações. Nenhum desses problemas aparece no demo  aparecem no terceiro mês,) Tj T*
+(quando o time dobra e o backlog não anda.) Tj T*
+T*
+(A conta é simples: arquitetura é o que faz o custo de UMA mudança ser O\(1\) em vez de) Tj T*
+(O\(N\). E o N, em software, sempre cresce.) Tj
+ET
+BT
+/F1 9 Tf 0.55 0.55 0.55 rg
+64 40 Td (Arquitetura que Escala · Carlos Ferreira) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 10 0 R >>
+endobj
+10 0 obj
+<< /Length 1356 >>
+stream
+BT
+/F2 18 Tf 0.059 0.35 0.31 rg
+64 780 Td (2. As quatro camadas que sobrevivem ao tempo) Tj
+ET
+0.898 0.898 0.898 RG 1 w 64 764 m 531 764 l S
+BT
+/F1 11 Tf 0.22 0.22 0.22 rg
+64 740 Td 15.5 TL
+(Depois de 12 anos refatorando sistemas alheios, cheguei a um conjunto mínimo de) Tj T*
+(camadas que funciona para quase tudo:) Tj T*
+T*
+0.059 0.35 0.31 rg
+(UI \(interface\)) Tj T*
+0.22 0.22 0.22 rg
+(Componentes, telas, estados visuais. A camada mais "burra" do sistema  e é elogio:) Tj T*
+(ela só exibe e coleta. Nada de regra de negócio, nada de SQL.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(Aplicação \(casos de uso\)) Tj T*
+0.22 0.22 0.22 rg
+(Os verbos do sistema: InscreverAluno, PublicarCurso, CancelarAgendamento. Cada caso de) Tj T*
+(uso valida entrada, aplica regras, executa efeitos e devolve um resultado claro. É a) Tj T*
+(camada mais importante e a mais esquecida.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(Domínio) Tj T*
+0.22 0.22 0.22 rg
+(As regras que fazem o SEU negócio ser o seu negócio: como se calcula preço, quando um) Tj T*
+(pedido pode ser cancelado, o que significa "matrícula ativa". Puro, testável, sem) Tj T*
+(framework.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(Infraestrutura) Tj T*
+0.22 0.22 0.22 rg
+(HTTP, banco, filas, cache, e-mail. Detalhe plugável  nunca protagonista.) Tj
+ET
+BT
+/F1 9 Tf 0.55 0.55 0.55 rg
+64 40 Td (Arquitetura que Escala · Carlos Ferreira) Tj
+ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 12 0 R >>
+endobj
+12 0 obj
+<< /Length 1011 >>
+stream
+BT
+/F2 18 Tf 0.059 0.35 0.31 rg
+64 780 Td (3. A regra de ouro das dependências) Tj
+ET
+0.898 0.898 0.898 RG 1 w 64 764 m 531 764 l S
+BT
+/F1 11 Tf 0.22 0.22 0.22 rg
+64 740 Td 15.5 TL
+(Se você levar uma única frase deste capítulo, que seja esta:) Tj T*
+T*
+(**Dependências apontam para dentro.**) Tj T*
+T*
+(UI conhece Aplicação. Aplicação conhece Domínio. Infraestrutura é plugada na Aplicação) Tj T*
+( nunca o contrário. O domínio não importa React, nem o SDK do banco, nem o cliente) Tj T*
+(HTTP.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(Como testar se seu projeto respeita a regra) Tj T*
+0.22 0.22 0.22 rg
+T*
+(Abra a pasta do domínio e procure por imports de bibliotecas de UI ou de banco. Achou?) Tj T*
+(Você não tem domínio  tem uma bagunça com nome bonito.) Tj T*
+T*
+(O teste prático: "consigo rodar minhas regras de negócio num script de terminal, sem) Tj T*
+(navegador, sem servidor?" Se sim, suas fronteiras estão de pé.) Tj
+ET
+BT
+/F1 9 Tf 0.55 0.55 0.55 rg
+64 40 Td (Arquitetura que Escala · Carlos Ferreira) Tj
+ET
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 14 0 R >>
+endobj
+14 0 obj
+<< /Length 1144 >>
+stream
+BT
+/F2 18 Tf 0.059 0.35 0.31 rg
+64 780 Td (4. Casos de uso: os verbos do sistema) Tj
+ET
+0.898 0.898 0.898 RG 1 w 64 764 m 531 764 l S
+BT
+/F1 11 Tf 0.22 0.22 0.22 rg
+64 740 Td 15.5 TL
+(Um caso de uso bem escrito é uma intenção com nome de negócio. Não "handler", não) Tj T*
+("controller"  **UseCase**.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(Anatomia mínima) Tj T*
+0.22 0.22 0.22 rg
+T*
+(1. **Entrada tipada**: o que o mundo exterior precisa fornecer \(dados validados\).) Tj T*
+(2. **Autorização**: quem pode fazer isso?) Tj T*
+(3. **Regras**: o que o negócio exige para permitir?) Tj T*
+(4. **Efeitos**: persistir, notificar, disparar eventos.) Tj T*
+(5. **Resultado**: sucesso com dados, ou erro de negócio nomeado.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(O erro mais comum) Tj T*
+0.22 0.22 0.22 rg
+T*
+(Colocar a regra no lugar errado. "Aluno não pode se inscrever em curso despublicado" é) Tj T*
+(REGRA \(domínio/aplicação\), não um if na tela. Regra espalhada em if de UI é dívida) Tj T*
+(garantida: ela vai ser esquecida na próxima tela que fizer a mesma operação.) Tj
+ET
+BT
+/F1 9 Tf 0.55 0.55 0.55 rg
+64 40 Td (Arquitetura que Escala · Carlos Ferreira) Tj
+ET
+endstream
+endobj
+15 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 16 0 R >>
+endobj
+16 0 obj
+<< /Length 1110 >>
+stream
+BT
+/F2 18 Tf 0.059 0.35 0.31 rg
+64 780 Td (5. Refatoração incremental: o método das duas semanas) Tj
+ET
+0.898 0.898 0.898 RG 1 w 64 764 m 531 764 l S
+BT
+/F1 11 Tf 0.22 0.22 0.22 rg
+64 740 Td 15.5 TL
+(Ninguém reescreve um sistema em um fim de semana  e quem tenta, geralmente entrega) Tj T*
+(dois sistemas ruins. O método que uso com mentorados:) Tj T*
+T*
+0.059 0.35 0.31 rg
+(Semana 1  Mapear) Tj T*
+0.22 0.22 0.22 rg
+(Liste as 10 operações de negócio mais frequentes do sistema. Para cada uma, anote em) Tj T*
+(quantos arquivos a regra aparece hoje. Esse número é seu baseline.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(Semana 2  Centralizar) Tj T*
+0.22 0.22 0.22 rg
+(Escolha as 3 regras mais duplicadas e centralize cada uma em um módulo próprio \(use) Tj T*
+(case\). Atualize os chamadores. Meça de novo.) Tj T*
+T*
+(A diferença entre os dois números é a sua primeira vitória mensurável de arquitetura ) Tj T*
+(e o argumento técnico mais forte que você pode levar para a próxima discussão de) Tj T*
+(prioridade com o time.) Tj
+ET
+BT
+/F1 9 Tf 0.55 0.55 0.55 rg
+64 40 Td (Arquitetura que Escala · Carlos Ferreira) Tj
+ET
+endstream
+endobj
+17 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 18 0 R >>
+endobj
+18 0 obj
+<< /Length 998 >>
+stream
+BT
+/F2 18 Tf 0.059 0.35 0.31 rg
+64 780 Td (Onde continuar) Tj
+ET
+0.898 0.898 0.898 RG 1 w 64 764 m 531 764 l S
+BT
+/F1 11 Tf 0.22 0.22 0.22 rg
+64 740 Td 15.5 TL
+(Este capítulo é uma amostra do curso **Arquitetura de Software na Prática**, onde) Tj T*
+(refatoramos um sistema real aula por aula  com checklists, revisão de código e) Tj T*
+(mentoria 1:1 incluída.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(Checklist final do capítulo) Tj T*
+0.22 0.22 0.22 rg
+T*
+(- Existe pasta/módulo de domínio sem imports de framework?) Tj T*
+(- Cada operação de negócio tem UM caso de uso com nome claro?) Tj T*
+(- A UI chama casos de uso  nunca banco/HTTP direto?) Tj T*
+(- Você consegue explicar as camadas em 30 segundos para um dev novo?) Tj T*
+T*
+(Se marcou quatro "sim", seu projeto está pronto para escalar. Se marcou menos de dois,) Tj T*
+(comece pela regra de ouro das dependências  é a alavanca mais barata que existe.) Tj
+ET
+BT
+/F1 9 Tf 0.55 0.55 0.55 rg
+64 40 Td (Arquitetura que Escala · Carlos Ferreira) Tj
+ET
+endstream
+endobj
+xref
+0 19
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000161 00000 n 
+0000000258 00000 n 
+0000000360 00000 n 
+0000000496 00000 n 
+0000001048 00000 n 
+0000001184 00000 n 
+0000002641 00000 n 
+0000002778 00000 n 
+0000004187 00000 n 
+0000004325 00000 n 
+0000005389 00000 n 
+0000005527 00000 n 
+0000006724 00000 n 
+0000006862 00000 n 
+0000008025 00000 n 
+0000008163 00000 n 
+trailer
+<< /Size 19 /Root 1 0 R >>
+startxref
+9213
+%%EOF

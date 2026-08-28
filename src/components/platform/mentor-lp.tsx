@@ -242,7 +242,8 @@ export function MentorLpView({ slug }: { slug: string }) {
 
     if (course.price === 0) {
       if (!user) {
-        toast.error('Entre com uma conta no topo da página para se inscrever.')
+        toast.info('Entre com uma conta para se inscrever.')
+        navigate({ name: 'auth', mode: 'login' })
         return
       }
       setEnrollingId(course.id)

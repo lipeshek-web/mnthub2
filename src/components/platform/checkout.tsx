@@ -385,9 +385,14 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
             </span>
             <p className="font-bold text-stone-900">Entre para concluir a compra</p>
             <p className="max-w-sm text-sm leading-relaxed text-stone-500">
-              Entre com uma conta no topo da página (menu Entrar) para concluir a compra de “
-              {item.title}”.
+              Entre com uma conta para concluir a compra de “{item.title}”.
             </p>
+            <Button
+              className="mt-1 h-11 rounded-full px-8 font-bold"
+              onClick={() => navigate({ name: 'auth', mode: 'login' })}
+            >
+              Entrar ou criar conta
+            </Button>
           </CardContent>
         </Card>
       )}

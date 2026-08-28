@@ -10,6 +10,7 @@ import {
   Clock,
   ExternalLink,
   FileText,
+  Folder,
   Library,
   Lock,
   PlayCircle,
@@ -126,7 +127,8 @@ export function CourseView({ courseId }: { courseId: string }) {
 
   const handleEnrollClick = () => {
     if (!user) {
-      toast.error('Entre com uma conta no topo da página para se inscrever.')
+      toast.info('Entre com uma conta para se inscrever.')
+      navigate({ name: 'auth', mode: 'login' })
       return
     }
     if (!course) return
@@ -217,6 +219,7 @@ export function CourseView({ courseId }: { courseId: string }) {
         enrolling={enrolling}
         isLoggedIn={Boolean(user)}
         onEnrollClick={handleEnrollClick}
+        onLogin={() => navigate({ name: 'auth', mode: 'login' })}
         onViewMentor={(mentorId) => navigate({ name: 'mentor', mentorId })}
       />
     </div>
@@ -231,6 +234,7 @@ function OverviewContent({
   enrolling,
   isLoggedIn,
   onEnrollClick,
+  onLogin,
   onViewMentor,
 }: {
   course: CourseDetailDTO
@@ -238,8 +242,34 @@ function OverviewContent({
   enrolling: boolean
   isLoggedIn: boolean
   onEnrollClick: () => void
+  onLogin: () => void
   onViewMentor: (mentorId: string) => void
 }) {
+  // Currículo agrupado por temas (em ordem); aulas sem tema → "Outros conteúdos" no fim
+  const themes = useMemo(
+    () => [...(course.themes ?? [])].sort((a, b) => a.order - b.order),
+    [course]
+  )
+  const curriculumGroups = useMemo(() => {
+    const byTheme = new Map<string, CourseLessonDTO[]>()
+    const loose: CourseLessonDTO[] = []
+    for (const lesson of lessons) {
+      if (lesson.themeId && themes.some((t) => t.id === lesson.themeId)) {
+        const bucket = byTheme.get(lesson.themeId) ?? []
+        bucket.push(lesson)
+        byTheme.set(lesson.themeId, bucket)
+      } else {
+        loose.push(lesson)
+      }
+    }
+    const groups: { key: string; title: string; lessons: CourseLessonDTO[] }[] = themes.map((t) => ({
+      key: t.id,
+      title: t.title,
+      lessons: byTheme.get(t.id) ?? [],
+    }))
+    if (loose.length > 0) groups.push({ key: 'none', title: 'Outros conteúdos', lessons: loose })
+    return groups
+  }, [lessons, themes])
   return (
     <>
       {/* ---------- HERO ---------- */}
@@ -350,40 +380,116 @@ function OverviewContent({
                 </span>
               )}
             </div>
-            <ol className="mt-3 divide-y divide-stone-100">
-              {lessons.map((lesson, i) => (
-                <li key={lesson.id} className="flex items-center gap-3 py-3.5 first:pt-4 last:pb-0">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-bold text-stone-500">
-                    {i + 1}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-stone-800">{lesson.title}</p>
-                    <p className="mt-0.5 line-clamp-1 text-xs text-stone-400">{lesson.description}</p>
-                  </div>
-                  {lesson.kind === 'LIVE' ? (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-600">
-                      <Radio aria-hidden className="h-3 w-3" />
-                      {lesson.startsAt
-                        ? `${formatDayLabel(lesson.startsAt)} · ${formatTimeLabel(lesson.startsAt)}`
-                        : 'Ao vivo'}
+            {themes.length > 0 ? (
+              <div className="mt-4 space-y-6">
+                {curriculumGroups.map((group, gi) => {
+                  const groupDuration = group.lessons.reduce((acc, l) => acc + l.durationMin, 0)
+                  return (
+                    <section key={group.key} aria-label={`Tema: ${group.title}`}>
+                      <header className="flex items-center gap-3">
+                        {group.key === 'none' ? (
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-stone-100">
+                            <Folder aria-hidden className="h-4 w-4 text-stone-500" />
+                          </span>
+                        ) : (
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-sm font-bold text-white">
+                            {gi + 1}
+                          </span>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold text-stone-900">{group.title}</p>
+                          <p className="text-xs text-stone-400">
+                            {group.lessons.length} {group.lessons.length === 1 ? 'aula' : 'aulas'} ·{' '}
+                            {formatTotalDuration(groupDuration)}
+                          </p>
+                        </div>
+                      </header>
+                      <ol className="mt-1 divide-y divide-stone-100">
+                        {group.lessons.map((lesson) => (
+                          <li key={lesson.id} className="flex items-center gap-3 py-3 first:pt-3 last:pb-0">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100">
+                              {lesson.kind === 'LIVE' ? (
+                                <Radio aria-hidden className="h-3.5 w-3.5 text-rose-500" />
+                              ) : lesson.kind === 'READING' ? (
+                                <BookOpen aria-hidden className="h-3.5 w-3.5 text-amber-600" />
+                              ) : lesson.videoUrl ? (
+                                <PlayCircle aria-hidden className="h-3.5 w-3.5 text-stone-500" />
+                              ) : (
+                                <FileText aria-hidden className="h-3.5 w-3.5 text-stone-500" />
+                              )}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold text-stone-800">{lesson.title}</p>
+                              <p className="mt-0.5 line-clamp-1 text-xs text-stone-400">{lesson.description}</p>
+                            </div>
+                            {lesson.kind === 'LIVE' ? (
+                              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-600">
+                                <Radio aria-hidden className="h-3 w-3" />
+                                {lesson.startsAt
+                                  ? `${formatDayLabel(lesson.startsAt)} · ${formatTimeLabel(lesson.startsAt)}`
+                                  : 'Ao vivo'}
+                              </span>
+                            ) : null}
+                            {lesson.kind === 'READING' ? (
+                              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">
+                                <BookOpen aria-hidden className="h-3 w-3" />
+                                {lesson.reading?.kind === 'BOOK' ? 'Livro' : 'Artigo'}
+                              </span>
+                            ) : null}
+                            {lesson.kind !== 'LIVE' ? (
+                              <span className="hidden shrink-0 items-center gap-1 text-xs text-stone-400 sm:inline-flex">
+                                {lesson.durationMin} min
+                              </span>
+                            ) : null}
+                            <Lock
+                              aria-label="Aula bloqueada — inscreva-se para acessar"
+                              className="h-3.5 w-3.5 shrink-0 text-stone-300"
+                            />
+                          </li>
+                        ))}
+                      </ol>
+                    </section>
+                  )
+                })}
+              </div>
+            ) : (
+              <ol className="mt-3 divide-y divide-stone-100">
+                {lessons.map((lesson, i) => (
+                  <li key={lesson.id} className="flex items-center gap-3 py-3.5 first:pt-4 last:pb-0">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-bold text-stone-500">
+                      {i + 1}
                     </span>
-                  ) : (
-                    <span className="hidden shrink-0 items-center gap-1 text-xs text-stone-400 sm:inline-flex">
-                      {lesson.videoUrl ? (
-                        <PlayCircle aria-hidden className="h-4 w-4" />
-                      ) : (
-                        <FileText aria-hidden className="h-4 w-4" />
-                      )}
-                      {lesson.durationMin} min
-                    </span>
-                  )}
-                  <Lock
-                    aria-label="Aula bloqueada — inscreva-se para acessar"
-                    className="h-3.5 w-3.5 shrink-0 text-stone-300"
-                  />
-                </li>
-              ))}
-            </ol>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-stone-800">{lesson.title}</p>
+                      <p className="mt-0.5 line-clamp-1 text-xs text-stone-400">{lesson.description}</p>
+                    </div>
+                    {lesson.kind === 'LIVE' ? (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-600">
+                        <Radio aria-hidden className="h-3 w-3" />
+                        {lesson.startsAt
+                          ? `${formatDayLabel(lesson.startsAt)} · ${formatTimeLabel(lesson.startsAt)}`
+                          : 'Ao vivo'}
+                      </span>
+                    ) : (
+                      <span className="hidden shrink-0 items-center gap-1 text-xs text-stone-400 sm:inline-flex">
+                        {lesson.kind === 'READING' ? (
+                          <BookOpen aria-hidden className="h-4 w-4 text-amber-500" />
+                        ) : lesson.videoUrl ? (
+                          <PlayCircle aria-hidden className="h-4 w-4" />
+                        ) : (
+                          <FileText aria-hidden className="h-4 w-4" />
+                        )}
+                        {lesson.durationMin} min
+                      </span>
+                    )}
+                    <Lock
+                      aria-label="Aula bloqueada — inscreva-se para acessar"
+                      className="h-3.5 w-3.5 shrink-0 text-stone-300"
+                    />
+                  </li>
+                ))}
+              </ol>
+            )}
             {lessons.length === 0 && (
               <p className="py-4 text-sm text-stone-400">Nenhuma aula publicada ainda.</p>
             )}
@@ -452,7 +558,14 @@ function OverviewContent({
             <p className="mt-2 text-center text-xs text-stone-400">Processando inscrição…</p>
           ) : !isLoggedIn ? (
             <p className="mt-2 text-center text-xs text-stone-400">
-              Entre com uma conta no topo da página para se inscrever.
+              Entre com uma conta para se inscrever.{' '}
+              <button
+                type="button"
+                onClick={onLogin}
+                className="font-semibold text-emerald-700 underline underline-offset-2 transition-colors hover:text-emerald-800"
+              >
+                Entrar
+              </button>
             </p>
           ) : null}
 

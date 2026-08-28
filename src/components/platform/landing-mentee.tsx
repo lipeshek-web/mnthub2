@@ -8,6 +8,7 @@ import {
   BookOpen,
   Clock,
   Library,
+  PlayCircle,
   Quote,
   Route,
   Search,
@@ -16,7 +17,9 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, Stars } from '@/components/platform/avatar'
 import { api } from '@/lib/api'
@@ -28,7 +31,12 @@ import {
   formatTotalDuration,
 } from '@/lib/helpers'
 import { useAppStore } from '@/lib/store'
-import type { CourseListItemDTO, MentorListItemDTO, TrackListItemDTO } from '@/lib/types'
+import type {
+  CourseListItemDTO,
+  EnrolledCourseDTO,
+  MentorListItemDTO,
+  TrackListItemDTO,
+} from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const STEPS = [
@@ -71,6 +79,7 @@ export function LandingMenteeView() {
   const navigate = useAppStore((s) => s.navigate)
   const setExploreQuery = useAppStore((s) => s.setExploreQuery)
   const setExploreTab = useAppStore((s) => s.setExploreTab)
+  const user = useAppStore((s) => s.user)
   const [mentors, setMentors] = useState<MentorListItemDTO[]>([])
   const [loading, setLoading] = useState(true)
   const [courses, setCourses] = useState<CourseListItemDTO[]>([])
@@ -135,6 +144,31 @@ export function LandingMenteeView() {
     }
   }, [])
 
+  // "Continuar de onde parou": inscrições do usuário logado (seção oculta para convidados)
+  const userId = user?.id
+  const [enrollments, setEnrollments] = useState<EnrolledCourseDTO[]>([])
+  const [enrollmentsLoading, setEnrollmentsLoading] = useState(true)
+
+  useEffect(() => {
+    // Convidado: a seção fica oculta (user == null) e o estado inicial não precisa mudar.
+    if (!userId) return
+    let active = true
+    api
+      .listMyEnrollments(userId)
+      .then((data) => {
+        if (active) setEnrollments(data)
+      })
+      .catch(() => {
+        if (active) setEnrollments([])
+      })
+      .finally(() => {
+        if (active) setEnrollmentsLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [userId])
+
   const stats = useMemo(
     () => ({
       sessions: mentors.reduce((acc, m) => acc + m.totalSessions, 0),
@@ -166,6 +200,9 @@ export function LandingMenteeView() {
 
   // Top 3 trilhas (a API já devolve ordenada por popularidade)
   const topTracks = useMemo(() => tracks.slice(0, 3), [tracks])
+
+  // Até 3 inscrições para "Continuar de onde parou"
+  const continueItems = useMemo(() => enrollments.slice(0, 3), [enrollments])
 
   const handleSearch = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -207,7 +244,16 @@ export function LandingMenteeView() {
               id="hero-title"
               className="mt-6 text-4xl font-extrabold leading-[1.05] tracking-tight text-stone-900 sm:text-6xl"
             >
-              Aprenda com quem <span className="text-emerald-700">vive o que ensina</span>
+              {user ? (
+                <>
+                  Olá, <span className="text-emerald-700">{firstName(user.name)}</span>! Pronto para
+                  continuar aprendendo?
+                </>
+              ) : (
+                <>
+                  Aprenda com quem <span className="text-emerald-700">vive o que ensina</span>
+                </>
+              )}
             </h1>
             <p className="mt-5 text-lg text-stone-600">
               Encontre especialistas que viveram o caminho que você quer trilhar. Agende em minutos
@@ -263,6 +309,102 @@ export function LandingMenteeView() {
           </div>
         </div>
       </motion.section>
+
+      {/* ---------- CONTINUAR DE ONDE PAROU (apenas logado com inscrições) ---------- */}
+      {user && (enrollmentsLoading || continueItems.length > 0) && (
+        <section
+          aria-labelledby="continue-title"
+          className="border-b border-stone-200/70 bg-stone-50/50 py-10"
+        >
+          <div className="mx-auto max-w-6xl px-4">
+            <div className="flex items-center gap-3">
+              <span
+                aria-hidden
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"
+              >
+                <PlayCircle className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <h2
+                  id="continue-title"
+                  className="text-lg font-extrabold tracking-tight text-stone-900 sm:text-xl"
+                >
+                  Continuar de onde parou
+                </h2>
+                <p className="text-sm text-stone-500">
+                  Retome seus cursos exatamente onde parou.
+                </p>
+              </div>
+            </div>
+
+            {enrollmentsLoading ? (
+              <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-28 rounded-2xl" />
+                ))}
+              </div>
+            ) : (
+              <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {continueItems.map((enrollment) => {
+                  const total = enrollment.course.lessonCount
+                  const percent =
+                    total > 0
+                      ? Math.round((enrollment.completedLessonIds.length / total) * 100)
+                      : 0
+                  return (
+                    <Card
+                      key={enrollment.courseId}
+                      className="flex gap-3 rounded-2xl border-stone-200/70 p-4 shadow-sm"
+                    >
+                      {enrollment.course.coverUrl ? (
+                        <img
+                          src={enrollment.course.coverUrl}
+                          alt={`Capa do curso ${enrollment.course.title}`}
+                          className="h-20 w-28 shrink-0 rounded-xl object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div
+                          aria-hidden
+                          className="flex h-20 w-28 shrink-0 items-center justify-center rounded-xl"
+                          style={avatarGradient(enrollment.course.title)}
+                        >
+                          <BookOpen className="h-6 w-6 text-white/85" />
+                        </div>
+                      )}
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <h3 className="line-clamp-2 text-sm font-bold leading-snug text-stone-900">
+                          {enrollment.course.title}
+                        </h3>
+                        <div className="mt-auto pt-2">
+                          <Progress
+                            value={percent}
+                            className="h-1.5"
+                            aria-label={`${percent}% do curso concluído`}
+                          />
+                          <div className="mt-2 flex items-center justify-between gap-2">
+                            <span className="text-xs text-stone-500">{percent}% concluído</span>
+                            <Button
+                              size="sm"
+                              className="h-9 rounded-full px-4 text-xs font-bold"
+                              onClick={() =>
+                                navigate({ name: 'classroom', courseId: enrollment.courseId })
+                              }
+                              aria-label={`Continuar o curso ${enrollment.course.title}`}
+                            >
+                              Continuar
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* ---------- STATS ---------- */}
       <section aria-label="Números da plataforma" className="border-y border-stone-200 bg-stone-50/50 py-10">

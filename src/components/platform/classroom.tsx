@@ -4,21 +4,28 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertCircle,
   ArrowLeft,
+  Award,
+  BookOpen,
   CalendarClock,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Copy,
   Download,
   FileDown,
   FileText,
+  Folder,
+  GraduationCap,
   Library,
   Lock,
+  Maximize2,
   MessageCircle,
   Paperclip,
   PencilLine,
   PlayCircle,
+  Printer,
   Radio,
   Send,
   Trash2,
@@ -28,6 +35,14 @@ import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -47,13 +62,28 @@ import { useAppStore } from '@/lib/store'
 import type {
   CourseDetailDTO,
   CourseLessonDTO,
+  CourseThemeDTO,
   LessonQuestionDTO,
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /* ==================== SALA DE AULA PROFISSIONAL ====================
    Tela cheia (só o header da plataforma): player de um lado, lista de
-   conteúdos do outro, com Q&A, anotações e anexos por aula. */
+   conteúdos do outro, com Q&A, anotações e anexos por aula.
+   Aulas agrupadas por temas (módulos); READING abre no leitor embutido;
+   certificado de conclusão ao completar 100% das aulas. */
+
+interface LessonGroup {
+  key: string
+  title: string
+  theme: CourseThemeDTO | null
+  lessons: CourseLessonDTO[]
+}
+
+/** Rótulo do material de leitura: "Artigo" ou "Livro" (kind do item da Biblioteca) */
+function readingKindLabel(kind: string | null | undefined): string {
+  return kind === 'BOOK' ? 'Livro' : 'Artigo'
+}
 
 export function ClassroomView({ courseId }: { courseId: string }) {
   const navigate = useAppStore((s) => s.navigate)
@@ -94,6 +124,45 @@ export function ClassroomView({ courseId }: { courseId: string }) {
     [course]
   )
 
+  // Temas (módulos) em ordem; aulas sem tema (ou com tema removido) vão para o
+  // grupo virtual "Outros conteúdos", sempre no fim da lista.
+  const themeList = useMemo<CourseThemeDTO[]>(
+    () => [...(course?.themes ?? [])].sort((a, b) => a.order - b.order),
+    [course]
+  )
+
+  const lessonGroups = useMemo<LessonGroup[]>(() => {
+    const byTheme = new Map<string, CourseLessonDTO[]>()
+    const loose: CourseLessonDTO[] = []
+    for (const lesson of lessons) {
+      if (lesson.themeId && themeList.some((t) => t.id === lesson.themeId)) {
+        const bucket = byTheme.get(lesson.themeId) ?? []
+        bucket.push(lesson)
+        byTheme.set(lesson.themeId, bucket)
+      } else {
+        loose.push(lesson)
+      }
+    }
+    const groups: LessonGroup[] = themeList.map((theme) => ({
+      key: theme.id,
+      title: theme.title,
+      theme,
+      lessons: byTheme.get(theme.id) ?? [],
+    }))
+    if (loose.length > 0) {
+      groups.push({ key: 'none', title: 'Outros conteúdos', theme: null, lessons: loose })
+    }
+    return groups
+  }, [lessons, themeList])
+
+  // Lista achatada (temas em ordem → aulas em ordem): base do índice global,
+  // do avançar/voltar e do progresso geral.
+  const orderedLessons = useMemo(() => lessonGroups.flatMap((g) => g.lessons), [lessonGroups])
+
+  // Seções recolhidas da sidebar (default: todas expandidas)
+  const [collapsedThemes, setCollapsedThemes] = useState<Record<string, boolean>>({})
+  const [certOpen, setCertOpen] = useState(false)
+
   // Aula inicial: primeira ainda não concluída (só define uma vez por curso)
   const initializedRef = useRef<string | null>(null)
   useEffect(() => {
@@ -103,18 +172,26 @@ export function ClassroomView({ courseId }: { courseId: string }) {
     const enrollment = course.enrollment
     const completed = enrollment?.completedLessonIds ?? []
     setCompletedIds(completed)
-    const firstIncomplete = lessons.find((l) => !completed.includes(l.id))
-    setCurrentLessonId(firstIncomplete?.id ?? lessons[0]?.id ?? null)
-  }, [course, hasAccess, lessons])
+    const firstIncomplete = orderedLessons.find((l) => !completed.includes(l.id))
+    setCurrentLessonId(firstIncomplete?.id ?? orderedLessons[0]?.id ?? null)
+  }, [course, hasAccess, orderedLessons])
 
   const currentLesson = useMemo(
-    () => lessons.find((l) => l.id === currentLessonId) ?? lessons[0] ?? null,
-    [lessons, currentLessonId]
+    () => orderedLessons.find((l) => l.id === currentLessonId) ?? orderedLessons[0] ?? null,
+    [orderedLessons, currentLessonId]
   )
-  const currentIndex = currentLesson ? lessons.findIndex((l) => l.id === currentLesson.id) : -1
-  const percent = lessons.length > 0 ? Math.round((completedIds.length / lessons.length) * 100) : 0
+  const currentIndex = currentLesson ? orderedLessons.findIndex((l) => l.id === currentLesson.id) : -1
+  const percent =
+    orderedLessons.length > 0 ? Math.round((completedIds.length / orderedLessons.length) * 100) : 0
+  const courseCompleted =
+    orderedLessons.length > 0 && completedIds.length >= orderedLessons.length
 
-  const selectLesson = (lessonId: string) => setCurrentLessonId(lessonId)
+  const selectLesson = (lessonId: string) => {
+    setCurrentLessonId(lessonId)
+    // Ao selecionar uma aula, garante o tema dela expandido
+    const lessonThemeId = orderedLessons.find((l) => l.id === lessonId)?.themeId
+    if (lessonThemeId) setCollapsedThemes((prev) => ({ ...prev, [lessonThemeId]: false }))
+  }
 
   const toggleComplete = async (autoAdvance = false) => {
     if (!user || !course || !currentLesson) return
@@ -126,15 +203,15 @@ export function ClassroomView({ courseId }: { courseId: string }) {
       })
       const nowCompleted = res.completedLessonIds.includes(currentLesson.id)
       setCompletedIds(res.completedLessonIds)
-      if (nowCompleted && res.completedLessonIds.length === lessons.length) {
+      if (nowCompleted && res.completedLessonIds.length === orderedLessons.length) {
         toast.success('Curso concluído! Parabéns 🎉')
       } else if (nowCompleted) {
         toast.success('Aula marcada como concluída.')
       } else {
         toast('Marcação removida desta aula.')
       }
-      if (autoAdvance && nowCompleted && currentIndex < lessons.length - 1) {
-        setCurrentLessonId(lessons[currentIndex + 1].id)
+      if (autoAdvance && nowCompleted && currentIndex < orderedLessons.length - 1) {
+        setCurrentLessonId(orderedLessons[currentIndex + 1].id)
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Não foi possível atualizar o progresso.')
@@ -144,11 +221,11 @@ export function ClassroomView({ courseId }: { courseId: string }) {
   }
 
   const goPrev = () => {
-    if (currentLesson && currentIndex > 0) setCurrentLessonId(lessons[currentIndex - 1].id)
+    if (currentLesson && currentIndex > 0) setCurrentLessonId(orderedLessons[currentIndex - 1].id)
   }
   const goNext = () => {
-    if (currentLesson && currentIndex < lessons.length - 1) {
-      setCurrentLessonId(lessons[currentIndex + 1].id)
+    if (currentLesson && currentIndex < orderedLessons.length - 1) {
+      setCurrentLessonId(orderedLessons[currentIndex + 1].id)
     }
   }
 
@@ -227,6 +304,8 @@ export function ClassroomView({ courseId }: { courseId: string }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-stone-50" aria-label={`Sala de aula: ${course.title}`}>
+      {/* CSS de impressão: imprime apenas o certificado quando aberto */}
+      <style>{`@media print { body * { visibility: hidden; } .certificate-print, .certificate-print * { visibility: visible; } .certificate-print { position: absolute; inset: 0; } }`}</style>
       {/* ---------- BARRA SUPERIOR COMPACTA ---------- */}
       <div className="flex shrink-0 items-center gap-2 border-b border-stone-200 bg-white px-3 py-2.5 sm:gap-3 sm:px-6">
         <Button
@@ -243,7 +322,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
             {course.title}
           </p>
           <p className="hidden text-xs text-stone-400 sm:block">
-            {lessons.length} {lessons.length === 1 ? 'aula' : 'aulas'} ·{' '}
+            {orderedLessons.length} {orderedLessons.length === 1 ? 'aula' : 'aulas'} ·{' '}
             {formatTotalDuration(course.totalDurationMin)}
           </p>
         </div>
@@ -279,17 +358,39 @@ export function ClassroomView({ courseId }: { courseId: string }) {
               <>
                 {currentLesson.kind === 'LIVE' ? (
                   <LivePanel lesson={currentLesson} isOwner={isOwner} />
+                ) : currentLesson.kind === 'READING' ? (
+                  <ReadingMaterial lesson={currentLesson} />
                 ) : (
                   <LessonPlayer lesson={currentLesson} />
                 )}
 
+                {/* Celebração + certificado: 100% das aulas concluídas */}
+                {courseCompleted ? (
+                  <div className="mt-5 flex flex-col items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-6 text-center">
+                    <CheckCircle2 aria-hidden className="h-12 w-12 fill-emerald-600 text-white" />
+                    <p className="text-lg font-extrabold tracking-tight text-emerald-900">
+                      Parabéns! Você concluiu este curso 🎉
+                    </p>
+                    <Button
+                      onClick={() => setCertOpen(true)}
+                      className="h-11 rounded-full bg-emerald-700 px-6 font-bold text-white hover:bg-emerald-800"
+                    >
+                      <GraduationCap aria-hidden className="h-4 w-4" /> Emitir certificado
+                    </Button>
+                  </div>
+                ) : null}
+
                 <div className="mt-5 flex flex-wrap items-center gap-2">
                   <Badge variant="outline" className="border-stone-200 bg-white text-stone-600">
-                    Aula {currentIndex + 1} de {lessons.length}
+                    Aula {currentIndex + 1} de {orderedLessons.length}
                   </Badge>
                   {currentLesson.kind === 'LIVE' ? (
                     <Badge className="border-transparent bg-rose-100 text-rose-700">
                       <Radio aria-hidden className="h-3 w-3" /> Ao vivo
+                    </Badge>
+                  ) : currentLesson.kind === 'READING' ? (
+                    <Badge className="border-transparent bg-amber-100 text-amber-800">
+                      <BookOpen aria-hidden className="h-3 w-3" /> {readingKindLabel(currentLesson.reading?.kind)}
                     </Badge>
                   ) : currentLesson.videoUrl ? (
                     <Badge variant="outline" className="border-stone-200 bg-white text-stone-600">
@@ -356,7 +457,21 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                   </TabsList>
 
                   <TabsContent value="lesson" className="mt-4">
-                    {currentLesson.content ? (
+                    {currentLesson.kind === 'READING' ? (
+                      <div className="rounded-2xl border border-stone-200 bg-white p-5 text-sm leading-relaxed text-stone-600 sm:p-6">
+                        {currentLesson.reading ? (
+                          <>
+                            O material desta aula é{' '}
+                            {currentLesson.reading.kind === 'BOOK' ? 'um livro' : 'um artigo'} — leia no leitor
+                            acima ou use <strong className="font-semibold">Abrir em tela cheia</strong>. Dúvidas?
+                            Use a aba <strong className="font-semibold">Perguntas</strong> — {firstName} responde
+                            por lá.
+                          </>
+                        ) : (
+                          'O material desta aula será publicado em breve.'
+                        )}
+                      </div>
+                    ) : currentLesson.content ? (
                       <article className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6">
                         <div className="max-w-prose space-y-4">
                           {currentLesson.content.split(/\n{2,}/).map((para, i) => (
@@ -448,7 +563,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                     variant="outline"
                     className="h-11 rounded-full font-semibold"
                     onClick={goNext}
-                    disabled={currentIndex >= lessons.length - 1 || toggling}
+                    disabled={currentIndex >= orderedLessons.length - 1 || toggling}
                   >
                     Próxima <ChevronRight aria-hidden className="h-4 w-4" />
                   </Button>
@@ -475,94 +590,155 @@ export function ClassroomView({ courseId }: { courseId: string }) {
               Conteúdos do curso
             </p>
             <span className="text-xs font-semibold text-emerald-700">
-              {completedIds.length}/{lessons.length}
+              {completedIds.length}/{orderedLessons.length}
             </span>
           </div>
-          <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-3 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
-            {lessons.map((lesson, i) => {
-              const isCurrent = currentLesson?.id === lesson.id
-              const isCompleted = completedIds.includes(lesson.id)
-              const live = lesson.kind === 'LIVE'
+          <nav className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
+            {lessonGroups.map((group) => {
+              const collapsible = themeList.length > 0
+              const isCollapsed = collapsible && Boolean(collapsedThemes[group.key])
+              const groupTotal = group.lessons.length
+              const groupDone = group.lessons.filter((l) => completedIds.includes(l.id)).length
               return (
-                <button
-                  key={lesson.id}
-                  onClick={() => selectLesson(lesson.id)}
-                  aria-current={isCurrent ? 'true' : undefined}
-                  className={cn(
-                    'flex min-h-14 w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors',
-                    isCurrent
-                      ? 'border-emerald-300 bg-emerald-50/80 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.15)]'
-                      : 'border-transparent hover:bg-stone-50'
-                  )}
-                >
-                  <span
-                    className={cn(
-                      'w-4 shrink-0 text-center text-xs font-bold',
-                      isCurrent ? 'text-emerald-700' : 'text-stone-400'
-                    )}
-                  >
-                    {i + 1}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className={cn(
-                        'block truncate text-sm font-semibold',
-                        isCompleted
-                          ? 'text-stone-400 line-through decoration-stone-300'
-                          : isCurrent
-                            ? 'text-emerald-900'
-                            : 'text-stone-700'
-                      )}
+                <div key={group.key} className="space-y-1 py-1">
+                  {collapsible ? (
+                    <button
+                      type="button"
+                      onClick={() => setCollapsedThemes((prev) => ({ ...prev, [group.key]: !isCollapsed }))}
+                      aria-expanded={!isCollapsed}
+                      aria-label={`${isCollapsed ? 'Expandir' : 'Recolher'} a seção ${group.title}`}
+                      className="flex min-h-11 w-full items-center gap-1.5 rounded-xl px-1.5 py-1.5 text-left transition-colors hover:bg-stone-50"
                     >
-                      {lesson.title}
-                    </span>
-                    <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-stone-400">
-                      {live ? (
-                        <>
-                          <Radio aria-hidden className="h-3 w-3 text-rose-500" />
-                          {lesson.startsAt
-                            ? `${formatDayLabel(lesson.startsAt)} · ${formatTimeLabel(lesson.startsAt)}`
-                            : 'Ao vivo'}
-                        </>
-                      ) : lesson.videoUrl ? (
-                        <>
-                          <PlayCircle aria-hidden className="h-3 w-3" /> Vídeo ·{' '}
-                          {lesson.durationMin} min
-                        </>
+                      {isCollapsed ? (
+                        <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-stone-400" />
                       ) : (
-                        <>
-                          <FileText aria-hidden className="h-3 w-3" /> Leitura ·{' '}
-                          {lesson.durationMin} min
-                        </>
+                        <ChevronDown aria-hidden className="h-4 w-4 shrink-0 text-stone-400" />
                       )}
-                      {lesson.hasAttachments ? (
-                        <span className="inline-flex items-center gap-0.5">
-                          <Paperclip aria-hidden className="h-3 w-3" />
-                          {lesson.attachments.length}
+                      {group.theme ? (
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[11px] font-bold text-emerald-800">
+                          {themeList.findIndex((t) => t.id === group.key) + 1}
                         </span>
-                      ) : null}
-                      {lesson.questionCount > 0 ? (
-                        <span className="inline-flex items-center gap-0.5">
-                          <MessageCircle aria-hidden className="h-3 w-3" />
-                          {lesson.questionCount}
+                      ) : (
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-stone-100">
+                          <Folder aria-hidden className="h-3.5 w-3.5 text-stone-500" />
                         </span>
-                      ) : null}
-                    </span>
-                  </span>
-                  {isCompleted ? (
-                    <CheckCircle2
-                      aria-label="Aula concluída"
-                      className="h-5 w-5 shrink-0 fill-emerald-600 text-white"
-                    />
-                  ) : isCurrent ? (
-                    <PlayCircle aria-hidden className="h-5 w-5 shrink-0 text-emerald-600" />
-                  ) : live ? (
-                    <Radio aria-hidden className="h-4 w-4 shrink-0 text-rose-400" />
+                      )}
+                      <span className="min-w-0 flex-1 truncate text-sm font-bold text-stone-700">
+                        {group.title}
+                      </span>
+                      <span className="shrink-0 text-[11px] font-semibold text-stone-400">
+                        {groupTotal} {groupTotal === 1 ? 'aula' : 'aulas'}
+                      </span>
+                      <Progress
+                        value={groupTotal > 0 ? Math.round((groupDone / groupTotal) * 100) : 0}
+                        aria-label={`Progresso da seção ${group.title}`}
+                        className="h-1.5 w-10 shrink-0 [&_[data-slot=progress-indicator]]:bg-emerald-500"
+                      />
+                      <span className="w-9 shrink-0 text-right text-[10px] font-bold tabular-nums text-emerald-700">
+                        {groupDone}/{groupTotal}
+                      </span>
+                    </button>
                   ) : null}
-                </button>
+                  {!isCollapsed &&
+                    group.lessons.map((lesson) => {
+                      const isCurrent = currentLesson?.id === lesson.id
+                      const isCompleted = completedIds.includes(lesson.id)
+                      const live = lesson.kind === 'LIVE'
+                      const reading = lesson.kind === 'READING'
+                      return (
+                        <button
+                          key={lesson.id}
+                          onClick={() => selectLesson(lesson.id)}
+                          aria-current={isCurrent ? 'true' : undefined}
+                          className={cn(
+                            'flex min-h-14 w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors',
+                            isCurrent
+                              ? 'border-emerald-300 bg-emerald-50/80 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.15)]'
+                              : 'border-transparent hover:bg-stone-50'
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'w-4 shrink-0 text-center text-xs font-bold',
+                              isCurrent ? 'text-emerald-700' : 'text-stone-400'
+                            )}
+                          >
+                            {lesson.order}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span
+                              className={cn(
+                                'block truncate text-sm font-semibold',
+                                isCompleted
+                                  ? 'text-stone-400 line-through decoration-stone-300'
+                                  : isCurrent
+                                    ? 'text-emerald-900'
+                                    : 'text-stone-700'
+                              )}
+                            >
+                              {lesson.title}
+                            </span>
+                            <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-stone-400">
+                              {live ? (
+                                <>
+                                  <Radio aria-hidden className="h-3 w-3 text-rose-500" />
+                                  {lesson.startsAt
+                                    ? `${formatDayLabel(lesson.startsAt)} · ${formatTimeLabel(lesson.startsAt)}`
+                                    : 'Ao vivo'}
+                                </>
+                              ) : reading ? (
+                                <>
+                                  <BookOpen aria-hidden className="h-3 w-3 text-amber-500" />
+                                  {readingKindLabel(lesson.reading?.kind)} · {lesson.durationMin} min
+                                </>
+                              ) : lesson.videoUrl ? (
+                                <>
+                                  <PlayCircle aria-hidden className="h-3 w-3" /> Vídeo ·{' '}
+                                  {lesson.durationMin} min
+                                </>
+                              ) : (
+                                <>
+                                  <FileText aria-hidden className="h-3 w-3" /> Leitura ·{' '}
+                                  {lesson.durationMin} min
+                                </>
+                              )}
+                              {lesson.hasAttachments ? (
+                                <span className="inline-flex items-center gap-0.5">
+                                  <Paperclip aria-hidden className="h-3 w-3" />
+                                  {lesson.attachments.length}
+                                </span>
+                              ) : null}
+                              {lesson.questionCount > 0 ? (
+                                <span className="inline-flex items-center gap-0.5">
+                                  <MessageCircle aria-hidden className="h-3 w-3" />
+                                  {lesson.questionCount}
+                                </span>
+                              ) : null}
+                            </span>
+                          </span>
+                          {isCompleted ? (
+                            <CheckCircle2
+                              aria-label="Aula concluída"
+                              className="h-5 w-5 shrink-0 fill-emerald-600 text-white"
+                            />
+                          ) : isCurrent ? (
+                            <PlayCircle aria-hidden className="h-5 w-5 shrink-0 text-emerald-600" />
+                          ) : live ? (
+                            <Radio aria-hidden className="h-4 w-4 shrink-0 text-rose-400" />
+                          ) : reading ? (
+                            <BookOpen aria-hidden className="h-4 w-4 shrink-0 text-amber-400" />
+                          ) : lesson.kind === 'RECORDED' ? (
+                            <PlayCircle aria-hidden className="h-4 w-4 shrink-0 text-stone-300" />
+                          ) : (
+                            <FileText aria-hidden className="h-4 w-4 shrink-0 text-stone-300" />
+                          )}
+                        </button>
+                      )
+                    })}
+                </div>
               )
             })}
-            {lessons.length === 0 && (
+            {orderedLessons.length === 0 && (
               <p className="px-2 py-4 text-sm text-stone-400">Nenhuma aula publicada ainda.</p>
             )}
           </nav>
@@ -593,6 +769,54 @@ export function ClassroomView({ courseId }: { courseId: string }) {
           </div>
         </aside>
       </div>
+
+      {/* ---------- CERTIFICADO DE CONCLUSÃO ---------- */}
+      <Dialog open={certOpen} onOpenChange={setCertOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Certificado de conclusão</DialogTitle>
+            <DialogDescription>
+              Comprovante emitido pela MentorHub para o progresso desta conta.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="certificate-print flex flex-col items-center gap-3 rounded-3xl border-2 border-emerald-200 p-6 text-center ring-4 ring-emerald-100 sm:p-8">
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-600 text-white">
+              <GraduationCap aria-hidden className="h-8 w-8" />
+            </span>
+            <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700">
+              Certificado de conclusão
+            </p>
+            <p className="font-serif text-3xl font-bold text-stone-900">{user?.name ?? 'Aluno(a)'}</p>
+            <p className="text-sm text-stone-500">concluiu com dedicação o curso</p>
+            <p className="max-w-sm text-lg font-bold leading-snug text-stone-900">{course.title}</p>
+            <p className="text-sm text-stone-500">
+              Mentor:{' '}
+              <span className="font-semibold text-stone-700">{course.mentor.name}</span> · Carga horária:{' '}
+              <span className="font-semibold text-stone-700">
+                {formatTotalDuration(course.totalDurationMin)}
+              </span>
+            </p>
+            <p className="text-xs text-stone-400">
+              Emitido em{' '}
+              {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
+            <span className="mt-2 flex h-16 w-16 items-center justify-center rounded-full border-2 border-emerald-200 bg-emerald-50">
+              <Award aria-hidden className="h-8 w-8 text-emerald-600" />
+            </span>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400">MentorHub</p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => window.print()}
+              className="h-11 rounded-full font-semibold"
+              aria-label="Imprimir certificado de conclusão"
+            >
+              <Printer aria-hidden className="h-4 w-4" /> Imprimir certificado
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -613,6 +837,91 @@ function LessonPlayer({ lesson }: { lesson: CourseLessonDTO }) {
           allowFullScreen
         />
       </div>
+    </div>
+  )
+}
+
+/* ==================== MATERIAL DE LEITURA (Artigo/Livro da Biblioteca) ==================== */
+
+function ReadingMaterial({ lesson }: { lesson: CourseLessonDTO }) {
+  const navigate = useAppStore((s) => s.navigate)
+  const reading = lesson.reading
+  const canRead = Boolean(reading && (reading.pdfUrl || reading.content))
+
+  if (!reading || !canRead) {
+    return (
+      <div className="flex min-h-[420px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-12 text-center">
+        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-50">
+          <Lock aria-hidden className="h-6 w-6 text-amber-600" />
+        </span>
+        <p className="font-bold text-stone-900">
+          {reading ? 'Inscreva-se para acessar este material' : 'Material da aula em preparação'}
+        </p>
+        <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+          {reading
+            ? 'Este é um conteúdo da Biblioteca — disponível para alunos inscritos no curso.'
+            : 'O artigo ou livro vinculado a esta aula ainda não está disponível.'}
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {/* Cabeçalho do material */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <Badge className="border-transparent bg-amber-100 text-amber-800 hover:bg-amber-100">
+          <BookOpen aria-hidden className="h-3 w-3" />
+          {readingKindLabel(reading.kind)}
+        </Badge>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-9 rounded-full text-xs font-semibold"
+          onClick={() => navigate({ name: 'reader', itemId: reading.id })}
+          aria-label={`Abrir ${readingKindLabel(reading.kind).toLowerCase()} ${reading.title} em tela cheia`}
+        >
+          <Maximize2 aria-hidden className="h-3.5 w-3.5" /> Abrir em tela cheia
+        </Button>
+      </div>
+
+      {reading.pdfUrl ? (
+        <div className="aspect-video min-h-[420px] overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-lg shadow-stone-900/5">
+          <iframe
+            src={reading.pdfUrl}
+            title={lesson.title}
+            className="h-full w-full rounded-xl border bg-white"
+          />
+        </div>
+      ) : (
+        <div className="min-h-[420px] max-h-[70vh] overflow-y-auto rounded-2xl border border-stone-200 bg-white p-6 shadow-lg shadow-stone-900/5 sm:p-8 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
+          <article className="mx-auto max-w-3xl">
+            <h2 className="text-2xl font-extrabold tracking-tight text-stone-900">{reading.title}</h2>
+            <div className="mt-5 space-y-4">
+              {(reading.content ?? '')
+                .split(/\n{2,}/)
+                .filter((para) => para.trim().length > 0)
+                .map((para, i) =>
+                  para.trim().startsWith('## ') ? (
+                    <h3
+                      key={i}
+                      className="pt-2 text-lg font-bold tracking-tight text-emerald-900"
+                    >
+                      {para.trim().slice(3)}
+                    </h3>
+                  ) : (
+                    <p
+                      key={i}
+                      className="whitespace-pre-line text-[15px] leading-relaxed text-stone-700"
+                    >
+                      {para}
+                    </p>
+                  )
+                )}
+            </div>
+          </article>
+        </div>
+      )}
     </div>
   )
 }

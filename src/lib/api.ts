@@ -6,7 +6,10 @@ import type {
   CourseDetailDTO,
   CourseLessonDTO,
   CourseListItemDTO,
+  CourseThemeDTO,
   EnrolledCourseDTO,
+  LibraryItemDTO,
+  LibraryItemDetailDTO,
   LessonAttachmentDTO,
   LessonNoteDTO,
   LessonQuestionDTO,
@@ -52,6 +55,14 @@ const qs = (params: Record<string, string | number | undefined>) => {
 }
 
 export const api = {
+  // Autenticação
+  register: (data: { name: string; email: string; password: string }) =>
+    request<UserDTO>('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  login: (data: { email: string; password: string }) =>
+    request<UserDTO>('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+  me: (userId: string) =>
+    request<{ user: UserDTO | null }>(`/api/auth/me${qs({ userId })}`),
+
   // Usuários
   listUsers: () => request<UserDTO[]>('/api/users'),
   createUser: (data: { name: string; email: string }) =>
@@ -159,12 +170,14 @@ export const api = {
       userId: string
       title: string
       description?: string
-      kind?: 'RECORDED' | 'TEXT' | 'LIVE'
+      kind?: 'RECORDED' | 'TEXT' | 'LIVE' | 'READING'
       videoUrl?: string
       content?: string
       startsAt?: string
       meetingUrl?: string
       attachments?: LessonAttachmentDTO[]
+      themeId?: string | null
+      libraryItemId?: string | null
       durationMin: number
     }
   ) =>
@@ -176,6 +189,39 @@ export const api = {
     request<{ ok: boolean }>(`/api/courses/${courseId}/lessons${qs({ userId, lessonId })}`, {
       method: 'DELETE',
     }),
+  updateLesson: (
+    courseId: string,
+    lessonId: string,
+    data: { userId: string; themeId?: string | null; title?: string; description?: string; order?: number }
+  ) =>
+    request<{ ok: boolean }>(`/api/courses/${courseId}/lessons${qs({ lessonId })}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  // Temas (módulos) do curso
+  createTheme: (
+    courseId: string,
+    data: { userId: string; title: string; description?: string }
+  ) =>
+    request<CourseThemeDTO>(`/api/courses/${courseId}/themes`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateTheme: (
+    courseId: string,
+    themeId: string,
+    data: { userId: string; title?: string; description?: string; order?: number }
+  ) =>
+    request<{ ok: boolean }>(`/api/courses/${courseId}/themes${qs({ themeId })}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteTheme: (courseId: string, themeId: string, userId: string) =>
+    request<{ ok: boolean }>(
+      `/api/courses/${courseId}/themes${qs({ themeId, userId })}`,
+      { method: 'DELETE' }
+    ),
   enrollCourse: (courseId: string, userId: string) =>
     request<{ ok: boolean; alreadyEnrolled: boolean }>(`/api/courses/${courseId}/enroll`, {
       method: 'POST',
@@ -213,6 +259,47 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+
+  // Biblioteca (artigos e livros)
+  listLibrary: (params: {
+    search?: string
+    kind?: string // ARTICLE | BOOK
+    category?: string
+    sort?: string
+    authorUserId?: string // inclui rascunhos do próprio mentor
+  }) => request<LibraryItemDTO[]>(`/api/library${qs(params)}`),
+  getLibraryItem: (id: string, userId?: string) =>
+    request<LibraryItemDetailDTO>(`/api/library/${id}${qs({ userId })}`),
+  createLibraryItem: (data: {
+    userId: string
+    kind: 'ARTICLE' | 'BOOK'
+    title: string
+    description?: string
+    category?: string
+    level?: string
+    coverUrl?: string | null
+    pdfUrl?: string | null
+    content?: string | null
+    readingMin?: number
+  }) => request<{ id: string }>('/api/library', { method: 'POST', body: JSON.stringify(data) }),
+  updateLibraryItem: (
+    id: string,
+    data: {
+      userId: string
+      kind?: 'ARTICLE' | 'BOOK'
+      title?: string
+      description?: string
+      category?: string
+      level?: string
+      coverUrl?: string | null
+      pdfUrl?: string | null
+      content?: string | null
+      readingMin?: number
+      isPublished?: boolean
+    }
+  ) => request<{ ok: boolean }>(`/api/library/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteLibraryItem: (id: string, userId: string) =>
+    request<{ ok: boolean }>(`/api/library/${id}${qs({ userId })}`, { method: 'DELETE' }),
 
   // Trilhas
   listTracks: (params: { search?: string; category?: string; sort?: string; mentorUserId?: string }) =>

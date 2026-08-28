@@ -1,34 +1,25 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   CalendarDays,
-  Check,
   Compass,
   GraduationCap,
+  LayoutDashboard,
+  LogIn,
   LogOut,
   PlusCircle,
   Search,
   Sparkles,
   UserRoundPlus,
-  Users,
 } from 'lucide-react'
+import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/platform/avatar'
-import { api } from '@/lib/api'
 import { useAppStore, type AppView } from '@/lib/store'
-import type { UserDTO } from '@/lib/types'
+import { firstName } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
-import { toast } from 'sonner'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,48 +28,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 
 export function Navbar() {
   const { user, view, setUser, navigate } = useAppStore()
-  const [users, setUsers] = useState<UserDTO[]>([])
-  const [createOpen, setCreateOpen] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newEmail, setNewEmail] = useState('')
-  const [creating, setCreating] = useState(false)
-
-  useEffect(() => {
-    api
-      .listUsers()
-      .then(setUsers)
-      .catch(() => {})
-  }, [])
-
-  const pickUser = (u: UserDTO) => {
-    setUser(u)
-    toast.success(`Olá, ${u.name.split(' ')[0]}! Você entrou na plataforma.`)
-  }
-
-  const createUser = async () => {
-    if (!newName.trim() || !newEmail.includes('@')) {
-      toast.error('Preencha nome e um e-mail válido.')
-      return
-    }
-    setCreating(true)
-    try {
-      const u = await api.createUser({ name: newName.trim(), email: newEmail.trim() })
-      setUsers((prev) => [...prev, u])
-      pickUser(u)
-      setCreateOpen(false)
-      setNewName('')
-      setNewEmail('')
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao criar conta')
-    } finally {
-      setCreating(false)
-    }
-  }
 
   const navItem = (target: AppView, label: string, icon: React.ReactNode) => {
     const active = view.name === target.name
@@ -106,6 +58,12 @@ export function Navbar() {
         <span className="hidden md:inline">{label}</span>
       </button>
     )
+  }
+
+  const handleLogout = () => {
+    setUser(null)
+    toast.info('Você saiu da sua conta. Até logo!')
+    navigate({ name: 'home' })
   }
 
   return (
@@ -149,17 +107,26 @@ export function Navbar() {
                 >
                   <Avatar name={user.name} src={user.avatarUrl} size="sm" className="ring-transparent" />
                   <span className="hidden max-w-28 truncate text-sm font-semibold text-stone-700 sm:inline">
-                    {user.name.split(' ')[0]}
+                    {firstName(user.name)}
                   </span>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64">
                 <DropdownMenuLabel>
                   <div className="flex items-center gap-2.5">
-                    <Avatar name={user.name} src={user.avatarUrl} size="sm" className="ring-0" />
+                    <Avatar name={user.name} src={user.avatarUrl} size="md" className="ring-0" />
                     <div className="min-w-0">
-                      <p className="truncate font-semibold">{user.name}</p>
-                      <p className="truncate text-xs font-normal text-muted-foreground">{user.email}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="truncate font-semibold">{user.name}</p>
+                        {user.isMentor && (
+                          <Badge variant="secondary" className="shrink-0 text-[10px]">
+                            Mentor
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="truncate text-xs font-normal text-muted-foreground">
+                        {user.email}
+                      </p>
                     </div>
                   </div>
                 </DropdownMenuLabel>
@@ -167,34 +134,21 @@ export function Navbar() {
                 <DropdownMenuItem onClick={() => navigate({ name: 'dashboard' })}>
                   <CalendarDays className="h-4 w-4" /> Minhas sessões
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate({ name: 'onboarding' })}>
-                  <PlusCircle className="h-4 w-4" /> Perfil de mentor
-                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate({ name: 'marketplace' })}>
-                  <Compass className="h-4 w-4" /> Explorar mentores
+                  <Compass className="h-4 w-4" /> Explorar
                 </DropdownMenuItem>
+                {user.isMentor ? (
+                  <DropdownMenuItem onClick={() => navigate({ name: 'onboarding' })}>
+                    <LayoutDashboard className="h-4 w-4" /> Painel do mentor
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={() => navigate({ name: 'onboarding' })}>
+                    <PlusCircle className="h-4 w-4" /> Criar perfil de mentor
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
-                <DropdownMenuLabel className="text-xs text-muted-foreground">
-                  Trocar usuário (demo)
-                </DropdownMenuLabel>
-                <div className="max-h-52 overflow-y-auto">
-                  {users.map((u) => (
-                    <DropdownMenuItem key={u.id} onClick={() => pickUser(u)} className="gap-2.5">
-                      <Avatar name={u.name} src={u.avatarUrl} size="sm" className="h-6 w-6 text-[9px] ring-0" />
-                      <span className="flex-1 truncate">{u.name}</span>
-                      {u.id === user.id && <Check className="h-4 w-4 text-emerald-600" />}
-                    </DropdownMenuItem>
-                  ))}
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setCreateOpen(true)}>
-                  <UserRoundPlus className="h-4 w-4" /> Criar nova conta
-                </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => {
-                    setUser(null)
-                    navigate({ name: 'home' })
-                  }}
+                  onClick={handleLogout}
                   className="text-rose-600 focus:text-rose-600"
                 >
                   <LogOut className="h-4 w-4" /> Sair
@@ -202,71 +156,38 @@ export function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="rounded-full" size="sm">
-                  <Users className="h-4 w-4" /> Entrar
+            <>
+              {/* Mobile (<sm): apenas o botão primário "Entrar" */}
+              <Button
+                size="sm"
+                className="h-9 rounded-full px-3.5 font-semibold sm:hidden"
+                onClick={() => navigate({ name: 'auth', mode: 'login' })}
+                aria-label="Entrar na plataforma"
+              >
+                <LogIn className="h-4 w-4" /> Entrar
+              </Button>
+
+              {/* Desktop (sm+): "Entrar" (ghost) + "Criar conta" (primário) */}
+              <div className="hidden items-center gap-1.5 sm:flex">
+                <Button
+                  variant="ghost"
+                  className="h-9 rounded-full px-3.5 text-sm font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+                  onClick={() => navigate({ name: 'auth', mode: 'login' })}
+                >
+                  Entrar
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuLabel>Entrar como (demo)</DropdownMenuLabel>
-                <div className="max-h-72 overflow-y-auto">
-                  {users.map((u) => (
-                    <DropdownMenuItem key={u.id} onClick={() => pickUser(u)} className="gap-2.5">
-                      <Avatar name={u.name} src={u.avatarUrl} size="sm" className="h-6 w-6 text-[9px] ring-0" />
-                      <span className="flex-1 truncate">{u.name}</span>
-                    </DropdownMenuItem>
-                  ))}
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setCreateOpen(true)}>
-                  <UserRoundPlus className="h-4 w-4" /> Criar nova conta
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <Button
+                  size="sm"
+                  className="h-9 rounded-full px-3.5 font-semibold"
+                  onClick={() => navigate({ name: 'auth', mode: 'register' })}
+                >
+                  <UserRoundPlus className="h-4 w-4" /> Criar conta
+                </Button>
+              </div>
+            </>
           )}
         </div>
       </div>
-
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Criar nova conta</DialogTitle>
-            <DialogDescription>
-              Junte-se ao MentorHub como aluno ou futuro mentor.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="new-name">Nome completo</Label>
-              <Input
-                id="new-name"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="Ex.: Maria Oliveira"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="new-email">E-mail</Label>
-              <Input
-                id="new-email"
-                type="email"
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
-                placeholder="voce@exemplo.com"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={createUser} disabled={creating}>
-              {creating ? 'Criando...' : 'Criar conta'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </header>
   )
 }

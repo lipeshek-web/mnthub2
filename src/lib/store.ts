@@ -6,11 +6,13 @@ import type { UserDTO } from './types'
 
 export type AppView =
   | { name: 'home' }
+  | { name: 'auth'; mode?: 'login' | 'register' } // login / criar conta
   | { name: 'marketplace' }
   | { name: 'mentor'; mentorId: string }
   | { name: 'course'; courseId: string }
   | { name: 'classroom'; courseId: string } // sala de aula profissional (tela cheia, só header)
   | { name: 'track'; trackId: string } // detalhe da trilha
+  | { name: 'reader'; itemId: string } // leitor de artigo/livro (tela cheia)
   | { name: 'dashboard' }
   | { name: 'meeting'; bookingId: string }
   | { name: 'onboarding' }
@@ -18,8 +20,8 @@ export type AppView =
   | { name: 'mentor-lp'; slug: string } // LP pública rastreável (tráfego pago)
   | { name: 'checkout'; courseId?: string; trackId?: string } // checkout de curso ou trilha pago
 
-/** Aba ativa do Explorar: mentores, cursos ou trilhas */
-export type ExploreTab = 'mentors' | 'courses' | 'tracks'
+/** Aba ativa do Explorar: mentores, cursos, trilhas ou biblioteca */
+export type ExploreTab = 'mentors' | 'courses' | 'tracks' | 'library'
 
 interface AppState {
   user: UserDTO | null

@@ -1,0 +1,269 @@
+%PDF-1.4
+%âãÏÓ
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R 11 0 R 13 0 R 15 0 R] /Count 6 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 478 >>
+stream
+0.059 0.42 0.478 rg
+0 792 595 50 re f
+0 0 595 12 re f
+BT
+/F2 26 Tf 1 1 1 rg
+64 760 Td (MentorHub · Biblioteca) Tj
+ET
+BT
+/F2 30 Tf 0.12 0.12 0.12 rg
+64 560 Td 34 TL (Fundamentos de Dados) Tj T*
+ET
+BT
+/F1 14 Tf 0.35 0.35 0.35 rg
+64 500 Td (Apostila da trilha  coleta, limpeza e leitura crítica de dados) Tj
+ET
+BT
+/F1 12 Tf 0.4 0.4 0.4 rg
+64 90 Td (por Beatriz Lima) Tj
+ET
+BT
+/F1 10 Tf 0.55 0.55 0.55 rg
+64 70 Td (Material de estudo da plataforma MentorHub  mentorhub.demo) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 8 0 R >>
+endobj
+8 0 obj
+<< /Length 896 >>
+stream
+BT
+/F2 18 Tf 0.059 0.35 0.31 rg
+64 780 Td (1. Dado não é informação) Tj
+ET
+0.898 0.898 0.898 RG 1 w 64 764 m 531 764 l S
+BT
+/F1 11 Tf 0.22 0.22 0.22 rg
+64 740 Td 15.5 TL
+(Um número solto não conta nada. "47% de churn" não conta nada  até você saber de QUE) Tj T*
+(período, de QUAL segmento e em COMPARAÇÃO a quê.) Tj T*
+T*
+(O trabalho com dados começa exatamente aí: transformar número em contexto, contexto em) Tj T*
+(informação, informação em decisão.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(As três perguntas de todo dado) Tj T*
+0.22 0.22 0.22 rg
+T*
+(1. **Origem**: quem mediu, como, com qual instrumento?) Tj T*
+(2. **Escopo**: qual população, qual janela de tempo?) Tj T*
+(3. **Comparação**: acima ou abaixo de quê?) Tj T*
+T*
+(Pule qualquer uma delas e você estará apresentando opinião com cara de estatística.) Tj
+ET
+BT
+/F1 9 Tf 0.55 0.55 0.55 rg
+64 40 Td (Fundamentos de Dados · Beatriz Lima) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 10 0 R >>
+endobj
+10 0 obj
+<< /Length 1071 >>
+stream
+BT
+/F2 18 Tf 0.059 0.35 0.31 rg
+64 780 Td (2. Coleta: o lixo entra pela porta da frente) Tj
+ET
+0.898 0.898 0.898 RG 1 w 64 764 m 531 764 l S
+BT
+/F1 11 Tf 0.22 0.22 0.22 rg
+64 740 Td 15.5 TL
+(80% do tempo de qualquer trabalho com dados vai em **limpeza**  e a maior parte da) Tj T*
+(sujeira nasce na coleta.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(Regras de sobrevivência) Tj T*
+0.22 0.22 0.22 rg
+T*
+(- **Nomeie antes de coletar**: evento "signup_click" hoje e "cadastro_finalizado") Tj T*
+(amanhã quebra qualquer análise.) Tj T*
+(- **Versione o dicionário de dados**: cada campo tem dono, tipo e descrição.) Tj T*
+(- **Não corrija na mão**: correção manual não escala e não é auditável. Corrija na) Tj T*
+(origem.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(O teste do repaint) Tj T*
+0.22 0.22 0.22 rg
+T*
+(Se você reprocessasse toda a coleta do zero, chegaria aos mesmos números? Se a) Tj T*
+(resposta for "não sei", sua coleta não é confiável  e toda análise em cima dela é um) Tj T*
+(castelo de areia.) Tj
+ET
+BT
+/F1 9 Tf 0.55 0.55 0.55 rg
+64 40 Td (Fundamentos de Dados · Beatriz Lima) Tj
+ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 12 0 R >>
+endobj
+12 0 obj
+<< /Length 936 >>
+stream
+BT
+/F2 18 Tf 0.059 0.35 0.31 rg
+64 780 Td (3. Limpeza: um checklist honesto) Tj
+ET
+0.898 0.898 0.898 RG 1 w 64 764 m 531 764 l S
+BT
+/F1 11 Tf 0.22 0.22 0.22 rg
+64 740 Td 15.5 TL
+0.059 0.35 0.31 rg
+(Antes de qualquer análise) Tj T*
+0.22 0.22 0.22 rg
+T*
+(- Duplicatas exatas e quase-exatas \(mesmo usuário, e-mail com maiúscula/minúscula\).) Tj T*
+(- Nulos: estão vazios porque não existe, porque não souberam ou porque deu erro?) Tj T*
+(- Outliers: primeiro investigue, depois decida. Excluir sem entender é censurar o) Tj T*
+(dado.) Tj T*
+(- Tipos: data como texto é o clássico  e o mais caro de descobrir tarde.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(Documente o que você fez) Tj T*
+0.22 0.22 0.22 rg
+T*
+(Cada transformação vai no log da análise. A pergunta "como você chegou nesse número?") Tj T*
+(precisa de resposta em 30 segundos  não em uma tarde.) Tj
+ET
+BT
+/F1 9 Tf 0.55 0.55 0.55 rg
+64 40 Td (Fundamentos de Dados · Beatriz Lima) Tj
+ET
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 14 0 R >>
+endobj
+14 0 obj
+<< /Length 1077 >>
+stream
+BT
+/F2 18 Tf 0.059 0.35 0.31 rg
+64 780 Td (4. Leitura crítica: os erros que mais enganam) Tj
+ET
+0.898 0.898 0.898 RG 1 w 64 764 m 531 764 l S
+BT
+/F1 11 Tf 0.22 0.22 0.22 rg
+64 740 Td 15.5 TL
+0.059 0.35 0.31 rg
+(Média sem distribuição) Tj T*
+0.22 0.22 0.22 rg
+("Tempo médio de resposta: 3min"  com metade respondendo em 10s e metade em 6min? A) Tj T*
+(média esconde dois produtos diferentes.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(Correlação vira causalidade) Tj T*
+0.22 0.22 0.22 rg
+(Vendas de sorvete e afogamentos sobem juntos. Não é o sorvete.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(Sobrevivência) Tj T*
+0.22 0.22 0.22 rg
+(Você ouve o sucesso dos que usaram a ferramenta  nunca dos que abandonaram. O chamado) Tj T*
+("viés do sobrevivente" é o mais comum em cases de marketing.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(P-hacking honesto) Tj T*
+0.22 0.22 0.22 rg
+(Se você testar 20 hipóteses, uma vai "dar significativa" por acaso. Corrija o p-valor) Tj T*
+(ou declare todas as hipóteses ANTES de olhar os dados.) Tj
+ET
+BT
+/F1 9 Tf 0.55 0.55 0.55 rg
+64 40 Td (Fundamentos de Dados · Beatriz Lima) Tj
+ET
+endstream
+endobj
+15 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 16 0 R >>
+endobj
+16 0 obj
+<< /Length 1122 >>
+stream
+BT
+/F2 18 Tf 0.059 0.35 0.31 rg
+64 780 Td (5. Do número à decisão) Tj
+ET
+0.898 0.898 0.898 RG 1 w 64 764 m 531 764 l S
+BT
+/F1 11 Tf 0.22 0.22 0.22 rg
+64 740 Td 15.5 TL
+(Uma análise só vale quando termina em uma decisão melhor. O formato que uso para) Tj T*
+(comunicar:) Tj T*
+T*
+0.059 0.35 0.31 rg
+(O parágrafo de decisão) Tj T*
+0.22 0.22 0.22 rg
+T*
+(1. **Pergunta**: o que estávamos tentando responder?) Tj T*
+(2. **Evidência**: o número, com escopo e comparação.) Tj T*
+(3. **Limitação**: o que este número NÃO responde.) Tj T*
+(4. **Recomendação**: o que fazer \(e o que NÃO fazer ainda\).) Tj T*
+T*
+(Quatro linhas. Se a sua análise precisa de vinte slides para explicar, provavelmente) Tj T*
+(ela ainda não sabe qual é a pergunta.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(Próximos passos) Tj T*
+0.22 0.22 0.22 rg
+T*
+(Aplique o checklist da apostila no último relatório que você recebeu. Quantas das três) Tj T*
+(perguntas \(origem, escopo, comparação\) ele responde? O gap é o seu plano de estudo  e) Tj T*
+(o assunto da próxima mentoria.) Tj
+ET
+BT
+/F1 9 Tf 0.55 0.55 0.55 rg
+64 40 Td (Fundamentos de Dados · Beatriz Lima) Tj
+ET
+endstream
+endobj
+xref
+0 17
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000154 00000 n 
+0000000251 00000 n 
+0000000353 00000 n 
+0000000489 00000 n 
+0000001018 00000 n 
+0000001154 00000 n 
+0000002101 00000 n 
+0000002238 00000 n 
+0000003362 00000 n 
+0000003500 00000 n 
+0000004488 00000 n 
+0000004626 00000 n 
+0000005756 00000 n 
+0000005894 00000 n 
+trailer
+<< /Size 17 /Root 1 0 R >>
+startxref
+7069
+%%EOF

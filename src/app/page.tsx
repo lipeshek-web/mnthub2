@@ -9,6 +9,8 @@ import { MentorProfileView } from '@/components/platform/mentor-profile'
 import { CourseView } from '@/components/platform/course-view'
 import { ClassroomView } from '@/components/platform/classroom'
 import { TrackView } from '@/components/platform/track-view'
+import { ReaderView } from '@/components/platform/reader-view'
+import { AuthView } from '@/components/platform/auth-view'
 import { MeetingRoomView } from '@/components/platform/meeting-room'
 import DashboardView from '@/components/platform/dashboard'
 import OnboardingView from '@/components/platform/onboarding'
@@ -18,11 +20,17 @@ import { MentorLpView } from '@/components/platform/mentor-lp'
 import { CheckoutView } from '@/components/platform/checkout'
 import { Toaster } from '@/components/ui/sonner'
 import { useAppStore } from '@/lib/store'
+import { api } from '@/lib/api'
 import { captureAttributionFromUrl, cleanUrlParams, loadTrackingScripts, trackEvent } from '@/lib/tracking'
+
+/** Views que exigem sessão ativa — convidado é levado ao login/cadastro */
+const AUTH_REQUIRED: AppViewNames[] = ['dashboard', 'onboarding', 'checkout', 'meeting']
+type AppViewNames = 'dashboard' | 'onboarding' | 'checkout' | 'meeting'
 
 export default function Home() {
   const view = useAppStore((s) => s.view)
   const user = useAppStore((s) => s.user)
+  const setUser = useAppStore((s) => s.setUser)
   const navigate = useAppStore((s) => s.navigate)
   const mainRef = useRef<HTMLElement>(null)
   const bootstrapped = useRef(false)
@@ -65,10 +73,27 @@ export default function Home() {
     cleanUrlParams()
   }, [])
 
+  // Valida a sessão persistida: se a conta não existir mais, desloga.
+  useEffect(() => {
+    if (!user) return
+    api
+      .me(user.id)
+      .then(({ user: fresh }) => {
+        if (!fresh) setUser(null)
+        else if (fresh.name !== user.name || (fresh.isMentor ?? false) !== (user.isMentor ?? false)) {
+          setUser({ ...user, ...fresh })
+        }
+      })
+      .catch(() => {})
+  }, [])
+
   // Shell estilo app nativo: header e footer fixos, só o corpo rola.
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0 })
   }, [view])
+
+  // Guard central: convidado não acessa views pessoais.
+  const needsAuth = mounted && !user && AUTH_REQUIRED.includes(view.name as AppViewNames)
 
   if (!mounted) {
     // Evita mismatch de hidratação com o estado persistido (usuário/logado)
@@ -96,24 +121,32 @@ export default function Home() {
         key={user?.id ?? 'guest'}
         className="flex-1 overflow-y-auto overscroll-contain"
       >
-        {view.name === 'home' && <LandingMenteeView />}
-        {view.name === 'for-mentors' && <LandingMentor />}
-        {view.name === 'marketplace' && <MarketplaceView />}
-        {view.name === 'mentor' && <MentorProfileView mentorId={view.mentorId} />}
-        {view.name === 'course' && <CourseView courseId={view.courseId} />}
-        {view.name === 'classroom' && <ClassroomView courseId={view.courseId} />}
-        {view.name === 'track' && <TrackView trackId={view.trackId} />}
-        {view.name === 'dashboard' && <DashboardView />}
-        {view.name === 'meeting' && <MeetingRoomView bookingId={view.bookingId} />}
-        {view.name === 'onboarding' && <OnboardingView />}
-        {view.name === 'mentor-lp' && <MentorLpView slug={view.slug} />}
-        {view.name === 'checkout' && (
-          <CheckoutView courseId={view.courseId} trackId={view.trackId} />
+        {needsAuth ? (
+          <AuthView />
+        ) : (
+          <>
+            {view.name === 'home' && <LandingMenteeView />}
+            {view.name === 'auth' && <AuthView initialMode={view.mode} />}
+            {view.name === 'for-mentors' && <LandingMentor />}
+            {view.name === 'marketplace' && <MarketplaceView />}
+            {view.name === 'mentor' && <MentorProfileView mentorId={view.mentorId} />}
+            {view.name === 'course' && <CourseView courseId={view.courseId} />}
+            {view.name === 'classroom' && <ClassroomView courseId={view.courseId} />}
+            {view.name === 'track' && <TrackView trackId={view.trackId} />}
+            {view.name === 'reader' && <ReaderView itemId={view.itemId} />}
+            {view.name === 'dashboard' && <DashboardView />}
+            {view.name === 'meeting' && <MeetingRoomView bookingId={view.bookingId} />}
+            {view.name === 'onboarding' && <OnboardingView />}
+            {view.name === 'mentor-lp' && <MentorLpView slug={view.slug} />}
+            {view.name === 'checkout' && (
+              <CheckoutView courseId={view.courseId} trackId={view.trackId} />
+            )}
+          </>
         )}
       </main>
 
-      {/* Sala de aula: tela cheia, só o header da plataforma permanece */}
-      {view.name !== 'classroom' && <PlatformFooter />}
+      {/* Sala de aula e leitor: tela cheia, só o header da plataforma permanece */}
+      {view.name !== 'classroom' && view.name !== 'reader' && <PlatformFooter />}
       <Toaster position="top-center" richColors closeButton />
     </div>
   )

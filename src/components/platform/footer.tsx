@@ -1,6 +1,6 @@
 'use client'
 
-import { CalendarDays, Compass, GraduationCap, Sparkles } from 'lucide-react'
+import { CalendarDays, Compass, GraduationCap, Library, Sparkles } from 'lucide-react'
 import { useAppStore, type AppView } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -49,6 +49,15 @@ export function PlatformFooter() {
                 {link.label}
               </button>
             ))}
+            <button
+              onClick={() => {
+                useAppStore.getState().setExploreTab('library')
+                navigate({ name: 'marketplace' })
+              }}
+              className="inline-flex items-center gap-1 transition-colors hover:text-emerald-700"
+            >
+              <Library className="h-3 w-3" /> Biblioteca
+            </button>
           </nav>
 
           <p className="shrink-0 text-[11px] text-stone-400">© {year} MentorHub</p>
