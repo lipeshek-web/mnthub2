@@ -21,14 +21,16 @@ import { useAppStore } from '@/lib/store'
 import type { LibraryItemDTO, LibraryItemDetailDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-const KIND_META: Record<string, { label: string; badge: string }> = {
+const KIND_META: Record<string, { label: string; badge: string; badgeDark: string }> = {
   ARTICLE: {
     label: 'Artigo',
     badge: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50',
+    badgeDark: 'border-emerald-300/25 bg-white/10 text-emerald-100 hover:bg-white/10',
   },
   BOOK: {
     label: 'Livro',
     badge: 'border-amber-200 bg-amber-100 text-amber-800 hover:bg-amber-100',
+    badgeDark: 'border-amber-300/30 bg-amber-300/10 text-amber-100 hover:bg-amber-300/10',
   },
 }
 
@@ -90,9 +92,17 @@ export function ReaderView({ itemId }: { itemId: string }) {
   const barRef = useRef<HTMLDivElement>(null)
   const rafRef = useRef(0)
 
-  const goBackToLibrary = useCallback(() => {
-    setExploreTab('library')
-    navigate({ name: 'marketplace' })
+  // Retorno contextual: quando aberto a partir de uma aula (sala de aula),
+  // o botão voltar devolve à aula exata; caso contrário, vai para a Biblioteca.
+  const goBack = useCallback(() => {
+    const view = useAppStore.getState().view
+    const returnTo = view.name === 'reader' ? view.returnTo : undefined
+    if (returnTo) {
+      navigate({ name: 'classroom', courseId: returnTo.courseId, lessonId: returnTo.lessonId })
+    } else {
+      setExploreTab('library')
+      navigate({ name: 'marketplace' })
+    }
   }, [navigate, setExploreTab])
 
   const load = useCallback(async () => {
@@ -213,7 +223,10 @@ export function ReaderView({ itemId }: { itemId: string }) {
               {related.map((r) => (
                 <button
                   key={r.id}
-                  onClick={() => navigate({ name: 'reader', itemId: r.id })}
+                  onClick={() => {
+                    const view = useAppStore.getState().view
+                    navigate({ name: 'reader', itemId: r.id, returnTo: view.name === 'reader' ? view.returnTo : undefined })
+                  }}
                   className="group flex min-w-0 items-center gap-3 rounded-2xl border border-stone-200 bg-white p-3 text-left transition-all hover:border-emerald-300 hover:shadow-sm"
                   aria-label={`Ler ${r.title}`}
                 >
@@ -255,23 +268,23 @@ export function ReaderView({ itemId }: { itemId: string }) {
 
   return (
     <div className="flex h-full flex-col bg-stone-50">
-      {/* ---------- HEADER PRÓPRIO ---------- */}
-      <header className="sticky top-0 z-10 border-b border-stone-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-4">
+      {/* ---------- TOP BAR IMERSIVA ---------- */}
+      <header className="shrink-0 border-b border-emerald-400/15 bg-emerald-950 text-white">
+        <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-2 px-4 sm:gap-3">
           <Button
             variant="ghost"
             size="icon"
-            className="h-9 w-9 shrink-0 rounded-full"
+            className="h-9 w-9 shrink-0 rounded-full text-white hover:bg-white/10 hover:text-white"
             aria-label="Voltar"
-            onClick={goBackToLibrary}
+            onClick={goBack}
           >
             <ArrowLeft className="h-5 w-5" aria-hidden />
           </Button>
 
           {/* Centro: tipo + título + autor */}
-          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <div className="flex min-w-0 flex-1 items-center justify-center gap-2.5">
             {kindMeta && (
-              <Badge variant="outline" className={cn('shrink-0 gap-1 rounded-full', kindMeta.badge)}>
+              <Badge variant="outline" className={cn('shrink-0 gap-1 rounded-full', kindMeta.badgeDark)}>
                 {item?.kind === 'BOOK' ? (
                   <BookMarked aria-hidden className="h-3 w-3" />
                 ) : (
@@ -280,10 +293,10 @@ export function ReaderView({ itemId }: { itemId: string }) {
                 {kindMeta.label}
               </Badge>
             )}
-            <p className="truncate font-bold text-stone-900">{item?.title ?? 'Carregando...'}</p>
+            <p className="truncate font-bold text-white">{item?.title ?? 'Carregando...'}</p>
             {item && (
-              <p className="hidden min-w-0 items-center gap-1 text-xs text-stone-500 md:flex">
-                <span aria-hidden className="text-stone-300">·</span>
+              <p className="hidden min-w-0 items-center gap-1 text-xs text-emerald-100/70 md:flex">
+                <span aria-hidden className="text-emerald-100/40">·</span>
                 <span className="truncate">
                   {firstName(item.author.name)} · {item.author.headline}
                 </span>
@@ -294,13 +307,18 @@ export function ReaderView({ itemId }: { itemId: string }) {
           {/* Direita: tempo de leitura + download */}
           <div className="flex shrink-0 items-center gap-2">
             {item && (
-              <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-stone-500">
+              <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-emerald-100/70">
                 <Clock aria-hidden className="h-3.5 w-3.5" />
                 {item.readingMin} min
               </span>
             )}
             {item?.canRead && item.pdfUrl && (
-              <Button variant="outline" size="sm" className="h-9 rounded-full" asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 rounded-full border-white/20 bg-transparent text-white shadow-none hover:bg-white/10 hover:text-white"
+                asChild
+              >
                 <a
                   href={item.pdfUrl}
                   download
@@ -315,17 +333,17 @@ export function ReaderView({ itemId }: { itemId: string }) {
             )}
           </div>
         </div>
+
+        {/* Linha de progresso de leitura (colada no fundo da top bar) */}
+        {item?.canRead && !item.pdfUrl && item.content && (
+          <div aria-hidden className="h-0.5 w-full bg-white/10">
+            <div ref={barRef} className="h-full bg-emerald-400" style={{ width: '0%' }} />
+          </div>
+        )}
       </header>
 
       {/* ---------- CORPO ---------- */}
       <div ref={scrollRef} onScroll={handleScroll} className="relative flex-1 overflow-y-auto">
-        {/* Barra de progresso de leitura (modo texto) */}
-        {item?.canRead && !item.pdfUrl && item.content && (
-          <div aria-hidden className="sticky top-0 z-20 h-0.5 w-full bg-transparent">
-            <div ref={barRef} className="h-full bg-emerald-600" style={{ width: '0%' }} />
-          </div>
-        )}
-
         {loading ? (
           /* Skeleton do leitor */
           <div className="mx-auto w-full max-w-3xl px-4 py-8">
@@ -390,7 +408,7 @@ export function ReaderView({ itemId }: { itemId: string }) {
                   Ver curso
                 </Button>
               ) : (
-                <Button variant="outline" className="mt-5 rounded-full" onClick={goBackToLibrary}>
+                <Button variant="outline" className="mt-5 rounded-full" onClick={goBack}>
                   Explorar biblioteca
                 </Button>
               )}
@@ -441,7 +459,7 @@ export function ReaderView({ itemId }: { itemId: string }) {
           <div className="mx-auto w-full max-w-3xl px-4 py-16 text-center">
             <BookOpen aria-hidden className="mx-auto h-10 w-10 text-stone-300" />
             <p className="mt-4 font-bold text-stone-900">Este item ainda não tem conteúdo disponível.</p>
-            <Button variant="outline" className="mt-4 rounded-full" onClick={goBackToLibrary}>
+            <Button variant="outline" className="mt-4 rounded-full" onClick={goBack}>
               Voltar para a Biblioteca
             </Button>
           </div>

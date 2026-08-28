@@ -22,6 +22,7 @@ import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, Stars } from '@/components/platform/avatar'
 import { api } from '@/lib/api'
@@ -96,13 +97,6 @@ export function CourseView({ courseId }: { courseId: string }) {
     })
   }, [course])
 
-  // Inscritos (ou o próprio mentor) vão direto para a sala de aula profissional
-  useEffect(() => {
-    if (course && (isEnrolled || isOwner)) {
-      navigate({ name: 'classroom', courseId: course.id })
-    }
-  }, [course, isEnrolled, isOwner, navigate])
-
   /* ---------- Inscrição (overview) ---------- */
 
   const doEnroll = async () => {
@@ -112,12 +106,15 @@ export function CourseView({ courseId }: { courseId: string }) {
       const res = await api.enrollCourse(course.id, user.id)
       if (res.alreadyEnrolled) {
         toast.info('Você já estava inscrito neste curso.')
+        // Busca novamente com o usuário: enrollment preenchido mostra o modo inscrito
+        const fresh = await api.getCourse(course.id, user.id)
+        setData(fresh)
       } else {
         toast.success('Inscrição realizada! Boa jornada 🎉')
+        await api.getCourse(course.id, user.id)
+        // Nova inscrição: entra direto na sala de aula
+        navigate({ name: 'classroom', courseId: course.id })
       }
-      // Busca novamente com o usuário: enrollment preenchido ativa o modo sala de aula
-      const fresh = await api.getCourse(course.id, user.id)
-      setData(fresh)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao realizar inscrição.')
     } finally {
@@ -185,20 +182,76 @@ export function CourseView({ courseId }: { courseId: string }) {
   }
 
   if (isEnrolled || isOwner) {
+    const done = course.enrollment?.completedLessonIds.length ?? 0
+    const pct = course.lessonCount > 0 ? Math.round((done / course.lessonCount) * 100) : 0
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3" aria-busy="true">
-        <span className="flex h-14 w-14 animate-pulse items-center justify-center rounded-2xl bg-emerald-700 text-white">
-          <PlayCircle aria-hidden className="h-7 w-7" />
-        </span>
-        <p className="text-sm font-semibold text-stone-600">Abrindo sua sala de aula…</p>
+      <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
         <Button
-          variant="outline"
-          size="sm"
-          className="rounded-full"
-          onClick={() => navigate({ name: 'classroom', courseId: course.id })}
+          variant="ghost"
+          onClick={() => navigate({ name: 'marketplace' })}
+          className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 hover:text-stone-900"
         >
-          Abrir agora
+          <ArrowLeft aria-hidden className="h-4 w-4" /> Voltar
         </Button>
+
+        {/* Hero do aluno inscrito */}
+        <section
+          aria-label="Seu curso"
+          className="relative mt-2 overflow-hidden rounded-3xl bg-emerald-950 p-6 text-white sm:p-8"
+        >
+          <div aria-hidden className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl" />
+          <div aria-hidden className="absolute -bottom-24 left-10 h-48 w-48 rounded-full bg-teal-400/10 blur-3xl" />
+          <p className="relative inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">
+            {isOwner && !isEnrolled ? 'Seu curso' : 'Inscrição ativa'}
+          </p>
+          <h1 className="relative mt-2 max-w-2xl text-2xl font-extrabold tracking-tight sm:text-3xl">
+            {course.title}
+          </h1>
+          <p className="relative mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-emerald-100/80">
+            <span>por {course.mentor.name}</span>
+            <span aria-hidden>·</span>
+            <span>{course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'}</span>
+            <span aria-hidden>·</span>
+            <span>{formatTotalDuration(course.totalDurationMin)}</span>
+          </p>
+          <div className="relative mt-5 flex flex-wrap items-center gap-4">
+            <Button
+              size="lg"
+              onClick={() => navigate({ name: 'classroom', courseId: course.id })}
+              aria-label="Abrir a sala de aula"
+              className="h-12 rounded-full bg-white px-7 font-bold text-emerald-950 hover:bg-emerald-100"
+            >
+              <PlayCircle aria-hidden className="h-5 w-5" />
+              {done > 0 ? 'Continuar curso' : 'Começar agora'}
+            </Button>
+            <div className="min-w-40 flex-1 max-w-xs" aria-hidden>
+              <div className="flex items-center justify-between text-xs font-semibold text-emerald-100/80">
+                <span>Seu progresso</span>
+                <span className="tabular-nums">{pct}%</span>
+              </div>
+              <Progress
+                value={pct}
+                aria-label="Progresso do curso"
+                className="mt-1.5 h-2 bg-white/15 [&_[data-slot=progress-indicator]]:bg-emerald-400"
+              />
+              <p className="mt-1 text-[11px] text-emerald-100/60">
+                {done} de {course.lessonCount} {course.lessonCount === 1 ? 'aula concluída' : 'aulas concluídas'}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <OverviewContent
+          course={course}
+          lessons={lessons}
+          enrolling={false}
+          isLoggedIn={Boolean(user)}
+          enrolled
+          onContinue={() => navigate({ name: 'classroom', courseId: course.id })}
+          onEnrollClick={handleEnrollClick}
+          onLogin={() => navigate({ name: 'auth', mode: 'login' })}
+          onViewMentor={(mentorId) => navigate({ name: 'mentor', mentorId })}
+        />
       </div>
     )
   }
@@ -218,6 +271,11 @@ export function CourseView({ courseId }: { courseId: string }) {
         lessons={lessons}
         enrolling={enrolling}
         isLoggedIn={Boolean(user)}
+        onContinue={
+          course.enrollment || isOwner
+            ? () => navigate({ name: 'classroom', courseId: course.id })
+            : undefined
+        }
         onEnrollClick={handleEnrollClick}
         onLogin={() => navigate({ name: 'auth', mode: 'login' })}
         onViewMentor={(mentorId) => navigate({ name: 'mentor', mentorId })}
@@ -233,6 +291,8 @@ function OverviewContent({
   lessons,
   enrolling,
   isLoggedIn,
+  enrolled = false,
+  onContinue,
   onEnrollClick,
   onLogin,
   onViewMentor,
@@ -241,6 +301,8 @@ function OverviewContent({
   lessons: CourseLessonDTO[]
   enrolling: boolean
   isLoggedIn: boolean
+  enrolled?: boolean
+  onContinue?: () => void
   onEnrollClick: () => void
   onLogin: () => void
   onViewMentor: (mentorId: string) => void
@@ -272,7 +334,8 @@ function OverviewContent({
   }, [lessons, themes])
   return (
     <>
-      {/* ---------- HERO ---------- */}
+      {/* ---------- HERO (oculto no modo inscrito: já existe o hero de progresso) ---------- */}
+      {!enrolled && (
       <section
         aria-label={`Curso: ${course.title}`}
         className="relative overflow-hidden rounded-2xl p-6 text-white sm:p-8"
@@ -336,6 +399,7 @@ function OverviewContent({
           </div>
         </div>
       </section>
+      )}
 
       {/* ---------- CONTEÚDO ---------- */}
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -529,31 +593,50 @@ function OverviewContent({
 
         {/* ---------- SIDEBAR DE INSCRIÇÃO ---------- */}
         <Card className="self-start rounded-2xl border-stone-200 p-6 shadow-none lg:sticky lg:top-6">
-          <p
-            className={cn(
-              'text-3xl font-extrabold tracking-tight',
-              course.price === 0 ? 'text-emerald-700' : 'text-stone-900'
-            )}
-          >
-            {course.price === 0 ? 'Grátis' : currencyBRL(course.price)}
-          </p>
-          <p className="mt-1 text-sm text-stone-500">
-            {course.price === 0
-              ? 'Acesso gratuito a todo o conteúdo.'
-              : 'Pagamento único, acesso ao conteúdo completo.'}
-          </p>
+          {enrolled ? (
+            <>
+              <p className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-emerald-800">
+                <Check aria-hidden className="h-5 w-5" /> Você já está inscrito
+              </p>
+              <p className="mt-1 text-sm text-stone-500">
+                Todo o conteúdo, perguntas e anotações estão liberados na sua sala de aula.
+              </p>
+              <Button
+                className="mt-5 h-11 w-full rounded-full font-bold"
+                onClick={onContinue}
+                aria-label="Abrir a sala de aula"
+                disabled={!onContinue}
+              >
+                <PlayCircle aria-hidden className="h-4.5 w-4.5" /> Continuar curso
+              </Button>
+            </>
+          ) : (
+            <>
+              <p
+                className={cn(
+                  'text-3xl font-extrabold tracking-tight',
+                  course.price === 0 ? 'text-emerald-700' : 'text-stone-900'
+                )}
+              >
+                {course.price === 0 ? 'Grátis' : currencyBRL(course.price)}
+              </p>
+              <p className="mt-1 text-sm text-stone-500">
+                {course.price === 0
+                  ? 'Acesso gratuito a todo o conteúdo.'
+                  : 'Pagamento único, acesso ao conteúdo completo.'}
+              </p>
 
-          <Button
-            className="mt-5 h-11 w-full rounded-full font-bold"
-            onClick={onEnrollClick}
-            disabled={enrolling}
-          >
-            {enrolling
-              ? 'Inscrevendo…'
-              : course.price === 0
-                ? 'Inscrever-se gratuitamente'
-                : 'Inscrever-se no curso'}
-          </Button>
+              <Button
+                className="mt-5 h-11 w-full rounded-full font-bold"
+                onClick={onEnrollClick}
+                disabled={enrolling}
+              >
+                {enrolling
+                  ? 'Inscrevendo…'
+                  : course.price === 0
+                    ? 'Inscrever-se gratuitamente'
+                    : 'Inscrever-se no curso'}
+              </Button>
           {enrolling ? (
             <p className="mt-2 text-center text-xs text-stone-400">Processando inscrição…</p>
           ) : !isLoggedIn ? (
@@ -617,6 +700,8 @@ function OverviewContent({
               </Button>
             </div>
           ) : null}
+            </>
+          )}
         </Card>
       </div>
     </>

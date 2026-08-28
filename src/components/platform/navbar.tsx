@@ -1,6 +1,7 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   CalendarDays,
   Compass,
@@ -10,8 +11,8 @@ import {
   LogOut,
   PlusCircle,
   Search,
-  Sparkles,
   UserRoundPlus,
+  X,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -31,6 +32,91 @@ import {
 
 export function Navbar() {
   const { user, view, setUser, navigate } = useAppStore()
+
+  // ---------- Busca global do header ----------
+  const [query, setQuery] = useState('')
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const desktopSearchRef = useRef<HTMLInputElement>(null)
+  const mobileSearchRef = useRef<HTMLInputElement>(null)
+
+  const submitSearch = (value: string) => {
+    const q = value.trim()
+    if (!q) return
+    useAppStore.getState().setExploreQuery(q)
+    useAppStore.getState().setExploreTab('all')
+    navigate({ name: 'marketplace' })
+    setMobileSearchOpen(false)
+  }
+
+  // Atalho "/" foca a busca do header (sensação de app nativo)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      const typing =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target?.isContentEditable
+      if (e.key === '/' && !typing) {
+        e.preventDefault()
+        if (window.matchMedia('(min-width: 768px)').matches) {
+          desktopSearchRef.current?.focus()
+        } else {
+          setMobileSearchOpen(true)
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  const searchField = (isMobile: boolean) => {
+    const value = query
+    const setValue = (v: string) => setQuery(v)
+    return (
+      <form
+        role="search"
+        onSubmit={(e) => {
+          e.preventDefault()
+          submitSearch(value)
+        }}
+        className="relative w-full"
+      >
+        <Search
+          aria-hidden
+          className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400"
+        />
+        <input
+          ref={isMobile ? mobileSearchRef : desktopSearchRef}
+          type="search"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="Buscar mentores, cursos, trilhas e leituras..."
+          aria-label="Buscar na plataforma"
+          className={cn(
+            'h-9 w-full rounded-full border border-transparent bg-stone-100 pl-10 pr-9 text-sm text-stone-900 outline-none transition-all placeholder:text-stone-400',
+            'focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100',
+            '[&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden'
+          )}
+        />
+        {value ? (
+          <button
+            type="button"
+            onClick={() => setValue('')}
+            aria-label="Limpar busca"
+            className="absolute right-2.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-200 hover:text-stone-700"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        ) : (
+          !isMobile && (
+            <kbd className="pointer-events-none absolute right-3 top-1/2 hidden h-5 -translate-y-1/2 items-center rounded border border-stone-200 bg-white px-1 font-mono text-[10px] font-medium text-stone-400 md:inline-flex">
+              /
+            </kbd>
+          )
+        )}
+      </form>
+    )
+  }
 
   const navItem = (target: AppView, label: string, icon: React.ReactNode) => {
     const active = view.name === target.name
@@ -67,7 +153,7 @@ export function Navbar() {
   }
 
   return (
-    <header className="z-40 shrink-0 border-b border-stone-200/70 bg-white/85 backdrop-blur-md">
+    <header className="sticky top-0 z-40 shrink-0 border-b border-stone-200/70 bg-white/85 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4">
         <button
           className="flex items-center gap-2.5"
@@ -85,17 +171,25 @@ export function Navbar() {
         <nav aria-label="Navegação principal" className="ml-4 hidden items-center gap-1 sm:flex">
           {navItem({ name: 'marketplace' }, 'Explorar', <Compass className="h-4 w-4" />)}
           {navItem({ name: 'dashboard' }, 'Minhas sessões', <CalendarDays className="h-4 w-4" />)}
-          {navItem({ name: 'for-mentors' }, 'Para mentores', <Sparkles className="h-4 w-4" />)}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
+        {/* Busca global (desktop): envia para o Explorar com o termo aplicado */}
+        <div className="mx-auto hidden w-full max-w-xs md:block lg:max-w-sm">
+          {searchField(false)}
+        </div>
+
+        <div className={cn('flex items-center gap-2', 'md:ml-0 ml-auto')}>
+          {/* Busca (mobile): ícone que expande uma linha de busca abaixo */}
           <button
-            onClick={() => navigate({ name: 'marketplace' })}
-            aria-label="Explorar mentores e cursos"
-            title="Explorar mentores e cursos"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+            onClick={() => {
+              setMobileSearchOpen((open) => !open)
+              setTimeout(() => mobileSearchRef.current?.focus(), 60)
+            }}
+            aria-expanded={mobileSearchOpen}
+            aria-label={mobileSearchOpen ? 'Fechar busca' : 'Abrir busca'}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 md:hidden"
           >
-            <Search className="h-4.5 w-4.5" />
+            {mobileSearchOpen ? <X className="h-4.5 w-4.5" /> : <Search className="h-4.5 w-4.5" />}
           </button>
 
           {user ? (
@@ -188,6 +282,21 @@ export function Navbar() {
           )}
         </div>
       </div>
+
+      {/* Linha de busca mobile expansível */}
+      <AnimatePresence>
+        {mobileSearchOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="overflow-hidden border-t border-stone-100 bg-white md:hidden"
+          >
+            <div className="px-4 py-2.5">{searchField(true)}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   )
 }

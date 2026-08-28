@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useSyncExternalStore, useRef } from 'react'
 import { GraduationCap } from 'lucide-react'
 import { Navbar } from '@/components/platform/navbar'
 import { PlatformFooter } from '@/components/platform/footer'
@@ -32,7 +32,6 @@ export default function Home() {
   const user = useAppStore((s) => s.user)
   const setUser = useAppStore((s) => s.setUser)
   const navigate = useAppStore((s) => s.navigate)
-  const mainRef = useRef<HTMLElement>(null)
   const bootstrapped = useRef(false)
 
   // Detecta montagem no cliente sem setState em effect (hidratação segura
@@ -87,13 +86,16 @@ export default function Home() {
       .catch(() => {})
   }, [])
 
-  // Shell estilo app nativo: header e footer fixos, só o corpo rola.
+  // Volta ao topo do documento ao trocar de view (rolagem normal da página).
   useEffect(() => {
-    mainRef.current?.scrollTo({ top: 0 })
+    window.scrollTo({ top: 0 })
   }, [view])
 
   // Guard central: convidado não acessa views pessoais.
   const needsAuth = mounted && !user && AUTH_REQUIRED.includes(view.name as AppViewNames)
+
+  // Sala de aula e leitor: overlay tela cheia (imersão) cobrindo header/footer.
+  const immersive = view.name === 'classroom' || view.name === 'reader'
 
   if (!mounted) {
     // Evita mismatch de hidratação com o estado persistido (usuário/logado)
@@ -113,14 +115,10 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-white">
-      <Navbar />
+    <div className="flex min-h-dvh flex-col bg-white">
+      {!immersive && <Navbar />}
 
-      <main
-        ref={mainRef}
-        key={user?.id ?? 'guest'}
-        className="flex-1 overflow-y-auto overscroll-contain"
-      >
+      <main key={user?.id ?? 'guest'} className="flex-1">
         {needsAuth ? (
           <AuthView />
         ) : (
@@ -131,9 +129,7 @@ export default function Home() {
             {view.name === 'marketplace' && <MarketplaceView />}
             {view.name === 'mentor' && <MentorProfileView mentorId={view.mentorId} />}
             {view.name === 'course' && <CourseView courseId={view.courseId} />}
-            {view.name === 'classroom' && <ClassroomView courseId={view.courseId} />}
             {view.name === 'track' && <TrackView trackId={view.trackId} />}
-            {view.name === 'reader' && <ReaderView itemId={view.itemId} />}
             {view.name === 'dashboard' && <DashboardView />}
             {view.name === 'meeting' && <MeetingRoomView bookingId={view.bookingId} />}
             {view.name === 'onboarding' && <OnboardingView />}
@@ -145,8 +141,21 @@ export default function Home() {
         )}
       </main>
 
-      {/* Sala de aula e leitor: tela cheia, só o header da plataforma permanece */}
-      {view.name !== 'classroom' && view.name !== 'reader' && <PlatformFooter />}
+      {/* Footer no fim da página (gruda no fundo quando o conteúdo é curto) */}
+      {!immersive && <PlatformFooter />}
+
+      {/* Imersão: sala de aula e leitor em overlay tela cheia sobre tudo */}
+      {view.name === 'classroom' && (
+        <div className="fixed inset-0 z-50 bg-stone-50">
+          <ClassroomView courseId={view.courseId} />
+        </div>
+      )}
+      {view.name === 'reader' && (
+        <div className="fixed inset-0 z-50 bg-stone-50">
+          <ReaderView itemId={view.itemId} />
+        </div>
+      )}
+
       <Toaster position="top-center" richColors closeButton />
     </div>
   )

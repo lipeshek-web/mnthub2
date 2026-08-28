@@ -22,6 +22,8 @@ import {
   Lock,
   Maximize2,
   MessageCircle,
+  Minimize2,
+  PanelRight,
   Paperclip,
   PencilLine,
   PlayCircle,
@@ -31,6 +33,7 @@ import {
   Trash2,
   Users,
 } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -163,7 +166,29 @@ export function ClassroomView({ courseId }: { courseId: string }) {
   const [collapsedThemes, setCollapsedThemes] = useState<Record<string, boolean>>({})
   const [certOpen, setCertOpen] = useState(false)
 
-  // Aula inicial: primeira ainda não concluída (só define uma vez por curso)
+  // Modo foco (teatro): esconde sidebar e abas, centraliza o palco da aula.
+  // Persistido na sessão para o aluno retomar a imersão ao voltar para a sala.
+  const [focusMode, setFocusMode] = useState(() => {
+    if (typeof window === 'undefined') return false
+    try {
+      return window.sessionStorage.getItem('mentorhub-classroom-focus') === '1'
+    } catch {
+      return false
+    }
+  })
+  const [contentsOpen, setContentsOpen] = useState(false)
+
+  useEffect(() => {
+    try {
+      if (focusMode) window.sessionStorage.setItem('mentorhub-classroom-focus', '1')
+      else window.sessionStorage.removeItem('mentorhub-classroom-focus')
+    } catch {
+      /* storage indisponível */
+    }
+  }, [focusMode])
+
+  // Aula inicial: a indicada na view (retorno do leitor) ou a primeira ainda
+  // não concluída (só define uma vez por curso)
   const initializedRef = useRef<string | null>(null)
   useEffect(() => {
     if (!course || !hasAccess) return
@@ -172,8 +197,14 @@ export function ClassroomView({ courseId }: { courseId: string }) {
     const enrollment = course.enrollment
     const completed = enrollment?.completedLessonIds ?? []
     setCompletedIds(completed)
-    const firstIncomplete = orderedLessons.find((l) => !completed.includes(l.id))
-    setCurrentLessonId(firstIncomplete?.id ?? orderedLessons[0]?.id ?? null)
+    const view = useAppStore.getState().view
+    const returnLessonId = view.name === 'classroom' ? view.lessonId : undefined
+    const target =
+      (returnLessonId && orderedLessons.some((l) => l.id === returnLessonId) ? returnLessonId : undefined) ??
+      orderedLessons.find((l) => !completed.includes(l.id))?.id ??
+      orderedLessons[0]?.id ??
+      null
+    setCurrentLessonId(target)
   }, [course, hasAccess, orderedLessons])
 
   const currentLesson = useMemo(
@@ -185,6 +216,9 @@ export function ClassroomView({ courseId }: { courseId: string }) {
     orderedLessons.length > 0 ? Math.round((completedIds.length / orderedLessons.length) * 100) : 0
   const courseCompleted =
     orderedLessons.length > 0 && completedIds.length >= orderedLessons.length
+
+  const handleToggleTheme = (key: string) =>
+    setCollapsedThemes((prev) => ({ ...prev, [key]: !prev[key] }))
 
   const selectLesson = (lessonId: string) => {
     setCurrentLessonId(lessonId)
@@ -234,10 +268,10 @@ export function ClassroomView({ courseId }: { courseId: string }) {
   if (loading) {
     return (
       <div className="flex h-full min-h-0 flex-col" aria-busy="true">
-        <div className="flex items-center gap-3 border-b border-stone-200 bg-white px-4 py-3 sm:px-6">
-          <Skeleton className="h-9 w-9 rounded-full" />
-          <Skeleton className="h-5 w-48" />
-          <Skeleton className="ml-auto h-6 w-28 rounded-full" />
+        <div className="flex items-center gap-3 border-b border-emerald-400/15 bg-emerald-950 px-4 py-3 sm:px-6">
+          <Skeleton className="h-9 w-9 rounded-full bg-white/10" />
+          <Skeleton className="h-5 w-48 bg-white/10" />
+          <Skeleton className="ml-auto h-6 w-28 rounded-full bg-white/10" />
         </div>
         <div className="grid flex-1 grid-cols-1 lg:grid-cols-[1fr_380px]">
           <div className="space-y-4 p-4 sm:p-6">
@@ -306,26 +340,49 @@ export function ClassroomView({ courseId }: { courseId: string }) {
     <div className="flex h-full min-h-0 flex-col bg-stone-50" aria-label={`Sala de aula: ${course.title}`}>
       {/* CSS de impressão: imprime apenas o certificado quando aberto */}
       <style>{`@media print { body * { visibility: hidden; } .certificate-print, .certificate-print * { visibility: visible; } .certificate-print { position: absolute; inset: 0; } }`}</style>
-      {/* ---------- BARRA SUPERIOR COMPACTA ---------- */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-stone-200 bg-white px-3 py-2.5 sm:gap-3 sm:px-6">
+      {/* ---------- BARRA SUPERIOR IMERSIVA ---------- */}
+      <div className="flex shrink-0 items-center gap-1 border-b border-emerald-400/15 bg-emerald-950 px-3 py-2.5 text-white sm:gap-2.5 sm:px-6">
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 shrink-0 rounded-full"
-          aria-label="Voltar para a visão geral do curso"
+          className="h-9 w-9 shrink-0 rounded-full text-white hover:bg-white/10 hover:text-white"
+          aria-label="Sair da sala de aula"
           onClick={() => navigate({ name: 'course', courseId })}
         >
           <ArrowLeft aria-hidden className="h-4 w-4" />
         </Button>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-extrabold tracking-tight text-stone-900 sm:text-base">
+          <p className="truncate text-sm font-extrabold tracking-tight text-white sm:text-base">
             {course.title}
           </p>
-          <p className="hidden text-xs text-stone-400 sm:block">
+          <p className="hidden text-xs text-emerald-100/70 sm:block">
             {orderedLessons.length} {orderedLessons.length === 1 ? 'aula' : 'aulas'} ·{' '}
             {formatTotalDuration(course.totalDurationMin)}
           </p>
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 shrink-0 rounded-full text-emerald-100 hover:bg-white/10 hover:text-white lg:hidden"
+          aria-label="Ver conteúdos do curso"
+          onClick={() => setContentsOpen(true)}
+        >
+          <PanelRight aria-hidden className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 shrink-0 rounded-full text-emerald-100 hover:bg-white/10 hover:text-white"
+          aria-label={focusMode ? 'Sair do modo foco' : 'Ativar modo foco'}
+          title={focusMode ? 'Sair do modo foco' : 'Ativar modo foco'}
+          onClick={() => setFocusMode((v) => !v)}
+        >
+          {focusMode ? (
+            <Minimize2 aria-hidden className="h-4 w-4" />
+          ) : (
+            <Maximize2 aria-hidden className="h-4 w-4" />
+          )}
+        </Button>
         <div className="hidden items-center gap-2 sm:flex" aria-hidden>
           <Avatar
             name={course.mentor.name}
@@ -333,7 +390,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
             size="sm"
             className="h-6 w-6 text-[10px]"
           />
-          <span className="max-w-36 truncate text-xs font-semibold text-stone-600">
+          <span className="max-w-36 truncate text-xs font-semibold text-emerald-100/70">
             {course.mentor.name}
           </span>
         </div>
@@ -341,25 +398,41 @@ export function ClassroomView({ courseId }: { courseId: string }) {
           <Progress
             value={percent}
             aria-label="Progresso do curso"
-            className="h-2 [&_[data-slot=progress-indicator]]:bg-emerald-600"
+            className="h-2 bg-white/20 [&_[data-slot=progress-indicator]]:bg-emerald-400"
           />
-          <span className="w-9 shrink-0 text-right text-xs font-bold tabular-nums text-stone-600">
+          <span className="w-9 shrink-0 text-right text-xs font-bold tabular-nums text-emerald-100">
             {percent}%
           </span>
         </div>
       </div>
 
-      {/* ---------- CORPO: PLAYER + CONTEÚDOS ---------- */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_380px]">
+      {/* ---------- CORPO: PLAYER + CONTEÚDOS (sidebar oculta no modo foco) ---------- */}
+      <div
+        className={cn(
+          'grid min-h-0 flex-1 grid-cols-1',
+          focusMode ? 'lg:grid-cols-1' : 'lg:grid-cols-[1fr_380px]'
+        )}
+      >
         {/* Coluna esquerda: aula */}
         <div className="min-h-0 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className="mx-auto max-w-4xl">
-            {currentLesson ? (
-              <>
+          <div className={cn('mx-auto', focusMode ? 'max-w-3xl' : 'max-w-4xl')}>
+            <AnimatePresence mode="wait">
+              {currentLesson ? (
+                <motion.div
+                  key={currentLesson.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.22 }}
+                >
                 {currentLesson.kind === 'LIVE' ? (
                   <LivePanel lesson={currentLesson} isOwner={isOwner} />
                 ) : currentLesson.kind === 'READING' ? (
-                  <ReadingMaterial lesson={currentLesson} />
+                  <ReadingMaterial lesson={currentLesson} courseId={courseId} />
+                ) : currentLesson.kind === 'RECORDED' && currentLesson.videoUrl ? (
+                  <div className="overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-stone-900/10">
+                    <LessonPlayer lesson={currentLesson} />
+                  </div>
                 ) : (
                   <LessonPlayer lesson={currentLesson} />
                 )}
@@ -438,7 +511,10 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                   </div>
                 ) : null}
 
-                {/* Abas: conteúdo / perguntas / anotações */}
+                {/* Abas: material / perguntas / anotações (ocultas no modo foco apenas
+                    para aulas em vídeo — o palco é o conteúdo; aulas de texto/leitura
+                    mantêm o material visível, pois ele É o conteúdo da aula) */}
+                {!(focusMode && currentLesson.kind === 'RECORDED' && currentLesson.videoUrl) && (
                 <Tabs defaultValue="lesson" className="mt-6">
                   <TabsList className="h-11 w-full justify-start overflow-x-auto rounded-full bg-stone-100 p-1 sm:w-auto">
                     <TabsTrigger value="lesson" className="rounded-full">
@@ -526,6 +602,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                     />
                   </TabsContent>
                 </Tabs>
+                )}
 
                 {/* Navegação */}
                 <div className="mt-6 flex items-center justify-between gap-3 border-t border-stone-200 pt-5">
@@ -568,8 +645,10 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                     Próxima <ChevronRight aria-hidden className="h-4 w-4" />
                   </Button>
                 </div>
-              </>
-            ) : (
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+            {!currentLesson && (
               <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-16 text-center">
                 <Library aria-hidden className="h-8 w-8 text-stone-300" />
                 <p className="text-sm text-stone-400">
@@ -580,7 +659,8 @@ export function ClassroomView({ courseId }: { courseId: string }) {
           </div>
         </div>
 
-        {/* Coluna direita: lista de conteúdos */}
+        {/* Coluna direita: lista de conteúdos (oculta no modo foco) */}
+        {!focusMode && (
         <aside
           aria-label="Conteúdos do curso"
           className="flex min-h-0 flex-col border-t border-stone-200 bg-white lg:border-l lg:border-t-0"
@@ -593,155 +673,15 @@ export function ClassroomView({ courseId }: { courseId: string }) {
               {completedIds.length}/{orderedLessons.length}
             </span>
           </div>
-          <nav className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
-            {lessonGroups.map((group) => {
-              const collapsible = themeList.length > 0
-              const isCollapsed = collapsible && Boolean(collapsedThemes[group.key])
-              const groupTotal = group.lessons.length
-              const groupDone = group.lessons.filter((l) => completedIds.includes(l.id)).length
-              return (
-                <div key={group.key} className="space-y-1 py-1">
-                  {collapsible ? (
-                    <button
-                      type="button"
-                      onClick={() => setCollapsedThemes((prev) => ({ ...prev, [group.key]: !isCollapsed }))}
-                      aria-expanded={!isCollapsed}
-                      aria-label={`${isCollapsed ? 'Expandir' : 'Recolher'} a seção ${group.title}`}
-                      className="flex min-h-11 w-full items-center gap-1.5 rounded-xl px-1.5 py-1.5 text-left transition-colors hover:bg-stone-50"
-                    >
-                      {isCollapsed ? (
-                        <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-stone-400" />
-                      ) : (
-                        <ChevronDown aria-hidden className="h-4 w-4 shrink-0 text-stone-400" />
-                      )}
-                      {group.theme ? (
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[11px] font-bold text-emerald-800">
-                          {themeList.findIndex((t) => t.id === group.key) + 1}
-                        </span>
-                      ) : (
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-stone-100">
-                          <Folder aria-hidden className="h-3.5 w-3.5 text-stone-500" />
-                        </span>
-                      )}
-                      <span className="min-w-0 flex-1 truncate text-sm font-bold text-stone-700">
-                        {group.title}
-                      </span>
-                      <span className="shrink-0 text-[11px] font-semibold text-stone-400">
-                        {groupTotal} {groupTotal === 1 ? 'aula' : 'aulas'}
-                      </span>
-                      <Progress
-                        value={groupTotal > 0 ? Math.round((groupDone / groupTotal) * 100) : 0}
-                        aria-label={`Progresso da seção ${group.title}`}
-                        className="h-1.5 w-10 shrink-0 [&_[data-slot=progress-indicator]]:bg-emerald-500"
-                      />
-                      <span className="w-9 shrink-0 text-right text-[10px] font-bold tabular-nums text-emerald-700">
-                        {groupDone}/{groupTotal}
-                      </span>
-                    </button>
-                  ) : null}
-                  {!isCollapsed &&
-                    group.lessons.map((lesson) => {
-                      const isCurrent = currentLesson?.id === lesson.id
-                      const isCompleted = completedIds.includes(lesson.id)
-                      const live = lesson.kind === 'LIVE'
-                      const reading = lesson.kind === 'READING'
-                      return (
-                        <button
-                          key={lesson.id}
-                          onClick={() => selectLesson(lesson.id)}
-                          aria-current={isCurrent ? 'true' : undefined}
-                          className={cn(
-                            'flex min-h-14 w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors',
-                            isCurrent
-                              ? 'border-emerald-300 bg-emerald-50/80 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.15)]'
-                              : 'border-transparent hover:bg-stone-50'
-                          )}
-                        >
-                          <span
-                            className={cn(
-                              'w-4 shrink-0 text-center text-xs font-bold',
-                              isCurrent ? 'text-emerald-700' : 'text-stone-400'
-                            )}
-                          >
-                            {lesson.order}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span
-                              className={cn(
-                                'block truncate text-sm font-semibold',
-                                isCompleted
-                                  ? 'text-stone-400 line-through decoration-stone-300'
-                                  : isCurrent
-                                    ? 'text-emerald-900'
-                                    : 'text-stone-700'
-                              )}
-                            >
-                              {lesson.title}
-                            </span>
-                            <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-stone-400">
-                              {live ? (
-                                <>
-                                  <Radio aria-hidden className="h-3 w-3 text-rose-500" />
-                                  {lesson.startsAt
-                                    ? `${formatDayLabel(lesson.startsAt)} · ${formatTimeLabel(lesson.startsAt)}`
-                                    : 'Ao vivo'}
-                                </>
-                              ) : reading ? (
-                                <>
-                                  <BookOpen aria-hidden className="h-3 w-3 text-amber-500" />
-                                  {readingKindLabel(lesson.reading?.kind)} · {lesson.durationMin} min
-                                </>
-                              ) : lesson.videoUrl ? (
-                                <>
-                                  <PlayCircle aria-hidden className="h-3 w-3" /> Vídeo ·{' '}
-                                  {lesson.durationMin} min
-                                </>
-                              ) : (
-                                <>
-                                  <FileText aria-hidden className="h-3 w-3" /> Leitura ·{' '}
-                                  {lesson.durationMin} min
-                                </>
-                              )}
-                              {lesson.hasAttachments ? (
-                                <span className="inline-flex items-center gap-0.5">
-                                  <Paperclip aria-hidden className="h-3 w-3" />
-                                  {lesson.attachments.length}
-                                </span>
-                              ) : null}
-                              {lesson.questionCount > 0 ? (
-                                <span className="inline-flex items-center gap-0.5">
-                                  <MessageCircle aria-hidden className="h-3 w-3" />
-                                  {lesson.questionCount}
-                                </span>
-                              ) : null}
-                            </span>
-                          </span>
-                          {isCompleted ? (
-                            <CheckCircle2
-                              aria-label="Aula concluída"
-                              className="h-5 w-5 shrink-0 fill-emerald-600 text-white"
-                            />
-                          ) : isCurrent ? (
-                            <PlayCircle aria-hidden className="h-5 w-5 shrink-0 text-emerald-600" />
-                          ) : live ? (
-                            <Radio aria-hidden className="h-4 w-4 shrink-0 text-rose-400" />
-                          ) : reading ? (
-                            <BookOpen aria-hidden className="h-4 w-4 shrink-0 text-amber-400" />
-                          ) : lesson.kind === 'RECORDED' ? (
-                            <PlayCircle aria-hidden className="h-4 w-4 shrink-0 text-stone-300" />
-                          ) : (
-                            <FileText aria-hidden className="h-4 w-4 shrink-0 text-stone-300" />
-                          )}
-                        </button>
-                      )
-                    })}
-                </div>
-              )
-            })}
-            {orderedLessons.length === 0 && (
-              <p className="px-2 py-4 text-sm text-stone-400">Nenhuma aula publicada ainda.</p>
-            )}
-          </nav>
+          <ContentsNav
+            groups={lessonGroups}
+            themeList={themeList}
+            collapsedThemes={collapsedThemes}
+            onToggleTheme={handleToggleTheme}
+            currentLessonId={currentLesson?.id ?? null}
+            completedIds={completedIds}
+            onSelectLesson={selectLesson}
+          />
 
           {/* Mentor no rodapé da lista */}
           <div className="shrink-0 border-t border-stone-100 p-3">
@@ -768,7 +708,49 @@ export function ClassroomView({ courseId }: { courseId: string }) {
             </div>
           </div>
         </aside>
+        )}
       </div>
+
+      {/* ---------- MODO FOCO: botão flutuante de saída ---------- */}
+      {focusMode && (
+        <Button
+          type="button"
+          onClick={() => setFocusMode(false)}
+          aria-label="Sair do modo foco"
+          className="fixed bottom-6 right-6 z-50 h-11 rounded-full bg-emerald-950 px-5 text-sm font-bold text-white shadow-2xl shadow-emerald-950/40 ring-1 ring-emerald-400/25 hover:bg-emerald-900"
+        >
+          <Minimize2 aria-hidden className="h-4 w-4" />
+          Sair do modo foco
+        </Button>
+      )}
+
+      {/* ---------- CONTEÚDOS DO CURSO (dialog p/ mobile) ---------- */}
+      <Dialog open={contentsOpen} onOpenChange={setContentsOpen}>
+        <DialogContent className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
+          <DialogHeader className="shrink-0 gap-1 border-b border-stone-100 py-4 pl-5 pr-12 text-left">
+            <DialogTitle className="text-base font-extrabold tracking-tight text-stone-900">
+              Conteúdos do curso
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {completedIds.length} de {orderedLessons.length}{' '}
+              {orderedLessons.length === 1 ? 'aula concluída' : 'aulas concluídas'}
+            </DialogDescription>
+          </DialogHeader>
+          <ContentsNav
+            groups={lessonGroups}
+            themeList={themeList}
+            collapsedThemes={collapsedThemes}
+            onToggleTheme={handleToggleTheme}
+            currentLessonId={currentLesson?.id ?? null}
+            completedIds={completedIds}
+            onSelectLesson={(lessonId) => {
+              selectLesson(lessonId)
+              setContentsOpen(false)
+            }}
+            className="py-2"
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* ---------- CERTIFICADO DE CONCLUSÃO ---------- */}
       <Dialog open={certOpen} onOpenChange={setCertOpen}>
@@ -821,6 +803,188 @@ export function ClassroomView({ courseId }: { courseId: string }) {
   )
 }
 
+/* ==================== NAVEGAÇÃO DE CONTEÚDOS (sidebar + dialog mobile) ==================== */
+
+function ContentsNav({
+  groups,
+  themeList,
+  collapsedThemes,
+  onToggleTheme,
+  currentLessonId,
+  completedIds,
+  onSelectLesson,
+  className,
+}: {
+  groups: LessonGroup[]
+  themeList: CourseThemeDTO[]
+  collapsedThemes: Record<string, boolean>
+  onToggleTheme: (key: string) => void
+  currentLessonId: string | null
+  completedIds: string[]
+  onSelectLesson: (lessonId: string) => void
+  className?: string
+}) {
+  const totalLessons = groups.reduce((n, g) => n + g.lessons.length, 0)
+
+  return (
+    <nav
+      aria-label="Conteúdos do curso"
+      className={cn(
+        'min-h-0 flex-1 overflow-y-auto px-3 pb-3 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5',
+        className
+      )}
+    >
+      {groups.map((group) => {
+        const collapsible = themeList.length > 0
+        const isCollapsed = collapsible && Boolean(collapsedThemes[group.key])
+        const groupTotal = group.lessons.length
+        const groupDone = group.lessons.filter((l) => completedIds.includes(l.id)).length
+        return (
+          <div key={group.key} className="space-y-1 py-1">
+            {collapsible ? (
+              <button
+                type="button"
+                onClick={() => onToggleTheme(group.key)}
+                aria-expanded={!isCollapsed}
+                aria-label={`${isCollapsed ? 'Expandir' : 'Recolher'} a seção ${group.title}`}
+                className="flex min-h-11 w-full items-center gap-1.5 rounded-xl px-1.5 py-1.5 text-left transition-colors hover:bg-stone-50"
+              >
+                {isCollapsed ? (
+                  <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-stone-400" />
+                ) : (
+                  <ChevronDown aria-hidden className="h-4 w-4 shrink-0 text-stone-400" />
+                )}
+                {group.theme ? (
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[11px] font-bold text-emerald-800">
+                    {themeList.findIndex((t) => t.id === group.key) + 1}
+                  </span>
+                ) : (
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-stone-100">
+                    <Folder aria-hidden className="h-3.5 w-3.5 text-stone-500" />
+                  </span>
+                )}
+                <span className="min-w-0 flex-1 truncate text-sm font-bold text-stone-700">
+                  {group.title}
+                </span>
+                <span className="shrink-0 text-[11px] font-semibold text-stone-400">
+                  {groupTotal} {groupTotal === 1 ? 'aula' : 'aulas'}
+                </span>
+                <Progress
+                  value={groupTotal > 0 ? Math.round((groupDone / groupTotal) * 100) : 0}
+                  aria-label={`Progresso da seção ${group.title}`}
+                  className="h-1.5 w-10 shrink-0 [&_[data-slot=progress-indicator]]:bg-emerald-500"
+                />
+                <span className="w-9 shrink-0 text-right text-[10px] font-bold tabular-nums text-emerald-700">
+                  {groupDone}/{groupTotal}
+                </span>
+              </button>
+            ) : null}
+            {!isCollapsed &&
+              group.lessons.map((lesson) => {
+                const isCurrent = currentLessonId === lesson.id
+                const isCompleted = completedIds.includes(lesson.id)
+                const live = lesson.kind === 'LIVE'
+                const reading = lesson.kind === 'READING'
+                return (
+                  <button
+                    key={lesson.id}
+                    onClick={() => onSelectLesson(lesson.id)}
+                    aria-current={isCurrent ? 'true' : undefined}
+                    className={cn(
+                      'flex min-h-14 w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors',
+                      isCurrent
+                        ? 'border-emerald-300 bg-emerald-50/80 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.15)]'
+                        : 'border-transparent hover:bg-stone-50'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'w-4 shrink-0 text-center text-xs font-bold',
+                        isCurrent ? 'text-emerald-700' : 'text-stone-400'
+                      )}
+                    >
+                      {lesson.order}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className={cn(
+                          'block truncate text-sm font-semibold',
+                          isCompleted
+                            ? 'text-stone-400 line-through decoration-stone-300'
+                            : isCurrent
+                              ? 'text-emerald-900'
+                              : 'text-stone-700'
+                        )}
+                      >
+                        {lesson.title}
+                      </span>
+                      <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-stone-400">
+                        {live ? (
+                          <>
+                            <Radio aria-hidden className="h-3 w-3 text-rose-500" />
+                            {lesson.startsAt
+                              ? `${formatDayLabel(lesson.startsAt)} · ${formatTimeLabel(lesson.startsAt)}`
+                              : 'Ao vivo'}
+                          </>
+                        ) : reading ? (
+                          <>
+                            <BookOpen aria-hidden className="h-3 w-3 text-amber-500" />
+                            {readingKindLabel(lesson.reading?.kind)} · {lesson.durationMin} min
+                          </>
+                        ) : lesson.videoUrl ? (
+                          <>
+                            <PlayCircle aria-hidden className="h-3 w-3" /> Vídeo ·{' '}
+                            {lesson.durationMin} min
+                          </>
+                        ) : (
+                          <>
+                            <FileText aria-hidden className="h-3 w-3" /> Leitura ·{' '}
+                            {lesson.durationMin} min
+                          </>
+                        )}
+                        {lesson.hasAttachments ? (
+                          <span className="inline-flex items-center gap-0.5">
+                            <Paperclip aria-hidden className="h-3 w-3" />
+                            {lesson.attachments.length}
+                          </span>
+                        ) : null}
+                        {lesson.questionCount > 0 ? (
+                          <span className="inline-flex items-center gap-0.5">
+                            <MessageCircle aria-hidden className="h-3 w-3" />
+                            {lesson.questionCount}
+                          </span>
+                        ) : null}
+                      </span>
+                    </span>
+                    {isCompleted ? (
+                      <CheckCircle2
+                        aria-label="Aula concluída"
+                        className="h-5 w-5 shrink-0 fill-emerald-600 text-white"
+                      />
+                    ) : isCurrent ? (
+                      <PlayCircle aria-hidden className="h-5 w-5 shrink-0 text-emerald-600" />
+                    ) : live ? (
+                      <Radio aria-hidden className="h-4 w-4 shrink-0 text-rose-400" />
+                    ) : reading ? (
+                      <BookOpen aria-hidden className="h-4 w-4 shrink-0 text-amber-400" />
+                    ) : lesson.kind === 'RECORDED' ? (
+                      <PlayCircle aria-hidden className="h-4 w-4 shrink-0 text-stone-300" />
+                    ) : (
+                      <FileText aria-hidden className="h-4 w-4 shrink-0 text-stone-300" />
+                    )}
+                  </button>
+                )
+              })}
+          </div>
+        )
+      })}
+      {totalLessons === 0 && (
+        <p className="px-2 py-4 text-sm text-stone-400">Nenhuma aula publicada ainda.</p>
+      )}
+    </nav>
+  )
+}
+
 /* ==================== PLAYER (vídeo / leitura) ==================== */
 
 function LessonPlayer({ lesson }: { lesson: CourseLessonDTO }) {
@@ -843,7 +1007,13 @@ function LessonPlayer({ lesson }: { lesson: CourseLessonDTO }) {
 
 /* ==================== MATERIAL DE LEITURA (Artigo/Livro da Biblioteca) ==================== */
 
-function ReadingMaterial({ lesson }: { lesson: CourseLessonDTO }) {
+function ReadingMaterial({
+  lesson,
+  courseId,
+}: {
+  lesson: CourseLessonDTO
+  courseId: string
+}) {
   const navigate = useAppStore((s) => s.navigate)
   const reading = lesson.reading
   const canRead = Boolean(reading && (reading.pdfUrl || reading.content))
@@ -878,7 +1048,13 @@ function ReadingMaterial({ lesson }: { lesson: CourseLessonDTO }) {
           variant="outline"
           size="sm"
           className="h-9 rounded-full text-xs font-semibold"
-          onClick={() => navigate({ name: 'reader', itemId: reading.id })}
+          onClick={() =>
+            navigate({
+              name: 'reader',
+              itemId: reading.id,
+              returnTo: { courseId, lessonId: lesson.id },
+            })
+          }
           aria-label={`Abrir ${readingKindLabel(reading.kind).toLowerCase()} ${reading.title} em tela cheia`}
         >
           <Maximize2 aria-hidden className="h-3.5 w-3.5" /> Abrir em tela cheia

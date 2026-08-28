@@ -10,6 +10,7 @@ import {
   Clock,
   Globe2,
   GraduationCap,
+  LayoutGrid,
   Library,
   Route,
   Search,
@@ -85,6 +86,8 @@ export function MarketplaceView() {
   const [libKind, setLibKind] = useState<'ALL' | 'ARTICLE' | 'BOOK'>('ALL')
   const [libCategory, setLibCategory] = useState('')
   const [libSort, setLibSort] = useState('recent')
+  // Ordenação das prateleiras da aba "Tudo" (Select do cabeçalho)
+  const [allSort, setAllSort] = useState('relevance')
 
   // Consome termo vindo de outra tela (hero da home) uma única vez
   useEffect(() => {
@@ -99,7 +102,7 @@ export function MarketplaceView() {
   // Consome a aba pedida por outra tela ("Ver todos os cursos" da home) uma única vez.
   // O valor inicial já foi lido no useState acima; aqui apenas resetamos a store.
   useEffect(() => {
-    useAppStore.setState({ exploreTab: 'mentors' })
+    useAppStore.setState({ exploreTab: 'all' })
   }, [])
 
   const load = useCallback(async () => {
@@ -204,23 +207,6 @@ export function MarketplaceView() {
   useEffect(() => {
     if (tab === 'library') void loadLibrary()
   }, [tab, loadLibrary])
-
-  // Atalho "/" foca a busca (sensação de app nativo)
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null
-      const typing =
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        target?.isContentEditable
-      if (e.key === '/' && !typing) {
-        e.preventDefault()
-        searchRef.current?.focus()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
 
   const onSearchChange = (value: string) => {
     setInputValue(value)
@@ -347,17 +333,147 @@ export function MarketplaceView() {
     )[0]
   }, [baseLibItems])
 
+  // ---------- Aba "Tudo": prateleiras editoriais, áreas e autores ----------
+
+  const totalContents =
+    baseMentors.length + baseCourses.length + baseTracks.length + baseLibItems.length
+
+  // Busca consciente: filtra todas as prateleiras client-side (nunca filtra com filtros vazios)
+  const allView = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    const filtering = q !== '' || category !== ''
+    const matchesTerm = (parts: (string | null | undefined)[]) =>
+      q === '' || parts.some((p) => (p ?? '').toLowerCase().includes(q))
+    const matchesCategory = (cats: string | string[]) =>
+      category === '' || (Array.isArray(cats) ? cats.includes(category) : cats === category)
+
+    const mentorList = baseMentors
+      .filter(
+        (m) =>
+          matchesTerm([m.name, m.headline, m.categories.join(' ')]) &&
+          matchesCategory(m.categories)
+      )
+      .sort((a, b) =>
+        allSort === 'popular'
+          ? b.totalSessions - a.totalSessions
+          : b.rating - a.rating || b.reviewCount - a.reviewCount
+      )
+    const courseList = baseCourses
+      .filter(
+        (c) =>
+          matchesTerm([c.title, c.description, c.mentor.name, c.category]) &&
+          matchesCategory(c.category)
+      )
+      .sort((a, b) => b.studentCount - a.studentCount || b.mentor.rating - a.mentor.rating)
+    const trackList = baseTracks
+      .filter(
+        (t) =>
+          matchesTerm([t.title, t.description, t.mentor.name, t.category]) &&
+          matchesCategory(t.category)
+      )
+      .sort((a, b) => b.studentCount - a.studentCount || b.mentor.rating - a.mentor.rating)
+    const libList = baseLibItems
+      .filter(
+        (l) =>
+          matchesTerm([l.title, l.description, l.author.name, l.category]) &&
+          matchesCategory(l.category)
+      )
+      .sort((a, b) =>
+        allSort === 'popular'
+          ? b.usageCount - a.usageCount
+          : b.createdAt.localeCompare(a.createdAt)
+      )
+    const authorList = baseMentors
+      .filter((m) => matchesTerm([m.name, m.headline]) && matchesCategory(m.categories))
+      .sort((a, b) => b.reviewCount - a.reviewCount || b.rating - a.rating)
+
+    return {
+      filtering,
+      mentors: mentorList.slice(0, 8),
+      courses: courseList.slice(0, 8),
+      tracks: trackList.slice(0, 8),
+      lib: libList.slice(0, 8),
+      authors: authorList.slice(0, 8),
+      counts: {
+        mentors: mentorList.length,
+        courses: courseList.length,
+        tracks: trackList.length,
+        lib: libList.length,
+        authors: authorList.length,
+      },
+      total: mentorList.length + courseList.length + trackList.length + libList.length,
+    }
+  }, [baseMentors, baseCourses, baseTracks, baseLibItems, search, category, allSort])
+
+  // Pílulas "Explore por área": contagem unificada das 4 bases por categoria
+  const unifiedAreas = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const m of baseMentors) {
+      for (const c of m.categories) counts.set(c, (counts.get(c) ?? 0) + 1)
+    }
+    for (const c of baseCourses) counts.set(c.category, (counts.get(c.category) ?? 0) + 1)
+    for (const t of baseTracks) counts.set(t.category, (counts.get(t.category) ?? 0) + 1)
+    for (const l of baseLibItems) counts.set(l.category, (counts.get(l.category) ?? 0) + 1)
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+  }, [baseMentors, baseCourses, baseTracks, baseLibItems])
+
+  const shelfCountText = (baseCount: number, matchCount: number, unit: string) => {
+    if (baseCount === 0) return 'Carregando…'
+    if (allView.filtering) return `${matchCount} ${matchCount === 1 ? 'resultado' : 'resultados'}`
+    return `${baseCount} ${unit}`
+  }
+
+  const clearAllFilters = () => {
+    setInputValue('')
+    setSearch('')
+    setCategory('')
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+  }
+
+  const shelfLoadingCards = (
+    <>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="w-64 shrink-0 snap-start sm:w-72">
+          <Skeleton className="h-72 w-full rounded-2xl" />
+        </div>
+      ))}
+    </>
+  )
+
+  const authorLoadingCards = (
+    <>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="w-56 shrink-0 snap-start">
+          <Skeleton className="h-44 w-full rounded-2xl" />
+        </div>
+      ))}
+    </>
+  )
+
   return (
     <div>
       {/* ---------- BARRA SUPERIOR: título, ordenação, busca e categorias ---------- */}
       <section className="border-b border-stone-200/70 bg-white">
         <div className="mx-auto max-w-6xl px-4 py-7 sm:py-9">
-          {/* Controle segmentado: Mentores | Cursos | Trilhas */}
+          {/* Controle segmentado: Tudo | Mentores | Cursos | Trilhas | Biblioteca */}
           <div
             role="tablist"
-            aria-label="Explorar mentores, cursos ou trilhas"
+            aria-label="Seções do Explorar"
             className="inline-flex max-w-full flex-wrap rounded-full bg-stone-100 p-1"
           >
+            <button
+              role="tab"
+              aria-selected={tab === 'all'}
+              onClick={() => setTab('all')}
+              className={cn(
+                'inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-all',
+                tab === 'all'
+                  ? 'bg-white text-stone-900 shadow-sm'
+                  : 'text-stone-500 hover:text-stone-700'
+              )}
+            >
+              <LayoutGrid aria-hidden className="h-4 w-4" /> Tudo
+            </button>
             <button
               role="tab"
               aria-selected={tab === 'mentors'}
@@ -414,7 +530,18 @@ export function MarketplaceView() {
 
           <div className="mt-5 flex flex-wrap items-end justify-between gap-3">
             <div>
-              {tab === 'mentors' ? (
+              {tab === 'all' ? (
+                <>
+                  <h1 className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
+                    Explorar tudo
+                  </h1>
+                  <p className="mt-1 text-sm text-stone-500" aria-live="polite">
+                    {totalContents === 0
+                      ? 'Carregando conteúdos...'
+                      : `${totalContents} conteúdos — ${baseMentors.length} mentores, ${baseCourses.length} cursos, ${baseTracks.length} trilhas e ${baseLibItems.length} leituras`}
+                  </p>
+                </>
+              ) : tab === 'mentors' ? (
                 <>
                   <h1 className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
                     Explorar mentores
@@ -465,40 +592,51 @@ export function MarketplaceView() {
             <div className="w-44">
               <Select
                 value={
-                  tab === 'mentors'
-                    ? sort
-                    : tab === 'courses'
-                      ? courseSort
-                      : tab === 'tracks'
-                        ? trackSort
-                        : libSort
+                  tab === 'all'
+                    ? allSort
+                    : tab === 'mentors'
+                      ? sort
+                      : tab === 'courses'
+                        ? courseSort
+                        : tab === 'tracks'
+                          ? trackSort
+                          : libSort
                 }
                 onValueChange={
-                  tab === 'mentors'
-                    ? setSort
-                    : tab === 'courses'
-                      ? setCourseSort
-                      : tab === 'tracks'
-                        ? setTrackSort
-                        : setLibSort
+                  tab === 'all'
+                    ? setAllSort
+                    : tab === 'mentors'
+                      ? setSort
+                      : tab === 'courses'
+                        ? setCourseSort
+                        : tab === 'tracks'
+                          ? setTrackSort
+                          : setLibSort
                 }
               >
                 <SelectTrigger
                   aria-label={
-                    tab === 'mentors'
-                      ? 'Ordenar mentores'
-                      : tab === 'courses'
-                        ? 'Ordenar cursos'
-                        : tab === 'tracks'
-                          ? 'Ordenar trilhas'
-                          : 'Ordenar conteúdos da Biblioteca'
+                    tab === 'all'
+                      ? 'Ordenar destaques do Explorar'
+                      : tab === 'mentors'
+                        ? 'Ordenar mentores'
+                        : tab === 'courses'
+                          ? 'Ordenar cursos'
+                          : tab === 'tracks'
+                            ? 'Ordenar trilhas'
+                            : 'Ordenar conteúdos da Biblioteca'
                   }
                   className="bg-white"
                 >
                   <SelectValue placeholder="Ordenar" />
                 </SelectTrigger>
                 <SelectContent>
-                  {tab === 'mentors' ? (
+                  {tab === 'all' ? (
+                    <>
+                      <SelectItem value="relevance">Relevância</SelectItem>
+                      <SelectItem value="popular">Populares</SelectItem>
+                    </>
+                  ) : tab === 'mentors' ? (
                     <>
                       <SelectItem value="relevance">Relevância</SelectItem>
                       <SelectItem value="rating">Melhor avaliados</SelectItem>
@@ -536,26 +674,30 @@ export function MarketplaceView() {
               value={inputValue}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder={
-                tab === 'mentors'
-                  ? 'Busque por nome, especialidade ou área...'
-                  : tab === 'courses'
-                    ? 'Busque por curso, tema ou mentor...'
-                    : tab === 'tracks'
-                      ? 'Busque por trilha, tema ou mentor...'
-                      : 'Busque por artigo, livro ou autor...'
+                tab === 'all'
+                  ? 'Busque em mentores, cursos, trilhas e leituras...'
+                  : tab === 'mentors'
+                    ? 'Busque por nome, especialidade ou área...'
+                    : tab === 'courses'
+                      ? 'Busque por curso, tema ou mentor...'
+                      : tab === 'tracks'
+                        ? 'Busque por trilha, tema ou mentor...'
+                        : 'Busque por artigo, livro ou autor...'
               }
               aria-label={
-                tab === 'mentors'
-                  ? 'Buscar mentores'
-                  : tab === 'courses'
-                    ? 'Buscar cursos'
-                    : tab === 'tracks'
-                      ? 'Buscar trilhas'
-                      : 'Buscar na Biblioteca'
+                tab === 'all'
+                  ? 'Buscar em tudo'
+                  : tab === 'mentors'
+                    ? 'Buscar mentores'
+                    : tab === 'courses'
+                      ? 'Buscar cursos'
+                      : tab === 'tracks'
+                        ? 'Buscar trilhas'
+                        : 'Buscar na Biblioteca'
               }
               className="h-12 rounded-2xl border-stone-200 bg-white pl-11 pr-16 text-stone-900 shadow-none placeholder:text-stone-400 focus-visible:border-emerald-400 focus-visible:ring-emerald-200"
             />
-            {inputValue ? (
+            {inputValue && (
               <button
                 onClick={clearSearch}
                 aria-label="Limpar busca"
@@ -563,10 +705,6 @@ export function MarketplaceView() {
               >
                 <X className="h-4 w-4" />
               </button>
-            ) : (
-              <kbd className="pointer-events-none absolute right-3.5 top-1/2 hidden h-6 -translate-y-1/2 items-center rounded-md border border-stone-200 bg-stone-50 px-1.5 font-mono text-[11px] font-medium text-stone-400 sm:inline-flex">
-                /
-              </kbd>
             )}
           </div>
 
@@ -602,7 +740,7 @@ export function MarketplaceView() {
                 </SelectContent>
               </Select>
             </div>
-          ) : (
+          ) : tab === 'all' ? null : (
             <div
               aria-label="Filtrar por categoria"
               className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -656,8 +794,10 @@ export function MarketplaceView() {
         </div>
       </section>
 
-      {/* ---------- BENTO: destaque + estatísticas (por aba) ---------- */}
-      <section aria-label="Destaques e estatísticas" className="mx-auto w-full max-w-6xl px-4 pt-6">
+      {tab !== 'all' && (
+        <>
+          {/* ---------- BENTO: destaque + estatísticas (por aba) ---------- */}
+          <section aria-label="Destaques e estatísticas" className="mx-auto w-full max-w-6xl px-4 pt-6">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {/* Spotlight */}
           <div className="lg:col-span-2">
@@ -954,6 +1094,291 @@ export function MarketplaceView() {
           </>
         )}
       </section>
+        </>
+      )}
+
+      {tab === 'all' && (
+        <>
+          {/* ---------- HERO BENTO (aba Tudo): título editorial + stats globais + destaques ---------- */}
+          <section aria-label="Visão geral do Explorar" className="mx-auto w-full max-w-6xl px-4 pt-8">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+            >
+              <div className="max-w-2xl">
+                <h2 className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
+                  Tudo em um só lugar
+                </h2>
+                <p className="mt-1.5 text-sm leading-relaxed text-stone-500 sm:text-[15px]">
+                  Mentorias 1:1, cursos, trilhas e leituras — feitos por quem vive o que ensina.
+                </p>
+              </div>
+
+              {/* Stats globais combinadas das 4 bases */}
+              <div className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <StatTile
+                  dark
+                  icon={<LayoutGrid aria-hidden className="h-4.5 w-4.5" />}
+                  value={`+${totalContents}`}
+                  label="mentores, cursos, trilhas e leituras"
+                />
+                <StatTile
+                  icon={<Users aria-hidden className="h-4.5 w-4.5" />}
+                  value={`+${courseStats.students + trackStats.students}`}
+                  label="alunos aprendendo na plataforma"
+                />
+                <StatTile
+                  icon={<Star aria-hidden className="h-4.5 w-4.5" />}
+                  value={stats.avg !== null ? stats.avg.toFixed(1).replace('.', ',') : '—'}
+                  label="nota média da comunidade"
+                />
+                <StatTile
+                  icon={<Video aria-hidden className="h-4.5 w-4.5" />}
+                  value={`+${stats.sessions}`}
+                  label="sessões 1:1 realizadas"
+                />
+              </div>
+
+              {/* Destaques: mentor rotativo + curso top, lado a lado */}
+              <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                {spot ? (
+                  <SpotlightCard
+                    mentor={spot}
+                    index={spotIdx}
+                    total={spotlightPool.length}
+                    onSelect={(i) => setSpotIdx(i)}
+                  />
+                ) : (
+                  <div className="h-full min-h-56 animate-pulse rounded-2xl bg-emerald-950/90" aria-hidden />
+                )}
+                {topCourse ? (
+                  <CourseSpotlightCard course={topCourse} />
+                ) : (
+                  <div className="h-full min-h-56 animate-pulse rounded-2xl bg-emerald-950/90" aria-hidden />
+                )}
+              </div>
+            </motion.div>
+          </section>
+
+          {/* ---------- PRATELEIRAS + ÁREAS + AUTORES (aba Tudo) ---------- */}
+          <section
+            aria-label="Conteúdos em destaque do Explorar"
+            className="mx-auto w-full max-w-6xl px-4 pb-12 pt-10"
+          >
+            {allView.filtering && allView.total === 0 ? (
+              <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 px-6 py-14 text-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100">
+                  <SearchX className="h-7 w-7 text-stone-400" />
+                </span>
+                <p className="font-bold text-stone-900">Nenhum conteúdo encontrado</p>
+                <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+                  Tente remover os filtros ou buscar por outro termo — temos mentorias, cursos,
+                  trilhas e leituras em várias áreas.
+                </p>
+                <Button variant="outline" className="rounded-full" onClick={clearAllFilters}>
+                  Limpar filtros
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-10">
+                {(!allView.filtering || allView.counts.mentors > 0) && (
+                  <motion.section
+                    aria-label="Mentores em destaque"
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, delay: 0.05, ease: 'easeOut' }}
+                  >
+                    <ShelfSection
+                      title="Mentores em destaque"
+                      countText={shelfCountText(baseMentors.length, allView.counts.mentors, 'mentores')}
+                      regionLabel="Mentores em destaque"
+                      seeAllLabel="Ver todos os mentores"
+                      onSeeAll={() => setTab('mentors')}
+                    >
+                      {baseMentors.length === 0
+                        ? shelfLoadingCards
+                        : allView.mentors.map((m) => (
+                            <div key={m.id} className="w-64 shrink-0 snap-start sm:w-72">
+                              <MentorCard mentor={m} />
+                            </div>
+                          ))}
+                    </ShelfSection>
+                  </motion.section>
+                )}
+
+                {(!allView.filtering || allView.counts.courses > 0) && (
+                  <motion.section
+                    aria-label="Cursos em alta"
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, delay: 0.11, ease: 'easeOut' }}
+                  >
+                    <ShelfSection
+                      title="Cursos em alta"
+                      countText={shelfCountText(baseCourses.length, allView.counts.courses, 'cursos')}
+                      regionLabel="Cursos em alta"
+                      seeAllLabel="Ver todos os cursos"
+                      onSeeAll={() => setTab('courses')}
+                    >
+                      {baseCourses.length === 0
+                        ? shelfLoadingCards
+                        : allView.courses.map((c) => (
+                            <div key={c.id} className="w-64 shrink-0 snap-start sm:w-72">
+                              <CourseCard course={c} />
+                            </div>
+                          ))}
+                    </ShelfSection>
+                  </motion.section>
+                )}
+
+                {(!allView.filtering || allView.counts.tracks > 0) && (
+                  <motion.section
+                    aria-label="Trilhas guiadas"
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, delay: 0.17, ease: 'easeOut' }}
+                  >
+                    <ShelfSection
+                      title="Trilhas guiadas"
+                      countText={shelfCountText(baseTracks.length, allView.counts.tracks, 'trilhas')}
+                      regionLabel="Trilhas guiadas"
+                      seeAllLabel="Ver todas as trilhas"
+                      onSeeAll={() => setTab('tracks')}
+                    >
+                      {baseTracks.length === 0
+                        ? shelfLoadingCards
+                        : allView.tracks.map((t) => (
+                            <div key={t.id} className="w-64 shrink-0 snap-start sm:w-72">
+                              <TrackCard track={t} />
+                            </div>
+                          ))}
+                    </ShelfSection>
+                  </motion.section>
+                )}
+
+                {(!allView.filtering || allView.counts.lib > 0) && (
+                  <motion.section
+                    aria-label="Artigos e livros"
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, delay: 0.23, ease: 'easeOut' }}
+                  >
+                    <ShelfSection
+                      title="Artigos &amp; livros"
+                      countText={shelfCountText(baseLibItems.length, allView.counts.lib, 'leituras')}
+                      regionLabel="Artigos e livros da Biblioteca"
+                      seeAllLabel="Ver toda a Biblioteca"
+                      onSeeAll={() => {
+                        if (category) setLibCategory(category)
+                        setTab('library')
+                      }}
+                    >
+                      {baseLibItems.length === 0
+                        ? shelfLoadingCards
+                        : allView.lib.map((item) => (
+                            <div key={item.id} className="w-64 shrink-0 snap-start sm:w-72">
+                              <LibraryCard item={item} />
+                            </div>
+                          ))}
+                    </ShelfSection>
+                  </motion.section>
+                )}
+              </div>
+            )}
+
+            {/* Explore por área: pílulas com contagem unificada das 4 bases */}
+            <motion.section
+              aria-labelledby="explore-areas-title"
+              className="pt-10"
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.26, ease: 'easeOut' }}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2
+                  id="explore-areas-title"
+                  className="text-lg font-extrabold tracking-tight text-stone-900"
+                >
+                  Explore por área
+                </h2>
+                {category && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-700 bg-emerald-700 py-1 pl-3.5 pr-1.5 text-xs font-semibold text-white">
+                      Área: {category}
+                      <button
+                        type="button"
+                        onClick={() => setCategory('')}
+                        aria-label={`Remover filtro da área ${category}`}
+                        className="flex h-5 w-5 items-center justify-center rounded-full text-emerald-100 transition-colors hover:bg-emerald-600 hover:text-white"
+                      >
+                        <X aria-hidden className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 rounded-full"
+                      onClick={() => setTab('mentors')}
+                    >
+                      Ver mentores de {category} <ArrowRight aria-hidden className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {unifiedAreas.map(([cat, count]) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setCategory(category === cat ? '' : cat)}
+                    aria-pressed={category === cat}
+                    className={cn(
+                      'rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
+                      category === cat
+                        ? 'border-emerald-700 bg-emerald-700 text-white'
+                        : 'border-stone-200 bg-white text-stone-600 hover:border-emerald-300 hover:text-emerald-700'
+                    )}
+                  >
+                    {cat}
+                    <span
+                      className={cn(
+                        'ml-1.5 text-[10px]',
+                        category === cat ? 'text-emerald-100' : 'text-stone-400'
+                      )}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </motion.section>
+
+            {/* Conheça os mentores: tira editorial de autores (induz ver mais do autor) */}
+            {(!allView.filtering || allView.counts.authors > 0) && (
+              <motion.section
+                aria-label="Conheça os mentores"
+                className="pt-10"
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, delay: 0.32, ease: 'easeOut' }}
+              >
+                <ShelfSection
+                  title="Conheça os mentores"
+                  countText={shelfCountText(baseMentors.length, allView.counts.authors, 'mentores')}
+                  regionLabel="Conheça os mentores"
+                  seeAllLabel="Ver todos os mentores"
+                  onSeeAll={() => setTab('mentors')}
+                >
+                  {baseMentors.length === 0
+                    ? authorLoadingCards
+                    : allView.authors.map((m) => <AuthorMiniCard key={m.id} mentor={m} />)}
+                </ShelfSection>
+              </motion.section>
+            )}
+          </section>
+        </>
+      )}
     </div>
   )
 }
@@ -1082,18 +1507,46 @@ function StatTile({
   icon,
   value,
   label,
+  dark = false,
 }: {
   icon: React.ReactNode
   value: string
   label: string
+  dark?: boolean
 }) {
   return (
-    <div className="flex flex-col justify-center rounded-2xl border border-stone-200 bg-white p-4 sm:p-5">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+    <div
+      className={cn(
+        'flex flex-col justify-center rounded-2xl border p-4 sm:p-5',
+        dark
+          ? 'border-emerald-400/20 bg-emerald-950 text-white shadow-lg shadow-emerald-950/20'
+          : 'border-stone-200 bg-white'
+      )}
+    >
+      <span
+        className={cn(
+          'flex h-9 w-9 items-center justify-center rounded-xl',
+          dark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 text-emerald-700'
+        )}
+      >
         {icon}
       </span>
-      <p className="mt-3 text-2xl font-extrabold tracking-tight text-stone-900">{value}</p>
-      <p className="mt-0.5 text-xs font-medium leading-snug text-stone-500">{label}</p>
+      <p
+        className={cn(
+          'mt-3 text-2xl font-extrabold tracking-tight',
+          dark ? 'text-white' : 'text-stone-900'
+        )}
+      >
+        {value}
+      </p>
+      <p
+        className={cn(
+          'mt-0.5 text-xs font-medium leading-snug',
+          dark ? 'text-emerald-100/80' : 'text-stone-500'
+        )}
+      >
+        {label}
+      </p>
     </div>
   )
 }
@@ -1104,7 +1557,7 @@ function MentorCard({ mentor }: { mentor: MentorListItemDTO }) {
   const navigate = useAppStore((s) => s.navigate)
 
   return (
-    <article className="group flex flex-col rounded-2xl border border-stone-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md">
+    <article className="group flex h-full flex-col rounded-2xl border border-stone-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md">
       <div className="flex items-start gap-3.5">
         <Avatar name={mentor.name} src={mentor.avatarUrl} size="lg" />
         <div className="min-w-0 flex-1">
@@ -1277,7 +1730,7 @@ function CourseCard({ course }: { course: CourseListItemDTO }) {
   const navigate = useAppStore((s) => s.navigate)
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white p-0 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md">
+    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white p-0 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md">
       {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
       <div className="relative h-28 w-full bg-stone-100">
         {course.coverUrl ? (
@@ -1466,7 +1919,7 @@ function TrackCard({ track }: { track: TrackListItemDTO }) {
 
   return (
     <article
-      className="group flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white p-0 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+      className="group flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white p-0 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
       onClick={() => navigate({ name: 'track', trackId: track.id })}
     >
       {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
@@ -1676,7 +2129,7 @@ function LibraryCard({ item }: { item: LibraryItemDTO }) {
 
   return (
     <article
-      className="group flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white p-0 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+      className="group flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white p-0 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
       onClick={() => navigate({ name: 'reader', itemId: item.id })}
     >
       {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
@@ -1750,5 +2203,82 @@ function LibraryCard({ item }: { item: LibraryItemDTO }) {
         </div>
       </div>
     </article>
+  )
+}
+
+/* ---------- Prateleira horizontal (aba Tudo) ---------- */
+
+function ShelfSection({
+  title,
+  countText,
+  regionLabel,
+  seeAllLabel,
+  onSeeAll,
+  children,
+}: {
+  title: string
+  countText: string
+  regionLabel: string
+  seeAllLabel: string
+  onSeeAll: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-baseline gap-2.5">
+          <h3 className="text-lg font-extrabold tracking-tight text-stone-900">{title}</h3>
+          <span className="text-xs font-medium text-stone-400">{countText}</span>
+        </div>
+        <button
+          type="button"
+          onClick={onSeeAll}
+          className="group inline-flex items-center gap-1 text-sm font-bold text-emerald-700 transition-colors hover:text-emerald-800"
+        >
+          {seeAllLabel}
+          <ArrowRight
+            aria-hidden
+            className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+          />
+        </button>
+      </div>
+      <div
+        role="region"
+        aria-label={regionLabel}
+        className="-mx-4 mt-3 flex gap-4 overflow-x-auto px-4 pb-2 [scrollbar-width:thin] snap-x snap-mandatory"
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
+
+/* ---------- Mini card de autor (tira "Conheça os mentores") ---------- */
+
+function AuthorMiniCard({ mentor }: { mentor: MentorListItemDTO }) {
+  const navigate = useAppStore((s) => s.navigate)
+
+  return (
+    <button
+      type="button"
+      onClick={() => navigate({ name: 'mentor', mentorId: mentor.id })}
+      aria-label={`Ver perfil de ${mentor.name}`}
+      className="flex h-auto w-56 shrink-0 snap-start flex-col items-start rounded-2xl border border-stone-200 bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+    >
+      <Avatar name={mentor.name} src={mentor.avatarUrl} size="xl" />
+      <p className="mt-3 w-full truncate text-sm font-bold text-stone-900">{mentor.name}</p>
+      <p className="mt-0.5 w-full line-clamp-1 text-xs leading-relaxed text-stone-500">
+        {mentor.headline}
+      </p>
+      <div className="mt-2 flex items-center gap-1.5">
+        <Stars rating={mentor.rating} size={12} />
+        <span className="text-xs font-semibold text-stone-700">
+          {mentor.rating > 0 ? mentor.rating.toFixed(1) : 'Novo'}
+        </span>
+      </div>
+      <span className="mt-auto inline-flex items-center gap-1 pt-3 text-xs font-bold text-emerald-700">
+        Ver perfil <ArrowRight aria-hidden className="h-3.5 w-3.5" />
+      </span>
+    </button>
   )
 }
