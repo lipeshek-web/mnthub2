@@ -1,31 +1,90 @@
 'use client'
 
 import { useCallback, useEffect, useSyncExternalStore, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import { GraduationCap } from 'lucide-react'
 import { Navbar } from '@/components/platform/navbar'
 import { PlatformFooter } from '@/components/platform/footer'
 import { MarketplaceView } from '@/components/platform/marketplace'
-import { MentorProfileView } from '@/components/platform/mentor-profile'
-import { CourseView } from '@/components/platform/course-view'
-import { ClassroomView } from '@/components/platform/classroom'
-import { TrackView } from '@/components/platform/track-view'
-import { ReaderView } from '@/components/platform/reader-view'
 import { AuthView } from '@/components/platform/auth-view'
-import { MeetingRoomView } from '@/components/platform/meeting-room'
-import DashboardView from '@/components/platform/dashboard'
-import OnboardingView from '@/components/platform/onboarding'
 import { LandingMenteeView } from '@/components/platform/landing-mentee'
-import LandingMentor from '@/components/platform/landing-mentor'
-import { MentorLpView } from '@/components/platform/mentor-lp'
-import { CheckoutView } from '@/components/platform/checkout'
-import { Toaster } from '@/components/ui/sonner'
 import { useAppStore } from '@/lib/store'
 import { api } from '@/lib/api'
 import { captureAttributionFromUrl, cleanUrlParams, loadTrackingScripts, trackEvent } from '@/lib/tracking'
 
+/** Fallback enxuto enquanto um view pesado é baixado sob demanda */
+function ViewLoading() {
+  return (
+    <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3" aria-busy="true">
+      <span className="flex h-12 w-12 animate-pulse items-center justify-center rounded-2xl bg-emerald-700/10 text-emerald-700">
+        <GraduationCap className="h-6 w-6" />
+      </span>
+      <p className="text-sm font-medium text-stone-400">carregando…</p>
+    </div>
+  )
+}
+
+/**
+ * Views pesadas (vídeo, PDF, WebRTC, formulários, fontes) são code-split:
+ * entram no bundle só quando o usuário acessa a tela correspondente.
+ */
+const MentorProfileView = dynamic(
+  () => import('@/components/platform/mentor-profile').then((m) => m.MentorProfileView),
+  { ssr: false, loading: ViewLoading }
+)
+const CourseView = dynamic(
+  () => import('@/components/platform/course-view').then((m) => m.CourseView),
+  { ssr: false, loading: ViewLoading }
+)
+const ClassroomView = dynamic(
+  () => import('@/components/platform/classroom').then((m) => m.ClassroomView),
+  { ssr: false, loading: ViewLoading }
+)
+const TrackView = dynamic(
+  () => import('@/components/platform/track-view').then((m) => m.TrackView),
+  { ssr: false, loading: ViewLoading }
+)
+const ReaderView = dynamic(
+  () => import('@/components/platform/reader-view').then((m) => m.ReaderView),
+  { ssr: false, loading: ViewLoading }
+)
+const MeetingRoomView = dynamic(
+  () => import('@/components/platform/meeting-room').then((m) => m.MeetingRoomView),
+  { ssr: false, loading: ViewLoading }
+)
+const DashboardView = dynamic(() => import('@/components/platform/dashboard'), {
+  ssr: false,
+  loading: ViewLoading,
+})
+const OnboardingView = dynamic(() => import('@/components/platform/onboarding'), {
+  ssr: false,
+  loading: ViewLoading,
+})
+const MentorLpView = dynamic(
+  () => import('@/components/platform/mentor-lp').then((m) => m.MentorLpView),
+  { ssr: false, loading: ViewLoading }
+)
+const CheckoutView = dynamic(
+  () => import('@/components/platform/checkout').then((m) => m.CheckoutView),
+  { ssr: false, loading: ViewLoading }
+)
+const LandingMentor = dynamic(() => import('@/components/platform/landing-mentor'), {
+  ssr: false,
+  loading: ViewLoading,
+})
+
 /** Views que exigem sessão ativa — convidado é levado ao login/cadastro */
 const AUTH_REQUIRED: AppViewNames[] = ['dashboard', 'onboarding', 'checkout', 'meeting']
 type AppViewNames = 'dashboard' | 'onboarding' | 'checkout' | 'meeting'
+
+/** Toaster também é carregado sob demanda (sonner entra no bundle só quando usado) */
+const LazyToaster = dynamic(
+  () => import('@/components/ui/sonner').then((m) => m.Toaster),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+)
 
 export default function Home() {
   const view = useAppStore((s) => s.view)
@@ -156,7 +215,7 @@ export default function Home() {
         </div>
       )}
 
-      <Toaster position="top-center" richColors closeButton />
+      <LazyToaster />
     </div>
   )
 }

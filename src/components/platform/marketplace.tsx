@@ -1,12 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowRight,
   BadgeCheck,
   BookMarked,
   BookOpen,
+  ChevronDown,
+  ChevronUp,
   Clock,
   Globe2,
   GraduationCap,
@@ -52,6 +54,11 @@ import { cn } from '@/lib/utils'
 
 const SPOTLIGHT_INTERVAL_MS = 6000
 
+/** Itens visíveis por seção da aba "Tudo" antes do botão "Ver mais" */
+const ALL_VISIBLE = 8
+
+type ExpandedKey = 'mentors' | 'courses' | 'tracks' | 'lib' | 'authors'
+
 export function MarketplaceView() {
   const navigate = useAppStore((s) => s.navigate)
 
@@ -86,8 +93,19 @@ export function MarketplaceView() {
   const [libKind, setLibKind] = useState<'ALL' | 'ARTICLE' | 'BOOK'>('ALL')
   const [libCategory, setLibCategory] = useState('')
   const [libSort, setLibSort] = useState('recent')
-  // Ordenação das prateleiras da aba "Tudo" (Select do cabeçalho)
+  // Ordenação das seções da aba "Tudo" (Select do cabeçalho)
   const [allSort, setAllSort] = useState('relevance')
+  // Seções da aba "Tudo" expandidas além dos primeiros ALL_VISIBLE itens
+  const [expanded, setExpanded] = useState<Record<ExpandedKey, boolean>>({
+    mentors: false,
+    courses: false,
+    tracks: false,
+    lib: false,
+    authors: false,
+  })
+  const toggleExpanded = useCallback((key: ExpandedKey) => {
+    setExpanded((prev) => ({ ...prev, [key]: !prev[key] }))
+  }, [])
 
   // Consome termo vindo de outra tela (hero da home) uma única vez
   useEffect(() => {
@@ -389,11 +407,12 @@ export function MarketplaceView() {
 
     return {
       filtering,
-      mentors: mentorList.slice(0, 8),
-      courses: courseList.slice(0, 8),
-      tracks: trackList.slice(0, 8),
-      lib: libList.slice(0, 8),
-      authors: authorList.slice(0, 8),
+      // Listas completas (a seção em grade decide quantos exibir)
+      mentors: mentorList,
+      courses: courseList,
+      tracks: trackList,
+      lib: libList,
+      authors: authorList,
       counts: {
         mentors: mentorList.length,
         courses: courseList.length,
@@ -404,6 +423,11 @@ export function MarketplaceView() {
       total: mentorList.length + courseList.length + trackList.length + libList.length,
     }
   }, [baseMentors, baseCourses, baseTracks, baseLibItems, search, category, allSort])
+
+  // Itens exibidos numa seção da aba "Tudo": 8 por padrão; quando a seção
+  // está expandida OU há busca/categoria ativa, mostra todos os resultados.
+  const visibleSlice = <T,>(list: T[], key: ExpandedKey): T[] =>
+    allView.filtering || expanded[key] ? list : list.slice(0, ALL_VISIBLE)
 
   // Pílulas "Explore por área": contagem unificada das 4 bases por categoria
   const unifiedAreas = useMemo(() => {
@@ -429,26 +453,6 @@ export function MarketplaceView() {
     setCategory('')
     if (debounceRef.current) clearTimeout(debounceRef.current)
   }
-
-  const shelfLoadingCards = (
-    <>
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="w-64 shrink-0 snap-start sm:w-72">
-          <Skeleton className="h-72 w-full rounded-2xl" />
-        </div>
-      ))}
-    </>
-  )
-
-  const authorLoadingCards = (
-    <>
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="w-56 shrink-0 snap-start">
-          <Skeleton className="h-44 w-full rounded-2xl" />
-        </div>
-      ))}
-    </>
-  )
 
   return (
     <div>
@@ -1161,7 +1165,7 @@ export function MarketplaceView() {
             </motion.div>
           </section>
 
-          {/* ---------- PRATELEIRAS + ÁREAS + AUTORES (aba Tudo) ---------- */}
+          {/* ---------- SEÇÕES EM GRADE + ÁREAS + AUTORES (aba Tudo) ---------- */}
           <section
             aria-label="Conteúdos em destaque do Explorar"
             className="mx-auto w-full max-w-6xl px-4 pb-12 pt-10"
@@ -1181,7 +1185,7 @@ export function MarketplaceView() {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-10">
+              <div className="space-y-12">
                 {(!allView.filtering || allView.counts.mentors > 0) && (
                   <motion.section
                     aria-label="Mentores em destaque"
@@ -1189,21 +1193,22 @@ export function MarketplaceView() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.35, delay: 0.05, ease: 'easeOut' }}
                   >
-                    <ShelfSection
+                    <GridSection
                       title="Mentores em destaque"
                       countText={shelfCountText(baseMentors.length, allView.counts.mentors, 'mentores')}
                       regionLabel="Mentores em destaque"
                       seeAllLabel="Ver todos os mentores"
                       onSeeAll={() => setTab('mentors')}
+                      loading={baseMentors.length === 0}
+                      hiddenCount={allView.filtering ? 0 : allView.counts.mentors - ALL_VISIBLE}
+                      expanded={expanded.mentors}
+                      onToggleExpand={() => toggleExpanded('mentors')}
+                      moreLabel="mentores"
                     >
-                      {baseMentors.length === 0
-                        ? shelfLoadingCards
-                        : allView.mentors.map((m) => (
-                            <div key={m.id} className="w-64 shrink-0 snap-start sm:w-72">
-                              <MentorCard mentor={m} />
-                            </div>
-                          ))}
-                    </ShelfSection>
+                      {visibleSlice(allView.mentors, 'mentors').map((m) => (
+                        <MentorCard key={m.id} mentor={m} />
+                      ))}
+                    </GridSection>
                   </motion.section>
                 )}
 
@@ -1214,21 +1219,22 @@ export function MarketplaceView() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.35, delay: 0.11, ease: 'easeOut' }}
                   >
-                    <ShelfSection
+                    <GridSection
                       title="Cursos em alta"
                       countText={shelfCountText(baseCourses.length, allView.counts.courses, 'cursos')}
                       regionLabel="Cursos em alta"
                       seeAllLabel="Ver todos os cursos"
                       onSeeAll={() => setTab('courses')}
+                      loading={baseCourses.length === 0}
+                      hiddenCount={allView.filtering ? 0 : allView.counts.courses - ALL_VISIBLE}
+                      expanded={expanded.courses}
+                      onToggleExpand={() => toggleExpanded('courses')}
+                      moreLabel="cursos"
                     >
-                      {baseCourses.length === 0
-                        ? shelfLoadingCards
-                        : allView.courses.map((c) => (
-                            <div key={c.id} className="w-64 shrink-0 snap-start sm:w-72">
-                              <CourseCard course={c} />
-                            </div>
-                          ))}
-                    </ShelfSection>
+                      {visibleSlice(allView.courses, 'courses').map((c) => (
+                        <CourseCard key={c.id} course={c} />
+                      ))}
+                    </GridSection>
                   </motion.section>
                 )}
 
@@ -1239,21 +1245,22 @@ export function MarketplaceView() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.35, delay: 0.17, ease: 'easeOut' }}
                   >
-                    <ShelfSection
+                    <GridSection
                       title="Trilhas guiadas"
                       countText={shelfCountText(baseTracks.length, allView.counts.tracks, 'trilhas')}
                       regionLabel="Trilhas guiadas"
                       seeAllLabel="Ver todas as trilhas"
                       onSeeAll={() => setTab('tracks')}
+                      loading={baseTracks.length === 0}
+                      hiddenCount={allView.filtering ? 0 : allView.counts.tracks - ALL_VISIBLE}
+                      expanded={expanded.tracks}
+                      onToggleExpand={() => toggleExpanded('tracks')}
+                      moreLabel="trilhas"
                     >
-                      {baseTracks.length === 0
-                        ? shelfLoadingCards
-                        : allView.tracks.map((t) => (
-                            <div key={t.id} className="w-64 shrink-0 snap-start sm:w-72">
-                              <TrackCard track={t} />
-                            </div>
-                          ))}
-                    </ShelfSection>
+                      {visibleSlice(allView.tracks, 'tracks').map((t) => (
+                        <TrackCard key={t.id} track={t} />
+                      ))}
+                    </GridSection>
                   </motion.section>
                 )}
 
@@ -1264,7 +1271,7 @@ export function MarketplaceView() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.35, delay: 0.23, ease: 'easeOut' }}
                   >
-                    <ShelfSection
+                    <GridSection
                       title="Artigos &amp; livros"
                       countText={shelfCountText(baseLibItems.length, allView.counts.lib, 'leituras')}
                       regionLabel="Artigos e livros da Biblioteca"
@@ -1273,15 +1280,16 @@ export function MarketplaceView() {
                         if (category) setLibCategory(category)
                         setTab('library')
                       }}
+                      loading={baseLibItems.length === 0}
+                      hiddenCount={allView.filtering ? 0 : allView.counts.lib - ALL_VISIBLE}
+                      expanded={expanded.lib}
+                      onToggleExpand={() => toggleExpanded('lib')}
+                      moreLabel="leituras"
                     >
-                      {baseLibItems.length === 0
-                        ? shelfLoadingCards
-                        : allView.lib.map((item) => (
-                            <div key={item.id} className="w-64 shrink-0 snap-start sm:w-72">
-                              <LibraryCard item={item} />
-                            </div>
-                          ))}
-                    </ShelfSection>
+                      {visibleSlice(allView.lib, 'lib').map((item) => (
+                        <LibraryCard key={item.id} item={item} />
+                      ))}
+                    </GridSection>
                   </motion.section>
                 )}
               </div>
@@ -1363,17 +1371,24 @@ export function MarketplaceView() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.35, delay: 0.32, ease: 'easeOut' }}
               >
-                <ShelfSection
+                <GridSection
                   title="Conheça os mentores"
                   countText={shelfCountText(baseMentors.length, allView.counts.authors, 'mentores')}
                   regionLabel="Conheça os mentores"
                   seeAllLabel="Ver todos os mentores"
                   onSeeAll={() => setTab('mentors')}
+                  loading={baseMentors.length === 0}
+                  hiddenCount={allView.filtering ? 0 : allView.counts.authors - ALL_VISIBLE}
+                  expanded={expanded.authors}
+                  onToggleExpand={() => toggleExpanded('authors')}
+                  moreLabel="mentores"
+                  gridClassName="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"
+                  skeletonClassName="h-44 rounded-2xl"
                 >
-                  {baseMentors.length === 0
-                    ? authorLoadingCards
-                    : allView.authors.map((m) => <AuthorMiniCard key={m.id} mentor={m} />)}
-                </ShelfSection>
+                  {visibleSlice(allView.authors, 'authors').map((m) => (
+                    <AuthorMiniCard key={m.id} mentor={m} />
+                  ))}
+                </GridSection>
               </motion.section>
             )}
           </section>
@@ -1553,7 +1568,7 @@ function StatTile({
 
 /* ---------- Card de mentor ---------- */
 
-function MentorCard({ mentor }: { mentor: MentorListItemDTO }) {
+const MentorCard = memo(function MentorCard({ mentor }: { mentor: MentorListItemDTO }) {
   const navigate = useAppStore((s) => s.navigate)
 
   return (
@@ -1620,7 +1635,7 @@ function MentorCard({ mentor }: { mentor: MentorListItemDTO }) {
       </Button>
     </article>
   )
-}
+})
 
 /* ---------- Spotlight de curso (bento da aba Cursos) ---------- */
 
@@ -1634,6 +1649,8 @@ function CourseSpotlightCard({ course }: { course: CourseListItemDTO }) {
           src={course.coverUrl}
           alt=""
           aria-hidden
+          loading="lazy"
+          decoding="async"
           className="absolute inset-0 h-full w-full object-cover opacity-40"
         />
       )}
@@ -1665,7 +1682,7 @@ function CourseSpotlightCard({ course }: { course: CourseListItemDTO }) {
           >
             <span className="flex h-13 w-13 items-center justify-center overflow-hidden rounded-[14px] bg-emerald-950/80">
               {course.coverUrl ? (
-                <img src={course.coverUrl} alt="" className="h-full w-full object-cover" />
+                <img src={course.coverUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
               ) : (
                 <Library className="h-6 w-6 text-emerald-300" />
               )}
@@ -1726,7 +1743,7 @@ function CourseSpotlightCard({ course }: { course: CourseListItemDTO }) {
 
 /* ---------- Card de curso (grade da aba Cursos) ---------- */
 
-function CourseCard({ course }: { course: CourseListItemDTO }) {
+const CourseCard = memo(function CourseCard({ course }: { course: CourseListItemDTO }) {
   const navigate = useAppStore((s) => s.navigate)
 
   return (
@@ -1738,6 +1755,8 @@ function CourseCard({ course }: { course: CourseListItemDTO }) {
             src={course.coverUrl}
             alt=""
             aria-hidden
+            loading="lazy"
+            decoding="async"
             className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
@@ -1808,7 +1827,7 @@ function CourseCard({ course }: { course: CourseListItemDTO }) {
       </div>
     </article>
   )
-}
+})
 
 /* ---------- Spotlight de trilha (bento da aba Trilhas) ---------- */
 
@@ -1822,6 +1841,8 @@ function TrackSpotlightCard({ track }: { track: TrackListItemDTO }) {
           src={track.coverUrl}
           alt=""
           aria-hidden
+          loading="lazy"
+          decoding="async"
           className="absolute inset-0 h-full w-full object-cover opacity-40"
         />
       )}
@@ -1853,7 +1874,7 @@ function TrackSpotlightCard({ track }: { track: TrackListItemDTO }) {
           >
             <span className="flex h-13 w-13 items-center justify-center overflow-hidden rounded-[14px] bg-emerald-950/80">
               {track.coverUrl ? (
-                <img src={track.coverUrl} alt="" className="h-full w-full object-cover" />
+                <img src={track.coverUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
               ) : (
                 <Route className="h-6 w-6 text-emerald-300" />
               )}
@@ -1914,7 +1935,7 @@ function TrackSpotlightCard({ track }: { track: TrackListItemDTO }) {
 
 /* ---------- Card de trilha (grade da aba Trilhas) ---------- */
 
-function TrackCard({ track }: { track: TrackListItemDTO }) {
+const TrackCard = memo(function TrackCard({ track }: { track: TrackListItemDTO }) {
   const navigate = useAppStore((s) => s.navigate)
 
   return (
@@ -1929,6 +1950,8 @@ function TrackCard({ track }: { track: TrackListItemDTO }) {
             src={track.coverUrl}
             alt=""
             aria-hidden
+            loading="lazy"
+            decoding="async"
             className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
@@ -2023,7 +2046,7 @@ function TrackCard({ track }: { track: TrackListItemDTO }) {
       </div>
     </article>
   )
-}
+})
 
 /* ---------- Spotlight da Biblioteca (bento da aba Biblioteca) ---------- */
 
@@ -2037,6 +2060,8 @@ function LibrarySpotlightCard({ item }: { item: LibraryItemDTO }) {
           src={item.coverUrl}
           alt=""
           aria-hidden
+          loading="lazy"
+          decoding="async"
           className="absolute inset-0 h-full w-full object-cover opacity-40"
         />
       )}
@@ -2068,7 +2093,7 @@ function LibrarySpotlightCard({ item }: { item: LibraryItemDTO }) {
           >
             <span className="flex h-13 w-13 items-center justify-center overflow-hidden rounded-[14px] bg-emerald-950/80">
               {item.coverUrl ? (
-                <img src={item.coverUrl} alt="" className="h-full w-full object-cover" />
+                <img src={item.coverUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
               ) : item.kind === 'BOOK' ? (
                 <BookMarked className="h-6 w-6 text-emerald-300" />
               ) : (
@@ -2124,7 +2149,7 @@ function LibrarySpotlightCard({ item }: { item: LibraryItemDTO }) {
 
 /* ---------- Card da Biblioteca (grade da aba Biblioteca) ---------- */
 
-function LibraryCard({ item }: { item: LibraryItemDTO }) {
+const LibraryCard = memo(function LibraryCard({ item }: { item: LibraryItemDTO }) {
   const navigate = useAppStore((s) => s.navigate)
 
   return (
@@ -2139,6 +2164,8 @@ function LibraryCard({ item }: { item: LibraryItemDTO }) {
             src={item.coverUrl}
             alt=""
             aria-hidden
+            loading="lazy"
+            decoding="async"
             className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
@@ -2204,16 +2231,23 @@ function LibraryCard({ item }: { item: LibraryItemDTO }) {
       </div>
     </article>
   )
-}
+})
 
-/* ---------- Prateleira horizontal (aba Tudo) ---------- */
+/* ---------- Seção em grade organizada (aba Tudo) ---------- */
 
-function ShelfSection({
+function GridSection({
   title,
   countText,
   regionLabel,
   seeAllLabel,
   onSeeAll,
+  loading = false,
+  hiddenCount = 0,
+  expanded = false,
+  onToggleExpand,
+  moreLabel,
+  gridClassName = 'grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4',
+  skeletonClassName = 'h-72 rounded-2xl',
   children,
 }: {
   title: string
@@ -2221,6 +2255,13 @@ function ShelfSection({
   regionLabel: string
   seeAllLabel: string
   onSeeAll: () => void
+  loading?: boolean
+  hiddenCount?: number
+  expanded?: boolean
+  onToggleExpand?: () => void
+  moreLabel?: string
+  gridClassName?: string
+  skeletonClassName?: string
   children: React.ReactNode
 }) {
   return (
@@ -2242,20 +2283,45 @@ function ShelfSection({
           />
         </button>
       </div>
-      <div
-        role="region"
-        aria-label={regionLabel}
-        className="-mx-4 mt-3 flex gap-4 overflow-x-auto px-4 pb-2 [scrollbar-width:thin] snap-x snap-mandatory"
-      >
-        {children}
+
+      {/* Grade responsiva: sem rolagem lateral — tudo organizado em colunas */}
+      <div role="region" aria-label={regionLabel} className={cn('mt-4', gridClassName)}>
+        {loading
+          ? Array.from({ length: ALL_VISIBLE }).map((_, i) => (
+              <Skeleton key={i} className={skeletonClassName} />
+            ))
+          : children}
       </div>
+
+      {hiddenCount > 0 && onToggleExpand && (
+        <div className="mt-5 flex justify-center">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 rounded-full px-5 font-semibold"
+            onClick={onToggleExpand}
+            aria-expanded={expanded}
+          >
+            {expanded ? (
+              <>
+                Ver menos <ChevronUp aria-hidden className="h-4 w-4" />
+              </>
+            ) : (
+              <>
+                Ver mais {hiddenCount} {moreLabel}{' '}
+                <ChevronDown aria-hidden className="h-4 w-4" />
+              </>
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
 
 /* ---------- Mini card de autor (tira "Conheça os mentores") ---------- */
 
-function AuthorMiniCard({ mentor }: { mentor: MentorListItemDTO }) {
+const AuthorMiniCard = memo(function AuthorMiniCard({ mentor }: { mentor: MentorListItemDTO }) {
   const navigate = useAppStore((s) => s.navigate)
 
   return (
@@ -2263,7 +2329,7 @@ function AuthorMiniCard({ mentor }: { mentor: MentorListItemDTO }) {
       type="button"
       onClick={() => navigate({ name: 'mentor', mentorId: mentor.id })}
       aria-label={`Ver perfil de ${mentor.name}`}
-      className="flex h-auto w-56 shrink-0 snap-start flex-col items-start rounded-2xl border border-stone-200 bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+      className="flex h-full w-full flex-col items-start rounded-2xl border border-stone-200 bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
     >
       <Avatar name={mentor.name} src={mentor.avatarUrl} size="xl" />
       <p className="mt-3 w-full truncate text-sm font-bold text-stone-900">{mentor.name}</p>
@@ -2281,4 +2347,4 @@ function AuthorMiniCard({ mentor }: { mentor: MentorListItemDTO }) {
       </span>
     </button>
   )
-}
+})
