@@ -618,3 +618,25 @@ Stage Summary:
 - Capa do criador 50% mais alta na LP (384px desktop / 288px mobile) e prévia maior no painel
 - Sala de aula auto-recupera de falhas transitórias de rede (até 2 retries automáticos)
 - Aprendizados registrados: loaders next/font exigem const no escopo do módulo; NUNCA montar var() com o className de font.variable — usar font.style diretamente
+
+---
+Task ID: 6 (verificação visual completa + polimento)
+Agent: main (Z.ai Code)
+Task: Auditoria visual de TODAS as telas com agent-browser e polimento de UI/UX
+
+Work Log:
+- Auditoria com screenshots (1440x900 e 390x844): landing (visitante/logado), auth (split-screen), Explorar aba Tudo (hero bento + 4 prateleiras), Mentores, Trilhas, Biblioteca, Reader, Sala de aula (leitura + vídeo), página do curso (inscrito e não inscrito), Checkout (PIX/cartão), Dashboard, Painel do mentor (FontPicker), LP pública — tudo funcional e bonito; zero erros no console
+- GAP encontrado: perfil INTERNO do mentor (mentor-profile.tsx, o que abre do marketplace "Ver perfil") não tinha recebido as melhorias da LP — capa ~112px de altura e sem as fontes do criador
+- mentor-profile.tsx REDESIGN do banner: capa explícita h-52 sm:h-64 md:h-72 (era ~112px) com véu gradiente inferior (profundidade + assentamento do avatar), fallback GraduationCap quando sem capa, avatar -mt-14 h-28 ring-4 ring-white shadow-xl, nome text-3xl; seção ecoa a identidade da LP pública
+- Fontes do criador aplicadas em TODO o perfil interno: headingFontStyle no nome, "Sobre a mentoria", "Em resumo", "Disponibilidade semanal", títulos dos cursos/conteúdos do mural e número da nota (4xl); bodyFontStyle no headline, descrição, bio, descrições dos cards e comentários de avaliações — mesmo criador = mesma identidade no app e na LP
+- FIX de layout: grid do conteúdo `grid` sem coluna explícita estourava no mobile (sw=546 > cw=390, min-width:auto dos itens) → `grid-cols-1 lg:grid-cols-3` + `min-w-0` na coluna principal; mobile agora 390=390 e desktop intacto (2 colunas preservadas)
+- Skeleton de loading do perfil alinhado à nova altura (h-72)
+- VÍDEOS MORTOS: as 5 aulas em vídeo do seed apontavam para IDs do YouTube que retornam 404 no oEmbed (player exibia "Video unavailable") — substituídos por open movies do Blender (CC, embeddáveis, estáveis): aqz-KE-bpKQ (Big Buck Bunny), R6MlUcmOul8 (Tears of Steel, 2 aulas), WhWc3b3KhnY (Spring), pKmSdY56VtY (Coffee Run); corrigido no prisma/seed.ts E no banco via one-off prisma/fix-dead-videos.ts (5 aulas atualizadas, sem re-seed)
+- Validação browser: vídeo "Métricas north star" agora carrega com player + moldura de cinema ✓; perfil desktop/mobile sem overflow ✓; footer gruda no fundo ✓; abas Sobre/Cursos/Avaliações com fontes ✓
+- bun run lint 0/0; bunx tsc --noEmit limpo em src/; rotas 200; dev server NÃO reiniciado, build NÃO rodado
+
+Stage Summary:
+- Plataforma auditada tela a tela: landing, auth, explorar (5 abas), biblioteca, leitor, sala de aula (leitura + vídeo), curso (2 estados), checkout, dashboard, painel do mentor e LP pública estão consistentes e polidos
+- Perfil interno do mentor agora é gêmeo da LP pública: capa alta (288px desktop / 208px mobile) e tipografia personalizada do criador em nome, títulos e descrições
+- Conteúdo demo sem surpresas: todas as aulas em vídeo tocam de verdade (vídeos estáveis do Blender)
+- Aprendizado: grids com lg:grid-cols-N precisam de grid-cols-1 + min-w-0 nos itens para não estourar no mobile (min-width:auto do grid item)

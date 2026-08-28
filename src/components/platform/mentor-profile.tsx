@@ -42,6 +42,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Avatar, Stars } from '@/components/platform/avatar'
 import { api } from '@/lib/api'
+import { bodyFontStyle, headingFontStyle } from '@/lib/fonts'
 import {
   CONTENT_TYPE_META,
   LEVEL_LABELS,
@@ -116,7 +117,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
     return (
       <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
         <Skeleton className="h-8 w-40" />
-        <Skeleton className="h-56 w-full rounded-2xl" />
+        <Skeleton className="h-72 w-full rounded-2xl" />
         <div className="grid gap-6 lg:grid-cols-3">
           <Skeleton className="h-96 rounded-2xl lg:col-span-2" />
           <Skeleton className="h-96 rounded-2xl" />
@@ -139,6 +140,10 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
     )
   }
 
+  // Tipografia escolhida pelo criador (null = padrão da plataforma)
+  const headingStyle = headingFontStyle(mentor.fontHeading)
+  const bodyStyle = bodyFontStyle(mentor.fontBody)
+
   return (
     <div className="mx-auto max-w-6xl px-4 pb-16 pt-6">
       <button
@@ -149,18 +154,24 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
       </button>
 
       {/* ---------- BANNER ---------- */}
-      <section className="overflow-hidden rounded-2xl border border-stone-200 shadow-sm" aria-label="Perfil do mentor">
-        <div className="relative bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-800 px-6 pb-16 pt-8 sm:px-8">
-          {mentor.coverUrl && (
+      <section className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm" aria-label="Perfil do mentor">
+        {/* Capa com altura generosa — mesma identidade da página pública do criador */}
+        <div className="relative h-52 w-full bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-800 sm:h-64 md:h-72">
+          {mentor.coverUrl ? (
             <img
               src={mentor.coverUrl}
-              alt=""
-              aria-hidden
+              alt={`Capa do perfil de ${mentor.name}`}
               className="absolute inset-0 h-full w-full object-cover"
             />
+          ) : (
+            <div aria-hidden className="absolute inset-0 flex items-center justify-center">
+              <GraduationCap className="h-16 w-16 text-white/10" />
+            </div>
           )}
+          {/* Véu inferior: assenta o avatar e dá profundidade */}
+          <div aria-hidden className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/35 via-black/10 to-transparent" />
           <div aria-hidden className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-emerald-500/20 blur-2xl" />
-          <div aria-hidden className="absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-teal-400/10 blur-xl" />
+          <div aria-hidden className="absolute bottom-6 left-1/3 h-24 w-24 rounded-full bg-teal-400/10 blur-xl" />
         </div>
         <div className="px-6 pb-6 sm:px-8">
           <div className="flex items-start justify-between gap-4">
@@ -169,10 +180,10 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
               name={mentor.name}
               src={mentor.avatarUrl}
               size="xl"
-              className="-mt-12 h-24 w-24 shadow-lg"
+              className="-mt-14 h-28 w-28 text-3xl shadow-xl ring-4 ring-white"
             />
             {mentor.rating > 0 && (
-              <div className="mt-3 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2">
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 shadow-sm">
                 <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
                 <div>
                   <p className="text-lg font-extrabold leading-none text-stone-900">
@@ -183,10 +194,15 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
               </div>
             )}
           </div>
-          <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-stone-900">
+          <h1
+            className="mt-4 text-3xl font-extrabold tracking-tight text-stone-900"
+            style={headingStyle}
+          >
             {mentor.name}
           </h1>
-          <p className="mt-0.5 text-sm font-medium text-stone-600">{mentor.headline}</p>
+          <p className="mt-1 text-base font-medium text-stone-600" style={bodyStyle}>
+            {mentor.headline}
+          </p>
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
             {mentor.categories.map((c) => (
@@ -238,8 +254,8 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
       </section>
 
       {/* ---------- CONTEÚDO + AGENDAMENTO ---------- */}
-      <div className="mt-7 grid gap-7 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      <div className="mt-7 grid grid-cols-1 gap-7 lg:grid-cols-3">
+        <div className="min-w-0 lg:col-span-2">
           <Tabs defaultValue="sobre">
             <TabsList className="w-full justify-start overflow-x-auto rounded-xl bg-stone-100 p-1">
               <TabsTrigger value="sobre" className="rounded-lg">Sobre</TabsTrigger>
@@ -258,10 +274,13 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
             <TabsContent value="sobre" className="mt-5 space-y-5">
               <Card>
                 <CardContent className="p-6">
-                  <h2 className="flex items-center gap-2 font-bold">
+                  <h2 className="flex items-center gap-2 text-lg font-bold" style={headingStyle}>
                     <UserRound className="h-4.5 w-4.5 text-emerald-700" /> Sobre a mentoria
                   </h2>
-                  <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-stone-600">
+                  <p
+                    className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-stone-600"
+                    style={bodyStyle}
+                  >
                     {mentor.description}
                   </p>
                 </CardContent>
@@ -269,8 +288,10 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
               {mentor.bio && (
                 <Card>
                   <CardContent className="p-6">
-                    <h3 className="text-sm font-bold text-stone-900">Em resumo</h3>
-                    <p className="mt-2 text-sm text-stone-600">{mentor.bio}</p>
+                    <h3 className="text-sm font-bold text-stone-900" style={headingStyle}>Em resumo</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-stone-600" style={bodyStyle}>
+                      {mentor.bio}
+                    </p>
                   </CardContent>
                 </Card>
               )}
@@ -320,8 +341,13 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                               </Badge>
                               <span className="text-xs text-muted-foreground">{c.durationMin} min</span>
                             </div>
-                            <h3 className="mt-2 font-bold text-stone-900">{c.title}</h3>
-                            <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-stone-600">
+                            <h3 className="mt-2 font-bold text-stone-900" style={headingStyle}>
+                              {c.title}
+                            </h3>
+                            <p
+                              className="mt-1 line-clamp-2 text-sm leading-relaxed text-stone-600"
+                              style={bodyStyle}
+                            >
                               {c.description}
                             </p>
                             <div className="mt-2.5 flex flex-wrap gap-1.5">
@@ -380,8 +406,13 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                         </Badge>
                       </div>
                       <CardContent className="flex flex-1 flex-col p-4">
-                        <h3 className="line-clamp-1 font-bold text-stone-900">{course.title}</h3>
-                        <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-stone-600">
+                        <h3 className="line-clamp-1 font-bold text-stone-900" style={headingStyle}>
+                          {course.title}
+                        </h3>
+                        <p
+                          className="mt-1 line-clamp-2 text-sm leading-relaxed text-stone-600"
+                          style={bodyStyle}
+                        >
                           {course.description}
                         </p>
                         <p className="mt-2 text-xs text-stone-500">
@@ -415,7 +446,9 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
             <TabsContent value="horarios" className="mt-5">
               <Card>
                 <CardContent className="p-6">
-                  <h2 className="font-bold">Disponibilidade semanal</h2>
+                  <h2 className="text-lg font-bold" style={headingStyle}>
+                    Disponibilidade semanal
+                  </h2>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Horários livres são exibidos no widget de agendamento, no seu fuso local.
                   </p>
@@ -464,7 +497,9 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                 <>
                   <Card className="border-emerald-100 bg-emerald-50/50">
                     <CardContent className="flex items-center gap-5 p-6">
-                      <p className="text-4xl font-black text-stone-900">{mentor.rating.toFixed(1)}</p>
+                      <p className="text-4xl font-black text-stone-900" style={headingStyle}>
+                        {mentor.rating.toFixed(1)}
+                      </p>
                       <div>
                         <Stars rating={mentor.rating} size={17} />
                         <p className="mt-1 text-xs text-stone-500">
@@ -486,7 +521,9 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                           </div>
                           <Stars rating={r.rating} size={14} />
                         </div>
-                        <p className="mt-3 text-sm leading-relaxed text-stone-600">{r.comment}</p>
+                        <p className="mt-3 text-sm leading-relaxed text-stone-600" style={bodyStyle}>
+                          {r.comment}
+                        </p>
                       </CardContent>
                     </Card>
                   ))}

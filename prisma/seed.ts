@@ -319,7 +319,7 @@ async function main() {
         title: 'Refatoração ao vivo: do caos à arquitetura limpa',
         description: 'Aula gravada: pegamos um app desorganizado e aplicamos camadas passo a passo, sem quebrar nada.',
         durationMin: 35,
-        videoUrl: 'https://www.youtube.com/watch?v=dSX0pLQXI6E',
+        videoUrl: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
       },
       {
         title: 'Modelagem de domínio e casos de uso',
@@ -391,7 +391,7 @@ async function main() {
         title: 'Métricas north star: vídeo comentado',
         description: 'Como definir a métrica certa, evitar métricas de vaidade e conectar o roadmap ao impacto.',
         durationMin: 20,
-        videoUrl: 'https://www.youtube.com/watch?v=8nMKRTaD4-E',
+        videoUrl: 'https://www.youtube.com/watch?v=R6MlUcmOul8',
       },
       {
         title: 'Seu plano de transição em 90 dias',
@@ -407,7 +407,7 @@ async function main() {
         kind: 'LIVE',
         startsAt: at(-2, 20, 0),
         meetingUrl: 'https://meet.google.com/mentorhub-pm-live',
-        videoUrl: 'https://www.youtube.com/watch?v=8nMKRTaD4-E',
+        videoUrl: 'https://www.youtube.com/watch?v=R6MlUcmOul8',
       },
     ]
   )
@@ -436,7 +436,7 @@ async function main() {
         title: 'Componentizando no Figma: vídeo prático',
         description: 'Variantes, propriedades e auto layout na prática: do botão simples ao padrão composto.',
         durationMin: 28,
-        videoUrl: 'https://www.youtube.com/watch?v=bEKmDQAIvfM',
+        videoUrl: 'https://www.youtube.com/watch?v=WhWc3b3KhnY',
       },
       {
         title: 'Governança para times enxutos',
@@ -479,7 +479,7 @@ async function main() {
         title: '25 experimentos de CRO: vídeo ao vivo',
         description: 'Biblioteca de experimentos de conversão com priorização por ICE e exemplos reais comentados.',
         durationMin: 42,
-        videoUrl: 'https://www.youtube.com/watch?v=FBnJklzWqtU',
+        videoUrl: 'https://www.youtube.com/watch?v=pKmSdY56VtY',
       },
       {
         title: 'SEO e conteúdo: o canal que compõe',
