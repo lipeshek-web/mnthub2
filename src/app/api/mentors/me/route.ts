@@ -69,6 +69,13 @@ export async function GET(req: NextRequest) {
         reviewCount: profile.reviews.length,
         totalSessions: 0,
         bookedSlots: [],
+        avatarUrl: profile.user.avatarUrl,
+        coverUrl: profile.coverUrl,
+        slug: profile.slug,
+        tracking: {
+          gaMeasurementId: profile.gaMeasurementId,
+          metaPixelId: profile.metaPixelId,
+        },
       },
     })
   } catch (err) {

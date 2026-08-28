@@ -9,7 +9,7 @@ function baseInclude() {
   return {
     mentor: {
       include: {
-        user: { select: { id: true, name: true } },
+        user: { select: { id: true, name: true, avatarUrl: true } },
         reviews: { select: { rating: true } },
       },
     },
@@ -25,6 +25,7 @@ function serialize(course: {
   category: string
   level: string
   price: number
+  coverUrl: string | null
   isPublished: boolean
   createdAt: Date
   updatedAt: Date
@@ -32,7 +33,7 @@ function serialize(course: {
     id: string
     userId: string
     headline: string
-    user: { id: string; name: string }
+    user: { id: string; name: string; avatarUrl: string | null }
     reviews: { rating: number }[]
   }
   lessons: { durationMin: number }[]
@@ -52,6 +53,7 @@ function serialize(course: {
     level: course.level,
     price: course.price,
     isPublished: course.isPublished,
+    coverUrl: course.coverUrl,
     createdAt: course.createdAt.toISOString(),
     updatedAt: course.updatedAt.toISOString(),
     mentor: {
@@ -61,6 +63,7 @@ function serialize(course: {
       headline: course.mentor.headline,
       rating,
       reviewCount: course.mentor.reviews.length,
+      avatarUrl: course.mentor.user.avatarUrl,
     },
     lessonCount: course.lessons.length,
     totalDurationMin: course.lessons.reduce((a, l) => a + l.durationMin, 0),
@@ -153,6 +156,7 @@ export async function POST(req: NextRequest) {
     const category = String(body?.category ?? '').trim()
     const level = LEVELS.includes(body?.level) ? body.level : 'INICIANTE'
     const price = Number(body?.price ?? 0)
+    const coverUrl = body?.coverUrl ? String(body.coverUrl).trim().slice(0, 300) : null
 
     if (title.length < 5) {
       return NextResponse.json(
@@ -171,7 +175,7 @@ export async function POST(req: NextRequest) {
     }
 
     const created = await db.course.create({
-      data: { mentorId: mentor.id, title, description, category, level, price },
+      data: { mentorId: mentor.id, title, description, category, level, price, coverUrl },
     })
     return NextResponse.json({ id: created.id, ok: true })
   } catch (err) {

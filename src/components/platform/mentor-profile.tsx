@@ -8,9 +8,13 @@ import {
   CalendarOff,
   Clock3,
   FileText,
+  Globe,
   Globe2,
   GraduationCap,
+  Github,
+  Instagram,
   Library,
+  Linkedin,
   ListVideo,
   MessageSquareQuote,
   PlayCircle,
@@ -37,7 +41,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Avatar, Stars } from '@/components/platform/avatar'
-import { SocialLinksSection } from '@/components/platform/social-links'
 import { api } from '@/lib/api'
 import {
   CONTENT_TYPE_META,
@@ -56,6 +59,9 @@ import {
   formatTotalDuration,
   hourToLabel,
   relativeDayLabel,
+  socialDisplay,
+  socialUrl,
+  type SocialKind,
 } from '@/lib/helpers'
 import { useAppStore } from '@/lib/store'
 import type { CourseListItemDTO, MentorDetailDTO } from '@/lib/types'
@@ -68,6 +74,14 @@ const CONTENT_ICONS: Record<string, React.ElementType> = {
   WORKSHOP: Presentation,
   TRAIL: Route,
 }
+
+/** Redes exibidas como botões circulares no header do perfil (só as preenchidas) */
+const SOCIAL_META: { kind: SocialKind; label: string; icon: React.ElementType }[] = [
+  { kind: 'instagram', label: 'Instagram', icon: Instagram },
+  { kind: 'linkedin', label: 'LinkedIn', icon: Linkedin },
+  { kind: 'github', label: 'GitHub', icon: Github },
+  { kind: 'website', label: 'Site', icon: Globe },
+]
 
 export function MentorProfileView({ mentorId }: { mentorId: string }) {
   const navigate = useAppStore((s) => s.navigate)
@@ -137,20 +151,28 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
       {/* ---------- BANNER ---------- */}
       <section className="overflow-hidden rounded-2xl border border-stone-200 shadow-sm" aria-label="Perfil do mentor">
         <div className="relative bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-800 px-6 pb-16 pt-8 sm:px-8">
+          {mentor.coverUrl && (
+            <img
+              src={mentor.coverUrl}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          )}
           <div aria-hidden className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-emerald-500/20 blur-2xl" />
           <div aria-hidden className="absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-teal-400/10 blur-xl" />
         </div>
-        <div className="relative -mt-12 px-6 pb-6 sm:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-            <Avatar name={mentor.name} size="xl" className="shadow-lg" />
-            <div className="flex-1 sm:pb-1">
-              <h1 className="text-2xl font-extrabold tracking-tight text-stone-900">
-                {mentor.name}
-              </h1>
-              <p className="mt-0.5 text-sm font-medium text-stone-600">{mentor.headline}</p>
-            </div>
+        <div className="px-6 pb-6 sm:px-8">
+          <div className="flex items-start justify-between gap-4">
+            {/* Apenas o avatar invade a capa — texto abaixo, sem colisão */}
+            <Avatar
+              name={mentor.name}
+              src={mentor.avatarUrl}
+              size="xl"
+              className="-mt-12 h-24 w-24 shadow-lg"
+            />
             {mentor.rating > 0 && (
-              <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 sm:mb-1">
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2">
                 <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
                 <div>
                   <p className="text-lg font-extrabold leading-none text-stone-900">
@@ -161,6 +183,10 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
               </div>
             )}
           </div>
+          <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-stone-900">
+            {mentor.name}
+          </h1>
+          <p className="mt-0.5 text-sm font-medium text-stone-600">{mentor.headline}</p>
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
             {mentor.categories.map((c) => (
@@ -184,11 +210,32 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
               <ListVideo className="h-3.5 w-3.5" /> {mentor.contents.length} conteúdos no mural
             </Badge>
           </div>
+
+          {/* Redes sociais e portfólio (botões circulares; só redes preenchidas) */}
+          {SOCIAL_META.some(({ kind }) => mentor.socials[kind]) && (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {SOCIAL_META.map(({ kind, label, icon: Icon }) => {
+                const value = mentor.socials[kind]
+                if (!value) return null
+                const hint = `${label} de ${mentor.name} (${socialDisplay(kind, value)} — abre em nova aba)`
+                return (
+                  <a
+                    key={kind}
+                    href={socialUrl(kind, value)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={hint}
+                    title={hint}
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-600 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
+                  >
+                    <Icon className="h-4.5 w-4.5" aria-hidden />
+                  </a>
+                )
+              })}
+            </div>
+          )}
         </div>
       </section>
-
-      {/* ---------- REDES SOCIAIS / PORTFÓLIO ---------- */}
-      <SocialLinksSection socials={mentor.socials} mentorName={mentor.name} headline={mentor.headline} />
 
       {/* ---------- CONTEÚDO + AGENDAMENTO ---------- */}
       <div className="mt-7 grid gap-7 lg:grid-cols-3">
@@ -310,12 +357,24 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                       key={course.id}
                       className="flex flex-col overflow-hidden rounded-2xl border-stone-200 py-0 shadow-sm transition-shadow hover:shadow-md"
                     >
-                      {/* Faixa superior com gradiente determinístico */}
-                      <div
-                        className="relative flex h-20 shrink-0 items-center justify-center"
-                        style={avatarGradient(course.title)}
-                      >
-                        <Library className="h-8 w-8 text-white/20" aria-hidden />
+                      {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
+                      <div className="relative h-20 w-full shrink-0 bg-stone-100">
+                        {course.coverUrl ? (
+                          <img
+                            src={course.coverUrl}
+                            alt=""
+                            aria-hidden
+                            className="absolute inset-0 h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div
+                            aria-hidden
+                            className="absolute inset-0 flex items-center justify-center"
+                            style={avatarGradient(course.title)}
+                          >
+                            <Library className="h-8 w-8 text-white/20" />
+                          </div>
+                        )}
                         <Badge className="absolute right-3 top-3 bg-white text-stone-700">
                           {LEVEL_LABELS[course.level] ?? course.level}
                         </Badge>

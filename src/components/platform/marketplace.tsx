@@ -618,7 +618,7 @@ function SpotlightCard({
           className="relative mt-5 flex flex-1 flex-col justify-center"
         >
           <div className="flex items-center gap-4">
-            <Avatar name={mentor.name} size="xl" />
+            <Avatar name={mentor.name} src={mentor.avatarUrl} size="xl" />
             <div className="min-w-0">
               <p className="flex items-center gap-1.5 truncate text-lg font-bold">
                 {mentor.name}
@@ -703,7 +703,7 @@ function MentorCard({ mentor }: { mentor: MentorListItemDTO }) {
   return (
     <article className="group flex flex-col rounded-2xl border border-stone-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md">
       <div className="flex items-start gap-3.5">
-        <Avatar name={mentor.name} size="lg" />
+        <Avatar name={mentor.name} src={mentor.avatarUrl} size="lg" />
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 truncate font-bold text-stone-900">
             {mentor.name}
@@ -773,6 +773,15 @@ function CourseSpotlightCard({ course }: { course: CourseListItemDTO }) {
 
   return (
     <div className="relative flex h-full min-h-56 flex-col overflow-hidden rounded-2xl bg-emerald-950 p-5 text-white sm:p-6">
+      {course.coverUrl && (
+        <img
+          src={course.coverUrl}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover opacity-40"
+        />
+      )}
+      {course.coverUrl && <div aria-hidden className="absolute inset-0 bg-emerald-950/40" />}
       <div
         aria-hidden
         className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl"
@@ -792,14 +801,18 @@ function CourseSpotlightCard({ course }: { course: CourseListItemDTO }) {
 
       <div className="relative mt-5 flex flex-1 flex-col justify-center">
         <div className="flex items-center gap-4">
-          {/* Ícone com anel gradiente determinístico do título */}
+          {/* Miniatura da capa com anel gradiente determinístico do título */}
           <span
             aria-hidden
             className="shrink-0 rounded-2xl p-0.5"
             style={avatarGradient(course.title)}
           >
-            <span className="flex h-13 w-13 items-center justify-center rounded-[14px] bg-emerald-950/80">
-              <Library className="h-6 w-6 text-emerald-300" />
+            <span className="flex h-13 w-13 items-center justify-center overflow-hidden rounded-[14px] bg-emerald-950/80">
+              {course.coverUrl ? (
+                <img src={course.coverUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <Library className="h-6 w-6 text-emerald-300" />
+              )}
             </span>
           </span>
           <div className="min-w-0">
@@ -862,9 +875,24 @@ function CourseCard({ course }: { course: CourseListItemDTO }) {
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white p-0 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md">
-      {/* Capa com gradiente determinístico do título */}
-      <div className="relative h-28 w-full" style={avatarGradient(course.title)}>
-        <Library aria-hidden className="pointer-events-none absolute -bottom-3 right-3 h-20 w-20 text-white/20" />
+      {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
+      <div className="relative h-28 w-full bg-stone-100">
+        {course.coverUrl ? (
+          <img
+            src={course.coverUrl}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={avatarGradient(course.title)}
+          >
+            <Library className="pointer-events-none absolute -bottom-3 right-3 h-20 w-20 text-white/20" />
+          </div>
+        )}
         <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-0.5 text-[11px] font-semibold text-stone-700">
           {LEVEL_LABELS[course.level] ?? course.level}
         </span>
@@ -882,6 +910,12 @@ function CourseCard({ course }: { course: CourseListItemDTO }) {
       <div className="flex flex-1 flex-col p-5">
         <p className="line-clamp-1 font-bold text-stone-900">{course.title}</p>
         <div className="mt-1 flex items-center gap-1.5 text-xs text-stone-500">
+          <Avatar
+            name={course.mentor.name}
+            src={course.mentor.avatarUrl}
+            size="sm"
+            className="h-5 w-5 text-[8px] ring-0"
+          />
           <span className="truncate">por {firstName(course.mentor.name)}</span>
           <Stars rating={course.mentor.rating} size={11} />
           <span className="text-[11px] font-semibold text-stone-600">

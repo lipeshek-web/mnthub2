@@ -192,6 +192,20 @@ export function socialDisplay(kind: SocialKind, raw: string): string {
   return kind === 'instagram' ? `@${value.replace(/^@/, '')}` : value
 }
 
+// ---------- Link público (LP do mentor) ----------
+
+/** Nome -> slug para a URL pública rastreável (?mentor=slug) */
+export function slugify(name: string): string {
+  const slug = name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '')
+    .slice(0, 48)
+  return slug || 'mentor'
+}
+
 // ---------- Cursos ----------
 
 /** URL de vídeo convertida para embed (YouTube watch/youtu.be → /embed) */

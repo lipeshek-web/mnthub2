@@ -1,6 +1,7 @@
 import type {
   AvailabilitySlotInput,
   BookingDTO,
+  CheckoutResultDTO,
   ContentPostDTO,
   CourseDetailDTO,
   CourseLessonDTO,
@@ -8,8 +9,10 @@ import type {
   EnrolledCourseDTO,
   MentorDetailDTO,
   MentorListItemDTO,
+  MentorLpDTO,
   ReviewDTO,
   SocialLinksDTO,
+  TrackingStatsDTO,
   UserDTO,
 } from './types'
 
@@ -62,6 +65,10 @@ export const api = {
     experienceYears: number
     languages: string
     socials?: SocialLinksDTO
+    avatarUrl?: string | null
+    coverUrl?: string | null
+    gaMeasurementId?: string | null
+    metaPixelId?: string | null
   }) => request<{ id: string }>('/api/mentors', { method: 'POST', body: JSON.stringify(data) }),
   saveAvailability: (data: { userId: string; slots: AvailabilitySlotInput[] }) =>
     request<{ ok: boolean }>('/api/mentors/availability', {
@@ -120,6 +127,7 @@ export const api = {
     category: string
     level: string
     price: number
+    coverUrl?: string | null
   }) => request<{ id: string }>('/api/courses', { method: 'POST', body: JSON.stringify(data) }),
   updateCourse: (
     id: string,
@@ -130,6 +138,7 @@ export const api = {
       category?: string
       level?: string
       price?: number
+      coverUrl?: string | null
       isPublished?: boolean
     }
   ) => request<{ ok: boolean }>(`/api/courses/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
@@ -168,4 +177,26 @@ export const api = {
   // Matrículas do usuário
   listMyEnrollments: (userId: string) =>
     request<EnrolledCourseDTO[]>(`/api/enrollments${qs({ userId })}`),
+
+  // Upload de imagens (avatar, capa, capa de curso)
+  uploadImage: (file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return fetch('/api/upload', { method: 'POST', body: fd, cache: 'no-store' }).then(async (res) => {
+      const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string }
+      if (!res.ok || !json.url) throw new Error(json.error || 'Falha no upload da imagem.')
+      return json.url
+    })
+  },
+
+  // LP pública do mentor (tráfego pago) — por slug
+  getMentorBySlug: (slug: string) => request<MentorLpDTO>(`/api/mentors/by-slug/${encodeURIComponent(slug)}`),
+
+  // Checkout (pagamento demonstrativo) + pedido
+  checkout: (data: { userId: string; courseId: string; paymentMethod: 'PIX' | 'CREDIT_CARD' }) =>
+    request<CheckoutResultDTO>('/api/checkout', { method: 'POST', body: JSON.stringify(data) }),
+
+  // Estatísticas de tráfego do mentor (dashboard)
+  trackingStats: (mentorUserId: string) =>
+    request<TrackingStatsDTO>(`/api/track/stats${qs({ mentorUserId })}`),
 }

@@ -294,3 +294,76 @@ Work Log:
 
 Stage Summary:
 - Sistema de cursos completo e verificado de ponta a ponta: criar (mentor) → publicar → explorar → matricular (grátis/pago) → assistir (texto/vídeo) → progredir → concluir; redes sociais com previews ricos no perfil e gestão no onboarding; mobile sem overflow; console limpo
+
+---
+Task ID: 1-5 (infra)
+Agent: main (Z.ai Code)
+Task: Infra de tracking GA4/Meta Pixel, checkout, fotos e LP pública
+
+Work Log:
+- prisma/schema.prisma: User.avatarUrl; MentorProfile.slug(@unique)/coverUrl/gaMeasurementId/metaPixelId; Course.coverUrl; novos models Order (checkout com atribuição: utm*/gclid/fbclid/channel/landingPage) e TrackingEvent (page_view|view_item|begin_checkout|purchase|lead com atribuição); db:push OK
+- src/lib/tracking.ts ('use client'): captureAttributionFromUrl (utm_*/gclid/fbclid → last non-direct click, TTL 7d em localStorage mh_attribution_v1), classifyChannel (paid_search/paid_social/social/email/referral/direct), loadTrackingScripts (injeta gtag.js + fbevents.js para IDs da plataforma via env NEXT_PUBLIC_GA_MEASUREMENT_ID/NEXT_PUBLIC_META_PIXEL_ID e/ou do mentor), trackEvent (POST /api/track via sendBeacon + gtag('event') + fbq('track') com mapas page_view→PageView, view_item→ViewContent, begin_checkout→InitiateCheckout, purchase→Purchase, lead→generate_lead), getAttribution, setAttributionLandingPage, cleanUrlParams (limpa utms preservando mentor/course), buildMentorLpUrl/buildCourseUrl (gerador de links p/ impulsionar)
+- Novas APIs: POST /api/upload (multipart → public/uploads, JPG/PNG/WEBP/GIF até 5MB → {url}); POST /api/track (valida nome, grava evento com atribuição); GET /api/track/stats?mentorUserId (funil pageview→view_item→checkout→purchase, receita via orders, byChannel/bySource/byCourse/daily 14d); POST /api/checkout (Order+Enrollment+TrackingEvent purchase em $transaction, 409 se já inscrito); GET /api/mentors/by-slug/[slug] (dados públicos da LP: mentor+tracking, cursos publicados, mural, reviews, studentCount)
+- APIs estendidas: /api/mentors GET (avatarUrl/coverUrl/slug) e POST (avatarUrl→User, coverUrl/gaMeasurementId validado G-XXX/metaPixelId 14-20 dígitos, undefined=manter, slug único auto com slugify); /api/mentors/[id] e /me (avatarUrl/coverUrl/slug/tracking); /api/courses GET/POST (coverUrl, mentor.avatarUrl) e /[id] GET (coverUrl, mentor.avatarUrl, mentor.tracking)/PATCH (coverUrl); /api/enrollments (coverUrl, mentor.avatarUrl); /api/users (avatarUrl)
+- helpers.ts: slugify(); avatar.tsx: Avatar aceita src (img com fallback para iniciais via onError); types.ts: TrackingIdsDTO, AttributionDTO, MentorLpDTO, OrderDTO, CheckoutResultDTO, TrackingStatsDTO, tracking no MentorDetailDTO e course.mentor; api.ts: uploadImage/getMentorBySlug/checkout/trackingStats + saveMentorProfile com avatarUrl/coverUrl/ga/meta + createCourse/updateCourse com coverUrl; store.ts: views {name:'mentor-lp',slug} e {name:'checkout',courseId}
+- prisma/seed.ts: avatares para 13 usuários, capas de perfil + slug para os 7 mentores, coverUrl nos 5 cursos, tracking IDs demo (Carlos G-MHDEMO01+Pixel, Rafael Pixel), 5 pedidos pagos com atribuição + ~104 eventos de funil nos últimos 14 dias (6 canais)
+- prisma/gen-seed-images.ts: gera 25 imagens via z-ai sdk em public/uploads/seed/ (11 prontas, restante em background)
+
+Stage Summary:
+- Infra completa e rastreável: atribuição 7 dias + pixels GA4/Meta (plataforma e mentor) + funil server-side + checkout transacional + LP pública por slug + uploads de foto; contratos prontos para os agentes de frontend
+
+---
+Task ID: 6
+Agent: frontend-styling-expert
+Task: LP do mentor + checkout
+
+Work Log:
+- Lidos worklog.md (Task 1-5 infra) e contratos: types.ts (MentorLpDTO/CheckoutResultDTO/OrderDTO/CourseListItemDTO/TrackingIdsDTO), api.ts (getMentorBySlug/checkout/enrollCourse/getCourse), store.ts (views mentor-lp/checkout), tracking.ts (trackEvent/loadTrackingScripts/setAttributionLandingPage/getAttribution), helpers.ts, avatar.tsx (Avatar com src), mentor-profile.tsx/course-view.tsx (padrões) e ui/ (radio-group existe — usado; button/card/badge/input/label/separator/skeleton)
+- Criado `src/components/platform/mentor-lp.tsx`: export `MentorLpView({ slug })`; fetch `api.getMentorBySlug` com skeleton (hero+avatar+cards), erro/notfound em Card dashed "Esta página não está disponível." + "Conhecer a plataforma" → home; tracking no primeiro load com ref-guard (StrictMode-safe): `setAttributionLandingPage('mentor_lp')` ANTES de `loadTrackingScripts({mentorGaId, mentorPixelId})` → `trackEvent('page_view')` + `view_item` do primeiro curso
+  - HERO max-w-5xl: coverUrl → img h-56/64 object-cover com overlay `from-stone-900/70`, senão banner `avatarGradient(name)`; Avatar xl com src + anel emerald (ring-4 ring-emerald-500/70 sobrescreve ring-2 ring-white via cn/tw-merge), Badge "Mentor verificado" (BadgeCheck, emerald-50/700), h1 text-3xl extrabold, headline, chips (Stars+nota vírgula pt-BR+avaliações, "{n}+ sessões" CalendarCheck2, "X anos de experiência" Clock3, idiomas Globe); redes sociais = linha de botões circulares h-11 w-11 (a target=_blank rel=noopener, aria-label "Instagram de X: @handle (abre em nova aba)", ícones Instagram/Linkedin/Github/Globe, hover emerald) via socialUrl/socialDisplay — sem importar social-links.tsx
+  - Prova social: strip bg-emerald-950 rounded-2xl grid-cols-2 sm:grid-cols-4 (studentCount/totalSessions/rating médio/cursos publicados, valores com toFixed(1).replace('.',','))
+  - Cursos (id="lp-cursos" scroll-mt-6): grid-cols-1 sm:grid-cols-2 gap-5; card clicável (article onClick + CTA com stopPropagation) com capa img h-36 ou gradiente avatarGradient(title)+Library white/20, Badges categoria/nível, título bold, line-clamp-2, stats BookOpen/Clock/Users, footer mt-auto com "Grátis" emerald-700 ou currencyBRL + Button h-11 rounded-full ("Inscrever-se grátis"/"Comprar agora"); clique: view_item → grátis (logado: enrollCourse+toast+navigate course; sem login: toast.error('Entre com uma conta no topo da página para se inscrever.')) | pago: begin_checkout({value})+navigate checkout
+  - Sobre {firstName} (description whitespace-pre-line + chips de categorias + idiomas), Mural opcional (lista compacta divide-y com CONTENT_TYPE_META + duração), Depoimentos (grid sm:grid-cols-2, Stars, line-clamp-4, Avatar iniciais + data curta via parseNaive+MONTHS_PT)
+  - CTA final bg-emerald-950 rounded-3xl com blobs: "Aprenda com {firstName} de perto" + "Agendar uma mentoria" (trackEvent('lead',{mentorId}) → view mentor) + "Ver cursos" (scrollIntoView smooth #lp-cursos); rodapé fino "Página oficial de {name} na plataforma MentorHub" com link → home
+- Criado `src/components/platform/checkout.tsx`: export `CheckoutView({ courseId })`; fetch `api.getCourse(courseId, user?.id)` com skeleton/erro("Tentar novamente"); na 1ª montagem (ref-guard): loadTrackingScripts(pixels do mentor) + `trackEvent('begin_checkout',{mentorId,courseId,value,contentName})`
+  - Estados pré-form: user null → Card LogIn "Entre com uma conta no topo da página (menu Entrar) para concluir a compra"; enrollment não-null → Card emerald "Você já tem acesso a este curso" + "Ir para o curso"; price 0 → aviso "Este curso é gratuito" + "Inscrever-se" (enrollCourse → toast → view course)
+  - Form max-w-3xl: voltar (ArrowLeft → view course) + h1 Checkout; Card resumo (capa h-28 img/gradiente, badges categoria/nível, título, mentor com Avatar src+Stars, Separator, Total currencyBRL text-2xl extrabold, nota "Pagamento processado pela plataforma · demonstração"); banner amber "Ambiente de demonstração — nenhuma cobrança real"; RadioGroup shadcn com 2 Labels-clicáveis rounded-2xl (has-checked via cn condicional: border-emerald-500 bg-emerald-50/60 ring-1): PIX (QrCode, "Aprovação imediata") e Cartão (CreditCard, "Em até 12x — simulação"); PIX → box com QrCode h-24 w-24 stone-300 + copy gateway; Cartão → inputs demo (número "•••• •••• •••• 4242", nome, validade, CVV) + helper "não insira dados reais"
+  - Pagar: Button h-13 rounded-full "Pagar {currencyBRL}" com Loader2 "Pagando…"; payload inclui `attribution: getAttribution()` (servidor lê body.attribution no Order/TrackingEvent — api.checkout aceita prop extra via variável não-literal); sucesso → `trackEvent('purchase',{transactionId: order.id,...})` + toast 'Pagamento aprovado! 🎉' + tela de sucesso (CheckCircle2 emerald, "Você já tem acesso a '{título}'", dl com pedido #ID8/método/total, "Acessar o curso" e "Explorar mais cursos"); erro → toast.error e, em 409 "já tem acesso", refetch para mostrar estado inscrito
+  - Rodapé: ShieldCheck "Compra protegida · 7 dias de garantia" + Lock "SSL"
+- Nota: removidos os 3 comentários `eslint-disable-next-line @next/next/no-img-element` — a regra está OFF no eslint.config.mjs e o projeto passou a reportar "Unused eslint-disable directive" (warning) para eles (avatar.tsx já teve o comentário removido nesta mesma rodada); com <img> direto o lint fica 100% limpo
+- Validação: `bun run lint` 0 erros/0 warnings; `bunx tsc --noEmit` sem erros em src/ (restam apenas erros pré-existentes em examples/, skills/ e prisma/gen-seed-images.ts, fora do escopo)
+
+Stage Summary:
+- LP de conversão do mentor (`mentor-lp.tsx`, export MentorLpView) e checkout demonstrativo (`checkout.tsx`, export CheckoutView) criados sem tocar em nenhum arquivo existente; prontos para montagem no shell nas views {name:'mentor-lp', slug} e {name:'checkout', courseId}
+- Funil de eventos coberto de ponta a ponta: page_view/view_item (LP, com landing mentor_lp marcada antes do 1º evento e pixels do mentor injetados), begin_checkout (LP pago + 1ª montagem do checkout), purchase (com transactionId) e lead (CTA mentoria); atribuição utm/gclid/fbclid segue junto no corpo do checkout para os relatórios
+- Padrões mantidos: stone+emerald, rounded-2xl/full, hairlines, pt-BR, toasts sonner, grids sempre com coluna explícita no mobile, alvos ≥44px nos CTAs/redes sociais, aria-labels/alt em tudo; descoberta compartilhada: não usar eslint-disable para <img> (regra off + unused-directive warning)
+
+
+---
+Task ID: 6-8 (agentes, recuperação)
+Agent: main (Z.ai Code)
+Task: Agentes LP/Checkout, Onboarding e UI-Polish
+
+Work Log:
+- Task 6 (agente): criados src/components/platform/mentor-lp.tsx (LP pública rastreável: hero com capa+avatar foto, prova social, cursos com funil view_item/begin_checkout, mural, depoimentos, CTA final com lead, pixels do mentor injetados via loadTrackingScripts) e src/components/platform/checkout.tsx (resumo do pedido, PIX/Cartão demo, api.checkout com attribution: getAttribution(), purchase com transactionId, tela de sucesso)
+- Tasks 7 e 8 (agentes caíram por timeout de infra APÓS completar os arquivos; trabalho validado e mantido): onboarding.tsx ganhou Fotos do perfil (upload/preview/remover capa+avatar), Link público (copy/abrir), IDs GA4/Meta Pixel com validação (G-XXXX / 14-20 dígitos), Gerador de link de impulsionamento (utm_source/medium/campaign + destino LP ou curso, URL em tempo real), painel Desempenho de tráfego (KPIs, taxa de conversão, gráfico 14d, por canal/origem/curso); capa de curso no CoursesManager + botão Link por curso
+- UI-Polish: navbar com avatarUrl real + Search + pill animada (layoutId); mentor-profile com capa real, avatar foto e socials simplificados (botões circulares redirecionáveis, social-links.tsx DELETADO); marketplace/landing-mentee/course-view/dashboard com capas reais (fallback gradiente) e fotos de avatar; course-view pago agora navega para {name:'checkout'} em vez de dialog
+
+Stage Summary:
+- Funil completo rastreável: LP/curso → view_item → begin_checkout → checkout → purchase, tudo com atribuição utm/gclid/fbclid/channel/landingPage
+
+---
+Task ID: 9-10
+Agent: main (Z.ai Code)
+Task: Integração no shell, seed de imagens, fixes e verificação end-to-end
+
+Work Log:
+- page.tsx: bootstrap único (useRef) — captureAttributionFromUrl(mentorSlug), loadTrackingScripts() da plataforma, roteamento por ?mentor=slug → view mentor-lp e ?course=id → view course, trackEvent('page_view'), cleanUrlParams(); views mentor-lp e checkout montadas
+- Fixes: mentor-lp e mentor-profile — texto do nome não invade mais a capa (só o avatar sobrepõe com -mt-12); </div> órfão do meu primeiro fix removido (Build Error de parse)
+- prisma/gen-seed-images.ts: 25 imagens geradas (7 avatares mentores, 6 alunos, 7 capas de perfil, 5 capas de curso) em public/uploads/seed/; seed rodado com pedidos pagos + ~104 eventos de funil (6 canais) nos últimos 14 dias
+- APIs testadas via curl: by-slug OK, track OK, stats OK (Carlos: 34 pageviews/2 vendas/R$378 antes da compra real), upload OK, checkout OK
+- Browser (desktop 1440x900): LP Carlos com utm instagram/cpc/boost-teste/fbclid=DemoFb123 → URL limpa preservando ?mentor=slug ✓; hero com capa+foto+badge+socials ✓; Comprar agora → checkout (PIX com QR demo) ✓; compra real pela Ana → Pagamento aprovado 🎉, pedido #CMTCKFX7 ✓; Order gravado com paid_social/instagram/cpc/boost-teste/DemoFb123/mentor_lp ✓; painel de tráfego do Carlos atualizado (37 visitas, 10 checkouts, 3 vendas, R$567, 8,1%) ✓; onboarding com fotos/GA G-MHDEMO01/Pixel/gerador UTM em tempo real ✓; marketplace com capas+0 imagens quebradas ✓; perfil com capa e socials simples ✓; dashboard Meus cursos com capas e progresso ✓; ?course=id abre curso direto com capa ✓
+- Mobile 390x844: LP Marina sem overflow (sw=cw=390), tab bar ok ✓; console sem erros (apenas warning benigno de multi-pixel em dev) ✓; lint 0/0, tsc limpo em src/, dev.log saudável ✓
+
+Stage Summary:
+- Sistema completo de tráfego pago + fotos + UI app-like verificado de ponta a ponta no browser: mentores impulsionam links UTM (LP ou curso), conversões chegam atribuídas (Order + TrackingEvent), pixels GA4/Meta da plataforma e do mentor disparam PageView/ViewContent/InitiateCheckout/Purchase, painel de desempenho mostra funil e receita por canal; perfis e cursos com fotos/capas reais

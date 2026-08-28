@@ -16,6 +16,8 @@ function at(daysFromNow: number, hour: number, minute = 0): string {
 
 async function main() {
   console.log('🌱 Limpando banco...')
+  await db.trackingEvent.deleteMany()
+  await db.order.deleteMany()
   await db.enrollment.deleteMany()
   await db.lesson.deleteMany()
   await db.course.deleteMany()
@@ -27,20 +29,24 @@ async function main() {
   await db.user.deleteMany()
 
   console.log('👤 Criando usuários...')
-  const ana = await db.user.create({ data: { name: 'Ana Souza', email: 'ana@demo.com', bio: 'Product designer apaixonada por educação e produto digital.' } })
-  const lucas = await db.user.create({ data: { name: 'Lucas Prado', email: 'lucas@demo.com', bio: 'Dev backend migrando para produto.' } })
-  const julia = await db.user.create({ data: { name: 'Júlia Mendes', email: 'julia@demo.com', bio: 'Empreendedora, fundadora de um app de bem-estar.' } })
-  const pedro = await db.user.create({ data: { name: 'Pedro Henrique', email: 'pedro@demo.com', bio: 'UX designer júnior em busca de crescimento.' } })
-  const camila = await db.user.create({ data: { name: 'Camila Rocha', email: 'camila@demo.com', bio: 'Full-stack em transição de carreira.' } })
-  const fernanda = await db.user.create({ data: { name: 'Fernanda Dias', email: 'fernanda@demo.com', bio: 'Estudante de marketing digital.' } })
-  const thiago = await db.user.create({ data: { name: 'Thiago Nunes', email: 'thiago@demo.com', bio: 'Product manager em formação.' } })
+  const ana = await db.user.create({ data: { name: 'Ana Souza', email: 'ana@demo.com', bio: 'Product designer apaixonada por educação e produto digital.', avatarUrl: '/uploads/seed/avatar-ana.png' } })
+  const lucas = await db.user.create({ data: { name: 'Lucas Prado', email: 'lucas@demo.com', bio: 'Dev backend migrando para produto.', avatarUrl: '/uploads/seed/avatar-lucas.png' } })
+  const julia = await db.user.create({ data: { name: 'Júlia Mendes', email: 'julia@demo.com', bio: 'Empreendedora, fundadora de um app de bem-estar.', avatarUrl: '/uploads/seed/avatar-julia.png' } })
+  const pedro = await db.user.create({ data: { name: 'Pedro Henrique', email: 'pedro@demo.com', bio: 'UX designer júnior em busca de crescimento.', avatarUrl: '/uploads/seed/avatar-pedro.png' } })
+  const camila = await db.user.create({ data: { name: 'Camila Rocha', email: 'camila@demo.com', bio: 'Full-stack em transição de carreira.', avatarUrl: '/uploads/seed/avatar-camila.png' } })
+  const fernanda = await db.user.create({ data: { name: 'Fernanda Dias', email: 'fernanda@demo.com', bio: 'Estudante de marketing digital.', avatarUrl: '/uploads/seed/avatar-fernanda.png' } })
+  const thiago = await db.user.create({ data: { name: 'Thiago Nunes', email: 'thiago@demo.com', bio: 'Product manager em formação.', avatarUrl: '/uploads/seed/avatar-thiago.png' } })
 
   console.log('🧑‍🏫 Criando mentores...')
 
-  const carlosUser = await db.user.create({ data: { name: 'Carlos Ferreira', email: 'carlos@demo.com', bio: 'Engenheiro de software com 12 anos de experiência em startups e big techs.' } })
+  const carlosUser = await db.user.create({ data: { name: 'Carlos Ferreira', email: 'carlos@demo.com', bio: 'Engenheiro de software com 12 anos de experiência em startups e big techs.', avatarUrl: '/uploads/seed/avatar-carlos.png' } })
   const carlosProfile = await db.mentorProfile.create({
     data: {
       userId: carlosUser.id,
+      slug: 'carlos-ferreira',
+      coverUrl: '/uploads/seed/cover-carlos.png',
+      gaMeasurementId: 'G-MHDEMO01',
+      metaPixelId: '1029384756101928',
       instagram: 'carlosferreira.dev',
       linkedin: 'https://linkedin.com/in/carlosferreira',
       github: 'carlosferreira',
@@ -55,10 +61,12 @@ async function main() {
     },
   })
 
-  const marinaUser = await db.user.create({ data: { name: 'Marina Costa', email: 'marina@demo.com', bio: 'PM com 9 anos de experiência em produtos digitais de alto crescimento.' } })
+  const marinaUser = await db.user.create({ data: { name: 'Marina Costa', email: 'marina@demo.com', bio: 'PM com 9 anos de experiência em produtos digitais de alto crescimento.', avatarUrl: '/uploads/seed/avatar-marina.png' } })
   const marina = await db.mentorProfile.create({
     data: {
       userId: marinaUser.id,
+      slug: 'marina-costa',
+      coverUrl: '/uploads/seed/cover-marina.png',
       headline: 'Product Manager · Carreira em Produto Digital',
       description:
         'Lidero produtos digitais há 9 anos em empresas de alto crescimento. Já lancei produtos do zero e escalei features usadas por milhões de pessoas.\n\nNa mentoria, te ajudo com: transição de carreira para produto, discovery e priorização (RICE, Jobs to be Done), métricas north star, roadmap e comunicação com stakeholders. Se você está migrando de área ou quer acelerar como PM, montamos juntos um plano de ação com metas de 30/60/90 dias.',
@@ -71,10 +79,13 @@ async function main() {
     },
   })
 
-  const rafaelUser = await db.user.create({ data: { name: 'Rafael Almeida', email: 'rafael@demo.com', bio: 'Growth marketer, scalei 3 startups de 0 a 7 dígitos.' } })
+  const rafaelUser = await db.user.create({ data: { name: 'Rafael Almeida', email: 'rafael@demo.com', bio: 'Growth marketer, scalei 3 startups de 0 a 7 dígitos.', avatarUrl: '/uploads/seed/avatar-rafael.png' } })
   const rafael = await db.mentorProfile.create({
     data: {
       userId: rafaelUser.id,
+      slug: 'rafael-almeida',
+      coverUrl: '/uploads/seed/cover-rafael.png',
+      metaPixelId: '2938475610201938',
       headline: 'Estrategista de Growth & Marketing Digital',
       description:
         'Escalei três startups de zero a sete dígitos de receita com estratégias de growth orientadas a dados. Especialista em funis de aquisição, SEO, conteúdo paid media e automação.\n\nNas mentorias, saímos com um plano de growth prático: análise do seu funil, canais prioritários,Quick wins de CRO e um roadmap de experimentos para os próximos 90 dias. Ideal para founders, marketers e criadores que querem crescer com previsibilidade.',
@@ -87,10 +98,12 @@ async function main() {
     },
   })
 
-  const beatrizUser = await db.user.create({ data: { name: 'Beatriz Lima', email: 'beatriz@demo.com', bio: 'UX/UI designer sênior, especialista em design systems.' } })
+  const beatrizUser = await db.user.create({ data: { name: 'Beatriz Lima', email: 'beatriz@demo.com', bio: 'UX/UI designer sênior, especialista em design systems.', avatarUrl: '/uploads/seed/avatar-beatriz.png' } })
   const beatriz = await db.mentorProfile.create({
     data: {
       userId: beatrizUser.id,
+      slug: 'beatriz-lima',
+      coverUrl: '/uploads/seed/cover-beatriz.png',
       headline: 'UX/UI Designer Sênior · Design Systems',
       description:
         'Designer de produto há 10 anos, sou especialista em design systems e experiência de usuário em produtos financeiros e SaaS.\n\nNa mentoria revisamos seu portfólio linha a linha, trabalhamos storytelling de case studies, processo de design, handoff com engenharia e preparação para entrevistas (incluindo whiteboard challenge). Também ajudo times a estruturarem design systems do zero com Figma e tokens.',
@@ -104,10 +117,12 @@ async function main() {
     },
   })
 
-  const davidUser = await db.user.create({ data: { name: 'David Okoye', email: 'david@demo.com', bio: 'Assessor de investimentos CFP®, educador financeiro.' } })
+  const davidUser = await db.user.create({ data: { name: 'David Okoye', email: 'david@demo.com', bio: 'Assessor de investimentos CFP®, educador financeiro.', avatarUrl: '/uploads/seed/avatar-david.png' } })
   const david = await db.mentorProfile.create({
     data: {
       userId: davidUser.id,
+      slug: 'david-okoye',
+      coverUrl: '/uploads/seed/cover-david.png',
       headline: 'Assessor de Investimentos (CFP®) · Finanças Pessoais',
       description:
         'Certificado CFP® com 11 anos de mercado, já ajudei centenas de famílias a saírem das dívidas e construírem patrimônio com planejamento financeiro de verdade.\n\nNa mentoria organizamos sua vida financeira: orçamento, quitação de dívidas, reserva de emergência e alocação de investimentos (renda fixa, fundos, ações e FIIs) alinhada aos seus objetivos. Sem enrolação e sem "achismo": método, planilhas e acompanhamento.',
@@ -119,10 +134,12 @@ async function main() {
     },
   })
 
-  const sofiaUser = await db.user.create({ data: { name: 'Sofia Santos', email: 'sofia@demo.com', bio: 'Professora de inglês há 14 anos, CELTA pela Cambridge.' } })
+  const sofiaUser = await db.user.create({ data: { name: 'Sofia Santos', email: 'sofia@demo.com', bio: 'Professora de inglês há 14 anos, CELTA pela Cambridge.', avatarUrl: '/uploads/seed/avatar-sofia.png' } })
   const sofia = await db.mentorProfile.create({
     data: {
       userId: sofiaUser.id,
+      slug: 'sofia-santos',
+      coverUrl: '/uploads/seed/cover-sofia.png',
       headline: 'Professora de Inglês · Business English & Fluência',
       description:
         'Professora de inglês há 14 anos, com CELTA pela Universidade de Cambridge e experiência corporativa com executivos de multinacionais.\n\nAs mentorias são imersivas e personalizadas: preparação para entrevistas em inglês, business english, apresentações e reuniões, ou conversação para destravar a fluência de uma vez. Uso material autêntico e simulações reais do seu dia a dia.',
@@ -138,6 +155,8 @@ async function main() {
   const anaProfile = await db.mentorProfile.create({
     data: {
       userId: ana.id,
+      slug: 'ana-souza',
+      coverUrl: '/uploads/seed/cover-ana.png',
       headline: 'Lead Product Designer · Design de Produto & Carreira',
       description:
         'Lead de design em produtos digitais com foco em experiências de alto impacto. Já construí design systems, conduzi discoveries e liderei squads multidisciplinares.\n\nMentoro designers em todos os níveis: portfólio, processo de UX, pesquisa com usuários, métricas de design, liderança e transição para produto. Vamos evoluir sua carreira com um plano claro e prático.',
@@ -218,7 +237,7 @@ async function main() {
 
   const course = async (
     mentorId: string,
-    data: { title: string; description: string; category: string; level: string; price: number },
+    data: { title: string; description: string; category: string; level: string; price: number; coverUrl?: string },
     lessons: { title: string; description: string; videoUrl?: string; content?: string; durationMin: number }[]
   ) => {
     const c = await db.course.create({ data: { mentorId, ...data } })
@@ -247,6 +266,7 @@ async function main() {
         'Do caos de pastas à arquitetura em camadas: um curso direto ao ponto para devs que querem escrever sistemas organizados, testáveis e prontos para escalar. Baseado em 12 anos de projetos reais — incluindo os erros que eu cometerei para você não cometer.',
       category: 'Tecnologia',
       level: 'INTERMEDIARIO',
+      coverUrl: '/uploads/seed/course-arquitetura.png',
       price: 189,
     },
     [
@@ -302,6 +322,7 @@ async function main() {
         'Curso gratuito e direto: o que um PM faz de verdade, como fazer discovery que gera insight, priorizar com RICE e montar seu plano de transição em 90 dias. O mesmo conteúdo que uso nas mentorias com quem está migrando para produto.',
       category: 'Carreira',
       level: 'INICIANTE',
+      coverUrl: '/uploads/seed/course-product-manager.png',
       price: 0,
     },
     [
@@ -350,6 +371,7 @@ async function main() {
         'Tokens, componentes, governança e handoff: construa um design system que engenharia ama usar e que sobrevive ao crescimento do produto. Para designers e times enxutos que querem consistência sem burocracia.',
       category: 'Design',
       level: 'INTERMEDIARIO',
+      coverUrl: '/uploads/seed/course-design-systems.png',
       price: 199,
     },
     [
@@ -391,6 +413,7 @@ async function main() {
         'Pare de apostar em campanhas isoladas: construa um sistema de aquisição com funil instrumentado, experimentos priorizados e canais que compostam. O playbook que usei para escalar 3 startups de 0 a 7 dígitos.',
       category: 'Marketing',
       level: 'INTERMEDIARIO',
+      coverUrl: '/uploads/seed/course-growth.png',
       price: 149,
     },
     [
@@ -432,6 +455,7 @@ async function main() {
         'Prepare-se para processos em inglês com o método que uso com executivos há 14 anos: STAR method, vocabulário de alto impacto e rotina de prática de 20 minutos. Simulações reais, feedback e material autêntico.',
       category: 'Idiomas',
       level: 'INICIANTE',
+      coverUrl: '/uploads/seed/course-english.png',
       price: 89,
     },
     [
@@ -478,6 +502,112 @@ async function main() {
       { courseId: cursoGrowth.id, studentId: thiago.id, completedLessonIds: JSON.stringify([lessonsGrowth[0].id]) },
     ],
   })
+
+  // ==================== TRÁFEGO (demonstração) ====================
+  console.log('📈 Tráfego e pedidos demo...')
+
+  // Pedidos pagos (compras) + evento de conversão correspondente
+  const paidOrders = [
+    { course: cursoArquitetura, mentor: carlosProfile, student: lucas, method: 'PIX', daysAgo: 11, utm: { source: 'instagram', medium: 'cpc', campaign: 'arquitetura-boost-01', fbclid: 'IwARDemoFbClick001' }, channel: 'paid_social', landing: 'mentor_lp' },
+    { course: cursoArquitetura, mentor: carlosProfile, student: julia, method: 'CREDIT_CARD', daysAgo: 5, utm: { source: 'instagram', medium: 'cpc', campaign: 'arquitetura-boost-01', fbclid: 'IwARDemoFbClick002' }, channel: 'paid_social', landing: 'mentor_lp' },
+    { course: cursoDS, mentor: beatriz, student: pedro, method: 'PIX', daysAgo: 8, utm: { source: null, medium: null, campaign: null }, channel: 'direct', landing: 'platform' },
+    { course: cursoGrowth, mentor: rafael, student: fernanda, method: 'PIX', daysAgo: 3, utm: { source: 'google', medium: 'cpc', campaign: 'growth-course', gclid: 'EAIaIQobDemoGclId001' }, channel: 'paid_search', landing: 'platform' },
+    { course: cursoIngles, mentor: sofia, student: camila, method: 'CREDIT_CARD', daysAgo: 1, utm: { source: 'instagram', medium: 'bio', campaign: null }, channel: 'social', landing: 'mentor_lp' },
+  ]
+
+  for (const o of paidOrders) {
+    const when = new Date()
+    when.setDate(when.getDate() - o.daysAgo)
+    when.setHours(12, 30, 0, 0)
+    await db.order.create({
+      data: {
+        courseId: o.course.id,
+        studentId: o.student.id,
+        mentorId: o.mentor.id,
+        amount: o.course.price,
+        paymentMethod: o.method,
+        status: 'PAID',
+        utmSource: o.utm.source,
+        utmMedium: o.utm.medium,
+        utmCampaign: o.utm.campaign,
+        gclid: o.utm.gclid ?? null,
+        fbclid: o.utm.fbclid ?? null,
+        channel: o.channel,
+        landingPage: o.landing,
+        createdAt: when,
+      },
+    })
+    await db.trackingEvent.create({
+      data: {
+        name: 'purchase',
+        mentorId: o.mentor.id,
+        courseId: o.course.id,
+        userId: o.student.id,
+        valueCents: Math.round(o.course.price * 100),
+        utmSource: o.utm.source,
+        utmMedium: o.utm.medium,
+        utmCampaign: o.utm.campaign,
+        gclid: o.utm.gclid ?? null,
+        fbclid: o.utm.fbclid ?? null,
+        channel: o.channel,
+        path: o.landing === 'mentor_lp' ? '/?mentor=slug' : '/?course=id',
+        createdAt: when,
+      },
+    })
+  }
+
+  // Funil de eventos (page_view → view_item → begin_checkout) espalhado nos últimos 14 dias
+  const funnelMentors = [
+    { profile: carlosProfile, courses: [cursoArquitetura], weight: 34 },
+    { profile: marina, courses: [cursoPM], weight: 18 },
+    { profile: rafael, courses: [cursoGrowth], weight: 22 },
+    { profile: beatriz, courses: [cursoDS], weight: 16 },
+    { profile: sofia, courses: [cursoIngles], weight: 14 },
+  ]
+  const channelsDemo: { channel: string; utm: Record<string, string | null> }[] = [
+    { channel: 'direct', utm: {} },
+    { channel: 'social', utm: { utmSource: 'instagram', utmMedium: 'bio' } },
+    { channel: 'paid_social', utm: { utmSource: 'instagram', utmMedium: 'cpc', utmCampaign: 'boost-lp-01', fbclid: 'IwARDemoFunnel' } },
+    { channel: 'paid_search', utm: { utmSource: 'google', utmMedium: 'cpc', utmCampaign: 'mentores-2025', gclid: 'EAIaDemoFunnel' } },
+    { channel: 'referral', utm: { utmSource: 'linkedin', utmMedium: 'post' } },
+    { channel: 'email', utm: { utmSource: 'newsletter', utmMedium: 'email', utmCampaign: 'aula-aberta' } },
+  ]
+
+  let dayCursor = 0
+  for (const m of funnelMentors) {
+    for (let i = 0; i < m.weight; i++) {
+      const ch = channelsDemo[i % channelsDemo.length]
+      const when = new Date()
+      when.setDate(when.getDate() - (dayCursor % 14))
+      when.setHours(9 + (i % 10), (i * 7) % 60, 0, 0)
+      dayCursor += 3
+
+      const base = {
+        mentorId: m.profile.id,
+        utmSource: ch.utm.utmSource ?? null,
+        utmMedium: ch.utm.utmMedium ?? null,
+        utmCampaign: ch.utm.utmCampaign ?? null,
+        gclid: ch.utm.gclid ?? null,
+        fbclid: ch.utm.fbclid ?? null,
+        channel: ch.channel,
+        createdAt: when,
+      }
+
+      await db.trackingEvent.create({ data: { ...base, name: 'page_view', path: '/?mentor=slug' } })
+
+      // Aproximadamente metade dos visitantes viu um curso; um terço disso iniciou checkout
+      if (i % 2 === 0) {
+        await db.trackingEvent.create({
+          data: { ...base, name: 'view_item', courseId: m.courses[i % m.courses.length].id, path: '/?mentor=slug' },
+        })
+        if (i % 6 === 0) {
+          await db.trackingEvent.create({
+            data: { ...base, name: 'begin_checkout', courseId: m.courses[i % m.courses.length].id, path: '/?mentor=slug' },
+          })
+        }
+      }
+    }
+  }
 
   console.log('✅ Seed concluído!')
   console.log({ ana: ana.email, mentors: 7, cursos: 5, bookings: 11, reviews: 6 })

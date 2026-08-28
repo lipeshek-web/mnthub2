@@ -211,7 +211,7 @@ export function LandingMenteeView() {
                 <>
                   <div className="flex -space-x-2">
                     {mentors.slice(0, 5).map((m, i) => (
-                      <Avatar key={m.id} name={m.name} size={i === 0 ? 'md' : 'sm'} />
+                      <Avatar key={m.id} name={m.name} src={m.avatarUrl} size={i === 0 ? 'md' : 'sm'} />
                     ))}
                   </div>
                   <p className="text-sm text-stone-500">
@@ -479,7 +479,7 @@ function FeaturedMentorCard({ mentor }: { mentor: MentorListItemDTO }) {
   return (
     <div className="flex flex-col gap-4 rounded-2xl border border-stone-200 p-6 transition hover:border-emerald-300 hover:shadow-md">
       <div className="flex items-center gap-3.5">
-        <Avatar name={mentor.name} size="lg" />
+        <Avatar name={mentor.name} src={mentor.avatarUrl} size="lg" />
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 truncate font-bold text-stone-900">
             {mentor.name}
@@ -535,9 +535,24 @@ function FeaturedCourseCard({ course }: { course: CourseListItemDTO }) {
 
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition hover:border-emerald-300 hover:shadow-md">
-      {/* Capa com gradiente determinístico do título */}
-      <div className="relative h-24 w-full" style={avatarGradient(course.title)}>
-        <Library aria-hidden className="pointer-events-none absolute -bottom-2 right-2 h-16 w-16 text-white/20" />
+      {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
+      <div className="relative h-24 w-full bg-stone-100">
+        {course.coverUrl ? (
+          <img
+            src={course.coverUrl}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={avatarGradient(course.title)}
+          >
+            <Library className="pointer-events-none absolute -bottom-2 right-2 h-16 w-16 text-white/20" />
+          </div>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col p-5">

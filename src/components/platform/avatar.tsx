@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Star } from 'lucide-react'
 import { avatarGradient, initials } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
@@ -13,26 +14,42 @@ const SIZES = {
 
 export function Avatar({
   name,
+  src,
   size = 'md',
   className,
 }: {
   name: string
+  /** URL de foto (opcional) — cai para as iniciais se ausente/quebrada */
+  src?: string | null
   size?: keyof typeof SIZES
   className?: string
 }) {
+  const [broken, setBroken] = useState(false)
+  const showPhoto = Boolean(src) && !broken
+
   return (
     <div
       aria-hidden={false}
       aria-label={`Avatar de ${name}`}
       title={name}
       className={cn(
-        'flex shrink-0 select-none items-center justify-center rounded-full font-bold tracking-wide text-white shadow-sm ring-2 ring-white',
+        'relative flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full font-bold tracking-wide text-white shadow-sm ring-2 ring-white',
         SIZES[size],
         className
       )}
-      style={avatarGradient(name)}
+      style={showPhoto ? undefined : avatarGradient(name)}
     >
-      {initials(name)}
+      {showPhoto ? (
+        <img
+          src={src as string}
+          alt={`Foto de ${name}`}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          onError={() => setBroken(true)}
+        />
+      ) : (
+        initials(name)
+      )}
     </div>
   )
 }

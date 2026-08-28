@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertCircle,
   ArrowLeft,
@@ -19,14 +19,6 @@ import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, Stars } from '@/components/platform/avatar'
@@ -38,6 +30,7 @@ import {
   formatTotalDuration,
   toVideoEmbedUrl,
 } from '@/lib/helpers'
+import { loadTrackingScripts, trackEvent } from '@/lib/tracking'
 import { useAppStore } from '@/lib/store'
 import type { CourseDetailDTO, CourseLessonDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -57,7 +50,9 @@ export function CourseView({ courseId }: { courseId: string }) {
 
   // Estado da inscrição (modo visitante)
   const [enrolling, setEnrolling] = useState(false)
-  const [confirmOpen, setConfirmOpen] = useState(false)
+
+  // Tracking (GA4/Meta Pixel do mentor + view_item) — uma única vez por curso/montagem
+  const trackedCourseRef = useRef<string | null>(null)
 
   const fetchCourse = useCallback(async () => {
     setLoading(true)
@@ -94,6 +89,23 @@ export function CourseView({ courseId }: { courseId: string }) {
 
   const course = data
 
+  // Dispara view_item + injeta os pixels do mentor quando os dados do curso chegam
+  // (visitante ou inscrito), no máximo uma vez por curso por montagem.
+  useEffect(() => {
+    if (!course || trackedCourseRef.current === course.id) return
+    trackedCourseRef.current = course.id
+    loadTrackingScripts({
+      mentorGaId: course.mentor.tracking?.gaMeasurementId,
+      mentorPixelId: course.mentor.tracking?.metaPixelId,
+    })
+    trackEvent('view_item', {
+      mentorId: course.mentor.id,
+      courseId: course.id,
+      value: course.price || undefined,
+      contentName: course.title,
+    })
+  }, [course])
+
   const currentLesson = useMemo(
     () => lessons.find((l) => l.id === currentLessonId) ?? lessons[0] ?? null,
     [lessons, currentLessonId]
@@ -114,7 +126,6 @@ export function CourseView({ courseId }: { courseId: string }) {
       } else {
         toast.success('Inscrição realizada! Boa jornada 🎉')
       }
-      setConfirmOpen(false)
       // Busca novamente com o usuário: enrollment preenchido ativa o modo sala de aula
       const fresh = await api.getCourse(course.id, user.id)
       setData(fresh)
@@ -134,7 +145,14 @@ export function CourseView({ courseId }: { courseId: string }) {
     if (course.price === 0) {
       void doEnroll()
     } else {
-      setConfirmOpen(true)
+      // Curso pago: fluxo completo de checkout (com atribuição e pixels carregados)
+      trackEvent('begin_checkout', {
+        mentorId: course.mentor.id,
+        courseId: course.id,
+        value: course.price || undefined,
+        contentName: course.title,
+      })
+      navigate({ name: 'checkout', courseId: course.id })
     }
   }
 
@@ -243,10 +261,7 @@ export function CourseView({ courseId }: { courseId: string }) {
           lessons={lessons}
           enrolling={enrolling}
           isLoggedIn={Boolean(user)}
-          confirmOpen={confirmOpen}
-          onConfirmOpenChange={setConfirmOpen}
           onEnrollClick={handleEnrollClick}
-          onConfirmEnroll={() => void doEnroll()}
           onViewMentor={(mentorId) => navigate({ name: 'mentor', mentorId })}
         />
       )}
@@ -261,20 +276,14 @@ function OverviewContent({
   lessons,
   enrolling,
   isLoggedIn,
-  confirmOpen,
-  onConfirmOpenChange,
   onEnrollClick,
-  onConfirmEnroll,
   onViewMentor,
 }: {
   course: CourseDetailDTO
   lessons: CourseLessonDTO[]
   enrolling: boolean
   isLoggedIn: boolean
-  confirmOpen: boolean
-  onConfirmOpenChange: (open: boolean) => void
   onEnrollClick: () => void
-  onConfirmEnroll: () => void
   onViewMentor: (mentorId: string) => void
 }) {
   return (
@@ -285,7 +294,20 @@ function OverviewContent({
         className="relative overflow-hidden rounded-2xl p-6 text-white sm:p-8"
         style={avatarGradient(course.title)}
       >
-        <Library aria-hidden className="pointer-events-none absolute -right-6 -top-10 h-48 w-48 text-white/15" />
+        {course.coverUrl && (
+          <>
+            <img
+              src={course.coverUrl}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div aria-hidden className="absolute inset-0 bg-stone-950/55" />
+          </>
+        )}
+        {!course.coverUrl && (
+          <Library aria-hidden className="pointer-events-none absolute -right-6 -top-10 h-48 w-48 text-white/15" />
+        )}
         <div className="relative">
           <div className="flex flex-wrap items-center gap-2">
             <Badge className="rounded-full border-white/25 bg-white/15 text-white hover:bg-white/15">
@@ -398,7 +420,7 @@ function OverviewContent({
             className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6"
           >
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <Avatar name={course.mentor.name} size="lg" />
+              <Avatar name={course.mentor.name} src={course.mentor.avatarUrl} size="lg" />
               <div className="min-w-0 flex-1">
                 <p className="font-bold text-stone-900">{course.mentor.name}</p>
                 <p className="line-clamp-1 text-sm text-stone-500">{course.mentor.headline}</p>
@@ -476,53 +498,6 @@ function OverviewContent({
           </ul>
         </Card>
       </div>
-
-      {/* ---------- DIALOG DE CONFIRMAÇÃO (curso pago) ---------- */}
-      <Dialog open={confirmOpen} onOpenChange={onConfirmOpenChange}>
-        <DialogContent className="rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-extrabold tracking-tight text-stone-900">
-              Confirmar inscrição
-            </DialogTitle>
-            <DialogDescription>
-              Você está prestes a se inscrever no curso abaixo.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
-            <p className="font-bold text-stone-900">{course.title}</p>
-            <p className="mt-0.5 text-xs text-stone-500">
-              por {course.mentor.name} · {course.lessonCount}{' '}
-              {course.lessonCount === 1 ? 'aula' : 'aulas'} ·{' '}
-              {formatTotalDuration(course.totalDurationMin)}
-            </p>
-            <div className="mt-3 flex items-center justify-between border-t border-stone-200 pt-3">
-              <span className="text-sm text-stone-500">Total</span>
-              <span className="text-lg font-extrabold text-stone-900">
-                {currencyBRL(course.price)}
-              </span>
-            </div>
-          </div>
-
-          <p className="text-xs text-stone-400">
-            (checkout demonstrativo — nenhuma cobrança real)
-          </p>
-
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              className="rounded-full"
-              onClick={() => onConfirmOpenChange(false)}
-              disabled={enrolling}
-            >
-              Cancelar
-            </Button>
-            <Button className="rounded-full font-bold" onClick={onConfirmEnroll} disabled={enrolling}>
-              {enrolling ? 'Processando…' : `Confirmar · ${currencyBRL(course.price)}`}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   )
 }
@@ -566,7 +541,20 @@ function ClassroomContent({
         className="relative overflow-hidden rounded-2xl p-5 text-white sm:p-6"
         style={avatarGradient(course.title)}
       >
-        <Library aria-hidden className="pointer-events-none absolute -right-4 -top-8 h-32 w-32 text-white/15" />
+        {course.coverUrl && (
+          <>
+            <img
+              src={course.coverUrl}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div aria-hidden className="absolute inset-0 bg-stone-950/60" />
+          </>
+        )}
+        {!course.coverUrl && (
+          <Library aria-hidden className="pointer-events-none absolute -right-4 -top-8 h-32 w-32 text-white/15" />
+        )}
         <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -579,7 +567,12 @@ function ClassroomContent({
             </div>
             <h1 className="mt-3 text-xl font-extrabold tracking-tight sm:text-2xl">{course.title}</h1>
             <div className="mt-1.5 flex items-center gap-2 text-sm text-white/85">
-              <Avatar name={course.mentor.name} size="sm" className="h-6 w-6 text-[10px]" />
+              <Avatar
+                name={course.mentor.name}
+                src={course.mentor.avatarUrl}
+                size="sm"
+                className="h-6 w-6 text-[10px]"
+              />
               {course.mentor.name}
             </div>
           </div>

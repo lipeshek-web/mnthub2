@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
 import {
   CalendarDays,
   Check,
@@ -8,6 +9,7 @@ import {
   GraduationCap,
   LogOut,
   PlusCircle,
+  Search,
   Sparkles,
   UserRoundPlus,
   Users,
@@ -88,12 +90,18 @@ export function Navbar() {
         aria-label={label}
         title={label}
         className={cn(
-          'flex h-9 items-center gap-2 rounded-full px-3.5 text-sm font-medium transition-colors',
-          active
-            ? 'bg-emerald-50 text-emerald-800'
-            : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900'
+          'relative flex h-9 items-center gap-2 rounded-full px-3.5 text-sm font-medium transition-colors',
+          active ? 'text-emerald-800' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900'
         )}
       >
+        {active && (
+          <motion.span
+            layoutId="navbar-nav-pill"
+            aria-hidden
+            transition={{ type: 'spring', bounce: 0.25, duration: 0.5 }}
+            className="absolute inset-0 -z-10 rounded-full bg-emerald-50"
+          />
+        )}
         {icon}
         <span className="hidden md:inline">{label}</span>
       </button>
@@ -108,7 +116,7 @@ export function Navbar() {
           onClick={() => navigate({ name: 'home' })}
           aria-label="Ir para a página inicial"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-700 text-white">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-700 text-white transition-transform duration-200 hover:scale-[1.02]">
             <GraduationCap className="h-4.5 w-4.5" />
           </span>
           <span className="text-base font-extrabold tracking-tight text-stone-900">
@@ -123,6 +131,15 @@ export function Navbar() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => navigate({ name: 'marketplace' })}
+            aria-label="Explorar mentores e cursos"
+            title="Explorar mentores e cursos"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+          >
+            <Search className="h-4.5 w-4.5" />
+          </button>
+
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -130,7 +147,7 @@ export function Navbar() {
                   className="flex items-center gap-2.5 rounded-full border border-stone-200 bg-white py-1 pl-1 pr-3 transition-colors hover:border-emerald-300 hover:bg-emerald-50"
                   aria-label="Menu do usuário"
                 >
-                  <Avatar name={user.name} size="sm" className="ring-transparent" />
+                  <Avatar name={user.name} src={user.avatarUrl} size="sm" className="ring-transparent" />
                   <span className="hidden max-w-28 truncate text-sm font-semibold text-stone-700 sm:inline">
                     {user.name.split(' ')[0]}
                   </span>
@@ -138,8 +155,13 @@ export function Navbar() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64">
                 <DropdownMenuLabel>
-                  <p className="font-semibold">{user.name}</p>
-                  <p className="text-xs font-normal text-muted-foreground">{user.email}</p>
+                  <div className="flex items-center gap-2.5">
+                    <Avatar name={user.name} src={user.avatarUrl} size="sm" className="ring-0" />
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">{user.name}</p>
+                      <p className="truncate text-xs font-normal text-muted-foreground">{user.email}</p>
+                    </div>
+                  </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate({ name: 'dashboard' })}>
@@ -158,7 +180,7 @@ export function Navbar() {
                 <div className="max-h-52 overflow-y-auto">
                   {users.map((u) => (
                     <DropdownMenuItem key={u.id} onClick={() => pickUser(u)} className="gap-2.5">
-                      <Avatar name={u.name} size="sm" className="h-6 w-6 text-[9px] ring-0" />
+                      <Avatar name={u.name} src={u.avatarUrl} size="sm" className="h-6 w-6 text-[9px] ring-0" />
                       <span className="flex-1 truncate">{u.name}</span>
                       {u.id === user.id && <Check className="h-4 w-4 text-emerald-600" />}
                     </DropdownMenuItem>
@@ -191,7 +213,7 @@ export function Navbar() {
                 <div className="max-h-72 overflow-y-auto">
                   {users.map((u) => (
                     <DropdownMenuItem key={u.id} onClick={() => pickUser(u)} className="gap-2.5">
-                      <Avatar name={u.name} size="sm" className="h-6 w-6 text-[9px] ring-0" />
+                      <Avatar name={u.name} src={u.avatarUrl} size="sm" className="h-6 w-6 text-[9px] ring-0" />
                       <span className="flex-1 truncate">{u.name}</span>
                     </DropdownMenuItem>
                   ))}

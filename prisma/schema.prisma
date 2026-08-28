@@ -12,6 +12,7 @@ model User {
   email     String   @unique
   name      String
   bio       String?
+  avatarUrl String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -19,6 +20,8 @@ model User {
   bookingsAsMentee  Booking[]      @relation("MenteeBookings")
   reviews           Review[]
   enrollments       Enrollment[]
+  orders            Order[]
+  trackingEvents    TrackingEvent[]
 }
 
 model MentorProfile {
@@ -37,6 +40,12 @@ model MentorProfile {
   linkedin        String?
   github          String?
   website         String?
+  // Link público rastreável + fotos
+  slug            String? @unique // usado em /?mentor=slug (LP pública p/ tráfego pago)
+  coverUrl        String?
+  // Rastreamento do mentor (tráfego pago próprio)
+  gaMeasurementId String? // ex: G-XXXXXXXXXX
+  metaPixelId     String? // ex: 1234567890123456
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -45,6 +54,8 @@ model MentorProfile {
   courses        Course[]
   bookings       Booking[]      @relation("MentorBookings")
   reviews        Review[]
+  orders         Order[]
+  trackingEvents TrackingEvent[]
 }
 
 model Availability {
@@ -111,12 +122,15 @@ model Course {
   category    String // ex: "Tecnologia"
   level       String        @default("INICIANTE") // INICIANTE | INTERMEDIARIO | AVANCADO
   price       Float         @default(0) // 0 = gratuito
+  coverUrl    String?
   isPublished Boolean       @default(true)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
-  lessons     Lesson[]
-  enrollments Enrollment[]
+  lessons        Lesson[]
+  enrollments    Enrollment[]
+  orders         Order[]
+  trackingEvents TrackingEvent[]
 }
 
 model Lesson {
@@ -142,4 +156,58 @@ model Enrollment {
   createdAt          DateTime @default(now())
 
   @@unique([courseId, studentId])
+}
+
+// ==================== CHECKOUT & TRACKING (tráfego pago) ====================
+
+/// Pedido de curso (checkout demonstrativo — pagamentos simulados)
+model Order {
+  id            String        @id @default(cuid())
+  courseId      String
+  course        Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  mentorId      String
+  mentor        MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  amount        Float
+  paymentMethod String        @default("PIX") // PIX | CREDIT_CARD
+  status        String        @default("PAID") // PAID | REFUNDED
+
+  // Atribuição de tráfego (last-touch) — segregada por origem
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmContent  String?
+  utmTerm     String?
+  gclid       String?
+  fbclid      String?
+  channel     String   @default("direct") // direct | social | paid_social | paid_search | email | referral
+  landingPage String   @default("platform") // mentor_lp | platform
+
+  createdAt DateTime @default(now())
+}
+
+/// Eventos de rastreamento (page_view, view_item, begin_checkout, purchase, lead)
+model TrackingEvent {
+  id        String   @id @default(cuid())
+  name      String // page_view | view_item | begin_checkout | purchase | lead
+  mentorId  String?
+  mentor    MentorProfile? @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  courseId  String?
+  course    Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  valueCents Int?
+
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmContent  String?
+  utmTerm     String?
+  gclid       String?
+  fbclid      String?
+  channel     String   @default("direct")
+  path        String?
+
+  createdAt DateTime @default(now())
 }

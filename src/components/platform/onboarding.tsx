@@ -1,26 +1,38 @@
 'use client'
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import {
   AtSign,
+  BadgeCheck,
   BadgeDollarSign,
+  Banknote,
+  BarChart3,
   BookOpen,
   CalendarCheck,
   CalendarClock,
+  Camera,
   Check,
   Clock,
+  Copy,
   Eye,
   EyeOff,
+  ExternalLink,
   FileText,
   GraduationCap,
+  ImagePlus,
+  Link2,
   ListVideo,
   LogIn,
+  Megaphone,
   Newspaper,
   Pencil,
   Plus,
+  RefreshCw,
   Save,
+  ShoppingCart,
   Sparkles,
   Trash2,
+  TrendingUp,
   UserRound,
   Users,
   Video,
@@ -69,7 +81,7 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
-import { Stars } from '@/components/platform/avatar'
+import { Avatar, Stars } from '@/components/platform/avatar'
 import { api } from '@/lib/api'
 import {
   CATEGORIES,
@@ -81,6 +93,7 @@ import {
   labelToHour,
 } from '@/lib/helpers'
 import { useAppStore } from '@/lib/store'
+import { buildCourseUrl, buildMentorLpUrl } from '@/lib/tracking'
 import type {
   AvailabilitySlotInput,
   ContentPostDTO,
@@ -88,6 +101,7 @@ import type {
   CourseListItemDTO,
   MentorDetailDTO,
   SocialLinksDTO,
+  TrackingStatsDTO,
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -105,6 +119,36 @@ const TIME_OPTIONS: string[] = (() => {
 const CONTENT_TYPES = ['ARTICLE', 'VIDEO', 'WORKSHOP', 'TRAIL'] as const
 const CONTENT_LEVELS = ['INICIANTE', 'INTERMEDIARIO', 'AVANCADO'] as const
 
+// ---------- Upload de imagens e clipboard (fotos e links rastreáveis) ----------
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
+/** Valida o tamanho (máx. 5MB), envia o arquivo e devolve a URL — falhas são exibidas via toast */
+async function uploadImageFile(file: File | null | undefined): Promise<string | null> {
+  if (!file) return null
+  if (file.size > MAX_IMAGE_BYTES) {
+    toast.error('A imagem deve ter no máximo 5MB.')
+    return null
+  }
+  try {
+    return await api.uploadImage(file)
+  } catch (err) {
+    toast.error(err instanceof Error ? err.message : 'Não foi possível enviar a imagem.')
+    return null
+  }
+}
+
+function copyToClipboard(text: string, successMessage = 'Link copiado!') {
+  if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+    toast.error('Não foi possível copiar o link.')
+    return
+  }
+  navigator.clipboard
+    .writeText(text)
+    .then(() => toast.success(successMessage))
+    .catch(() => toast.error('Não foi possível copiar o link.'))
+}
+
 // ---------- Formulário de perfil (criação e edição) ----------
 
 export interface ProfileFormValues {
@@ -115,6 +159,10 @@ export interface ProfileFormValues {
   experienceYears: number
   languages: string
   socials: SocialLinksDTO
+  /** Foto do mentor (User.avatarUrl) — null remove a foto atual */
+  avatarUrl?: string | null
+  /** Capa do perfil público — null remove a capa atual */
+  coverUrl?: string | null
 }
 
 interface ProfileFormErrors {
@@ -129,10 +177,13 @@ function MentorProfileForm({
   initial,
   submitLabel,
   onSubmit,
+  mentorName,
 }: {
   initial?: ProfileFormValues
   submitLabel: string
   onSubmit: (values: ProfileFormValues) => Promise<void>
+  /** Nome usado como fallback do avatar (iniciais) */
+  mentorName: string
 }) {
   const [headline, setHeadline] = useState(initial?.headline ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
@@ -146,12 +197,36 @@ function MentorProfileForm({
   const [website, setWebsite] = useState(initial?.socials?.website ?? '')
   const [errors, setErrors] = useState<ProfileFormErrors>({})
   const [saving, setSaving] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initial?.avatarUrl ?? null)
+  const [coverUrl, setCoverUrl] = useState<string | null>(initial?.coverUrl ?? null)
+  const [uploadingPhoto, setUploadingPhoto] = useState<'avatar' | 'cover' | null>(null)
+  // Só envia no payload a foto que o usuário realmente mexeu: undefined = manter atual, null = remover
+  const [photoTouched, setPhotoTouched] = useState<{ avatar: boolean; cover: boolean }>({
+    avatar: false,
+    cover: false,
+  })
 
   const toggleCategory = (category: string) => {
     setCategories((prev) =>
       prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category]
     )
     setErrors((prev) => ({ ...prev, categories: undefined }))
+  }
+
+  const handlePhotoFile = async (kind: 'avatar' | 'cover', file: File | null | undefined) => {
+    if (!file || uploadingPhoto) return
+    setUploadingPhoto(kind)
+    const url = await uploadImageFile(file)
+    if (url) {
+      if (kind === 'avatar') {
+        setAvatarUrl(url)
+        setPhotoTouched((prev) => ({ ...prev, avatar: true }))
+      } else {
+        setCoverUrl(url)
+        setPhotoTouched((prev) => ({ ...prev, cover: true }))
+      }
+    }
+    setUploadingPhoto(null)
   }
 
   const validate = (): ProfileFormErrors => {
@@ -196,6 +271,9 @@ function MentorProfileForm({
           github: github.trim() || undefined,
           website: website.trim() || undefined,
         },
+        // undefined = não alterar no servidor; null = remover; string = definir
+        avatarUrl: photoTouched.avatar ? avatarUrl : undefined,
+        coverUrl: photoTouched.cover ? coverUrl : undefined,
       })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Não foi possível salvar o perfil.')
@@ -206,6 +284,112 @@ function MentorProfileForm({
 
   return (
     <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-6" noValidate>
+      {/* Fotos do perfil (capa + avatar) */}
+      <div className="flex flex-col gap-4">
+        <div>
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-stone-900">
+            <Camera className="size-4 text-emerald-700" aria-hidden /> Fotos do perfil
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Sua foto aparece no Explorar, nos cursos e na navbar. A capa aparece no topo do seu perfil
+            público.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          {coverUrl ? (
+            <div className="h-32 w-full overflow-hidden rounded-xl border border-stone-200 bg-stone-100">
+              <img src={coverUrl} alt="Capa do seu perfil" className="h-full w-full object-cover" />
+            </div>
+          ) : (
+            <div className="flex h-32 w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-stone-300 bg-stone-50">
+              <ImagePlus className="size-6 text-stone-400" aria-hidden />
+              <p className="text-xs text-stone-500">Capa 1440×720 recomendada</p>
+            </div>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {uploadingPhoto !== null ? (
+              <Button type="button" size="sm" variant="outline" disabled>
+                {uploadingPhoto === 'cover' ? 'Enviando...' : 'Enviar capa'}
+              </Button>
+            ) : (
+              <Button type="button" size="sm" variant="outline" asChild>
+                <Label htmlFor="mentor-cover-upload" className="cursor-pointer">
+                  Enviar capa
+                </Label>
+              </Button>
+            )}
+            {coverUrl ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={uploadingPhoto !== null}
+                onClick={() => {
+                  setCoverUrl(null)
+                  setPhotoTouched((prev) => ({ ...prev, cover: true }))
+                }}
+              >
+                Remover
+              </Button>
+            ) : null}
+            <input
+              id="mentor-cover-upload"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              tabIndex={-1}
+              onChange={(event) => {
+                void handlePhotoFile('cover', event.target.files?.[0])
+                event.target.value = ''
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4">
+          <Avatar name={mentorName} src={avatarUrl} size="xl" />
+          <div className="flex flex-wrap items-center gap-2">
+            {uploadingPhoto !== null ? (
+              <Button type="button" size="sm" variant="outline" disabled>
+                {uploadingPhoto === 'avatar' ? 'Enviando...' : 'Enviar foto'}
+              </Button>
+            ) : (
+              <Button type="button" size="sm" variant="outline" asChild>
+                <Label htmlFor="mentor-avatar-upload" className="cursor-pointer">
+                  Enviar foto
+                </Label>
+              </Button>
+            )}
+            {avatarUrl ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={uploadingPhoto !== null}
+                onClick={() => {
+                  setAvatarUrl(null)
+                  setPhotoTouched((prev) => ({ ...prev, avatar: true }))
+                }}
+              >
+                Remover
+              </Button>
+            ) : null}
+            <input
+              id="mentor-avatar-upload"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              tabIndex={-1}
+              onChange={(event) => {
+                void handlePhotoFile('avatar', event.target.files?.[0])
+                event.target.value = ''
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col gap-2">
         <Label htmlFor="mentor-headline">Título profissional</Label>
         <Input
@@ -885,7 +1069,16 @@ interface CourseFormErrors {
   price?: string
 }
 
-function CoursesManager({ userId, onChanged }: { userId: string; onChanged: () => Promise<void> }) {
+function CoursesManager({
+  userId,
+  onChanged,
+  onCoursesChange,
+}: {
+  userId: string
+  onChanged: () => Promise<void>
+  /** Notifica o pai com a lista de cursos (usada pelo gerador de links) */
+  onCoursesChange?: (courses: CourseListItemDTO[]) => void
+}) {
   const [courses, setCourses] = useState<CourseListItemDTO[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -895,6 +1088,8 @@ function CoursesManager({ userId, onChanged }: { userId: string; onChanged: () =
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [lessonsCourse, setLessonsCourse] = useState<CourseListItemDTO | null>(null)
   const [lessonsOpen, setLessonsOpen] = useState(false)
+  const [coverUrl, setCoverUrl] = useState<string | null>(null)
+  const [uploadingCover, setUploadingCover] = useState(false)
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -907,8 +1102,9 @@ function CoursesManager({ userId, onChanged }: { userId: string; onChanged: () =
   const fetchCourses = useCallback(async (): Promise<CourseListItemDTO[]> => {
     const list = await api.listCourses({ mentorUserId: userId })
     setCourses(list)
+    onCoursesChange?.(list)
     return list
-  }, [userId])
+  }, [userId, onCoursesChange])
 
   useEffect(() => {
     let active = true
@@ -938,6 +1134,7 @@ function CoursesManager({ userId, onChanged }: { userId: string; onChanged: () =
     setCategory('')
     setLevel('INICIANTE')
     setPrice('0')
+    setCoverUrl(null)
     setFormErrors({})
     setDialogOpen(true)
   }
@@ -949,8 +1146,21 @@ function CoursesManager({ userId, onChanged }: { userId: string; onChanged: () =
     setCategory(course.category)
     setLevel(course.level)
     setPrice(String(course.price))
+    setCoverUrl(course.coverUrl ?? null)
     setFormErrors({})
     setDialogOpen(true)
+  }
+
+  const handleCourseCoverFile = async (file: File | null | undefined) => {
+    if (!file || uploadingCover) return
+    setUploadingCover(true)
+    const url = await uploadImageFile(file)
+    if (url) setCoverUrl(url)
+    setUploadingCover(false)
+  }
+
+  const copyCourseLink = (course: CourseListItemDTO) => {
+    copyToClipboard(buildCourseUrl(course.id), 'Link de impulsionamento copiado!')
   }
 
   const handleSubmit = async () => {
@@ -981,6 +1191,7 @@ function CoursesManager({ userId, onChanged }: { userId: string; onChanged: () =
           category,
           level,
           price: priceNum,
+          coverUrl,
         })
         toast.success('Curso atualizado!')
         setDialogOpen(false)
@@ -993,6 +1204,7 @@ function CoursesManager({ userId, onChanged }: { userId: string; onChanged: () =
           category,
           level,
           price: priceNum,
+          coverUrl,
         })
         toast.success('Curso criado! Agora adicione aulas.')
         setDialogOpen(false)
@@ -1081,6 +1293,13 @@ function CoursesManager({ userId, onChanged }: { userId: string; onChanged: () =
                 key={course.id}
                 className="flex items-start justify-between gap-3 rounded-lg border border-stone-200 bg-white p-4"
               >
+                {course.coverUrl ? (
+                  <img
+                    src={course.coverUrl}
+                    alt=""
+                    className="h-12 w-20 shrink-0 rounded-lg object-cover ring-1 ring-stone-200"
+                  />
+                ) : null}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline" className="border-stone-200 text-stone-600">
@@ -1105,6 +1324,15 @@ function CoursesManager({ userId, onChanged }: { userId: string; onChanged: () =
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-stone-600"
+                    aria-label={`Copiar link de impulsionamento de ${course.title}`}
+                    onClick={() => copyCourseLink(course)}
+                  >
+                    <Link2 className="size-4" aria-hidden /> Link
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -1254,6 +1482,54 @@ function CoursesManager({ userId, onChanged }: { userId: string; onChanged: () =
               ) : (
                 <p className="text-xs text-muted-foreground">Deixe 0 para tornar o curso gratuito.</p>
               )}
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label>Capa do curso</Label>
+              {coverUrl ? (
+                <div className="h-24 w-full overflow-hidden rounded-xl border border-stone-200 bg-stone-100">
+                  <img src={coverUrl} alt="Capa do curso" className="h-full w-full object-cover" />
+                </div>
+              ) : (
+                <div className="flex h-24 w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-stone-300 bg-stone-50">
+                  <ImagePlus className="size-5 text-stone-400" aria-hidden />
+                  <p className="text-xs text-stone-500">Capa 1280×720 recomendada</p>
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                {uploadingCover ? (
+                  <Button type="button" size="sm" variant="outline" disabled>
+                    Enviando...
+                  </Button>
+                ) : (
+                  <Button type="button" size="sm" variant="outline" asChild>
+                    <Label htmlFor="course-cover-upload" className="cursor-pointer">
+                      Enviar capa
+                    </Label>
+                  </Button>
+                )}
+                {coverUrl ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={uploadingCover}
+                    onClick={() => setCoverUrl(null)}
+                  >
+                    Remover
+                  </Button>
+                ) : null}
+                <input
+                  id="course-cover-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  tabIndex={-1}
+                  onChange={(event) => {
+                    void handleCourseCoverFile(event.target.files?.[0])
+                    event.target.value = ''
+                  }}
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -1569,6 +1845,574 @@ function LessonsManagerDialog({
   )
 }
 
+// ---------- Link público + rastreamento (tráfego pago) ----------
+
+const CHANNEL_LABELS: Record<string, string> = {
+  paid_social: 'Tráfego pago social',
+  paid_search: 'Google Ads',
+  social: 'Social orgânico',
+  email: 'E-mail',
+  referral: 'Referência',
+  direct: 'Direto',
+}
+
+function formatPercent(value: number): string {
+  return `${value.toFixed(1).replace('.', ',')}%`
+}
+
+function TrafficLinksSection({
+  profile,
+  courses,
+  onSaved,
+}: {
+  profile: MentorDetailDTO
+  courses: CourseListItemDTO[]
+  onSaved: () => Promise<void>
+}) {
+  const [gaId, setGaId] = useState(profile.tracking?.gaMeasurementId ?? '')
+  const [pixelId, setPixelId] = useState(profile.tracking?.metaPixelId ?? '')
+  const [idErrors, setIdErrors] = useState<{ ga?: string; pixel?: string }>({})
+  const [savingIds, setSavingIds] = useState(false)
+
+  const [genSource, setGenSource] = useState('')
+  const [genMedium, setGenMedium] = useState('')
+  const [genCampaign, setGenCampaign] = useState('')
+  const [genTarget, setGenTarget] = useState('lp')
+
+  const slug = profile.slug ?? null
+
+  // Se o curso selecionado deixar de existir, volta para a LP
+  useEffect(() => {
+    if (genTarget !== 'lp' && !courses.some((c) => c.id === genTarget)) {
+      setGenTarget('lp')
+    }
+  }, [courses, genTarget])
+
+  const lpUrl = slug ? buildMentorLpUrl(slug) : ''
+  const utm = {
+    source: genSource.trim() || undefined,
+    medium: genMedium.trim() || undefined,
+    campaign: genCampaign.trim() || undefined,
+  }
+  const genUrl =
+    genTarget === 'lp' ? (slug ? buildMentorLpUrl(slug, utm) : '') : buildCourseUrl(genTarget, utm)
+
+  const handleSaveIds = async () => {
+    const errs: typeof idErrors = {}
+    const gaTrim = gaId.trim()
+    const pixelTrim = pixelId.trim()
+    if (gaTrim && !/^G-[A-Z0-9-]+$/i.test(gaTrim)) {
+      errs.ga = 'O ID do GA4 deve começar com "G-" (ex.: G-XXXXXXXXXX).'
+    }
+    if (pixelTrim && !/^\d+$/.test(pixelTrim)) {
+      errs.pixel = 'O ID do Meta Pixel deve conter apenas números.'
+    }
+    setIdErrors(errs)
+    if (Object.values(errs).some(Boolean)) return
+
+    setSavingIds(true)
+    try {
+      await api.saveMentorProfile({
+        userId: profile.userId,
+        headline: profile.headline,
+        description: profile.description,
+        categories: profile.categories,
+        hourlyRate: profile.hourlyRate,
+        experienceYears: profile.experienceYears,
+        languages: profile.languages,
+        socials: profile.socials,
+        gaMeasurementId: gaTrim || null,
+        metaPixelId: pixelTrim || null,
+      })
+      toast.success('IDs de rastreamento salvos! Suas campanhas já recebem as conversões.')
+      await onSaved()
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Não foi possível salvar os IDs de rastreamento.'
+      )
+    } finally {
+      setSavingIds(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+            <TrendingUp className="size-4" aria-hidden />
+          </span>
+          Link público e tráfego pago
+        </CardTitle>
+        <CardDescription>
+          Divulgue sua página de vendas, conecte seus pixels e crie links rastreados por campanha.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-5">
+        {/* 1. Sua página de vendas */}
+        <section className="flex flex-col gap-2" aria-labelledby="lp-sales-url-title">
+          <div>
+            <p id="lp-sales-url-title" className="text-sm font-semibold text-stone-900">
+              Sua página de vendas
+            </p>
+            <p className="mt-0.5 text-xs text-stone-500">
+              Use este link em anúncios e bio — todos os acessos ficam rastreados com UTM.
+            </p>
+          </div>
+          {lpUrl ? (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Input
+                readOnly
+                value={lpUrl}
+                className="font-mono text-xs sm:flex-1"
+                aria-label="URL pública da sua página de vendas"
+                onFocus={(event) => event.currentTarget.select()}
+              />
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={() => copyToClipboard(lpUrl)}>
+                  <Copy className="size-4" aria-hidden /> Copiar
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => window.open(lpUrl, '_blank', 'noopener,noreferrer')}
+                >
+                  <ExternalLink className="size-4" aria-hidden /> Abrir
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className="rounded-lg border border-dashed border-stone-300 px-3 py-2.5 text-xs text-stone-500">
+              Salve seu perfil para gerar o seu link público.
+            </p>
+          )}
+        </section>
+
+        <Separator />
+
+        {/* 2. Google Analytics 4 & Meta Pixel */}
+        <section className="flex flex-col gap-3" aria-labelledby="tracking-ids-title">
+          <div>
+            <p id="tracking-ids-title" className="text-sm font-semibold text-stone-900">
+              Google Analytics 4 &amp; Meta Pixel
+            </p>
+            <p className="mt-0.5 text-xs text-stone-500">
+              Cole seus IDs para que suas campanhas recebam as conversões (PageView, ViewContent,
+              InitiateCheckout, Purchase) disparadas pela plataforma.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="tracking-ga-id">Google Analytics 4 (Measurement ID)</Label>
+              <Input
+                id="tracking-ga-id"
+                value={gaId}
+                onChange={(event) => {
+                  setGaId(event.target.value)
+                  setIdErrors((prev) => ({ ...prev, ga: undefined }))
+                }}
+                placeholder="G-XXXXXXXXXX"
+                autoComplete="off"
+                className="font-mono"
+                aria-invalid={Boolean(idErrors.ga)}
+              />
+              {idErrors.ga ? <p className="text-xs text-rose-600">{idErrors.ga}</p> : null}
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="tracking-pixel-id">Meta Pixel ID</Label>
+              <Input
+                id="tracking-pixel-id"
+                value={pixelId}
+                onChange={(event) => {
+                  setPixelId(event.target.value)
+                  setIdErrors((prev) => ({ ...prev, pixel: undefined }))
+                }}
+                placeholder="1234567890123456"
+                autoComplete="off"
+                className="font-mono"
+                inputMode="numeric"
+                aria-invalid={Boolean(idErrors.pixel)}
+              />
+              {idErrors.pixel ? <p className="text-xs text-rose-600">{idErrors.pixel}</p> : null}
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              onClick={() => void handleSaveIds()}
+              disabled={savingIds}
+              className="min-w-44"
+            >
+              <Save className="size-4" aria-hidden />{' '}
+              {savingIds ? 'Salvando...' : 'Salvar IDs de rastreamento'}
+            </Button>
+          </div>
+        </section>
+
+        <Separator />
+
+        {/* 3. Gerador de link de impulsionamento */}
+        <section className="flex flex-col gap-3" aria-labelledby="boost-link-title">
+          <div>
+            <p
+              id="boost-link-title"
+              className="flex items-center gap-1.5 text-sm font-semibold text-stone-900"
+            >
+              <Megaphone className="size-4 text-emerald-700" aria-hidden /> Gerador de link de
+              impulsionamento
+            </p>
+            <p className="mt-0.5 text-xs text-stone-500">
+              Monte um link com UTM para cada campanha e acompanhe o retorno no painel de desempenho.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="utm-source" className="text-xs text-stone-500">
+                utm_source
+              </Label>
+              <Input
+                id="utm-source"
+                value={genSource}
+                onChange={(event) => setGenSource(event.target.value)}
+                placeholder="instagram"
+                autoComplete="off"
+                className="font-mono text-sm"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="utm-medium" className="text-xs text-stone-500">
+                utm_medium
+              </Label>
+              <Input
+                id="utm-medium"
+                value={genMedium}
+                onChange={(event) => setGenMedium(event.target.value)}
+                placeholder="cpc ou bio"
+                autoComplete="off"
+                className="font-mono text-sm"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="utm-campaign" className="text-xs text-stone-500">
+                utm_campaign
+              </Label>
+              <Input
+                id="utm-campaign"
+                value={genCampaign}
+                onChange={(event) => setGenCampaign(event.target.value)}
+                placeholder="boost-jan-2025"
+                autoComplete="off"
+                className="font-mono text-sm"
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="boost-target" className="text-xs text-stone-500">
+              Destino do link
+            </Label>
+            <Select value={genTarget} onValueChange={setGenTarget}>
+              <SelectTrigger id="boost-target" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="lp">Página completa (LP)</SelectItem>
+                {courses.map((course) => (
+                  <SelectItem key={course.id} value={course.id}>
+                    {course.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Input
+              readOnly
+              value={genUrl}
+              className="font-mono text-xs sm:flex-1"
+              aria-label="Link de impulsionamento gerado"
+              onFocus={(event) => event.currentTarget.select()}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!genUrl}
+              onClick={() => copyToClipboard(genUrl)}
+            >
+              <Copy className="size-4" aria-hidden /> Copiar
+            </Button>
+          </div>
+        </section>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ---------- Painel de desempenho de tráfego ----------
+
+function TrafficKpiTile({
+  icon: Icon,
+  label,
+  value,
+  accent = false,
+}: {
+  icon: LucideIcon
+  label: string
+  value: string
+  accent?: boolean
+}) {
+  return (
+    <div className="rounded-xl border border-stone-200 bg-white p-3.5">
+      <div
+        className={cn(
+          'flex size-8 items-center justify-center rounded-lg',
+          accent
+            ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
+            : 'bg-stone-100 text-stone-600'
+        )}
+      >
+        <Icon className="size-4" aria-hidden />
+      </div>
+      <p className="mt-2 truncate text-lg font-bold tracking-tight text-stone-900">{value}</p>
+      <p className="text-xs text-stone-500">{label}</p>
+    </div>
+  )
+}
+
+function TrafficListBox({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-2 rounded-xl border border-stone-200 bg-white p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{title}</p>
+      <div className="max-h-64 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function TrafficPanel({ userId }: { userId: string }) {
+  const [stats, setStats] = useState<TrackingStatsDTO | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setFailed(false)
+    try {
+      setStats(await api.trackingStats(userId))
+    } catch {
+      setFailed(true) // falha silenciosa: o painel oferece retry manual
+    } finally {
+      setLoading(false)
+    }
+  }, [userId])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const totals = stats?.totals ?? null
+  const hasTraffic = totals
+    ? totals.pageviews > 0 || totals.checkouts > 0 || totals.purchases > 0
+    : false
+  const hasBreakdown = stats
+    ? stats.byChannel.length > 0 || stats.bySource.length > 0 || stats.byCourse.length > 0
+    : false
+  const maxDailyPageviews = stats ? Math.max(1, ...stats.daily.map((d) => d.pageviews)) : 1
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+            <BarChart3 className="size-4" aria-hidden />
+          </span>
+          Desempenho de tráfego
+        </CardTitle>
+        <CardDescription>
+          Visitas, vendas e receita atribuídas aos seus links rastreados nos últimos 14 dias.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-5">
+        {loading ? (
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-24 rounded-xl" />
+              ))}
+            </div>
+            <Skeleton className="h-24 rounded-xl" />
+          </div>
+        ) : failed || !totals || !stats ? (
+          <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-stone-300 py-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              Não foi possível carregar as estatísticas agora.
+            </p>
+            <Button type="button" size="sm" variant="outline" onClick={() => void load()}>
+              <RefreshCw className="size-4" aria-hidden /> Tentar novamente
+            </Button>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <TrafficKpiTile
+                icon={Eye}
+                label="Visitantes"
+                value={totals.pageviews.toLocaleString('pt-BR')}
+              />
+              <TrafficKpiTile
+                icon={ShoppingCart}
+                label="Checkouts iniciados"
+                value={totals.checkouts.toLocaleString('pt-BR')}
+              />
+              <TrafficKpiTile
+                icon={BadgeCheck}
+                label="Vendas"
+                value={totals.purchases.toLocaleString('pt-BR')}
+                accent
+              />
+              <TrafficKpiTile icon={Banknote} label="Receita" value={currencyBRL(totals.revenue)} accent />
+            </div>
+            <p className="text-xs text-stone-500">
+              Taxa de conversão:{' '}
+              <span className="font-semibold text-stone-900">{formatPercent(totals.conversionRate)}</span>
+            </p>
+
+            {!hasTraffic && !hasBreakdown ? (
+              <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-stone-300 py-8 text-center">
+                <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 text-stone-400 ring-1 ring-stone-200">
+                  <BarChart3 className="size-6" aria-hidden />
+                </div>
+                <h3 className="mt-1 text-base font-semibold">Sem dados de tráfego ainda</h3>
+                <p className="max-w-sm text-sm text-muted-foreground">
+                  Divulgue seu link público (com UTM) — as visitas, vendas e a receita aparecem aqui
+                  automaticamente.
+                </p>
+              </div>
+            ) : (
+              <>
+                {totals.pageviews > 0 && stats.daily.length > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    <div
+                      className="flex h-20 items-end gap-1"
+                      role="img"
+                      aria-label="Série diária de visitas e vendas nos últimos 14 dias"
+                    >
+                      {stats.daily.map((day) => (
+                        <div
+                          key={day.date}
+                          title={`${day.pageviews} ${day.pageviews === 1 ? 'visita' : 'visitas'} · ${day.purchases} ${day.purchases === 1 ? 'venda' : 'vendas'}`}
+                          className={cn(
+                            'flex-1 rounded-t-sm',
+                            day.purchases > 0 ? 'bg-emerald-600' : 'bg-emerald-200'
+                          )}
+                          style={{
+                            height: `${Math.max(6, Math.round((day.pageviews / maxDailyPageviews) * 100))}%`,
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-4 text-xs text-stone-500">
+                      <span className="flex items-center gap-1.5">
+                        <span className="size-2.5 rounded-sm bg-emerald-200" aria-hidden /> Visitas
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="size-2.5 rounded-sm bg-emerald-600" aria-hidden /> Dia com venda
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                  <TrafficListBox title="Por canal">
+                    {stats.byChannel.length === 0 ? (
+                      <p className="py-2 text-xs text-stone-400">Sem dados ainda.</p>
+                    ) : (
+                      <div className="divide-y divide-stone-100">
+                        {stats.byChannel.map((channel) => (
+                          <div key={channel.channel} className="flex items-start justify-between gap-3 py-2.5">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-stone-900">
+                                {CHANNEL_LABELS[channel.channel] ?? channel.channel}
+                              </p>
+                              <p className="text-xs text-stone-500">
+                                {channel.pageviews.toLocaleString('pt-BR')}{' '}
+                                {channel.pageviews === 1 ? 'visita' : 'visitas'}
+                              </p>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <p className="text-sm font-semibold text-emerald-700">
+                                {channel.purchases} {channel.purchases === 1 ? 'venda' : 'vendas'}
+                              </p>
+                              <p className="text-xs text-stone-500">{currencyBRL(channel.revenue)}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </TrafficListBox>
+
+                  <TrafficListBox title="Principais origens">
+                    {stats.bySource.length === 0 ? (
+                      <p className="py-2 text-xs text-stone-400">Sem dados ainda.</p>
+                    ) : (
+                      <div className="divide-y divide-stone-100">
+                        {stats.bySource.map((source) => (
+                          <div
+                            key={source.source || 'direct'}
+                            className="flex items-start justify-between gap-3 py-2.5"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate font-mono text-sm font-medium text-stone-900">
+                                {source.source || 'direto'}
+                              </p>
+                              <p className="text-xs text-stone-500">
+                                {source.pageviews.toLocaleString('pt-BR')}{' '}
+                                {source.pageviews === 1 ? 'visita' : 'visitas'}
+                              </p>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <p className="text-sm font-semibold text-emerald-700">
+                                {source.purchases} {source.purchases === 1 ? 'venda' : 'vendas'}
+                              </p>
+                              <p className="text-xs text-stone-500">{currencyBRL(source.revenue)}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </TrafficListBox>
+
+                  <TrafficListBox title="Cursos que mais vendem">
+                    {stats.byCourse.length === 0 ? (
+                      <p className="py-2 text-xs text-stone-400">Sem vendas de cursos ainda.</p>
+                    ) : (
+                      <div className="divide-y divide-stone-100">
+                        {stats.byCourse.map((course) => (
+                          <div key={course.courseId} className="flex items-start justify-between gap-3 py-2.5">
+                            <p className="min-w-0 truncate text-sm font-medium text-stone-900">
+                              {course.title}
+                            </p>
+                            <div className="shrink-0 text-right">
+                              <p className="text-sm font-semibold text-emerald-700">
+                                {course.purchases} {course.purchases === 1 ? 'venda' : 'vendas'}
+                              </p>
+                              <p className="text-xs text-stone-500">{currencyBRL(course.revenue)}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </TrafficListBox>
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 // ---------- Componentes de apresentação ----------
 
 function BenefitCard({ icon: Icon, title, text }: { icon: LucideIcon; title: string; text: string }) {
@@ -1587,10 +2431,16 @@ function BenefitCard({ icon: Icon, title, text }: { icon: LucideIcon; title: str
 
 export default function OnboardingView() {
   const user = useAppStore((state) => state.user)
+  const setUser = useAppStore((state) => state.setUser)
   const userId = user?.id ?? null
 
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<MentorDetailDTO | null>(null)
+  const [mentorCourses, setMentorCourses] = useState<CourseListItemDTO[]>([])
+
+  const handleCoursesChange = useCallback((list: CourseListItemDTO[]) => {
+    setMentorCourses(list)
+  }, [])
 
   const reload = useCallback(async () => {
     if (!userId) return
@@ -1614,20 +2464,28 @@ export default function OnboardingView() {
     async (values: ProfileFormValues) => {
       if (!user) return
       await api.saveMentorProfile({ userId: user.id, ...values })
+      // Mantém a navbar em sincronia quando a foto foi alterada nesta submissão
+      if (values.avatarUrl !== undefined) {
+        setUser({ ...user, avatarUrl: values.avatarUrl ?? null })
+      }
       toast.success('Perfil publicado! Você já aparece no marketplace.')
       await reload()
     },
-    [user, reload]
+    [user, reload, setUser]
   )
 
   const handleUpdateProfile = useCallback(
     async (values: ProfileFormValues) => {
       if (!user) return
       await api.saveMentorProfile({ userId: user.id, ...values })
+      // Mantém a navbar em sincronia quando a foto foi alterada nesta submissão
+      if (values.avatarUrl !== undefined) {
+        setUser({ ...user, avatarUrl: values.avatarUrl ?? null })
+      }
       toast.success('Alterações salvas com sucesso!')
       await reload()
     },
-    [user, reload]
+    [user, reload, setUser]
   )
 
   const handleSaveAvailability = useCallback(
@@ -1725,21 +2583,26 @@ export default function OnboardingView() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <MentorProfileForm submitLabel="Publicar meu perfil" onSubmit={handleCreateProfile} />
+            <MentorProfileForm
+              submitLabel="Publicar meu perfil"
+              onSubmit={handleCreateProfile}
+              mentorName={user.name}
+            />
           </CardContent>
         </Card>
       </div>
     )
   }
 
-  // ---------- Com perfil: perfil público + disponibilidade + mural ----------
+  // ---------- Com perfil: perfil público + link/tráfego + disponibilidade + mural + cursos ----------
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:px-6">
       <header>
         <h1 className="text-2xl font-bold tracking-tight">Painel do mentor</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Gerencie seu perfil público, sua agenda semanal, os conteúdos do mural e seus cursos.
+          Gerencie seu perfil público, seu link de vendas, a agenda semanal, os conteúdos do mural, os
+          cursos e o desempenho de tráfego.
         </p>
       </header>
 
@@ -1788,14 +2651,23 @@ export default function OnboardingView() {
               experienceYears: profile.experienceYears,
               languages: profile.languages,
               socials: profile.socials ?? {},
+              avatarUrl: profile.avatarUrl ?? null,
+              coverUrl: profile.coverUrl ?? null,
             }}
+            mentorName={profile.name}
             submitLabel="Salvar alterações"
             onSubmit={handleUpdateProfile}
           />
         </CardContent>
       </Card>
 
-      {/* 2. Disponibilidade semanal */}
+      {/* 2. Link público e tráfego pago */}
+      <TrafficLinksSection profile={profile} courses={mentorCourses} onSaved={reload} />
+
+      {/* 3. Desempenho de tráfego */}
+      <TrafficPanel userId={user.id} />
+
+      {/* 4. Disponibilidade semanal */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -1813,11 +2685,11 @@ export default function OnboardingView() {
         </CardContent>
       </Card>
 
-      {/* 3. Mural de conteúdos */}
+      {/* 5. Mural de conteúdos */}
       <ContentsManager contents={profile.contents} userId={user.id} onChanged={reload} />
 
-      {/* 4. Cursos */}
-      <CoursesManager userId={user.id} onChanged={reload} />
+      {/* 6. Cursos */}
+      <CoursesManager userId={user.id} onChanged={reload} onCoursesChange={handleCoursesChange} />
     </div>
   )
 }

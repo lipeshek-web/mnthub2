@@ -765,13 +765,22 @@ function EnrolledCourseCard({
   return (
     <Card className="overflow-hidden p-0">
       <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
-        <span
-          aria-hidden
-          style={avatarGradient(course.title)}
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white"
-        >
-          <Library className="size-6" />
-        </span>
+        {course.coverUrl ? (
+          <img
+            src={course.coverUrl}
+            alt=""
+            aria-hidden
+            className="h-14 w-14 shrink-0 rounded-2xl object-cover"
+          />
+        ) : (
+          <span
+            aria-hidden
+            style={avatarGradient(course.title)}
+            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white"
+          >
+            <Library className="size-6" />
+          </span>
+        )}
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">

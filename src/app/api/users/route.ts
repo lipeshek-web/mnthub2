@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const users = await db.user.findMany({
       orderBy: { name: 'asc' },
-      select: { id: true, name: true, email: true, bio: true },
+      select: { id: true, name: true, email: true, bio: true, avatarUrl: true },
     })
     return NextResponse.json(users)
   } catch (err) {
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     }
     const user = await db.user.create({
       data: { name, email, bio: body?.bio ? String(body.bio) : null },
-      select: { id: true, name: true, email: true, bio: true },
+      select: { id: true, name: true, email: true, bio: true, avatarUrl: true },
     })
     return NextResponse.json(user, { status: 201 })
   } catch (err) {

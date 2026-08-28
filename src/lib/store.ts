@@ -13,6 +13,8 @@ export type AppView =
   | { name: 'meeting'; bookingId: string }
   | { name: 'onboarding' }
   | { name: 'for-mentors' }
+  | { name: 'mentor-lp'; slug: string } // LP pública rastreável (tráfego pago)
+  | { name: 'checkout'; courseId: string } // checkout de curso pago
 
 /** Aba ativa do Explorar: mentores ou cursos */
 export type ExploreTab = 'mentors' | 'courses'

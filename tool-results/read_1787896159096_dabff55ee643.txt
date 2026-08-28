@@ -1,0 +1,922 @@
+     1→'use client'
+     2→
+     3→import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+     4→import { AnimatePresence, motion } from 'framer-motion'
+     5→import {
+     6→  ArrowRight,
+     7→  BadgeCheck,
+     8→  BookOpen,
+     9→  Clock,
+    10→  Globe2,
+    11→  GraduationCap,
+    12→  Library,
+    13→  Search,
+    14→  SearchX,
+    15→  Star,
+    16→  Users,
+    17→  Video,
+    18→  X,
+    19→} from 'lucide-react'
+    20→import { Button } from '@/components/ui/button'
+    21→import { Input } from '@/components/ui/input'
+    22→import {
+    23→  Select,
+    24→  SelectContent,
+    25→  SelectItem,
+    26→  SelectTrigger,
+    27→  SelectValue,
+    28→} from '@/components/ui/select'
+    29→import { Skeleton } from '@/components/ui/skeleton'
+    30→import { Avatar, Stars } from '@/components/platform/avatar'
+    31→import { api } from '@/lib/api'
+    32→import {
+    33→  CATEGORIES,
+    34→  LEVEL_LABELS,
+    35→  avatarGradient,
+    36→  currencyBRL,
+    37→  firstName,
+    38→  formatTotalDuration,
+    39→} from '@/lib/helpers'
+    40→import { useAppStore, type ExploreTab } from '@/lib/store'
+    41→import type { CourseListItemDTO, MentorListItemDTO } from '@/lib/types'
+    42→import { cn } from '@/lib/utils'
+    43→
+    44→const SPOTLIGHT_INTERVAL_MS = 6000
+    45→
+    46→export function MarketplaceView() {
+    47→  const navigate = useAppStore((s) => s.navigate)
+    48→
+    49→  // Base completa (sem filtros): alimenta destaque rotativo, contagens e stats
+    50→  const [baseMentors, setBaseMentors] = useState<MentorListItemDTO[]>([])
+    51→  // Lista filtrada exibida no grid
+    52→  const [mentors, setMentors] = useState<MentorListItemDTO[]>([])
+    53→  const [loading, setLoading] = useState(true)
+    54→  const [search, setSearch] = useState('')
+    55→  const [inputValue, setInputValue] = useState('')
+    56→  const [category, setCategory] = useState('')
+    57→  const [sort, setSort] = useState('relevance')
+    58→  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    59→  const searchRef = useRef<HTMLInputElement>(null)
+    60→
+    61→  // Aba do Explorar (mentores/cursos): valor inicial lido da store uma única vez
+    62→  const [tab, setTab] = useState<ExploreTab>(() => useAppStore.getState().exploreTab)
+    63→  // Cursos: base completa (contagens/destaque/stats) e lista filtrada
+    64→  const [baseCourses, setBaseCourses] = useState<CourseListItemDTO[]>([])
+    65→  const [courses, setCourses] = useState<CourseListItemDTO[]>([])
+    66→  const [coursesLoading, setCoursesLoading] = useState(false)
+    67→  const [courseSort, setCourseSort] = useState('relevance')
+    68→
+    69→  // Consome termo vindo de outra tela (hero da home) uma única vez
+    70→  useEffect(() => {
+    71→    const q = useAppStore.getState().exploreQuery
+    72→    if (q) {
+    73→      setInputValue(q)
+    74→      setSearch(q)
+    75→      useAppStore.setState({ exploreQuery: '' })
+    76→    }
+    77→  }, [])
+    78→
+    79→  // Consome a aba pedida por outra tela ("Ver todos os cursos" da home) uma única vez.
+    80→  // O valor inicial já foi lido no useState acima; aqui apenas resetamos a store.
+    81→  useEffect(() => {
+    82→    useAppStore.setState({ exploreTab: 'mentors' })
+    83→  }, [])
+    84→
+    85→  const load = useCallback(async () => {
+    86→    setLoading(true)
+    87→    try {
+    88→      const data = await api.listMentors({ search, category, sort })
+    89→      setMentors(data)
+    90→    } catch {
+    91→      setMentors([])
+    92→    } finally {
+    93→      setLoading(false)
+    94→    }
+    95→  }, [search, category, sort])
+    96→
+    97→  useEffect(() => {
+    98→    load()
+    99→  }, [load])
+   100→
+   101→  useEffect(() => {
+   102→    api
+   103→      .listMentors({})
+   104→      .then(setBaseMentors)
+   105→      .catch(() => {})
+   106→  }, [])
+   107→
+   108→  // Base de cursos: alimenta destaque, contagens e stats (busca única)
+   109→  useEffect(() => {
+   110→    api
+   111→      .listCourses({})
+   112→      .then(setBaseCourses)
+   113→      .catch(() => {})
+   114→  }, [])
+   115→
+   116→  // Lista filtrada de cursos — só carrega enquanto a aba Cursos está ativa
+   117→  const loadCourses = useCallback(async () => {
+   118→    setCoursesLoading(true)
+   119→    try {
+   120→      const data = await api.listCourses({ search, category, sort: courseSort })
+   121→      setCourses(data)
+   122→    } catch {
+   123→      setCourses([])
+   124→    } finally {
+   125→      setCoursesLoading(false)
+   126→    }
+   127→  }, [search, category, courseSort])
+   128→
+   129→  useEffect(() => {
+   130→    if (tab === 'courses') void loadCourses()
+   131→  }, [tab, loadCourses])
+   132→
+   133→  // Atalho "/" foca a busca (sensação de app nativo)
+   134→  useEffect(() => {
+   135→    const onKey = (e: KeyboardEvent) => {
+   136→      const target = e.target as HTMLElement | null
+   137→      const typing =
+   138→        target instanceof HTMLInputElement ||
+   139→        target instanceof HTMLTextAreaElement ||
+   140→        target?.isContentEditable
+   141→      if (e.key === '/' && !typing) {
+   142→        e.preventDefault()
+   143→        searchRef.current?.focus()
+   144→      }
+   145→    }
+   146→    window.addEventListener('keydown', onKey)
+   147→    return () => window.removeEventListener('keydown', onKey)
+   148→  }, [])
+   149→
+   150→  const onSearchChange = (value: string) => {
+   151→    setInputValue(value)
+   152→    if (debounceRef.current) clearTimeout(debounceRef.current)
+   153→    debounceRef.current = setTimeout(() => setSearch(value), 300)
+   154→  }
+   155→
+   156→  const clearSearch = () => {
+   157→    setInputValue('')
+   158→    setSearch('')
+   159→    if (debounceRef.current) clearTimeout(debounceRef.current)
+   160→    searchRef.current?.focus()
+   161→  }
+   162→
+   163→  // ---------- Derivados da base ----------
+   164→
+   165→  const spotlightPool = useMemo(() => {
+   166→    const rated = baseMentors
+   167→      .filter((m) => m.rating > 0)
+   168→      .sort((a, b) => b.rating - a.rating || b.reviewCount - a.reviewCount)
+   169→    if (rated.length > 0) return rated.slice(0, 4)
+   170→    return [...baseMentors].sort((a, b) => b.totalSessions - a.totalSessions).slice(0, 3)
+   171→  }, [baseMentors])
+   172→
+   173→  const [spotIdx, setSpotIdx] = useState(0)
+   174→  useEffect(() => {
+   175→    if (spotlightPool.length < 2) return
+   176→    const t = setInterval(
+   177→      () => setSpotIdx((i) => (i + 1) % spotlightPool.length),
+   178→      SPOTLIGHT_INTERVAL_MS
+   179→    )
+   180→    return () => clearInterval(t)
+   181→  }, [spotlightPool.length])
+   182→
+   183→  const spot = spotlightPool.length > 0 ? spotlightPool[spotIdx % spotlightPool.length] : null
+   184→
+   185→  const stats = useMemo(() => {
+   186→    const rated = baseMentors.filter((m) => m.rating > 0)
+   187→    return {
+   188→      mentors: baseMentors.length,
+   189→      sessions: baseMentors.reduce((acc, m) => acc + m.totalSessions, 0),
+   190→      avg: rated.length > 0 ? rated.reduce((acc, m) => acc + m.rating, 0) / rated.length : null,
+   191→    }
+   192→  }, [baseMentors])
+   193→
+   194→  const categoryCounts = useMemo(() => {
+   195→    const counts = new Map<string, number>()
+   196→    for (const m of baseMentors) {
+   197→      for (const c of m.categories) counts.set(c, (counts.get(c) ?? 0) + 1)
+   198→    }
+   199→    return counts
+   200→  }, [baseMentors])
+   201→
+   202→  const baseReady = baseMentors.length > 0
+   203→
+   204→  // ---------- Derivados dos cursos ----------
+   205→
+   206→  const courseCounts = useMemo(() => {
+   207→    const counts = new Map<string, number>()
+   208→    for (const c of baseCourses) counts.set(c.category, (counts.get(c.category) ?? 0) + 1)
+   209→    return counts
+   210→  }, [baseCourses])
+   211→
+   212→  const baseCoursesReady = baseCourses.length > 0
+   213→
+   214→  const courseStats = useMemo(
+   215→    () => ({
+   216→      published: baseCourses.length,
+   217→      students: baseCourses.reduce((acc, c) => acc + c.studentCount, 0),
+   218→      lessons: baseCourses.reduce((acc, c) => acc + c.lessonCount, 0),
+   219→    }),
+   220→    [baseCourses]
+   221→  )
+   222→
+   223→  const topCourse = useMemo(() => {
+   224→    if (baseCourses.length === 0) return null
+   225→    return [...baseCourses].sort(
+   226→      (a, b) => b.studentCount - a.studentCount || b.mentor.rating - a.mentor.rating
+   227→    )[0]
+   228→  }, [baseCourses])
+   229→
+   230→  return (
+   231→    <div>
+   232→      {/* ---------- BARRA SUPERIOR: título, ordenação, busca e categorias ---------- */}
+   233→      <section className="border-b border-stone-200/70 bg-white">
+   234→        <div className="mx-auto max-w-6xl px-4 py-7 sm:py-9">
+   235→          {/* Controle segmentado: Mentores | Cursos */}
+   236→          <div
+   237→            role="tablist"
+   238→            aria-label="Explorar mentores ou cursos"
+   239→            className="inline-flex rounded-full bg-stone-100 p-1"
+   240→          >
+   241→            <button
+   242→              role="tab"
+   243→              aria-selected={tab === 'mentors'}
+   244→              onClick={() => setTab('mentors')}
+   245→              className={cn(
+   246→                'inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-all',
+   247→                tab === 'mentors'
+   248→                  ? 'bg-white text-stone-900 shadow-sm'
+   249→                  : 'text-stone-500 hover:text-stone-700'
+   250→              )}
+   251→            >
+   252→              <Users aria-hidden className="h-4 w-4" /> Mentores
+   253→            </button>
+   254→            <button
+   255→              role="tab"
+   256→              aria-selected={tab === 'courses'}
+   257→              onClick={() => setTab('courses')}
+   258→              className={cn(
+   259→                'inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-all',
+   260→                tab === 'courses'
+   261→                  ? 'bg-white text-stone-900 shadow-sm'
+   262→                  : 'text-stone-500 hover:text-stone-700'
+   263→              )}
+   264→            >
+   265→              <BookOpen aria-hidden className="h-4 w-4" /> Cursos
+   266→            </button>
+   267→          </div>
+   268→
+   269→          <div className="mt-5 flex flex-wrap items-end justify-between gap-3">
+   270→            <div>
+   271→              {tab === 'mentors' ? (
+   272→                <>
+   273→                  <h1 className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
+   274→                    Explorar mentores
+   275→                  </h1>
+   276→                  <p className="mt-1 text-sm text-stone-500">
+   277→                    {loading
+   278→                      ? 'Carregando especialistas...'
+   279→                      : `${mentors.length} ${mentors.length === 1 ? 'especialista' : 'especialistas'} pronto${
+   280→                          mentors.length === 1 ? '' : 's'
+   281→                        } para mentoria 1:1`}
+   282→                  </p>
+   283→                </>
+   284→              ) : (
+   285→                <>
+   286→                  <h1 className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
+   287→                    Explorar cursos
+   288→                  </h1>
+   289→                  <p className="mt-1 text-sm text-stone-500" aria-live="polite">
+   290→                    {coursesLoading
+   291→                      ? 'Carregando cursos...'
+   292→                      : `${courses.length} ${courses.length === 1 ? 'curso publicado' : 'cursos publicados'}`}
+   293→                  </p>
+   294→                </>
+   295→              )}
+   296→            </div>
+   297→            <div className="w-44">
+   298→              <Select
+   299→                value={tab === 'mentors' ? sort : courseSort}
+   300→                onValueChange={tab === 'mentors' ? setSort : setCourseSort}
+   301→              >
+   302→                <SelectTrigger
+   303→                  aria-label={tab === 'mentors' ? 'Ordenar mentores' : 'Ordenar cursos'}
+   304→                  className="bg-white"
+   305→                >
+   306→                  <SelectValue placeholder="Ordenar" />
+   307→                </SelectTrigger>
+   308→                <SelectContent>
+   309→                  {tab === 'mentors' ? (
+   310→                    <>
+   311→                      <SelectItem value="relevance">Relevância</SelectItem>
+   312→                      <SelectItem value="rating">Melhor avaliados</SelectItem>
+   313→                      <SelectItem value="price_asc">Menor preço</SelectItem>
+   314→                      <SelectItem value="price_desc">Maior preço</SelectItem>
+   315→                      <SelectItem value="experience">Mais experiência</SelectItem>
+   316→                    </>
+   317→                  ) : (
+   318→                    <>
+   319→                      <SelectItem value="relevance">Relevância</SelectItem>
+   320→                      <SelectItem value="popular">Populares</SelectItem>
+   321→                      <SelectItem value="new">Novidades</SelectItem>
+   322→                      <SelectItem value="price_asc">Menor preço</SelectItem>
+   323→                      <SelectItem value="price_desc">Maior preço</SelectItem>
+   324→                    </>
+   325→                  )}
+   326→                </SelectContent>
+   327→              </Select>
+   328→            </div>
+   329→          </div>
+   330→
+   331→          <div className="relative mt-5 max-w-2xl">
+   332→            <Search
+   333→              aria-hidden
+   334→              className="absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-stone-400"
+   335→            />
+   336→            <Input
+   337→              ref={searchRef}
+   338→              value={inputValue}
+   339→              onChange={(e) => onSearchChange(e.target.value)}
+   340→              placeholder={
+   341→                tab === 'mentors'
+   342→                  ? 'Busque por nome, especialidade ou área...'
+   343→                  : 'Busque por curso, tema ou mentor...'
+   344→              }
+   345→              aria-label={tab === 'mentors' ? 'Buscar mentores' : 'Buscar cursos'}
+   346→              className="h-12 rounded-2xl border-stone-200 bg-white pl-11 pr-16 text-stone-900 shadow-none placeholder:text-stone-400 focus-visible:border-emerald-400 focus-visible:ring-emerald-200"
+   347→            />
+   348→            {inputValue ? (
+   349→              <button
+   350→                onClick={clearSearch}
+   351→                aria-label="Limpar busca"
+   352→                className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700"
+   353→              >
+   354→                <X className="h-4 w-4" />
+   355→              </button>
+   356→            ) : (
+   357→              <kbd className="pointer-events-none absolute right-3.5 top-1/2 hidden h-6 -translate-y-1/2 items-center rounded-md border border-stone-200 bg-stone-50 px-1.5 font-mono text-[11px] font-medium text-stone-400 sm:inline-flex">
+   358→                /
+   359→              </kbd>
+   360→            )}
+   361→          </div>
+   362→
+   363→          <div
+   364→            aria-label="Filtrar por categoria"
+   365→            className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+   366→          >
+   367→            <button
+   368→              onClick={() => setCategory('')}
+   369→              className={cn(
+   370→                'shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
+   371→                category === ''
+   372→                  ? 'border-emerald-700 bg-emerald-700 text-white'
+   373→                  : 'border-stone-200 bg-white text-stone-600 hover:border-emerald-300 hover:text-emerald-700'
+   374→              )}
+   375→            >
+   376→              Todas as áreas
+   377→            </button>
+   378→            {CATEGORIES.map((c) => {
+   379→              const count =
+   380→                tab === 'mentors'
+   381→                  ? (categoryCounts.get(c) ?? 0)
+   382→                  : (courseCounts.get(c) ?? 0)
+   383→              return (
+   384→                <button
+   385→                  key={c}
+   386→                  onClick={() => setCategory(category === c ? '' : c)}
+   387→                  className={cn(
+   388→                    'shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
+   389→                    category === c
+   390→                      ? 'border-emerald-700 bg-emerald-700 text-white'
+   391→                      : 'border-stone-200 bg-white text-stone-600 hover:border-emerald-300 hover:text-emerald-700'
+   392→                  )}
+   393→                >
+   394→                  {c}
+   395→                  {(tab === 'mentors' ? baseReady : baseCoursesReady) && (
+   396→                    <span className={cn('ml-1.5 text-[10px]', category === c ? 'text-emerald-100' : 'text-stone-400')}>
+   397→                      {count}
+   398→                    </span>
+   399→                  )}
+   400→                </button>
+   401→              )
+   402→            })}
+   403→          </div>
+   404→        </div>
+   405→      </section>
+   406→
+   407→      {/* ---------- BENTO: destaque + estatísticas (por aba) ---------- */}
+   408→      <section aria-label="Destaques e estatísticas" className="mx-auto w-full max-w-6xl px-4 pt-6">
+   409→        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+   410→          {/* Spotlight */}
+   411→          <div className="lg:col-span-2">
+   412→            {tab === 'mentors' ? (
+   413→              spot ? (
+   414→                <SpotlightCard mentor={spot} index={spotIdx} total={spotlightPool.length} onSelect={(i) => setSpotIdx(i)} />
+   415→              ) : (
+   416→                <div className="h-full min-h-56 animate-pulse rounded-2xl bg-emerald-950/90" aria-hidden />
+   417→              )
+   418→            ) : topCourse ? (
+   419→              <CourseSpotlightCard course={topCourse} />
+   420→            ) : (
+   421→              <div className="h-full min-h-56 animate-pulse rounded-2xl bg-emerald-950/90" aria-hidden />
+   422→            )}
+   423→          </div>
+   424→
+   425→          {/* Stats */}
+   426→          <div className="grid grid-cols-3 gap-4 lg:grid-cols-1">
+   427→            {tab === 'mentors' ? (
+   428→              <>
+   429→                <StatTile icon={<Users className="h-4.5 w-4.5" />} value={`+${stats.mentors}`} label="mentores especialistas" />
+   430→                <StatTile icon={<Video className="h-4.5 w-4.5" />} value={`+${stats.sessions}`} label="sessões realizadas" />
+   431→                <StatTile
+   432→                  icon={<Star className="h-4.5 w-4.5" />}
+   433→                  value={stats.avg !== null ? stats.avg.toFixed(1).replace('.', ',') : '—'}
+   434→                  label="nota média da comunidade"
+   435→                />
+   436→              </>
+   437→            ) : (
+   438→              <>
+   439→                <StatTile icon={<Library className="h-4.5 w-4.5" />} value={`+${courseStats.published}`} label="cursos publicados" />
+   440→                <StatTile icon={<Users className="h-4.5 w-4.5" />} value={`+${courseStats.students}`} label="alunos inscritos" />
+   441→                <StatTile icon={<BookOpen className="h-4.5 w-4.5" />} value={`+${courseStats.lessons}`} label="aulas publicadas" />
+   442→              </>
+   443→            )}
+   444→          </div>
+   445→        </div>
+   446→      </section>
+   447→
+   448→      {/* ---------- RESULTADOS ---------- */}
+   449→      <section aria-labelledby="resultado-title" className="mx-auto w-full max-w-6xl px-4 pb-12 pt-8">
+   450→        <div className="flex flex-wrap items-end justify-between gap-2">
+   451→          <h2 id="resultado-title" className="text-lg font-extrabold tracking-tight text-stone-900">
+   452→            {tab === 'mentors' ? 'Todos os mentores' : 'Todos os cursos'}
+   453→          </h2>
+   454→          {!(tab === 'mentors' ? loading : coursesLoading) && (
+   455→            <p className="text-xs font-medium text-stone-400">
+   456→              {search || category ? 'Resultado da busca' : 'Ordenado por relevância'}
+   457→            </p>
+   458→          )}
+   459→        </div>
+   460→
+   461→        {tab === 'mentors' ? (
+   462→          <>
+   463→            <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+   464→              {loading
+   465→                ? Array.from({ length: 6 }).map((_, i) => (
+   466→                    <div key={i} className="rounded-2xl border border-stone-200 p-5">
+   467→                      <div className="flex items-center gap-3">
+   468→                        <Skeleton className="h-14 w-14 rounded-full" />
+   469→                        <div className="flex-1 space-y-2">
+   470→                          <Skeleton className="h-4 w-3/4" />
+   471→                          <Skeleton className="h-3 w-1/2" />
+   472→                        </div>
+   473→                      </div>
+   474→                      <Skeleton className="mt-4 h-3 w-full" />
+   475→                      <Skeleton className="mt-2 h-3 w-5/6" />
+   476→                      <div className="mt-4 flex gap-2">
+   477→                        <Skeleton className="h-6 w-20 rounded-full" />
+   478→                        <Skeleton className="h-6 w-16 rounded-full" />
+   479→                      </div>
+   480→                      <Skeleton className="mt-4 h-10 w-full rounded-full" />
+   481→                    </div>
+   482→                  ))
+   483→                : mentors.map((m) => <MentorCard key={m.id} mentor={m} />)}
+   484→            </div>
+   485→
+   486→            {!loading && mentors.length === 0 && (
+   487→              <div className="mt-2 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 px-6 py-14 text-center">
+   488→                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100">
+   489→                  <SearchX className="h-7 w-7 text-stone-400" />
+   490→                </span>
+   491→                <p className="font-bold text-stone-900">Nenhum mentor encontrado</p>
+   492→                <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+   493→                  Tente remover os filtros ou buscar por outro termo — temos especialistas em várias
+   494→                  áreas.
+   495→                </p>
+   496→                <Button
+   497→                  variant="outline"
+   498→                  className="rounded-full"
+   499→                  onClick={() => {
+   500→                    setSearch('')
+   501→                    setInputValue('')
+   502→                    setCategory('')
+   503→                  }}
+   504→                >
+   505→                  Limpar filtros
+   506→                </Button>
+   507→              </div>
+   508→            )}
+   509→          </>
+   510→        ) : (
+   511→          <>
+   512→            <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+   513→              {coursesLoading
+   514→                ? Array.from({ length: 6 }).map((_, i) => (
+   515→                    <div key={i} className="overflow-hidden rounded-2xl border border-stone-200">
+   516→                      <Skeleton className="h-28 w-full rounded-none" />
+   517→                      <div className="space-y-3 p-5">
+   518→                        <Skeleton className="h-4 w-3/4" />
+   519→                        <Skeleton className="h-3 w-1/3" />
+   520→                        <Skeleton className="h-3 w-full" />
+   521→                        <Skeleton className="h-3 w-5/6" />
+   522→                        <Skeleton className="mt-3 h-10 w-full rounded-full" />
+   523→                      </div>
+   524→                    </div>
+   525→                  ))
+   526→                : courses.map((c) => <CourseCard key={c.id} course={c} />)}
+   527→            </div>
+   528→
+   529→            {!coursesLoading && courses.length === 0 && (
+   530→              <div className="mt-2 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 px-6 py-14 text-center">
+   531→                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100">
+   532→                  <SearchX className="h-7 w-7 text-stone-400" />
+   533→                </span>
+   534→                <p className="font-bold text-stone-900">Nenhum curso encontrado</p>
+   535→                <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+   536→                  Tente remover os filtros ou buscar por outro tema — temos cursos em várias áreas.
+   537→                </p>
+   538→                <Button
+   539→                  variant="outline"
+   540→                  className="rounded-full"
+   541→                  onClick={() => {
+   542→                    setSearch('')
+   543→                    setInputValue('')
+   544→                    setCategory('')
+   545→                  }}
+   546→                >
+   547→                  Limpar filtros
+   548→                </Button>
+   549→              </div>
+   550→            )}
+   551→          </>
+   552→        )}
+   553→      </section>
+   554→    </div>
+   555→  )
+   556→}
+   557→
+   558→/* ---------- Spotlight rotativo (bento principal) ---------- */
+   559→
+   560→function SpotlightCard({
+   561→  mentor,
+   562→  index,
+   563→  total,
+   564→  onSelect,
+   565→}: {
+   566→  mentor: MentorListItemDTO
+   567→  index: number
+   568→  total: number
+   569→  onSelect: (index: number) => void
+   570→}) {
+   571→  const navigate = useAppStore((s) => s.navigate)
+   572→
+   573→  return (
+   574→    <div className="relative flex h-full min-h-56 flex-col overflow-hidden rounded-2xl bg-emerald-950 p-5 text-white sm:p-6">
+   575→      <div
+   576→        aria-hidden
+   577→        className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl"
+   578→      />
+   579→      <div
+   580→        aria-hidden
+   581→        className="absolute -bottom-24 left-10 h-48 w-48 rounded-full bg-teal-400/10 blur-3xl"
+   582→      />
+   583→
+   584→      <div className="relative flex items-center justify-between gap-3">
+   585→        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">
+   586→          <span className="relative flex h-1.5 w-1.5">
+   587→            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+   588→            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-300" />
+   589→          </span>
+   590→          Mentor em destaque
+   591→        </span>
+   592→        {total > 1 && (
+   593→          <div className="flex items-center gap-1.5" role="tablist" aria-label="Alternar destaque">
+   594→            {Array.from({ length: total }).map((_, i) => (
+   595→              <button
+   596→                key={i}
+   597→                role="tab"
+   598→                aria-selected={i === index}
+   599→                aria-label={`Ver destaque ${i + 1}`}
+   600→                onClick={() => onSelect(i)}
+   601→                className={cn(
+   602→                  'h-1.5 rounded-full transition-all',
+   603→                  i === index ? 'w-5 bg-white' : 'w-1.5 bg-white/30 hover:bg-white/50'
+   604→                )}
+   605→              />
+   606→            ))}
+   607→          </div>
+   608→        )}
+   609→      </div>
+   610→
+   611→      <AnimatePresence mode="wait">
+   612→        <motion.div
+   613→          key={mentor.id}
+   614→          initial={{ opacity: 0, y: 10 }}
+   615→          animate={{ opacity: 1, y: 0 }}
+   616→          exit={{ opacity: 0, y: -8 }}
+   617→          transition={{ duration: 0.3 }}
+   618→          className="relative mt-5 flex flex-1 flex-col justify-center"
+   619→        >
+   620→          <div className="flex items-center gap-4">
+   621→            <Avatar name={mentor.name} size="xl" />
+   622→            <div className="min-w-0">
+   623→              <p className="flex items-center gap-1.5 truncate text-lg font-bold">
+   624→                {mentor.name}
+   625→                {mentor.reviewCount >= 3 && mentor.rating >= 4.5 && (
+   626→                  <BadgeCheck className="h-4.5 w-4.5 shrink-0 text-emerald-300" aria-label="Mentor bem avaliado" />
+   627→                )}
+   628→              </p>
+   629→              <div className="mt-0.5 flex items-center gap-1.5">
+   630→                <Stars rating={mentor.rating} size={13} />
+   631→                <span className="text-xs font-semibold text-emerald-50">
+   632→                  {mentor.rating.toFixed(1)}
+   633→                </span>
+   634→                <span className="text-xs text-emerald-100/70">
+   635→                  ({mentor.reviewCount} avaliações)
+   636→                </span>
+   637→              </div>
+   638→            </div>
+   639→          </div>
+   640→
+   641→          <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-emerald-50/90">
+   642→            {mentor.headline}
+   643→          </p>
+   644→
+   645→          <div className="mt-3.5 flex flex-wrap gap-1.5">
+   646→            {mentor.categories.slice(0, 3).map((c) => (
+   647→              <span
+   648→                key={c}
+   649→                className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100"
+   650→              >
+   651→                {c}
+   652→              </span>
+   653→            ))}
+   654→          </div>
+   655→        </motion.div>
+   656→      </AnimatePresence>
+   657→
+   658→      <div className="relative mt-5 flex items-center justify-between gap-3 border-t border-emerald-400/15 pt-4">
+   659→        <p className="text-xl font-extrabold tracking-tight">
+   660→          {currencyBRL(mentor.hourlyRate)}
+   661→          <span className="text-xs font-medium text-emerald-200/70">/h</span>
+   662→        </p>
+   663→        <Button
+   664→          size="sm"
+   665→          onClick={() => navigate({ name: 'mentor', mentorId: mentor.id })}
+   666→          aria-label={`Ver perfil de ${mentor.name}`}
+   667→          className="rounded-full bg-white font-bold text-emerald-950 hover:bg-emerald-100"
+   668→        >
+   669→          Ver perfil <ArrowRight className="h-4 w-4" />
+   670→        </Button>
+   671→      </div>
+   672→    </div>
+   673→  )
+   674→}
+   675→
+   676→/* ---------- Tile de estatística ---------- */
+   677→
+   678→function StatTile({
+   679→  icon,
+   680→  value,
+   681→  label,
+   682→}: {
+   683→  icon: React.ReactNode
+   684→  value: string
+   685→  label: string
+   686→}) {
+   687→  return (
+   688→    <div className="flex flex-col justify-center rounded-2xl border border-stone-200 bg-white p-4 sm:p-5">
+   689→      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+   690→        {icon}
+   691→      </span>
+   692→      <p className="mt-3 text-2xl font-extrabold tracking-tight text-stone-900">{value}</p>
+   693→      <p className="mt-0.5 text-xs font-medium leading-snug text-stone-500">{label}</p>
+   694→    </div>
+   695→  )
+   696→}
+   697→
+   698→/* ---------- Card de mentor ---------- */
+   699→
+   700→function MentorCard({ mentor }: { mentor: MentorListItemDTO }) {
+   701→  const navigate = useAppStore((s) => s.navigate)
+   702→
+   703→  return (
+   704→    <article className="group flex flex-col rounded-2xl border border-stone-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md">
+   705→      <div className="flex items-start gap-3.5">
+   706→        <Avatar name={mentor.name} size="lg" />
+   707→        <div className="min-w-0 flex-1">
+   708→          <p className="flex items-center gap-1.5 truncate font-bold text-stone-900">
+   709→            {mentor.name}
+   710→            {mentor.reviewCount >= 3 && mentor.rating >= 4.5 && (
+   711→              <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-600" aria-label="Mentor bem avaliado" />
+   712→            )}
+   713→          </p>
+   714→          <p className="text-xs font-medium text-stone-500">
+   715→            {firstName(mentor.name)} · {mentor.experienceYears} anos de experiência
+   716→          </p>
+   717→          <div className="mt-1 flex items-center gap-1.5">
+   718→            <Stars rating={mentor.rating} size={13} />
+   719→            <span className="text-xs font-semibold text-stone-700">
+   720→              {mentor.rating > 0 ? mentor.rating.toFixed(1) : 'Novo'}
+   721→            </span>
+   722→            <span className="text-xs text-stone-400">({mentor.reviewCount})</span>
+   723→          </div>
+   724→        </div>
+   725→      </div>
+   726→
+   727→      <p className="mt-3.5 line-clamp-2 min-h-10 text-sm leading-relaxed text-stone-600">
+   728→        {mentor.headline}
+   729→      </p>
+   730→
+   731→      <div className="mt-3 flex flex-wrap gap-1.5">
+   732→        {mentor.categories.slice(0, 3).map((c) => (
+   733→          <span
+   734→            key={c}
+   735→            className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-800"
+   736→          >
+   737→            {c}
+   738→          </span>
+   739→        ))}
+   740→      </div>
+   741→
+   742→      <div className="mt-auto flex items-center justify-between gap-2 border-t border-stone-100 pt-3.5">
+   743→        <div className="flex items-center gap-3 text-xs text-stone-400">
+   744→          <span className="inline-flex items-center gap-1">
+   745→            <GraduationCap className="h-3.5 w-3.5" />{' '}
+   746→            {mentor.totalSessions} {mentor.totalSessions === 1 ? 'sessão' : 'sessões'}
+   747→          </span>
+   748→          <span className="inline-flex items-center gap-1">
+   749→            <Globe2 className="h-3.5 w-3.5" /> {mentor.languages.split(',')[0]}
+   750→          </span>
+   751→        </div>
+   752→        <p className="text-sm font-extrabold text-stone-900">
+   753→          {currencyBRL(mentor.hourlyRate)}
+   754→          <span className="text-xs font-medium text-stone-400">/h</span>
+   755→        </p>
+   756→      </div>
+   757→
+   758→      <Button
+   759→        className="mt-3.5 h-10 w-full rounded-full font-semibold"
+   760→        onClick={() => navigate({ name: 'mentor', mentorId: mentor.id })}
+   761→        aria-label={`Ver perfil de ${mentor.name}`}
+   762→      >
+   763→        Ver perfil e agendar
+   764→      </Button>
+   765→    </article>
+   766→  )
+   767→}
+   768→
+   769→/* ---------- Spotlight de curso (bento da aba Cursos) ---------- */
+   770→
+   771→function CourseSpotlightCard({ course }: { course: CourseListItemDTO }) {
+   772→  const navigate = useAppStore((s) => s.navigate)
+   773→
+   774→  return (
+   775→    <div className="relative flex h-full min-h-56 flex-col overflow-hidden rounded-2xl bg-emerald-950 p-5 text-white sm:p-6">
+   776→      <div
+   777→        aria-hidden
+   778→        className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl"
+   779→      />
+   780→      <div
+   781→        aria-hidden
+   782→        className="absolute -bottom-24 left-10 h-48 w-48 rounded-full bg-teal-400/10 blur-3xl"
+   783→      />
+   784→
+   785→      <span className="relative inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">
+   786→        <span className="relative flex h-1.5 w-1.5">
+   787→          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+   788→          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-300" />
+   789→        </span>
+   790→        Curso em destaque
+   791→      </span>
+   792→
+   793→      <div className="relative mt-5 flex flex-1 flex-col justify-center">
+   794→        <div className="flex items-center gap-4">
+   795→          {/* Ícone com anel gradiente determinístico do título */}
+   796→          <span
+   797→            aria-hidden
+   798→            className="shrink-0 rounded-2xl p-0.5"
+   799→            style={avatarGradient(course.title)}
+   800→          >
+   801→            <span className="flex h-13 w-13 items-center justify-center rounded-[14px] bg-emerald-950/80">
+   802→              <Library className="h-6 w-6 text-emerald-300" />
+   803→            </span>
+   804→          </span>
+   805→          <div className="min-w-0">
+   806→            <p className="truncate text-lg font-bold">{course.title}</p>
+   807→            <div className="mt-0.5 flex items-center gap-1.5">
+   808→              <span className="truncate text-xs text-emerald-100/80">por {course.mentor.name}</span>
+   809→              <Stars rating={course.mentor.rating} size={12} />
+   810→              <span className="text-xs font-semibold text-emerald-50">
+   811→                {course.mentor.rating > 0 ? course.mentor.rating.toFixed(1) : 'Novo'}
+   812→              </span>
+   813→            </div>
+   814→          </div>
+   815→        </div>
+   816→
+   817→        <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-emerald-50/90">
+   818→          {course.description}
+   819→        </p>
+   820→
+   821→        <div className="mt-3.5 flex flex-wrap gap-1.5">
+   822→          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100">
+   823→            <BookOpen aria-hidden className="h-3.5 w-3.5" />
+   824→            {course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'}
+   825→          </span>
+   826→          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100">
+   827→            <Clock aria-hidden className="h-3.5 w-3.5" />
+   828→            {formatTotalDuration(course.totalDurationMin)}
+   829→          </span>
+   830→          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100">
+   831→            <Users aria-hidden className="h-3.5 w-3.5" />
+   832→            {course.studentCount} {course.studentCount === 1 ? 'aluno' : 'alunos'}
+   833→          </span>
+   834→        </div>
+   835→      </div>
+   836→
+   837→      <div className="relative mt-5 flex items-center justify-between gap-3 border-t border-emerald-400/15 pt-4">
+   838→        <p className="text-xl font-extrabold tracking-tight">
+   839→          {course.price === 0 ? (
+   840→            <span className="text-emerald-300">Grátis</span>
+   841→          ) : (
+   842→            currencyBRL(course.price)
+   843→          )}
+   844→        </p>
+   845→        <Button
+   846→          size="sm"
+   847→          onClick={() => navigate({ name: 'course', courseId: course.id })}
+   848→          aria-label={`Ver curso ${course.title}`}
+   849→          className="rounded-full bg-white font-bold text-emerald-950 hover:bg-emerald-100"
+   850→        >
+   851→          Ver curso <ArrowRight className="h-4 w-4" />
+   852→        </Button>
+   853→      </div>
+   854→    </div>
+   855→  )
+   856→}
+   857→
+   858→/* ---------- Card de curso (grade da aba Cursos) ---------- */
+   859→
+   860→function CourseCard({ course }: { course: CourseListItemDTO }) {
+   861→  const navigate = useAppStore((s) => s.navigate)
+   862→
+   863→  return (
+   864→    <article className="group flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white p-0 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md">
+   865→      {/* Capa com gradiente determinístico do título */}
+   866→      <div className="relative h-28 w-full" style={avatarGradient(course.title)}>
+   867→        <Library aria-hidden className="pointer-events-none absolute -bottom-3 right-3 h-20 w-20 text-white/20" />
+   868→        <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-0.5 text-[11px] font-semibold text-stone-700">
+   869→          {LEVEL_LABELS[course.level] ?? course.level}
+   870→        </span>
+   871→        {course.price === 0 ? (
+   872→          <span className="absolute right-3 top-3 rounded-full bg-emerald-700 px-2.5 py-0.5 text-[11px] font-bold text-white">
+   873→            Grátis
+   874→          </span>
+   875→        ) : (
+   876→          <span className="absolute right-3 top-3 rounded-full bg-white px-2.5 py-0.5 text-[11px] font-bold text-stone-900">
+   877→            {currencyBRL(course.price)}
+   878→          </span>
+   879→        )}
+   880→      </div>
+   881→
+   882→      <div className="flex flex-1 flex-col p-5">
+   883→        <p className="line-clamp-1 font-bold text-stone-900">{course.title}</p>
+   884→        <div className="mt-1 flex items-center gap-1.5 text-xs text-stone-500">
+   885→          <span className="truncate">por {firstName(course.mentor.name)}</span>
+   886→          <Stars rating={course.mentor.rating} size={11} />
+   887→          <span className="text-[11px] font-semibold text-stone-600">
+   888→            {course.mentor.rating > 0 ? course.mentor.rating.toFixed(1) : 'Novo'}
+   889→          </span>
+   890→        </div>
+   891→
+   892→        <p className="mt-2.5 line-clamp-2 min-h-10 text-sm leading-relaxed text-stone-600">
+   893→          {course.description}
+   894→        </p>
+   895→
+   896→        <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-stone-100 pt-3.5 text-xs text-stone-400">
+   897→          <span className="inline-flex items-center gap-1">
+   898→            <BookOpen aria-hidden className="h-3.5 w-3.5" />
+   899→            {course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'}
+   900→          </span>
+   901→          <span className="inline-flex items-center gap-1">
+   902→            <Clock aria-hidden className="h-3.5 w-3.5" />
+   903→            {formatTotalDuration(course.totalDurationMin)}
+   904→          </span>
+   905→          <span className="inline-flex items-center gap-1">
+   906→            <Users aria-hidden className="h-3.5 w-3.5" />
+   907→            {course.studentCount}
+   908→          </span>
+   909→        </div>
+   910→
+   911→        <Button
+   912→          className="mt-3.5 h-10 w-full rounded-full font-semibold"
+   913→          onClick={() => navigate({ name: 'course', courseId: course.id })}
+   914→          aria-label={`Ver curso ${course.title}`}
+   915→        >
+   916→          Ver curso
+   917→        </Button>
+   918→      </div>
+   919→    </article>
+   920→  )
+   921→}
+   922→

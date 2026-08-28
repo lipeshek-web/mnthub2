@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { slugify } from '@/lib/helpers'
 
 export const dynamic = 'force-dynamic'
 
@@ -54,6 +55,9 @@ export async function GET(req: NextRequest) {
         reviewCount: m.reviews.length,
         contentsCount: m.contents.length,
         totalSessions: m.bookings.length,
+        avatarUrl: m.user.avatarUrl,
+        coverUrl: m.coverUrl,
+        slug: m.slug,
       }
     })
 
@@ -117,6 +121,15 @@ export async function POST(req: NextRequest) {
     }
     const socials = (body?.socials ?? {}) as Record<string, unknown>
 
+    // Rastreamento (tráfego pago próprio do mentor)
+    const gaRaw = clean(body?.gaMeasurementId, 40)
+    const gaMeasurementId = gaRaw && /^g-[a-z0-9-]+$/i.test(gaRaw) ? gaRaw.toUpperCase() : null
+    const pxRaw = clean(body?.metaPixelId, 32)
+    const metaPixelId = pxRaw && /^[0-9]{14,20}$/.test(pxRaw) ? pxRaw : null
+
+    const avatarUrl = clean(body?.avatarUrl, 300)
+    const coverUrl = clean(body?.coverUrl, 300)
+
     if (!headline || headline.length < 8) {
       return NextResponse.json({ error: 'Escreva um título profissional (mín. 8 caracteres).' }, { status: 400 })
     }
@@ -142,14 +155,39 @@ export async function POST(req: NextRequest) {
       linkedin: clean(socials.linkedin, 190),
       github: clean(socials.github, 80),
       website: clean(socials.website, 190),
+      // Campos enviados apenas pelo painel do mentor: undefined = manter atual
+      coverUrl: body?.coverUrl !== undefined ? coverUrl : undefined,
+      gaMeasurementId: body?.gaMeasurementId !== undefined ? gaMeasurementId : undefined,
+      metaPixelId: body?.metaPixelId !== undefined ? metaPixelId : undefined,
     }
 
     const existing = await db.mentorProfile.findUnique({ where: { userId } })
+
+    // Slug público único (para a LP rastreável ?mentor=slug)
+    const baseSlug = slugify(user.name)
+    let slug = existing?.slug ?? baseSlug
+    if (!existing) {
+      let attempt = 1
+      while (await db.mentorProfile.findUnique({ where: { slug } })) {
+        attempt += 1
+        slug = `${baseSlug}-${attempt}`
+        if (attempt > 50) {
+          slug = `${baseSlug}-${Date.now().toString(36)}`
+          break
+        }
+      }
+    }
+
     const profile = existing
       ? await db.mentorProfile.update({ where: { id: existing.id }, data })
-      : await db.mentorProfile.create({ data: { ...data, userId } })
+      : await db.mentorProfile.create({ data: { ...data, userId, slug } })
 
-    return NextResponse.json({ id: profile.id, ok: true })
+    // Foto do avatar pertence ao usuário (aparece também na navbar)
+    if (body?.avatarUrl !== undefined) {
+      await db.user.update({ where: { id: userId }, data: { avatarUrl } })
+    }
+
+    return NextResponse.json({ id: profile.id, slug: profile.slug, ok: true })
   } catch (err) {
     console.error('POST /api/mentors', err)
     return NextResponse.json({ error: 'Erro ao salvar perfil de mentor' }, { status: 500 })

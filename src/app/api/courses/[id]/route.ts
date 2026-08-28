@@ -16,7 +16,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       include: {
         mentor: {
           include: {
-            user: { select: { id: true, name: true } },
+            user: { select: { id: true, name: true, avatarUrl: true } },
             reviews: { select: { rating: true } },
           },
         },
@@ -58,6 +58,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       category: course.category,
       level: course.level,
       price: course.price,
+      coverUrl: course.coverUrl,
       isPublished: course.isPublished,
       createdAt: course.createdAt.toISOString(),
       updatedAt: course.updatedAt.toISOString(),
@@ -68,6 +69,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         headline: course.mentor.headline,
         rating,
         reviewCount: course.mentor.reviews.length,
+        avatarUrl: course.mentor.user.avatarUrl,
+        tracking: {
+          gaMeasurementId: course.mentor.gaMeasurementId,
+          metaPixelId: course.mentor.metaPixelId,
+        },
       },
       lessonCount: course.lessons.length,
       totalDurationMin: course.lessons.reduce((a, l) => a + l.durationMin, 0),
@@ -135,6 +141,10 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
         return NextResponse.json({ error: 'Preço inválido.' }, { status: 400 })
       }
       data.price = price
+    }
+    if (body?.coverUrl !== undefined) {
+      const coverUrl = body.coverUrl ? String(body.coverUrl).trim().slice(0, 300) : null
+      data.coverUrl = coverUrl
     }
     if (body?.isPublished !== undefined) {
       data.isPublished = Boolean(body.isPublished)

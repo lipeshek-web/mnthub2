@@ -71,6 +71,13 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       reviewCount: profile.reviews.length,
       totalSessions: completed,
       bookedSlots: profile.bookings.filter((b) => b.startsAt >= now).map((b) => b.startsAt),
+      avatarUrl: profile.user.avatarUrl,
+      coverUrl: profile.coverUrl,
+      slug: profile.slug,
+      tracking: {
+        gaMeasurementId: profile.gaMeasurementId,
+        metaPixelId: profile.metaPixelId,
+      },
     })
   } catch (err) {
     console.error('GET /api/mentors/[id]', err)

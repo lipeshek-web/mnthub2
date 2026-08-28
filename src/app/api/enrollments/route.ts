@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
           include: {
             mentor: {
               include: {
-                user: { select: { id: true, name: true } },
+                user: { select: { id: true, name: true, avatarUrl: true } },
                 reviews: { select: { rating: true } },
               },
             },
@@ -57,6 +57,7 @@ export async function GET(req: NextRequest) {
           level: course.level,
           price: course.price,
           isPublished: course.isPublished,
+          coverUrl: course.coverUrl,
           createdAt: course.createdAt.toISOString(),
           updatedAt: course.updatedAt.toISOString(),
           mentor: {
@@ -66,6 +67,7 @@ export async function GET(req: NextRequest) {
             headline: course.mentor.headline,
             rating,
             reviewCount: course.mentor.reviews.length,
+            avatarUrl: course.mentor.user.avatarUrl,
           },
           lessonCount: course.lessons.length,
           totalDurationMin: course.lessons.reduce((a, l) => a + l.durationMin, 0),
