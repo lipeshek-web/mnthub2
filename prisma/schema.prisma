@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  bio       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mentorProfile     MentorProfile?
+  bookingsAsMentee  Booking[]      @relation("MenteeBookings")
+  reviews           Review[]
+}
+
+model MentorProfile {
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headline        String
+  description     String
+  categories      String  @default("[]") // JSON array of category names
+  hourlyRate      Float   @default(0)
+  experienceYears Int     @default(0)
+  languages       String  @default("Português")
+  isPublished     Boolean @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  availabilities Availability[]
+  contents       ContentPost[]
+  bookings       Booking[]      @relation("MentorBookings")
+  reviews        Review[]
+}
+
+model Availability {
+  id        String        @id @default(cuid())
+  mentorId  String
+  mentor    MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  weekday   Int // 0 = Domingo ... 6 = Sábado
+  startHour Float         // ex: 9.5 => 09:30
+  endHour   Float         // ex: 18 => 18:00
+}
+
+model ContentPost {
+  id          String        @id @default(cuid())
+  mentorId    String
+  mentor      MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  tags        String        @default("[]") // JSON array of strings
+  type        String        @default("ARTICLE") // ARTICLE | VIDEO | WORKSHOP | TRAIL
+  level       String        @default("INTERMEDIARIO") // INICIANTE | INTERMEDIARIO | AVANCADO
+  durationMin Int           @default(30)
+  createdAt   DateTime      @default(now())
+}
+
+model Booking {
+  id          String        @id @default(cuid())
+  mentorId    String
+  mentor      MentorProfile @relation("MentorBookings", fields: [mentorId], references: [id], onDelete: Cascade)
+  menteeId    String
+  mentee      User          @relation("MenteeBookings", fields: [menteeId], references: [id], onDelete: Cascade)
+  startsAt    String        // naive local datetime "YYYY-MM-DDTHH:mm"
+  durationMin Int           @default(60)
+  topic       String
+  notes       String?
+  status      String        @default("PENDING") // PENDING | CONFIRMED | COMPLETED | CANCELLED
+  meetingRoom String        @unique
+  price       Float         @default(0)
+  createdAt   DateTime      @default(now())
+
+  review Review?
+}
+
+model Review {
+  id        String        @id @default(cuid())
+  bookingId String        @unique
+  booking   Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  mentorId  String
+  mentor    MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  rating    Int           // 1..5
+  comment   String
+  createdAt DateTime      @default(now())
+}
