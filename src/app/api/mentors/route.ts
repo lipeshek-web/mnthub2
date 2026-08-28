@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { MENTOR_FONT_IDS } from '@/lib/fonts'
 import { slugify } from '@/lib/helpers'
 
 export const dynamic = 'force-dynamic'
+
+/** Valida id de fonte do catálogo (src/lib/fonts.ts); null = padrão da plataforma */
+function fontKey(v: unknown): string | null {
+  const s = String(v ?? '').trim()
+  return s && MENTOR_FONT_IDS.has(s) ? s : null
+}
 
 function parseArray(s: string | null | undefined): string[] {
   try {
@@ -157,6 +164,9 @@ export async function POST(req: NextRequest) {
       website: clean(socials.website, 190),
       // Campos enviados apenas pelo painel do mentor: undefined = manter atual
       coverUrl: body?.coverUrl !== undefined ? coverUrl : undefined,
+      // Tipografia da página do criador (mesma regra: undefined = manter, null/inválido = padrão)
+      fontHeading: body?.fontHeading !== undefined ? fontKey(body.fontHeading) : undefined,
+      fontBody: body?.fontBody !== undefined ? fontKey(body.fontBody) : undefined,
       gaMeasurementId: body?.gaMeasurementId !== undefined ? gaMeasurementId : undefined,
       metaPixelId: body?.metaPixelId !== undefined ? metaPixelId : undefined,
     }

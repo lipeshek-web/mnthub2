@@ -589,3 +589,32 @@ Validation (browser E2E, viewport 1440x900 e 390x844):
 Stage Summary:
 - Plataforma com navegação de documento real (footer no fim, header sticky com busca global), Explorar editorial em 5 abas com "Tudo" como vitrine, e aprendizado 100% imersivo (sala de aula e leitor em overlay tela cheia com top bar dark, modo foco e retorno contextual à aula)
 - Decisões: (1) auto-redirect de inscritos removido em favor de hero de progresso — evita loop com o Sair e dá uma página de curso digna para alunos; (2) busca do header é a fonte única do atalho "/"; (3) retorno do leitor é tipado no AppView (returnTo) em vez de sessionStorage; (4) modo foco preserva o material em aulas textuais
+
+---
+Task ID: 5 (capa do criador maior + tipografia personalizável + fix sala de aula)
+Agent: main (Z.ai Code)
+Task: Capa do criador mais alta, seletor de fontes (nome/títulos + descrições) com catálogo leve de 24 fontes Google, e correção do erro "Não foi possível abrir a sala de aula"
+
+Work Log:
+- Erro da sala de aula: dev server estava DOWN no início da sessão (curl 000) — o erro "Ocorreu um erro inesperado" vinha de fetch interrompido quando o servidor caiu/reiniciou no meio da requisição. Server reiniciado + classroom.tsx ganhou AUTO-RETRY: falhas transitórias (regex inesperado/fetch/network/load failed/conex) retentam até 2x com 1,2s de delay (retriesRef + timer limpo no unmount); erro real continua com botão "Tentar novamente"
+- prisma/schema.prisma: MentorProfile ganhou fontHeading String? + fontBody String? (IDs do catálogo; null = padrão) → db:push OK
+- src/lib/fonts.ts (NOVO): catálogo de 24 fontes Google via next/font/google — 9 Sans (Inter, Poppins, Montserrat, Nunito, Work Sans, Outfit, Sora, Manrope, Plus Jakarta Sans), 7 Serif (Playfair, DM Serif, Lora, Merriweather, Crimson Pro, Libre Baskerville, Fraunces), 3 Display (Space Grotesk, Archivo, Bebas Neue), 3 Manuscritas (Caveat, Dancing Script, Patrick Hand), 2 Mono (JetBrains, IBM Plex). Cada loader é const de módulo (exigência do transform do Next); exports: MENTOR_FONTS, MENTOR_FONT_IDS, MENTOR_FONT_CATEGORIES, getMentorFont, headingFontStyle, bodyFontStyle, fontPreviewStyle
+- LIÇÕES next/font descobertas no debug: (1) loader next/font/google DEVE ser chamado e atribuído a const no escopo do módulo ("Font loaders must be called..."); (2) font.variable NÃO é nome de CSS var — é o className do módulo CSS gerado (a var real é auto-nomeada, ex.: --l-nunito); usar var(--mh-...) gerava valor inválido que o CSSOM descartava silenciosamente (style attr ficava vazio). SOLUÇÃO FINAL: aplicar font.style diretamente (fontFamily real com fallback size-adjusted) — zero dependência de nomes de variáveis; @font-face entra no CSS da página e o navegador só baixa woff2 das fontes de fato usadas (leve)
+- APIs: POST /api/mentors aceita fontHeading/fontBody com validação contra MENTOR_FONT_IDS (undefined = manter, null/inválido = padrão); GET /api/mentors/me, /api/mentors/[id] e /api/mentors/by-slug/[slug] retornam os campos; api.ts saveMentorProfile + types (MentorDetailDTO, MentorLpDTO.mentor) atualizados
+- mentor-lp.tsx: CAPA MAIS ALTA h-56/64 → h-72 sm:h-80 md:h-96 (fallback gradiente h-64/72/80); headingFontStyle no h1 do nome, títulos de seção (Cursos/Sobre/Conteúdos/Depoimentos/CTA), números da barra de prova social e títulos dos cards de curso; bodyFontStyle no headline, subtítulos, descrição (Sobre), descrição dos cards, depoimentos e CTAs — a página inteira ganha a identidade do criador
+- onboarding.tsx: novo FontPicker montado no MentorProfileForm após as fotos (com Separators) — prévia ao vivo (capa gradiente + nome + headline + descrição renderizados com as fontes escolhidas + legenda "Títulos: X · Textos: Y"), radiogroup "Nome e títulos / Descrições e textos" (define o slot da seleção), chips de categoria (Todas/Sans/Serif/Display/Manuscrita/Mono), grid responsivo 2/3/4 colunas com 25 cards (24 fontes renderizadas EM SI PRÓPRIAS via fontPreviewStyle + card "Padrão da plataforma"), badges mostrando em qual slot cada fonte está em uso, Check no card ativo; ProfileFormValues ganhou fontHeading/fontBody (sempre enviados; null volta ao padrão); initial do painel alimenta as fontes do perfil; prévia da capa no form subiu h-32 → h-44 sm:h-52 com texto melhor
+- prisma/set-demo-fonts.ts (one-off): Carlos Ferreira = playfair/lora (editorial), Marina Costa = sora/inter (moderno) — executado, demo visível de cara
+- FIX crítico de ambiente: turbopack servia módulos STALE (mentor-lp antigo e by-slug sem fontes) mesmo após restart — rm -rf .next + restart resolveu; dev.log saudável
+
+Validation (browser E2E, 1440x900 + 390x844):
+- LP Carlos: capa 384px (era 256), nome "Carlos Ferreira" em Playfair Display, descrições em Lora, document.fonts.check true p/ ambas; LP Marina: Sora + Inter ✓
+- FontPicker: 25 cards renderizados em suas próprias fontes; trocar slot p/ "Descrições" + clicar Space Grotesk → prévia atualizou na hora (headline/descrição em Space Grotesk, nome seguiu Playfair); Salvar → toast e persistência confirmada via /api/mentors/me (playfair/space-grotesk); LP pública refletiu imediatamente; restaurado playfair/lora pelo próprio picker NO MOBILE (390px) — slot + card + salvar funcionam no toque
+- Classroom: abriu SEM o erro ("Não foi possível abrir a sala" ausente no DOM), top bar emerald-950, sidebar com temas e leitura da aula 1 normais
+- Mobile LP: capa 288px (h-72), sem overflow horizontal (sw=cw=390), Playfair no nome ✓
+- bun run lint 0/0; bunx tsc limpo em src/; rotas 200; worklog atualizado
+
+Stage Summary:
+- Criadores agora personalizam a tipografia da própria página: 24 fontes Google (5 categorias) escolhíveis para nome/títulos e descrições separadamente, com prévia ao vivo e badges de uso — implementação leve (fontes auto-hospedadas baixadas on-demand pelo navegador, só as usadas)
+- Capa do criador 50% mais alta na LP (384px desktop / 288px mobile) e prévia maior no painel
+- Sala de aula auto-recupera de falhas transitórias de rede (até 2 retries automáticos)
+- Aprendizados registrados: loaders next/font exigem const no escopo do módulo; NUNCA montar var() com o className de font.variable — usar font.style diretamente

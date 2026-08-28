@@ -103,6 +103,9 @@ export interface MentorDetailDTO {
   bookedSlots: string[] // "YYYY-MM-DDTHH:mm" já agendados (CONFIRMED/PENDING futuros)
   avatarUrl?: string | null
   coverUrl?: string | null
+  /** Tipografia da página do criador (ids do catálogo em src/lib/fonts.ts; null = padrão) */
+  fontHeading?: string | null
+  fontBody?: string | null
   slug?: string | null
   /** IDs de rastreamento do mentor (presentes no /me e no detalhe público) */
   tracking?: TrackingIdsDTO | null
@@ -366,6 +369,9 @@ export interface MentorLpDTO {
     socials: SocialLinksDTO
     avatarUrl?: string | null
     coverUrl?: string | null
+    /** Tipografia da LP (ids de src/lib/fonts.ts; null = padrão da plataforma) */
+    fontHeading?: string | null
+    fontBody?: string | null
     tracking: TrackingIdsDTO | null
   }
   courses: CourseListItemDTO[]

@@ -37,6 +37,7 @@ import {
   Sparkles,
   Trash2,
   TrendingUp,
+  Type,
   UserRound,
   Users,
   Video,
@@ -91,10 +92,21 @@ import { LibraryManager } from './library-manager'
 import { TracksManager } from './tracks-manager'
 import { api } from '@/lib/api'
 import {
+  MENTOR_FONT_CATEGORIES,
+  MENTOR_FONTS,
+  bodyFontStyle,
+  fontPreviewStyle,
+  getMentorFont,
+  headingFontStyle,
+  type MentorFont,
+  type MentorFontCategory,
+} from '@/lib/fonts'
+import {
   CATEGORIES,
   CONTENT_TYPE_META,
   LEVEL_LABELS,
   WEEKDAYS_FULL_PT,
+  avatarGradient,
   currencyBRL,
   formatDayLabel,
   formatTimeLabel,
@@ -161,6 +173,236 @@ function copyToClipboard(text: string, successMessage = 'Link copiado!') {
     .catch(() => toast.error('Não foi possível copiar o link.'))
 }
 
+// ---------- Seletor de fontes do criador ----------
+
+const FONT_SLOT_LABELS = {
+  heading: 'Nome e títulos',
+  body: 'Descrições e textos',
+} as const
+type FontSlot = keyof typeof FONT_SLOT_LABELS
+
+/** Card individual de fonte do catálogo */
+function FontOptionCard({
+  font,
+  activeHeading,
+  activeBody,
+  onSelect,
+}: {
+  font: MentorFont
+  activeHeading: boolean
+  activeBody: boolean
+  onSelect: () => void
+}) {
+  const active = activeHeading || activeBody
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={active}
+      aria-label={`Selecionar fonte ${font.label}${activeHeading ? ' (em uso nos títulos)' : ''}${activeBody ? ' (em uso nos textos)' : ''}`}
+      className={cn(
+        'group relative flex flex-col items-start gap-1.5 rounded-xl border bg-white p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+        active
+          ? 'border-emerald-400 ring-2 ring-emerald-500/30'
+          : 'border-stone-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-sm',
+      )}
+    >
+      {(activeHeading || activeBody) && (
+        <span className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-emerald-600 text-white">
+          <Check className="size-3" aria-hidden />
+        </span>
+      )}
+      <span
+        className="block text-3xl leading-none text-stone-900"
+        style={fontPreviewStyle(font)}
+        aria-hidden
+      >
+        Aa
+      </span>
+      <span
+        className="block w-full truncate text-xs font-medium text-stone-700"
+        style={fontPreviewStyle(font)}
+      >
+        {font.label}
+      </span>
+      <span className="flex flex-wrap gap-1">
+        {activeHeading && (
+          <Badge className="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0 text-[9px] font-semibold text-emerald-700 hover:bg-emerald-50">
+            {FONT_SLOT_LABELS.heading}
+          </Badge>
+        )}
+        {activeBody && (
+          <Badge className="rounded-full border border-teal-200 bg-teal-50 px-1.5 py-0 text-[9px] font-semibold text-teal-700 hover:bg-teal-50">
+            {FONT_SLOT_LABELS.body}
+          </Badge>
+        )}
+      </span>
+    </button>
+  )
+}
+
+/** Seletor de tipografia da página do criador (nome/títulos + descrições) */
+function FontPicker({
+  heading,
+  body,
+  onHeadingChange,
+  onBodyChange,
+  mentorName,
+}: {
+  heading: string | null
+  body: string | null
+  onHeadingChange: (id: string | null) => void
+  onBodyChange: (id: string | null) => void
+  mentorName: string
+}) {
+  const [slot, setSlot] = useState<FontSlot>('heading')
+  const [category, setCategory] = useState<MentorFontCategory | 'all'>('all')
+
+  const visible = MENTOR_FONTS.filter((f) => category === 'all' || f.category === category)
+  const activeId = slot === 'heading' ? heading : body
+
+  const handleSelect = (id: string | null) => {
+    if (slot === 'heading') onHeadingChange(id)
+    else onBodyChange(id)
+  }
+
+  const headingFont = getMentorFont(heading)
+  const bodyFont = getMentorFont(body)
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-stone-900">
+          <Type className="size-4 text-emerald-700" aria-hidden /> Tipografia da sua página
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Escolha a fonte do seu nome e títulos e a fonte das descrições — dá identidade à sua
+          página pública. As fontes só são carregadas quando usadas (nada de página pesada).
+        </p>
+      </div>
+
+      {/* Prévia ao vivo */}
+      <div
+        className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm"
+        aria-label="Prévia da sua página com as fontes escolhidas"
+      >
+        <div className="h-14 w-full" style={avatarGradient(mentorName)} aria-hidden />
+        <div className="px-4 pb-4 pt-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Prévia</p>
+          <p
+            className="mt-1 text-xl font-extrabold tracking-tight text-stone-900"
+            style={headingFontStyle(heading)}
+          >
+            {mentorName}
+          </p>
+          <p className="mt-0.5 text-xs font-medium text-stone-600" style={bodyFontStyle(body)}>
+            Mentor verificado · Especialista na área
+          </p>
+          <p
+            className="mt-2 line-clamp-2 text-xs leading-relaxed text-stone-500"
+            style={bodyFontStyle(body)}
+          >
+            É assim que suas descrições serão exibidas para os alunos: contando sua metodologia,
+            seu público e os resultados que você entrega em cada mentoria.
+          </p>
+          {(headingFont || bodyFont) && (
+            <p className="mt-2 flex flex-wrap gap-1.5 text-[10px] text-stone-400">
+              {headingFont && <span>Títulos: {headingFont.label}</span>}
+              {bodyFont && <span>· Textos: {bodyFont.label}</span>}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Slot em que a seleção é aplicada */}
+      <div
+        role="radiogroup"
+        aria-label="Aplicar fonte em"
+        className="flex w-full max-w-sm rounded-full border border-stone-200 bg-stone-50 p-1"
+      >
+        {(Object.keys(FONT_SLOT_LABELS) as FontSlot[]).map((s) => (
+          <button
+            key={s}
+            type="button"
+            role="radio"
+            aria-checked={slot === s}
+            onClick={() => setSlot(s)}
+            className={cn(
+              'flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+              slot === s ? 'bg-emerald-950 text-white shadow-sm' : 'text-stone-600 hover:text-stone-900',
+            )}
+          >
+            {FONT_SLOT_LABELS[s]}
+          </button>
+        ))}
+      </div>
+
+      {/* Filtro por categoria */}
+      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filtrar fontes por estilo">
+        {MENTOR_FONT_CATEGORIES.map((c) => (
+          <button
+            key={c.value}
+            type="button"
+            aria-pressed={category === c.value}
+            onClick={() => setCategory(c.value)}
+            className={cn(
+              'rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+              category === c.value
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                : 'border-stone-200 bg-white text-stone-500 hover:border-emerald-200 hover:text-emerald-700',
+            )}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Grade de fontes */}
+      <div
+        className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4"
+        role="listbox"
+        aria-label={`Fontes para ${FONT_SLOT_LABELS[slot]}`}
+      >
+        {/* Opção padrão sempre visível */}
+        <button
+          type="button"
+          onClick={() => handleSelect(null)}
+          aria-pressed={activeId === null}
+          aria-label="Selecionar fonte padrão da plataforma"
+          className={cn(
+            'relative flex flex-col items-start justify-center gap-1 rounded-xl border p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+            activeId === null
+              ? 'border-emerald-400 bg-emerald-50/40 ring-2 ring-emerald-500/30'
+              : 'border-stone-200 bg-stone-50 hover:border-emerald-300',
+          )}
+        >
+          {activeId === null && (
+            <span className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-emerald-600 text-white">
+              <Check className="size-3" aria-hidden />
+            </span>
+          )}
+          <span className="text-2xl font-bold leading-none text-stone-400">Aa</span>
+          <span className="text-xs font-medium text-stone-600">Padrão da plataforma</span>
+        </button>
+        {visible.map((f) => (
+          <FontOptionCard
+            key={f.id}
+            font={f}
+            activeHeading={heading === f.id}
+            activeBody={body === f.id}
+            onSelect={() => handleSelect(f.id)}
+          />
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Selecionando para:{' '}
+        <span className="font-semibold text-stone-700">{FONT_SLOT_LABELS[slot]}</span> — troque o
+        destino acima para definir a outra fonte.
+      </p>
+    </div>
+  )
+}
+
 // ---------- Formulário de perfil (criação e edição) ----------
 
 export interface ProfileFormValues {
@@ -175,6 +417,9 @@ export interface ProfileFormValues {
   avatarUrl?: string | null
   /** Capa do perfil público — null remove a capa atual */
   coverUrl?: string | null
+  /** Tipografia da página pública (ids de src/lib/fonts.ts; null = padrão) */
+  fontHeading?: string | null
+  fontBody?: string | null
 }
 
 interface ProfileFormErrors {
@@ -211,6 +456,8 @@ function MentorProfileForm({
   const [saving, setSaving] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initial?.avatarUrl ?? null)
   const [coverUrl, setCoverUrl] = useState<string | null>(initial?.coverUrl ?? null)
+  const [fontHeading, setFontHeading] = useState<string | null>(initial?.fontHeading ?? null)
+  const [fontBody, setFontBody] = useState<string | null>(initial?.fontBody ?? null)
   const [uploadingPhoto, setUploadingPhoto] = useState<'avatar' | 'cover' | null>(null)
   // Só envia no payload a foto que o usuário realmente mexeu: undefined = manter atual, null = remover
   const [photoTouched, setPhotoTouched] = useState<{ avatar: boolean; cover: boolean }>({
@@ -286,6 +533,9 @@ function MentorProfileForm({
         // undefined = não alterar no servidor; null = remover; string = definir
         avatarUrl: photoTouched.avatar ? avatarUrl : undefined,
         coverUrl: photoTouched.cover ? coverUrl : undefined,
+        // Tipografia sempre enviada (null volta ao padrão da plataforma)
+        fontHeading,
+        fontBody,
       })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Não foi possível salvar o perfil.')
@@ -310,13 +560,13 @@ function MentorProfileForm({
 
         <div className="flex flex-col gap-2">
           {coverUrl ? (
-            <div className="h-32 w-full overflow-hidden rounded-xl border border-stone-200 bg-stone-100">
+            <div className="h-44 w-full overflow-hidden rounded-xl border border-stone-200 bg-stone-100 sm:h-52">
               <img src={coverUrl} alt="Capa do seu perfil" className="h-full w-full object-cover" />
             </div>
           ) : (
-            <div className="flex h-32 w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-stone-300 bg-stone-50">
+            <div className="flex h-44 w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-stone-300 bg-stone-50 sm:h-52">
               <ImagePlus className="size-6 text-stone-400" aria-hidden />
-              <p className="text-xs text-stone-500">Capa 1440×720 recomendada</p>
+              <p className="text-xs text-stone-500">Capa 1440×720 recomendada — aparece em destaque no topo da sua página</p>
             </div>
           )}
           <div className="flex flex-wrap items-center gap-2">
@@ -401,6 +651,17 @@ function MentorProfileForm({
           </div>
         </div>
       </div>
+
+      {/* Tipografia da página pública (nome/títulos + descrições) */}
+      <Separator />
+      <FontPicker
+        heading={fontHeading}
+        body={fontBody}
+        onHeadingChange={setFontHeading}
+        onBodyChange={setFontBody}
+        mentorName={mentorName}
+      />
+      <Separator />
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="mentor-headline">Título profissional</Label>
@@ -3148,6 +3409,8 @@ export default function OnboardingView() {
               socials: profile.socials ?? {},
               avatarUrl: profile.avatarUrl ?? null,
               coverUrl: profile.coverUrl ?? null,
+              fontHeading: profile.fontHeading ?? null,
+              fontBody: profile.fontBody ?? null,
             }}
             mentorName={profile.name}
             submitLabel="Salvar alterações"

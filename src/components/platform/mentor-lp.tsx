@@ -28,6 +28,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, Stars } from '@/components/platform/avatar'
 import { api } from '@/lib/api'
 import {
+  bodyFontStyle,
+  headingFontStyle,
+} from '@/lib/fonts'
+import {
   CONTENT_TYPE_META,
   LEVEL_LABELS,
   MONTHS_PT,
@@ -85,10 +89,20 @@ function SocialButton({
 }
 
 /** Número da barra de prova social */
-function LpStat({ value, label }: { value: string; label: string }) {
+function LpStat({
+  value,
+  label,
+  headingStyle,
+}: {
+  value: string
+  label: string
+  headingStyle?: React.CSSProperties
+}) {
   return (
     <div className="text-center">
-      <p className="text-2xl font-extrabold tracking-tight sm:text-3xl">{value}</p>
+      <p className="text-2xl font-extrabold tracking-tight sm:text-3xl" style={headingStyle}>
+        {value}
+      </p>
       <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-emerald-200/80">
         {label}
       </p>
@@ -101,10 +115,14 @@ function LpCourseCard({
   course,
   enrolling,
   onOpen,
+  headingStyle,
+  bodyStyle,
 }: {
   course: CourseListItemDTO
   enrolling: boolean
   onOpen: (course: CourseListItemDTO) => void
+  headingStyle?: React.CSSProperties
+  bodyStyle?: React.CSSProperties
 }) {
   return (
     <article
@@ -138,8 +156,10 @@ function LpCourseCard({
           </Badge>
         </div>
 
-        <h3 className="mt-2.5 font-bold leading-snug text-stone-900">{course.title}</h3>
-        <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-stone-500">
+        <h3 className="mt-2.5 font-bold leading-snug text-stone-900" style={headingStyle}>
+          {course.title}
+        </h3>
+        <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-stone-500" style={bodyStyle}>
           {course.description}
         </p>
 
@@ -338,6 +358,10 @@ export function MentorLpView({ slug }: { slug: string }) {
     ] as [SocialKind, string | null | undefined][]
   ).filter(([, v]) => Boolean(v && v.trim()))
 
+  // Tipografia escolhida pelo criador (null = padrão da plataforma)
+  const headingStyle = headingFontStyle(mentor.fontHeading)
+  const bodyStyle = bodyFontStyle(mentor.fontBody)
+
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       {/* ============ HERO ============ */}
@@ -350,10 +374,14 @@ export function MentorLpView({ slug }: { slug: string }) {
             <img
               src={mentor.coverUrl}
               alt={`Capa do perfil de ${mentor.name}`}
-              className="h-56 w-full object-cover sm:h-64"
+              className="h-72 w-full object-cover sm:h-80 md:h-96"
             />
           ) : (
-            <div aria-hidden className="h-40 w-full sm:h-48" style={avatarGradient(mentor.name)} />
+            <div
+              aria-hidden
+              className="h-64 w-full sm:h-72 md:h-80"
+              style={avatarGradient(mentor.name)}
+            />
           )}
           {mentor.coverUrl && (
             <div
@@ -376,10 +404,13 @@ export function MentorLpView({ slug }: { slug: string }) {
               <BadgeCheck aria-hidden className="h-3.5 w-3.5" />
               Mentor verificado
             </Badge>
-            <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
+            <h1
+              className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl"
+              style={headingStyle}
+            >
               {mentor.name}
             </h1>
-            <p className="mt-1 text-sm font-medium text-stone-600 sm:text-[15px]">
+            <p className="mt-1 text-sm font-medium text-stone-600 sm:text-[15px]" style={bodyStyle}>
               {mentor.headline}
             </p>
           </div>
@@ -429,30 +460,34 @@ export function MentorLpView({ slug }: { slug: string }) {
         aria-label="Números do mentor"
         className="mt-6 grid grid-cols-2 gap-y-6 rounded-2xl bg-emerald-950 px-6 py-7 text-white sm:grid-cols-4 sm:px-8"
       >
-        <LpStat
-          value={String(studentCount)}
-          label={studentCount === 1 ? 'aluno matriculado' : 'alunos matriculados'}
-        />
+        <LpStat value={String(studentCount)} label={studentCount === 1 ? 'aluno matriculado' : 'alunos matriculados'} headingStyle={headingStyle} />
         <LpStat
           value={String(mentor.totalSessions)}
           label={mentor.totalSessions === 1 ? 'sessão concluída' : 'sessões concluídas'}
+          headingStyle={headingStyle}
         />
         <LpStat
           value={mentor.rating > 0 ? mentor.rating.toFixed(1).replace('.', ',') : '—'}
           label="nota média"
+          headingStyle={headingStyle}
         />
         <LpStat
           value={String(courses.length)}
           label={courses.length === 1 ? 'curso publicado' : 'cursos publicados'}
+          headingStyle={headingStyle}
         />
       </section>
 
       {/* ============ CURSOS ============ */}
       <section id="lp-cursos" aria-labelledby="lp-cursos-title" className="mt-10 scroll-mt-6">
-        <h2 id="lp-cursos-title" className="text-xl font-extrabold tracking-tight text-stone-900 sm:text-2xl">
+        <h2
+          id="lp-cursos-title"
+          className="text-xl font-extrabold tracking-tight text-stone-900 sm:text-2xl"
+          style={headingStyle}
+        >
           Cursos para aprender no seu ritmo
         </h2>
-        <p className="mt-1 text-sm text-stone-500">
+        <p className="mt-1 text-sm text-stone-500" style={bodyStyle}>
           Estude com {fname} quando e onde quiser, com acesso vitalício.
         </p>
 
@@ -471,6 +506,8 @@ export function MentorLpView({ slug }: { slug: string }) {
                 course={course}
                 enrolling={enrollingId === course.id}
                 onOpen={(c) => void handleCourseClick(c)}
+                headingStyle={headingStyle}
+                bodyStyle={bodyStyle}
               />
             ))}
           </div>
@@ -479,10 +516,14 @@ export function MentorLpView({ slug }: { slug: string }) {
 
       {/* ============ SOBRE ============ */}
       <section aria-labelledby="lp-sobre-title" className="mt-10">
-        <h2 id="lp-sobre-title" className="text-xl font-extrabold tracking-tight text-stone-900 sm:text-2xl">
+        <h2
+          id="lp-sobre-title"
+          className="text-xl font-extrabold tracking-tight text-stone-900 sm:text-2xl"
+          style={headingStyle}
+        >
           Sobre {fname}
         </h2>
-        <div className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-stone-600">
+        <div className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-stone-600" style={bodyStyle}>
           {mentor.description}
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -503,7 +544,11 @@ export function MentorLpView({ slug }: { slug: string }) {
       {/* ============ MURAL (opcional) ============ */}
       {contents.length > 0 && (
         <section aria-labelledby="lp-mural-title" className="mt-10">
-          <h2 id="lp-mural-title" className="text-xl font-extrabold tracking-tight text-stone-900 sm:text-2xl">
+          <h2
+            id="lp-mural-title"
+            className="text-xl font-extrabold tracking-tight text-stone-900 sm:text-2xl"
+            style={headingStyle}
+          >
             Conteúdos publicados
           </h2>
           <ul className="mt-4 divide-y divide-stone-100 overflow-hidden rounded-2xl border border-stone-200 bg-white">
@@ -537,6 +582,7 @@ export function MentorLpView({ slug }: { slug: string }) {
           <h2
             id="lp-depoimentos-title"
             className="text-xl font-extrabold tracking-tight text-stone-900 sm:text-2xl"
+            style={headingStyle}
           >
             O que os alunos dizem sobre {fname}
           </h2>
@@ -547,7 +593,10 @@ export function MentorLpView({ slug }: { slug: string }) {
                 className="flex flex-col rounded-2xl border border-stone-200 bg-white p-5 shadow-sm"
               >
                 <Stars rating={r.rating} size={14} />
-                <blockquote className="mt-2.5 line-clamp-4 flex-1 text-sm leading-relaxed text-stone-600">
+                <blockquote
+                  className="mt-2.5 line-clamp-4 flex-1 text-sm leading-relaxed text-stone-600"
+                  style={bodyStyle}
+                >
                   “{r.comment}”
                 </blockquote>
                 <figcaption className="mt-4 flex items-center gap-3 border-t border-stone-100 pt-3.5">
@@ -571,10 +620,14 @@ export function MentorLpView({ slug }: { slug: string }) {
         <div aria-hidden className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl" />
         <div aria-hidden className="absolute -bottom-20 -left-10 h-48 w-48 rounded-full bg-teal-400/10 blur-2xl" />
         <div className="relative">
-          <h2 id="lp-cta-title" className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+          <h2
+            id="lp-cta-title"
+            className="text-2xl font-extrabold tracking-tight sm:text-3xl"
+            style={headingStyle}
+          >
             Aprenda com {fname} de perto
           </h2>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-emerald-100/85">
+          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-emerald-100/85" style={bodyStyle}>
             Agende uma mentoria 1:1 ou continue aprendendo nos cursos, no seu ritmo.
           </p>
           <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">

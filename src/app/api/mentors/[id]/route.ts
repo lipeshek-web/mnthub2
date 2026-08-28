@@ -73,6 +73,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       bookedSlots: profile.bookings.filter((b) => b.startsAt >= now).map((b) => b.startsAt),
       avatarUrl: profile.user.avatarUrl,
       coverUrl: profile.coverUrl,
+      fontHeading: profile.fontHeading,
+      fontBody: profile.fontBody,
       slug: profile.slug,
       tracking: {
         gaMeasurementId: profile.gaMeasurementId,

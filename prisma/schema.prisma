@@ -47,6 +47,9 @@ model MentorProfile {
   // Link público rastreável + fotos
   slug            String? @unique // usado em /?mentor=slug (LP pública p/ tráfego pago)
   coverUrl        String?
+  // Tipografia da página do criador (IDs do catálogo em src/lib/fonts.ts; null = padrão da plataforma)
+  fontHeading     String? // fonte do nome e títulos
+  fontBody        String? // fonte das descrições/texto corrido
   // Rastreamento do mentor (tráfego pago próprio)
   gaMeasurementId String? // ex: G-XXXXXXXXXX
   metaPixelId     String? // ex: 1234567890123456

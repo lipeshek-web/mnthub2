@@ -85,6 +85,9 @@ export const api = {
     socials?: SocialLinksDTO
     avatarUrl?: string | null
     coverUrl?: string | null
+    /** Tipografia da página do criador (ids do catálogo em src/lib/fonts.ts) */
+    fontHeading?: string | null
+    fontBody?: string | null
     gaMeasurementId?: string | null
     metaPixelId?: string | null
   }) => request<{ id: string }>('/api/mentors', { method: 'POST', body: JSON.stringify(data) }),

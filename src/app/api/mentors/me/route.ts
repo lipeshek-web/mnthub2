@@ -71,6 +71,8 @@ export async function GET(req: NextRequest) {
         bookedSlots: [],
         avatarUrl: profile.user.avatarUrl,
         coverUrl: profile.coverUrl,
+        fontHeading: profile.fontHeading,
+        fontBody: profile.fontBody,
         slug: profile.slug,
         tracking: {
           gaMeasurementId: profile.gaMeasurementId,

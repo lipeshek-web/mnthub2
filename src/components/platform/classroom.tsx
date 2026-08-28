@@ -100,14 +100,28 @@ export function ClassroomView({ courseId }: { courseId: string }) {
   const [completedIds, setCompletedIds] = useState<string[]>([])
   const [toggling, setToggling] = useState(false)
 
+  // Auto-retry para falhas transitórias de rede/servidor (ex.: dev server reiniciando)
+  const retriesRef = useRef(0)
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const fetchCourse = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
       const d = await api.getCourse(courseId, user?.id)
+      retriesRef.current = 0
       setData(d)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Não foi possível carregar o curso.')
+      const message = err instanceof Error ? err.message : 'Não foi possível carregar o curso.'
+      const transient =
+        /inesperado|fetch|network|load failed|conex/i.test(message) && retriesRef.current < 2
+      if (transient) {
+        retriesRef.current += 1
+        if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
+        retryTimerRef.current = setTimeout(() => void fetchCourse(), 1200)
+      } else {
+        setError(message)
+      }
     } finally {
       setLoading(false)
     }
@@ -115,6 +129,9 @@ export function ClassroomView({ courseId }: { courseId: string }) {
 
   useEffect(() => {
     void fetchCourse()
+    return () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
+    }
   }, [fetchCourse])
 
   const course = data

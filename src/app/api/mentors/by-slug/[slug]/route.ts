@@ -98,6 +98,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ slug: stri
         },
         avatarUrl: profile.user.avatarUrl,
         coverUrl: profile.coverUrl,
+        fontHeading: profile.fontHeading,
+        fontBody: profile.fontBody,
         tracking: {
           gaMeasurementId: profile.gaMeasurementId,
           metaPixelId: profile.metaPixelId,
