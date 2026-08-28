@@ -204,3 +204,93 @@ Work Log:
 
 Stage Summary:
 - UI overhaul verificada de ponta a ponta no browser real, desktop + mobile; golden path (explorar → agendar → dashboard → reunião) intacto após o redesign
+
+---
+Task ID: 1 + 2
+Agent: main (Z.ai Code)
+Task: Socials no perfil de mentor + sistema completo de Cursos (schema, seed, APIs, contratos)
+
+Work Log:
+- prisma/schema.prisma: MentorProfile ganhou instagram/linkedin/github/website (String?); novos models Course, Lesson (videoUrl + content textual, order) e Enrollment (unique [courseId,studentId], completedLessonIds como JSON string); User.enrollments; bun run db:push OK
+- prisma/seed.ts: socials para os 7 mentores (mix de @handle e URL); 5 cursos completos (Arquitetura de Software R$189 Carlos; Do Zero a PM GRÁTIS Marina; Design Systems R$199 Beatriz; Growth R$149 Rafael; Inglês p/ Entrevistas R$89 Sofia) com 24 aulas (textos educativos reais + 4 videoaulas YouTube); 3 matrículas com progresso (Ana 2/5 no curso da Marina, Lucas 3/6 no Carlos, Thiago 1/4 no Rafael)
+- src/lib/types.ts: SocialLinksDTO, CourseLessonDTO, CourseListItemDTO, CourseDetailDTO (enrollment opcional), EnrolledCourseDTO; MentorListItemDTO/MentorDetailDTO com socials
+- src/lib/api.ts: listCourses/getCourse(userId?)/createCourse/updateCourse/deleteCourse/createLesson/deleteLesson/enrollCourse/toggleLessonComplete/listMyEnrollments; saveMentorProfile aceita socials
+- src/lib/store.ts: nova view {name:'course', courseId} + exploreTab ('mentors'|'courses') com setExploreTab (consumida 1x pelo Explorar)
+- src/lib/helpers.ts: socialUrl()/socialDisplay() (handle→URL, extrai domínio), toVideoEmbedUrl() (YouTube/youtu.be/vimeo→embed), formatTotalDuration()
+- APIs novas: GET/POST /api/courses (filtros search/category/sort/mentorId/mentorUserId — mentorUserId inclui rascunhos), GET/PATCH/DELETE /api/courses/[id] (ownership check), POST/DELETE /api/courses/[id]/lessons (DELETE também limpa a aula das matrículas), POST /api/courses/[id]/enroll + PATCH (toggle aula concluída), GET /api/enrollments
+- APIs alteradas: /api/mentors GET (socials na lista) e POST (aceita socials com trim/length cap), /api/mentors/[id] e /api/mentors/me retornam socials
+- Dev server reiniciado (client Prisma stale); APIs testadas via curl: 5 cursos, detail com enrollment da Ana correto, matrículas OK
+
+Stage Summary:
+- Infra completa de cursos + socials no banco/API; contratos prontos para o frontend:
+  - CourseView: componente de src/components/platform/course-view.tsx será montado em view {name:'course', courseId}
+  - Explorar ganha aba Cursos via useAppStore.exploreTab/setExploreTab
+  - socials chega pronto em MentorDetailDTO.socials e MentorListItemDTO.socials
+
+---
+Task ID: 3-b
+Agent: frontend-styling-expert
+Task: Cartões de prévia de redes sociais no perfil + aba Cursos + gestão de cursos/redes no onboarding
+
+Work Log:
+- Lidos worklog.md, types.ts, api.ts, helpers.ts (socialUrl/socialDisplay/avatarGradient/formatTotalDuration), store.ts, avatar.tsx, ui (button/card/badge/dialog/tabs/select) e as rotas de API de cursos/mentors para confirmar contratos
+- Criado `src/components/platform/social-links.tsx`: `SocialLinksSection` ('use client') que se auto-oculta quando as 4 redes estão vazias; label uppercase "Encontre {firstName} também em" + flex flex-wrap gap-3 com 4 cartões-âncora (target=_blank, rel=noopener, aria-label "…(abre em nova aba)", focus-visible outline emerald):
+  - Instagram (sm:w-72): anel de story com gradiente oficial do Instagram (p-[2.5px] linear-gradient 45deg #f09433→#bc1888) + Avatar, grid 3×2 de tiles aspect-square com avatarGradient(handle+i) e ícones lucide brancos 20% (Heart/MessageCircle/PlayCircle/Camera/Image/Bookmark), footer "Ver perfil completo"
+  - LinkedIn (sm:w-64): quadrado #0A66C2 com "in" em CSS puro (font-black), socialDisplay do valor, footer "Abrir perfil" — única exceção de cor fora da paleta, por brand recognition
+  - GitHub (sm:w-72): cartão escuro stone-900/stone-800 com chip Github, grafo de contribuições fake 7×5 (h-2.5 rounded-[2px], ~40% células preenchidas via hash determinístico de handle+row+col com avatarGradient e opacidade variável, resto bg-white/10), footer "Ver repositórios" text-white/70
+  - Site/Portfólio (sm:w-64): Globe2 em chip emerald-50/emerald-700, domínio truncado via socialDisplay, footer "Abrir"
+- `mentor-profile.tsx`: SocialLinksSection renderizado logo após o banner (self-hiding); novo fetch em paralelo no load() via Promise.all([getMentor, listCourses({mentorId}).catch(→[])]) guardado em `courses`; TabsTrigger "Cursos" (com contagem quando > 0) após "Mural de conteúdos"; TabsContent com empty state dashed (Library, "Este mentor ainda não publicou cursos.") ou grid sm:grid-cols-2 de cards rounded-2xl overflow-hidden com faixa h-20 avatarGradient(course.title) + Library white/20 + Badge de nível branco, corpo com line-clamp-1/2, stats (aulas · formatTotalDuration · alunos), footer border-t com "Grátis" (emerald-700 font-extrabold) ou currencyBRL + Button rounded-full "Ver curso" → navigate({name:'course', courseId})
+- `onboarding.tsx`: (A) ProfileFormValues ganhou `socials: SocialLinksDTO`; nova seção "Redes sociais e portfólio" (AtSign + helper "Aparecem como cartões de prévia no seu perfil público.") após Idiomas com 4 Inputs (Instagram com prefixo @ visual, LinkedIn, GitHub, Site/Portfólio) inicializados de initial?.socials e enviados com trim/empty→undefined; fluxos de criação/edição passam socials: profile.socials ?? {}; (B) `CoursesManager` (após ContentsManager, apenas com perfil): fetch listCourses({mentorUserId}) no mount com skeletons, lista max-h-96 com scrollbar custom, item com badges categoria/nível/Publicado(emerald)/Rascunho(stone), stats (aulas · Gratuito|currencyBRL · alunos) e ações Aulas (ListVideo)/Editar (Pencil)/publicar-despublicar (Eye/EyeOff com toggle disabled)/Excluir (Trash2 → AlertDialog com aviso de progresso dos alunos); Dialog criar/editar (Título≥5, Descrição≥30 rows=3, Categoria obrigatória, Nível, Preço com hint "Deixe 0...", erros inline rose-600); criar → toast "Curso criado! Agora adicione aulas." e abre direto o gerenciador de aulas do curso recém-criado; `LessonsManagerDialog` (sm:max-w-lg): aulas via api.getCourse, lista compacta com número de ordem, ícone Vídeo/FileText, duração, exclusão direta com toast; formulário inline "Adicionar aula" (Título, Duração, Vídeo URL opcional, Conteúdo textual, Resumo) com validação título≥3, duração>0 e "vídeo OU conteúdo" obrigatório; todas as mutações fazem refresh do pai (onChanged→reload) + lista local
+- Validação: `bun run lint` limpo (0 erros/warnings); `bunx tsc --noEmit` sem erros em src/ (apenas erros pré-existentes em examples/ e skills/, fora do escopo); dev server compilou sem erros e APIs de cursos/socials testadas via curl
+
+Stage Summary:
+- Perfis públicos de mentor agora exibem cartões-rich-link das redes (Instagram com grid de posts, LinkedIn com marca, GitHub com grafo fake determinístico, Site/Portfólio) logo abaixo do banner, self-hiding e na linguagem visual stone+esmeralda
+- Perfil ganhou aba "Cursos" com cards navegáveis para a CourseView ({name:'course', courseId}); onboarding virou painel completo do mentor com criação/edição/publicação/exclusão de cursos (incl. rascunhos) e gestão de aulas (vídeo ou texto) sem tocar em nenhum arquivo de API/lib
+
+---
+Task ID: 3-a
+Agent: frontend-styling-expert
+Task: UI de Cursos — CourseView (overview + sala de aula), aba Cursos no Explorar e "Cursos em destaque" na landing do aluno
+
+Work Log:
+- Lidos worklog.md e contratos (types.ts, api.ts, store.ts, helpers.ts, avatar.tsx) + rotas /api/courses (filtros/sort), enroll (POST/PATCH) e componentes shadcn (Card/Dialog/Progress/Badge/Skeleton) antes de codar
+- Criado `src/components/platform/course-view.tsx`: export `CourseView({ courseId })`; fetch `api.getCourse(courseId, user?.id)` com skeleton, error Card com "Tentar novamente" e refetch
+  - Modo visitante: botão "Voltar" (→ marketplace), hero gradiente `avatarGradient(title)` com watermark Library, badges categoria/nível, stats row (aulas · duração · alunos · preço), "O que você vai aprender" (Check, máx. 6), "Currículo do curso" (nº, título, descrição line-clamp-1, PlayCircle/FileText + duração, Lock stone-300), card do mentor (Avatar/headline/Stars/"Ver perfil" → mentor), sidebar Card sticky (`lg:sticky lg:top-6`) com preço ("Grátis" emerald-700 ou BRL), botão de inscrição (sem login → toast.error('Entre com uma conta no topo da página para se inscrever.'); grátis → inscreve direto; pago → Dialog "Confirmar inscrição" com resumo + "(checkout demonstrativo — nenhuma cobrança real)"), refetch pós-inscrição ativa a sala de aula; toast 'Inscrição realizada! Boa jornada 🎉'
+  - Modo inscrito: header compacto com "X de N aulas concluídas" + Progress (track white/25, fill branco via `[&_[data-slot=progress-indicator]]:bg-white`) e "100% concluído 🎉"; layout `lg:grid-cols-[320px,1fr]`: currículo clicável (ativa bg-emerald-50/border-emerald-200, concluída CheckCircle2 fill-emerald-600 + título riscado, atual PlayCircle, demais com duração; max-h-540 + scrollbar custom), player Card p-6 (Badge "Aula X de N", iframe 16:9 youtube-nocookie via toVideoEmbedUrl + link "Abrir no YouTube" ExternalLink, ou artigo em parágrafos whitespace-pre-line/leading-relaxed; placeholder se sem material), rodapé "← Anterior" / toggle "Marcar como concluída"/"Aula concluída ✓" (outline emerald quando concluída) / "Próxima →", toggle chama api.toggleLessonComplete e atualiza completedIds pela resposta; 100% → toast 'Curso concluído! Parabéns 🎉'; currentLessonId inicial = primeira aula não concluída
+- Modificado `src/components/platform/marketplace.tsx`: controle segmentado role=tablist/aria-selected ("Mentores" Users / "Cursos" BookOpen, rounded-full bg-stone-100 p-1, ativo bg-white shadow-sm) no topo da barra superior; tab inicializada 1x de `useAppStore.getState().exploreTab` e resetada para 'mentors' (consume-once); aba Mentores intacta; aba Cursos: h1 "Explorar cursos" + contador vivo ("X cursos publicados"), Select próprio (Relevância/Populares/Novidades/Menor/Maior preço), mesmo Input de busca (placeholder/aria-label por aba, "/" e debounce mantidos), mesmas chips de categoria com contagens de baseCourses, bento com CourseSpotlightCard (emerald-950, "Curso em destaque" pulsante, ícone com anel avatarGradient, mentor+Stars, chips aulas/duração/alunos, "Grátis" emerald-300, botão branco "Ver curso") + 3 StatTiles (cursos/alunos/aulas), grade de CourseCard (capa h-28 gradiente + Library white/20, Badge nível white/90, pill de preço "Grátis" emerald-700 ou branco, título/mentor+Stars/descrição line-clamp-2, stats BookOpen/Clock/Users, botão "Ver curso"), skeletons e empty state espelhando mentores; baseCourses buscada 1x; lista filtrada só carrega com a aba ativa
+- Modificado `src/components/platform/landing-mentee.tsx`: nova seção "Cursos em destaque" entre Mentores em destaque e Depoimentos (mesmo padrão motion whileInView), fetch `api.listCourses({})` em effect próprio; header com subtítulo "Aprenda no seu ritmo..." + Button link "Ver todos os cursos" → `setExploreTab('courses')` + navigate marketplace; top 3 por studentCount desc + rating do mentor; FeaturedCourseCard (capa h-24 gradiente, badges categoria/nível, título line-clamp-2 min-h, mentor, stats aulas/duração, footer "Grátis" emerald-700 ou BRL + "Ver curso"); skeletons e retorno null da seção quando não há cursos
+- Validação: `bun run lint` limpo; `bunx tsc --noEmit` sem erros em src/ (apenas erros pré-existentes em examples/ e skills/); verificação no browser (desktop 1440x900 + mobile 390x844): landing com nova seção na posição certa, Explorar abas Mentores/Cursos com contagens corretas (+5 cursos/+3 alunos/+23 aulas), busca com empty state + "Limpar filtros", atalho "/", "Ver todos os cursos" abre direto na aba Cursos e consume-once restaura Mentores na visita seguinte, sem overflow horizontal e console limpo
+
+Stage Summary:
+- Frontend de cursos completo: `course-view.tsx` pronto para ser montado no shell na view {name:'course', courseId} (próxima task de integração), Explorar com aba Cursos via exploreTab e landing do aluno divulgando os cursos
+- Padrões mantidos: stone+emerald, rounded-2xl/full, hairlines, pt-BR, toasts sonner, aria (tablist/aria-selected/aria-current/aria-label), targets ≥44px nos controles principais; nenhum arquivo de API/store/helpers/page.tsx foi alterado
+
+---
+Task ID: 4
+Agent: main (Z.ai Code)
+Task: Integração das telas de curso no shell + aba Meus cursos no dashboard
+
+Work Log:
+- src/app/page.tsx: view {name:'course'} montada com <CourseView courseId> importado de components/platform/course-view
+- src/components/platform/dashboard.tsx: nova aba "Meus cursos" (entre Próximas e Para avaliar) com count pill; refetch agora carrega api.listMyEnrollments em Promise.all; novo componente EnrolledCourseCard (gradiente do título, progresso X/N aulas com ui/progress, badge "Concluído", botão Continuar/Revisar → view course); empty state com CTA setExploreTab('courses')+marketplace
+- Corrigido import Clock renomeado por engano (lint acusou jsx-no-undef)
+
+Stage Summary:
+- Shell, dashboard e rotas integrados; lint 0 erros; tsc sem erros em src/
+
+---
+Task ID: 5
+Agent: main (Z.ai Code)
+Task: Verificação end-to-end no browser + fixes de responsividade
+
+Work Log:
+- Agent Browser desktop 1440x900: home com "Cursos em destaque" ✓; "Ver todos os cursos" abre Explorar direto na aba Cursos (exploreTab consume-once) ✓; spotlight de curso + stats (+5 cursos/+3 alunos/+23 aulas) ✓; grid com 5 cursos ✓; overview do curso (hero gradiente, o que vai aprender, currículo locked, sidebar Grátis/pago) ✓; login Ana → classroom com 40% (2/5), aulas 1-2 riscadas ✓; "Marcar como concluída" → toast + toggle + progresso ✓; aula em vídeo com iframe YouTube embed ✓; curso pago → dialog "Confirmar inscrição" (R$ 199, checkout demonstrativo) → classroom 0/4 ✓
+- Perfil do Carlos: 4 cards sociais (Instagram com anel gradiente + grid de posts, LinkedIn #0A66C2, GitHub dark com contribution graph, portfólio) ✓; aba Cursos (1) com card ✓; painel do mentor: campos Redes sociais preenchidos ✓; Meus cursos com Aulas dialog (6 aulas listadas), adicionar aula (toast, 7 aulas, contador atualizado) e remover ✓
+- Dashboard Ana: aba Meus cursos com 2 matrículas + barras de progresso (0/4 e 3/5) ✓
+- Mobile 390x844: overflow horizontal detectado (scrollWidth 456/450) — causa: grids sem coluna explícita no mobile (auto tracks = min-content). Fix: `grid-cols-1` (minmax(0,1fr)) no bento do marketplace e nos 3 grids do course-view; re-verificado sw=390 sem offenders ✓; social cards empilham ✓
+- Erro de hidratação `<p> contendo <div>` (Avatar) no header do classroom → trocado p por div; console/erros limpos após fix ✓
+- Regressão: aba Mentores intacta (spotlight rotativo, chips com contagens, stats) ✓
+- Final: bun run lint 0 erros/warnings; bunx tsc --noEmit sem erros em src/; dev.log saudável; browser fechado
+
+Stage Summary:
+- Sistema de cursos completo e verificado de ponta a ponta: criar (mentor) → publicar → explorar → matricular (grátis/pago) → assistir (texto/vídeo) → progredir → concluir; redes sociais com previews ricos no perfil e gestão no onboarding; mobile sem overflow; console limpo

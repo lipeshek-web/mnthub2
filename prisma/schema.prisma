@@ -18,6 +18,7 @@ model User {
   mentorProfile     MentorProfile?
   bookingsAsMentee  Booking[]      @relation("MenteeBookings")
   reviews           Review[]
+  enrollments       Enrollment[]
 }
 
 model MentorProfile {
@@ -31,11 +32,17 @@ model MentorProfile {
   experienceYears Int     @default(0)
   languages       String  @default("Português")
   isPublished     Boolean @default(true)
+  // Redes sociais e portfólio (instagram/github guardam o @handle; linkedin/website guardam a URL)
+  instagram       String?
+  linkedin        String?
+  github          String?
+  website         String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   availabilities Availability[]
   contents       ContentPost[]
+  courses        Course[]
   bookings       Booking[]      @relation("MentorBookings")
   reviews        Review[]
 }
@@ -91,4 +98,48 @@ model Review {
   rating    Int           // 1..5
   comment   String
   createdAt DateTime      @default(now())
+}
+
+// ==================== CURSOS ====================
+
+model Course {
+  id          String        @id @default(cuid())
+  mentorId    String
+  mentor      MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  category    String // ex: "Tecnologia"
+  level       String        @default("INICIANTE") // INICIANTE | INTERMEDIARIO | AVANCADO
+  price       Float         @default(0) // 0 = gratuito
+  isPublished Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  lessons     Lesson[]
+  enrollments Enrollment[]
+}
+
+model Lesson {
+  id          String   @id @default(cuid())
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  description String   @default("")
+  videoUrl    String?  // URL de vídeo (YouTube etc.) — opcional
+  content     String?  // conteúdo textual da aula (artigo/apostila) — opcional
+  durationMin Int      @default(10)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model Enrollment {
+  id                 String   @id @default(cuid())
+  courseId           String
+  course             Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  studentId          String
+  student            User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  completedLessonIds String   @default("[]") // JSON array de lesson ids
+  createdAt          DateTime @default(now())
+
+  @@unique([courseId, studentId])
 }

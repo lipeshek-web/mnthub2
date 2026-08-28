@@ -7,6 +7,13 @@ export interface UserDTO {
   bio?: string | null
 }
 
+export interface SocialLinksDTO {
+  instagram?: string | null
+  linkedin?: string | null
+  github?: string | null
+  website?: string | null
+}
+
 export interface MentorListItemDTO {
   id: string
   userId: string
@@ -20,6 +27,7 @@ export interface MentorListItemDTO {
   reviewCount: number
   contentsCount: number
   totalSessions: number
+  socials: SocialLinksDTO
 }
 
 export interface ReviewDTO {
@@ -60,6 +68,7 @@ export interface MentorDetailDTO {
   hourlyRate: number
   experienceYears: number
   languages: string
+  socials: SocialLinksDTO
   contents: ContentPostDTO[]
   availabilities: AvailabilityDTO[]
   reviews: ReviewDTO[]
@@ -98,4 +107,52 @@ export interface AvailabilitySlotInput {
   weekday: number
   startHour: number
   endHour: number
+}
+
+// ==================== CURSOS ====================
+
+export interface CourseLessonDTO {
+  id: string
+  title: string
+  description: string
+  videoUrl: string | null
+  content: string | null
+  durationMin: number
+  order: number
+}
+
+export interface CourseListItemDTO {
+  id: string
+  title: string
+  description: string
+  category: string
+  level: 'INICIANTE' | 'INTERMEDIARIO' | 'AVANCADO' | string
+  price: number // 0 = gratuito
+  isPublished: boolean
+  mentor: {
+    id: string
+    userId: string
+    name: string
+    headline: string
+    rating: number
+    reviewCount: number
+  }
+  lessonCount: number
+  totalDurationMin: number
+  studentCount: number
+  createdAt: string
+}
+
+export interface CourseDetailDTO extends CourseListItemDTO {
+  updatedAt: string
+  lessons: CourseLessonDTO[]
+  /** Preenchido quando userId é informado e o usuário está inscrito */
+  enrollment: { completedLessonIds: string[] } | null
+}
+
+export interface EnrolledCourseDTO {
+  courseId: string
+  enrolledAt: string
+  completedLessonIds: string[]
+  course: CourseListItemDTO
 }

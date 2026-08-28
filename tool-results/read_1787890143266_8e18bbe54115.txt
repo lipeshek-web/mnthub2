@@ -1,0 +1,1037 @@
+     1→'use client'
+     2→
+     3→import { useCallback, useEffect, useState, type FormEvent } from 'react'
+     4→import {
+     5→  BadgeDollarSign,
+     6→  BookOpen,
+     7→  CalendarCheck,
+     8→  CalendarClock,
+     9→  Check,
+    10→  Clock,
+    11→  LogIn,
+    12→  Newspaper,
+    13→  Plus,
+    14→  Save,
+    15→  Sparkles,
+    16→  Trash2,
+    17→  UserRound,
+    18→  Users,
+    19→  X,
+    20→  type LucideIcon,
+    21→} from 'lucide-react'
+    22→import { toast } from 'sonner'
+    23→
+    24→import {
+    25→  AlertDialog,
+    26→  AlertDialogAction,
+    27→  AlertDialogCancel,
+    28→  AlertDialogContent,
+    29→  AlertDialogDescription,
+    30→  AlertDialogFooter,
+    31→  AlertDialogHeader,
+    32→  AlertDialogTitle,
+    33→} from '@/components/ui/alert-dialog'
+    34→import { Badge } from '@/components/ui/badge'
+    35→import { Button } from '@/components/ui/button'
+    36→import {
+    37→  Card,
+    38→  CardAction,
+    39→  CardContent,
+    40→  CardDescription,
+    41→  CardHeader,
+    42→  CardTitle,
+    43→} from '@/components/ui/card'
+    44→import {
+    45→  Dialog,
+    46→  DialogContent,
+    47→  DialogDescription,
+    48→  DialogFooter,
+    49→  DialogHeader,
+    50→  DialogTitle,
+    51→} from '@/components/ui/dialog'
+    52→import { Input } from '@/components/ui/input'
+    53→import { Label } from '@/components/ui/label'
+    54→import {
+    55→  Select,
+    56→  SelectContent,
+    57→  SelectItem,
+    58→  SelectTrigger,
+    59→  SelectValue,
+    60→} from '@/components/ui/select'
+    61→import { Separator } from '@/components/ui/separator'
+    62→import { Skeleton } from '@/components/ui/skeleton'
+    63→import { Textarea } from '@/components/ui/textarea'
+    64→import { Stars } from '@/components/platform/avatar'
+    65→import { api } from '@/lib/api'
+    66→import {
+    67→  CATEGORIES,
+    68→  CONTENT_TYPE_META,
+    69→  LEVEL_LABELS,
+    70→  WEEKDAYS_FULL_PT,
+    71→  hourToLabel,
+    72→  labelToHour,
+    73→} from '@/lib/helpers'
+    74→import { useAppStore } from '@/lib/store'
+    75→import type { AvailabilitySlotInput, ContentPostDTO, MentorDetailDTO } from '@/lib/types'
+    76→import { cn } from '@/lib/utils'
+    77→
+    78→// Horários de 30 em 30 min, de 06:00 a 21:30
+    79→const TIME_OPTIONS: string[] = (() => {
+    80→  const options: string[] = []
+    81→  for (let minutes = 6 * 60; minutes <= 21 * 60 + 30; minutes += 30) {
+    82→    const h = Math.floor(minutes / 60)
+    83→    const m = minutes % 60
+    84→    options.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+    85→  }
+    86→  return options
+    87→})()
+    88→
+    89→const CONTENT_TYPES = ['ARTICLE', 'VIDEO', 'WORKSHOP', 'TRAIL'] as const
+    90→const CONTENT_LEVELS = ['INICIANTE', 'INTERMEDIARIO', 'AVANCADO'] as const
+    91→
+    92→// ---------- Formulário de perfil (criação e edição) ----------
+    93→
+    94→export interface ProfileFormValues {
+    95→  headline: string
+    96→  description: string
+    97→  categories: string[]
+    98→  hourlyRate: number
+    99→  experienceYears: number
+   100→  languages: string
+   101→}
+   102→
+   103→interface ProfileFormErrors {
+   104→  headline?: string
+   105→  description?: string
+   106→  categories?: string
+   107→  hourlyRate?: string
+   108→  experienceYears?: string
+   109→}
+   110→
+   111→function MentorProfileForm({
+   112→  initial,
+   113→  submitLabel,
+   114→  onSubmit,
+   115→}: {
+   116→  initial?: ProfileFormValues
+   117→  submitLabel: string
+   118→  onSubmit: (values: ProfileFormValues) => Promise<void>
+   119→}) {
+   120→  const [headline, setHeadline] = useState(initial?.headline ?? '')
+   121→  const [description, setDescription] = useState(initial?.description ?? '')
+   122→  const [categories, setCategories] = useState<string[]>(initial?.categories ?? [])
+   123→  const [hourlyRate, setHourlyRate] = useState(initial ? String(initial.hourlyRate) : '')
+   124→  const [experienceYears, setExperienceYears] = useState(initial ? String(initial.experienceYears) : '')
+   125→  const [languages, setLanguages] = useState(initial?.languages || 'Português')
+   126→  const [errors, setErrors] = useState<ProfileFormErrors>({})
+   127→  const [saving, setSaving] = useState(false)
+   128→
+   129→  const toggleCategory = (category: string) => {
+   130→    setCategories((prev) =>
+   131→      prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category]
+   132→    )
+   133→    setErrors((prev) => ({ ...prev, categories: undefined }))
+   134→  }
+   135→
+   136→  const validate = (): ProfileFormErrors => {
+   137→    const errs: ProfileFormErrors = {}
+   138→    if (headline.trim().length < 8) {
+   139→      errs.headline = 'O título deve ter pelo menos 8 caracteres.'
+   140→    }
+   141→    if (description.trim().length < 30) {
+   142→      errs.description = 'Descreva sua mentoria com pelo menos 30 caracteres.'
+   143→    }
+   144→    if (categories.length === 0) {
+   145→      errs.categories = 'Selecione pelo menos uma categoria.'
+   146→    }
+   147→    const rate = Number(hourlyRate)
+   148→    if (hourlyRate.trim() === '' || Number.isNaN(rate) || rate < 0) {
+   149→      errs.hourlyRate = 'Informe um valor válido por hora (maior ou igual a zero).'
+   150→    }
+   151→    const years = Number(experienceYears)
+   152→    if (experienceYears.trim() === '' || Number.isNaN(years) || years < 0) {
+   153→      errs.experienceYears = 'Informe seus anos de experiência.'
+   154→    }
+   155→    return errs
+   156→  }
+   157→
+   158→  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+   159→    event.preventDefault()
+   160→    const errs = validate()
+   161→    setErrors(errs)
+   162→    if (Object.values(errs).some(Boolean)) return
+   163→    setSaving(true)
+   164→    try {
+   165→      await onSubmit({
+   166→        headline: headline.trim(),
+   167→        description: description.trim(),
+   168→        categories,
+   169→        hourlyRate: Number(hourlyRate),
+   170→        experienceYears: Number(experienceYears),
+   171→        languages: languages.trim() || 'Português',
+   172→      })
+   173→    } catch (err) {
+   174→      toast.error(err instanceof Error ? err.message : 'Não foi possível salvar o perfil.')
+   175→    } finally {
+   176→      setSaving(false)
+   177→    }
+   178→  }
+   179→
+   180→  return (
+   181→    <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-6" noValidate>
+   182→      <div className="flex flex-col gap-2">
+   183→        <Label htmlFor="mentor-headline">Título profissional</Label>
+   184→        <Input
+   185→          id="mentor-headline"
+   186→          value={headline}
+   187→          onChange={(event) => setHeadline(event.target.value)}
+   188→          placeholder="Ex.: Engenheiro de Software Sênior · Ex-Nubank"
+   189→          aria-invalid={Boolean(errors.headline)}
+   190→        />
+   191→        {errors.headline ? (
+   192→          <p className="text-xs text-rose-600">{errors.headline}</p>
+   193→        ) : (
+   194→          <p className="text-xs text-muted-foreground">
+   195→            Uma frase curta que resume quem você é e o que faz.
+   196→          </p>
+   197→        )}
+   198→      </div>
+   199→
+   200→      <div className="flex flex-col gap-2">
+   201→        <Label htmlFor="mentor-description">Como funciona sua mentoria</Label>
+   202→        <Textarea
+   203→          id="mentor-description"
+   204→          rows={6}
+   205→          value={description}
+   206→          onChange={(event) => setDescription(event.target.value)}
+   207→          placeholder="Conte como você trabalha: o que o aluno recebe, como são as sessões e quais resultados você pode ajudar a alcançar..."
+   208→          aria-invalid={Boolean(errors.description)}
+   209→        />
+   210→        {errors.description ? (
+   211→          <p className="text-xs text-rose-600">{errors.description}</p>
+   212→        ) : (
+   213→          <p className="text-xs text-muted-foreground">
+   214→            Detalhe sua metodologia, público ideal e o que o aluno leva de cada sessão (mínimo 30 caracteres).
+   215→          </p>
+   216→        )}
+   217→      </div>
+   218→
+   219→      <div className="flex flex-col gap-2">
+   220→        <Label>Áreas de atuação</Label>
+   221→        <div className="flex flex-wrap gap-2" role="group" aria-label="Categorias de atuação">
+   222→          {CATEGORIES.map((category) => {
+   223→            const selected = categories.includes(category)
+   224→            return (
+   225→              <button
+   226→                key={category}
+   227→                type="button"
+   228→                aria-pressed={selected}
+   229→                onClick={() => toggleCategory(category)}
+   230→                className={cn(
+   231→                  'rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-emerald-600',
+   232→                  selected
+   233→                    ? 'border-emerald-600 bg-emerald-600 text-white'
+   234→                    : 'border-stone-300 bg-white text-stone-700 hover:border-emerald-400 hover:text-emerald-700'
+   235→                )}
+   236→              >
+   237→                {category}
+   238→              </button>
+   239→            )
+   240→          })}
+   241→        </div>
+   242→        {errors.categories ? <p className="text-xs text-rose-600">{errors.categories}</p> : null}
+   243→      </div>
+   244→
+   245→      <div className="grid gap-6 sm:grid-cols-2">
+   246→        <div className="flex flex-col gap-2">
+   247→          <Label htmlFor="mentor-rate">Valor da hora</Label>
+   248→          <div className="relative">
+   249→            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+   250→              R$
+   251→            </span>
+   252→            <Input
+   253→              id="mentor-rate"
+   254→              type="number"
+   255→              min={0}
+   256→              step={10}
+   257→              className="pl-10"
+   258→              value={hourlyRate}
+   259→              onChange={(event) => setHourlyRate(event.target.value)}
+   260→              placeholder="150"
+   261→              aria-invalid={Boolean(errors.hourlyRate)}
+   262→            />
+   263→          </div>
+   264→          {errors.hourlyRate ? (
+   265→            <p className="text-xs text-rose-600">{errors.hourlyRate}</p>
+   266→          ) : (
+   267→            <p className="text-xs text-muted-foreground">
+   268→              Valor por sessão de 1 hora. Você pode ajustar depois.
+   269→            </p>
+   270→          )}
+   271→        </div>
+   272→
+   273→        <div className="flex flex-col gap-2">
+   274→          <Label htmlFor="mentor-experience">Anos de experiência</Label>
+   275→          <Input
+   276→            id="mentor-experience"
+   277→            type="number"
+   278→            min={0}
+   279→            step={1}
+   280→            value={experienceYears}
+   281→            onChange={(event) => setExperienceYears(event.target.value)}
+   282→            placeholder="8"
+   283→            aria-invalid={Boolean(errors.experienceYears)}
+   284→          />
+   285→          {errors.experienceYears ? (
+   286→            <p className="text-xs text-rose-600">{errors.experienceYears}</p>
+   287→          ) : (
+   288→            <p className="text-xs text-muted-foreground">Tempo total de atuação na área.</p>
+   289→          )}
+   290→        </div>
+   291→      </div>
+   292→
+   293→      <div className="flex flex-col gap-2">
+   294→        <Label htmlFor="mentor-languages">Idiomas</Label>
+   295→        <Input
+   296→          id="mentor-languages"
+   297→          value={languages}
+   298→          onChange={(event) => setLanguages(event.target.value)}
+   299→          placeholder="Português"
+   300→        />
+   301→        <p className="text-xs text-muted-foreground">Idiomas em que você pode mentorar, separados por vírgula.</p>
+   302→      </div>
+   303→
+   304→      <div className="flex justify-end">
+   305→        <Button type="submit" disabled={saving} className="min-w-44">
+   306→          {saving ? 'Salvando...' : submitLabel}
+   307→        </Button>
+   308→      </div>
+   309→    </form>
+   310→  )
+   311→}
+   312→
+   313→// ---------- Editor de disponibilidade semanal ----------
+   314→
+   315→function AvailabilityEditor({
+   316→  initialSlots,
+   317→  onSave,
+   318→}: {
+   319→  initialSlots: AvailabilitySlotInput[]
+   320→  onSave: (slots: AvailabilitySlotInput[]) => Promise<void>
+   321→}) {
+   322→  const [slots, setSlots] = useState<AvailabilitySlotInput[]>(() =>
+   323→    [...initialSlots].sort((a, b) => a.weekday - b.weekday || a.startHour - b.startHour)
+   324→  )
+   325→  const [addingDay, setAddingDay] = useState<number | null>(null)
+   326→  const [newStart, setNewStart] = useState('09:00')
+   327→  const [newEnd, setNewEnd] = useState('12:00')
+   328→  const [saving, setSaving] = useState(false)
+   329→
+   330→  const openAdd = (weekday: number) => {
+   331→    setAddingDay(weekday)
+   332→    setNewStart('09:00')
+   333→    setNewEnd('12:00')
+   334→  }
+   335→
+   336→  const removeSlot = (weekday: number, startHour: number, endHour: number) => {
+   337→    setSlots((prev) =>
+   338→      prev.filter((s) => !(s.weekday === weekday && s.startHour === startHour && s.endHour === endHour))
+   339→    )
+   340→  }
+   341→
+   342→  const confirmAdd = () => {
+   343→    if (addingDay === null) return
+   344→    const startHour = labelToHour(newStart)
+   345→    const endHour = labelToHour(newEnd)
+   346→    if (endHour - startHour < 1) {
+   347→      toast.error('A faixa de horário deve ter pelo menos 1 hora de duração.')
+   348→      return
+   349→    }
+   350→    const conflicts = slots.some(
+   351→      (s) => s.weekday === addingDay && startHour < s.endHour && endHour > s.startHour
+   352→    )
+   353→    if (conflicts) {
+   354→      toast.error('Esta faixa conflita com um horário já cadastrado neste dia.')
+   355→      return
+   356→    }
+   357→    setSlots((prev) => [...prev, { weekday: addingDay, startHour, endHour }])
+   358→    setAddingDay(null)
+   359→  }
+   360→
+   361→  const handleSave = async () => {
+   362→    setSaving(true)
+   363→    try {
+   364→      const ordered = [...slots].sort((a, b) => a.weekday - b.weekday || a.startHour - b.startHour)
+   365→      await onSave(ordered)
+   366→    } finally {
+   367→      setSaving(false)
+   368→    }
+   369→  }
+   370→
+   371→  return (
+   372→    <div className="flex flex-col gap-4">
+   373→      <div className="flex flex-col divide-y divide-stone-200 rounded-lg border border-stone-200">
+   374→        {WEEKDAYS_FULL_PT.map((day, weekday) => {
+   375→          const daySlots = slots
+   376→            .filter((s) => s.weekday === weekday)
+   377→            .sort((a, b) => a.startHour - b.startHour)
+   378→          return (
+   379→            <div key={day} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+   380→              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+   381→                <span className="w-28 shrink-0 text-sm font-medium sm:w-32">{day}</span>
+   382→                {daySlots.length === 0 ? (
+   383→                  <span className="text-xs text-stone-400">Sem disponibilidade</span>
+   384→                ) : (
+   385→                  <span className="flex flex-wrap items-center gap-1.5">
+   386→                    {daySlots.map((s) => (
+   387→                      <Badge
+   388→                        key={`${s.weekday}-${s.startHour}-${s.endHour}`}
+   389→                        variant="outline"
+   390→                        className="gap-1 border-emerald-200 bg-emerald-50 py-1 text-emerald-800"
+   391→                      >
+   392→                        {hourToLabel(s.startHour)} – {hourToLabel(s.endHour)}
+   393→                        <button
+   394→                          type="button"
+   395→                          aria-label={`Remover faixa de ${hourToLabel(s.startHour)} às ${hourToLabel(
+   396→                            s.endHour
+   397→                          )} na ${day.toLowerCase()}`}
+   398→                          onClick={() => removeSlot(s.weekday, s.startHour, s.endHour)}
+   399→                          className="rounded-full p-0.5 transition-colors hover:bg-emerald-200/70 focus-visible:outline-2 focus-visible:outline-emerald-600"
+   400→                        >
+   401→                          <X className="size-3" aria-hidden />
+   402→                        </button>
+   403→                      </Badge>
+   404→                    ))}
+   405→                  </span>
+   406→                )}
+   407→              </div>
+   408→
+   409→              <div className="shrink-0">
+   410→                {addingDay === weekday ? (
+   411→                  <div className="flex flex-wrap items-center gap-2">
+   412→                    <Select value={newStart} onValueChange={setNewStart}>
+   413→                      <SelectTrigger size="sm" className="w-24" aria-label="Início da faixa">
+   414→                        <SelectValue />
+   415→                      </SelectTrigger>
+   416→                      <SelectContent>
+   417→                        {TIME_OPTIONS.map((time) => (
+   418→                          <SelectItem key={time} value={time}>
+   419→                            {time}
+   420→                          </SelectItem>
+   421→                        ))}
+   422→                      </SelectContent>
+   423→                    </Select>
+   424→                    <span className="text-sm text-muted-foreground" aria-hidden>
+   425→                      →
+   426→                    </span>
+   427→                    <Select value={newEnd} onValueChange={setNewEnd}>
+   428→                      <SelectTrigger size="sm" className="w-24" aria-label="Fim da faixa">
+   429→                        <SelectValue />
+   430→                      </SelectTrigger>
+   431→                      <SelectContent>
+   432→                        {TIME_OPTIONS.map((time) => (
+   433→                          <SelectItem key={time} value={time}>
+   434→                            {time}
+   435→                          </SelectItem>
+   436→                        ))}
+   437→                      </SelectContent>
+   438→                    </Select>
+   439→                    <Button size="sm" onClick={confirmAdd}>
+   440→                      <Check className="size-4" aria-hidden /> Confirmar
+   441→                    </Button>
+   442→                    <Button size="sm" variant="ghost" onClick={() => setAddingDay(null)}>
+   443→                      Cancelar
+   444→                    </Button>
+   445→                  </div>
+   446→                ) : (
+   447→                  <Button
+   448→                    size="sm"
+   449→                    variant="ghost"
+   450→                    onClick={() => openAdd(weekday)}
+   451→                    aria-label={`Adicionar faixa de horário na ${day.toLowerCase()}`}
+   452→                  >
+   453→                    <Plus className="size-4" aria-hidden /> Adicionar
+   454→                  </Button>
+   455→                )}
+   456→              </div>
+   457→            </div>
+   458→          )
+   459→        })}
+   460→      </div>
+   461→
+   462→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   463→        <p className="text-xs text-muted-foreground">
+   464→          Alunos só podem agendar dentro destas faixas. Use intervalos de pelo menos 1 hora.
+   465→        </p>
+   466→        <Button onClick={() => void handleSave()} disabled={saving} className="shrink-0">
+   467→          <Save className="size-4" aria-hidden /> {saving ? 'Salvando...' : 'Salvar disponibilidade'}
+   468→        </Button>
+   469→      </div>
+   470→    </div>
+   471→  )
+   472→}
+   473→
+   474→// ---------- Gerenciador do mural de conteúdos ----------
+   475→
+   476→function ContentsManager({
+   477→  contents,
+   478→  userId,
+   479→  onChanged,
+   480→}: {
+   481→  contents: ContentPostDTO[]
+   482→  userId: string
+   483→  onChanged: () => Promise<void>
+   484→}) {
+   485→  const [createOpen, setCreateOpen] = useState(false)
+   486→  const [toDelete, setToDelete] = useState<ContentPostDTO | null>(null)
+   487→  const [deleting, setDeleting] = useState(false)
+   488→  const [title, setTitle] = useState('')
+   489→  const [description, setDescription] = useState('')
+   490→  const [type, setType] = useState<string>('ARTICLE')
+   491→  const [level, setLevel] = useState<string>('INICIANTE')
+   492→  const [durationMin, setDurationMin] = useState('45')
+   493→  const [tags, setTags] = useState('')
+   494→  const [saving, setSaving] = useState(false)
+   495→  const [formErrors, setFormErrors] = useState<{
+   496→    title?: string
+   497→    description?: string
+   498→    durationMin?: string
+   499→  }>({})
+   500→
+   501→  const handleCreate = async () => {
+   502→    const errs: typeof formErrors = {}
+   503→    if (title.trim().length < 3) {
+   504→      errs.title = 'Dê um título ao conteúdo (mínimo 3 caracteres).'
+   505→    }
+   506→    if (description.trim().length < 10) {
+   507→      errs.description = 'Escreva uma breve descrição (mínimo 10 caracteres).'
+   508→    }
+   509→    const duration = Number(durationMin)
+   510→    if (durationMin.trim() === '' || Number.isNaN(duration) || duration <= 0) {
+   511→      errs.durationMin = 'Informe a duração em minutos.'
+   512→    }
+   513→    setFormErrors(errs)
+   514→    if (Object.values(errs).some(Boolean)) return
+   515→
+   516→    setSaving(true)
+   517→    try {
+   518→      await api.createContent({
+   519→        userId,
+   520→        title: title.trim(),
+   521→        description: description.trim(),
+   522→        type,
+   523→        level,
+   524→        durationMin: duration,
+   525→        tags: tags
+   526→          .split(',')
+   527→          .map((t) => t.trim())
+   528→          .filter((t) => t.length > 0),
+   529→      })
+   530→      toast.success('Conteúdo publicado no mural!')
+   531→      setCreateOpen(false)
+   532→      setTitle('')
+   533→      setDescription('')
+   534→      setType('ARTICLE')
+   535→      setLevel('INICIANTE')
+   536→      setDurationMin('45')
+   537→      setTags('')
+   538→      await onChanged()
+   539→    } catch (err) {
+   540→      toast.error(err instanceof Error ? err.message : 'Não foi possível publicar o conteúdo.')
+   541→    } finally {
+   542→      setSaving(false)
+   543→    }
+   544→  }
+   545→
+   546→  const handleDelete = async () => {
+   547→    if (!toDelete) return
+   548→    setDeleting(true)
+   549→    try {
+   550→      await api.deleteContent(toDelete.id, userId)
+   551→      toast.success('Conteúdo removido do mural.')
+   552→      setToDelete(null)
+   553→      await onChanged()
+   554→    } catch (err) {
+   555→      toast.error(err instanceof Error ? err.message : 'Não foi possível remover o conteúdo.')
+   556→    } finally {
+   557→      setDeleting(false)
+   558→    }
+   559→  }
+   560→
+   561→  return (
+   562→    <Card>
+   563→      <CardHeader>
+   564→        <CardTitle className="flex items-center gap-2 text-lg">
+   565→          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+   566→            <Newspaper className="size-4" aria-hidden />
+   567→          </span>
+   568→          Mural de conteúdos
+   569→        </CardTitle>
+   570→        <CardDescription>
+   571→          Publique artigos, vídeos, workshops e trilhas para mostrar sua expertise e atrair mais alunos.
+   572→        </CardDescription>
+   573→        <CardAction>
+   574→          <Button size="sm" onClick={() => setCreateOpen(true)}>
+   575→            <Plus className="size-4" aria-hidden /> Novo conteúdo
+   576→          </Button>
+   577→        </CardAction>
+   578→      </CardHeader>
+   579→      <CardContent className="flex flex-col gap-4">
+   580→        {contents.length === 0 ? (
+   581→          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-stone-300 py-10 text-center">
+   582→            <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 text-stone-400 ring-1 ring-stone-200">
+   583→              <BookOpen className="size-6" aria-hidden />
+   584→            </div>
+   585→            <h3 className="mt-2 text-base font-semibold">Nenhum conteúdo no mural</h3>
+   586→            <p className="max-w-sm text-sm text-muted-foreground">
+   587→              Compartilhe artigos, vídeos e trilhas para demonstrar sua experiência antes mesmo da primeira
+   588→              sessão.
+   589→            </p>
+   590→          </div>
+   591→        ) : (
+   592→          <div className="max-h-96 space-y-3 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
+   593→            {contents.map((content) => {
+   594→              const meta = CONTENT_TYPE_META[content.type]
+   595→              return (
+   596→                <div
+   597→                  key={content.id}
+   598→                  className="flex items-start justify-between gap-3 rounded-lg border border-stone-200 bg-white p-4"
+   599→                >
+   600→                  <div className="min-w-0 flex-1">
+   601→                    <div className="flex flex-wrap items-center gap-2">
+   602→                      {meta ? (
+   603→                        <Badge variant="outline" className={meta.className}>
+   604→                          {meta.label}
+   605→                        </Badge>
+   606→                      ) : (
+   607→                        <Badge variant="outline">{content.type}</Badge>
+   608→                      )}
+   609→                      <span className="text-sm text-stone-500">
+   610→                        {LEVEL_LABELS[content.level] ?? content.level}
+   611→                      </span>
+   612→                      <span className="inline-flex items-center gap-1 text-sm text-stone-500">
+   613→                        <Clock className="size-3.5" aria-hidden /> {content.durationMin} min
+   614→                      </span>
+   615→                    </div>
+   616→                    <h4 className="mt-2 font-semibold leading-snug">{content.title}</h4>
+   617→                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{content.description}</p>
+   618→                    {content.tags.length > 0 ? (
+   619→                      <div className="mt-2 flex flex-wrap gap-1.5">
+   620→                        {content.tags.map((tag) => (
+   621→                          <Badge key={tag} variant="outline" className="text-stone-500">
+   622→                            #{tag}
+   623→                          </Badge>
+   624→                        ))}
+   625→                      </div>
+   626→                    ) : null}
+   627→                  </div>
+   628→                  <Button
+   629→                    variant="ghost"
+   630→                    size="icon"
+   631→                    className="shrink-0 text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+   632→                    aria-label={`Excluir conteúdo ${content.title}`}
+   633→                    onClick={() => setToDelete(content)}
+   634→                  >
+   635→                    <Trash2 className="size-4" aria-hidden />
+   636→                  </Button>
+   637→                </div>
+   638→              )
+   639→            })}
+   640→          </div>
+   641→        )}
+   642→      </CardContent>
+   643→
+   644→      {/* Dialog: novo conteúdo */}
+   645→      <Dialog
+   646→        open={createOpen}
+   647→        onOpenChange={(open) => {
+   648→          setCreateOpen(open)
+   649→          if (open) setFormErrors({})
+   650→        }}
+   651→      >
+   652→        <DialogContent className="sm:max-w-lg">
+   653→          <DialogHeader>
+   654→            <DialogTitle>Novo conteúdo</DialogTitle>
+   655→            <DialogDescription>
+   656→              Publique um conteúdo no seu mural para demonstrar sua expertise aos alunos.
+   657→            </DialogDescription>
+   658→          </DialogHeader>
+   659→          <div className="flex flex-col gap-4">
+   660→            <div className="flex flex-col gap-2">
+   661→              <Label htmlFor="content-title">Título</Label>
+   662→              <Input
+   663→                id="content-title"
+   664→                value={title}
+   665→                onChange={(event) => setTitle(event.target.value)}
+   666→                placeholder="Ex.: Como estruturar a arquitetura frontend de um produto"
+   667→                aria-invalid={Boolean(formErrors.title)}
+   668→              />
+   669→              {formErrors.title ? <p className="text-xs text-rose-600">{formErrors.title}</p> : null}
+   670→            </div>
+   671→            <div className="flex flex-col gap-2">
+   672→              <Label htmlFor="content-description">Descrição</Label>
+   673→              <Textarea
+   674→                id="content-description"
+   675→                rows={4}
+   676→                value={description}
+   677→                onChange={(event) => setDescription(event.target.value)}
+   678→                placeholder="Do que se trata e o que o aluno vai aprender com este conteúdo..."
+   679→                aria-invalid={Boolean(formErrors.description)}
+   680→              />
+   681→              {formErrors.description ? (
+   682→                <p className="text-xs text-rose-600">{formErrors.description}</p>
+   683→              ) : null}
+   684→            </div>
+   685→            <div className="grid gap-4 sm:grid-cols-2">
+   686→              <div className="flex flex-col gap-2">
+   687→                <Label htmlFor="content-type">Tipo</Label>
+   688→                <Select value={type} onValueChange={setType}>
+   689→                  <SelectTrigger id="content-type" className="w-full">
+   690→                    <SelectValue />
+   691→                  </SelectTrigger>
+   692→                  <SelectContent>
+   693→                    {CONTENT_TYPES.map((t) => (
+   694→                      <SelectItem key={t} value={t}>
+   695→                        {CONTENT_TYPE_META[t]?.label ?? t}
+   696→                      </SelectItem>
+   697→                    ))}
+   698→                  </SelectContent>
+   699→                </Select>
+   700→              </div>
+   701→              <div className="flex flex-col gap-2">
+   702→                <Label htmlFor="content-level">Nível</Label>
+   703→                <Select value={level} onValueChange={setLevel}>
+   704→                  <SelectTrigger id="content-level" className="w-full">
+   705→                    <SelectValue />
+   706→                  </SelectTrigger>
+   707→                  <SelectContent>
+   708→                    {CONTENT_LEVELS.map((l) => (
+   709→                      <SelectItem key={l} value={l}>
+   710→                        {LEVEL_LABELS[l] ?? l}
+   711→                      </SelectItem>
+   712→                    ))}
+   713→                  </SelectContent>
+   714→                </Select>
+   715→              </div>
+   716→            </div>
+   717→            <div className="grid gap-4 sm:grid-cols-2">
+   718→              <div className="flex flex-col gap-2">
+   719→                <Label htmlFor="content-duration">Duração (min)</Label>
+   720→                <Input
+   721→                  id="content-duration"
+   722→                  type="number"
+   723→                  min={5}
+   724→                  step={5}
+   725→                  value={durationMin}
+   726→                  onChange={(event) => setDurationMin(event.target.value)}
+   727→                  aria-invalid={Boolean(formErrors.durationMin)}
+   728→                />
+   729→                {formErrors.durationMin ? (
+   730→                  <p className="text-xs text-rose-600">{formErrors.durationMin}</p>
+   731→                ) : null}
+   732→              </div>
+   733→              <div className="flex flex-col gap-2">
+   734→                <Label htmlFor="content-tags">Tags</Label>
+   735→                <Input
+   736→                  id="content-tags"
+   737→                  value={tags}
+   738→                  onChange={(event) => setTags(event.target.value)}
+   739→                  placeholder="react, arquitetura (separe por vírgula)"
+   740→                />
+   741→              </div>
+   742→            </div>
+   743→          </div>
+   744→          <DialogFooter>
+   745→            <Button variant="ghost" onClick={() => setCreateOpen(false)} disabled={saving}>
+   746→              Cancelar
+   747→            </Button>
+   748→            <Button onClick={() => void handleCreate()} disabled={saving}>
+   749→              {saving ? 'Publicando...' : 'Publicar conteúdo'}
+   750→            </Button>
+   751→          </DialogFooter>
+   752→        </DialogContent>
+   753→      </Dialog>
+   754→
+   755→      {/* AlertDialog: excluir conteúdo */}
+   756→      <AlertDialog
+   757→        open={toDelete !== null}
+   758→        onOpenChange={(open) => {
+   759→          if (!open) setToDelete(null)
+   760→        }}
+   761→      >
+   762→        <AlertDialogContent>
+   763→          <AlertDialogHeader>
+   764→            <AlertDialogTitle>Excluir conteúdo?</AlertDialogTitle>
+   765→            <AlertDialogDescription>
+   766→              &quot;{toDelete?.title}&quot; será removido do mural permanentemente. Esta ação não pode ser
+   767→              desfeita.
+   768→            </AlertDialogDescription>
+   769→          </AlertDialogHeader>
+   770→          <AlertDialogFooter>
+   771→            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+   772→            <AlertDialogAction
+   773→              className="bg-rose-600 text-white hover:bg-rose-700"
+   774→              disabled={deleting}
+   775→              onClick={(event) => {
+   776→                event.preventDefault()
+   777→                void handleDelete()
+   778→              }}
+   779→            >
+   780→              {deleting ? 'Excluindo...' : 'Excluir'}
+   781→            </AlertDialogAction>
+   782→          </AlertDialogFooter>
+   783→        </AlertDialogContent>
+   784→      </AlertDialog>
+   785→    </Card>
+   786→  )
+   787→}
+   788→
+   789→// ---------- Componentes de apresentação ----------
+   790→
+   791→function BenefitCard({ icon: Icon, title, text }: { icon: LucideIcon; title: string; text: string }) {
+   792→  return (
+   793→    <Card className="p-6 text-left">
+   794→      <div className="flex size-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+   795→        <Icon className="size-5" aria-hidden />
+   796→      </div>
+   797→      <h3 className="mt-3 font-semibold">{title}</h3>
+   798→      <p className="mt-1 text-sm text-muted-foreground">{text}</p>
+   799→    </Card>
+   800→  )
+   801→}
+   802→
+   803→// ---------- View principal ----------
+   804→
+   805→export default function OnboardingView() {
+   806→  const user = useAppStore((state) => state.user)
+   807→  const userId = user?.id ?? null
+   808→
+   809→  const [loading, setLoading] = useState(true)
+   810→  const [profile, setProfile] = useState<MentorDetailDTO | null>(null)
+   811→
+   812→  const reload = useCallback(async () => {
+   813→    if (!userId) return
+   814→    try {
+   815→      const res = await api.getMyMentorProfile(userId)
+   816→      setProfile(res.profile)
+   817→    } catch (err) {
+   818→      toast.error(err instanceof Error ? err.message : 'Não foi possível carregar seu perfil de mentor.')
+   819→    } finally {
+   820→      setLoading(false)
+   821→    }
+   822→  }, [userId])
+   823→
+   824→  useEffect(() => {
+   825→    if (!userId) return
+   826→    setLoading(true)
+   827→    void reload()
+   828→  }, [userId, reload])
+   829→
+   830→  const handleCreateProfile = useCallback(
+   831→    async (values: ProfileFormValues) => {
+   832→      if (!user) return
+   833→      await api.saveMentorProfile({ userId: user.id, ...values })
+   834→      toast.success('Perfil publicado! Você já aparece no marketplace.')
+   835→      await reload()
+   836→    },
+   837→    [user, reload]
+   838→  )
+   839→
+   840→  const handleUpdateProfile = useCallback(
+   841→    async (values: ProfileFormValues) => {
+   842→      if (!user) return
+   843→      await api.saveMentorProfile({ userId: user.id, ...values })
+   844→      toast.success('Alterações salvas com sucesso!')
+   845→      await reload()
+   846→    },
+   847→    [user, reload]
+   848→  )
+   849→
+   850→  const handleSaveAvailability = useCallback(
+   851→    async (slots: AvailabilitySlotInput[]) => {
+   852→      if (!user) return
+   853→      try {
+   854→        await api.saveAvailability({ userId: user.id, slots })
+   855→        toast.success('Agenda atualizada!')
+   856→        await reload()
+   857→      } catch (err) {
+   858→        toast.error(err instanceof Error ? err.message : 'Não foi possível salvar sua disponibilidade.')
+   859→      }
+   860→    },
+   861→    [user, reload]
+   862→  )
+   863→
+   864→  // ---------- Guardas de render ----------
+   865→
+   866→  if (!user) {
+   867→    return (
+   868→      <div className="flex min-h-[70vh] items-center justify-center px-4 py-10">
+   869→        <Card className="w-full max-w-md p-6 text-center">
+   870→          <div className="flex flex-col items-center gap-3">
+   871→            <div className="flex size-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200">
+   872→              <LogIn className="size-6" aria-hidden />
+   873→            </div>
+   874→            <h1 className="text-xl font-semibold">Entre para configurar seu perfil de mentor</h1>
+   875→            <p className="max-w-xs text-sm text-muted-foreground">
+   876→              Selecione um usuário no seletor do topo da página para criar ou editar seu perfil de mentor.
+   877→            </p>
+   878→          </div>
+   879→        </Card>
+   880→      </div>
+   881→    )
+   882→  }
+   883→
+   884→  if (loading) {
+   885→    return (
+   886→      <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-8 sm:px-6">
+   887→        <div className="flex flex-col items-center gap-3">
+   888→          <Skeleton className="size-14 rounded-2xl" />
+   889→          <Skeleton className="h-8 w-72 max-w-full" />
+   890→          <Skeleton className="h-4 w-96 max-w-full" />
+   891→        </div>
+   892→        <div className="grid gap-4 sm:grid-cols-3">
+   893→          {[0, 1, 2].map((i) => (
+   894→            <Skeleton key={i} className="h-32 rounded-xl" />
+   895→          ))}
+   896→        </div>
+   897→        <Skeleton className="h-96 w-full rounded-xl" />
+   898→      </div>
+   899→    )
+   900→  }
+   901→
+   902→  // ---------- Sem perfil: apresentação + criação ----------
+   903→
+   904→  if (!profile) {
+   905→    return (
+   906→      <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-8 sm:px-6">
+   907→        <section className="text-center" aria-labelledby="onboarding-hero-title">
+   908→          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/20">
+   909→            <Sparkles className="size-7" aria-hidden />
+   910→          </div>
+   911→          <h1 id="onboarding-hero-title" className="mt-4 text-3xl font-bold tracking-tight">
+   912→            Torne-se um mentor no MentorHub
+   913→          </h1>
+   914→          <p className="mx-auto mt-2 max-w-xl text-muted-foreground">
+   915→            Compartilhe sua experiência com quem está começando, construa sua reputação e seja remunerado por
+   916→            cada sessão de mentoria.
+   917→          </p>
+   918→          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+   919→            <BenefitCard
+   920→              icon={BadgeDollarSign}
+   921→              title="Receba pela sua hora"
+   922→              text="Defina quanto vale a sua hora e receba por cada sessão de mentoria realizada."
+   923→            />
+   924→            <BenefitCard
+   925→              icon={Users}
+   926→              title="Encontre alunos"
+   927→              text="Seu perfil entra no marketplace e alunos em busca de crescimento encontram você."
+   928→            />
+   929→            <BenefitCard
+   930→              icon={CalendarCheck}
+   931→              title="Agenda organizada"
+   932→              text="Cadastre sua disponibilidade semanal e receba solicitações apenas nos horários livres."
+   933→            />
+   934→          </div>
+   935→        </section>
+   936→
+   937→        <Card>
+   938→          <CardHeader>
+   939→            <CardTitle className="text-lg">Crie seu perfil de mentor</CardTitle>
+   940→            <CardDescription>
+   941→              Preencha as informações abaixo — elas serão exibidas para os alunos no marketplace.
+   942→            </CardDescription>
+   943→          </CardHeader>
+   944→          <CardContent>
+   945→            <MentorProfileForm submitLabel="Publicar meu perfil" onSubmit={handleCreateProfile} />
+   946→          </CardContent>
+   947→        </Card>
+   948→      </div>
+   949→    )
+   950→  }
+   951→
+   952→  // ---------- Com perfil: perfil público + disponibilidade + mural ----------
+   953→
+   954→  return (
+   955→    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:px-6">
+   956→      <header>
+   957→        <h1 className="text-2xl font-bold tracking-tight">Painel do mentor</h1>
+   958→        <p className="mt-1 text-sm text-muted-foreground">
+   959→          Gerencie seu perfil público, sua agenda semanal e os conteúdos do seu mural.
+   960→        </p>
+   961→      </header>
+   962→
+   963→      {/* 1. Perfil público */}
+   964→      <Card>
+   965→        <CardHeader>
+   966→          <CardTitle className="flex items-center gap-2 text-lg">
+   967→            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+   968→              <UserRound className="size-4" aria-hidden />
+   969→            </span>
+   970→            Perfil público
+   971→          </CardTitle>
+   972→          <CardDescription>Estas informações aparecem para os alunos no marketplace.</CardDescription>
+   973→        </CardHeader>
+   974→        <CardContent className="flex flex-col gap-6">
+   975→          <div className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-lg bg-stone-50 p-4 ring-1 ring-stone-200">
+   976→            <div className="flex items-center gap-2">
+   977→              <Stars rating={profile.rating} size={16} />
+   978→              <span className="text-sm font-semibold">
+   979→                {profile.rating > 0 ? profile.rating.toFixed(1).replace('.', ',') : '—'}
+   980→              </span>
+   981→              <span className="text-sm text-muted-foreground">de avaliação</span>
+   982→            </div>
+   983→            <Separator orientation="vertical" className="hidden h-8 sm:block" />
+   984→            <div className="text-sm">
+   985→              <span className="font-semibold">{profile.reviewCount}</span>{' '}
+   986→              <span className="text-muted-foreground">
+   987→                {profile.reviewCount === 1 ? 'avaliação' : 'avaliações'}
+   988→              </span>
+   989→            </div>
+   990→            <Separator orientation="vertical" className="hidden h-8 sm:block" />
+   991→            <div className="text-sm">
+   992→              <span className="font-semibold">{profile.contents.length}</span>{' '}
+   993→              <span className="text-muted-foreground">
+   994→                {profile.contents.length === 1 ? 'conteúdo no mural' : 'conteúdos no mural'}
+   995→              </span>
+   996→            </div>
+   997→          </div>
+   998→
+   999→          <MentorProfileForm
+  1000→            initial={{
+  1001→              headline: profile.headline,
+  1002→              description: profile.description,
+  1003→              categories: profile.categories,
+  1004→              hourlyRate: profile.hourlyRate,
+  1005→              experienceYears: profile.experienceYears,
+  1006→              languages: profile.languages,
+  1007→            }}
+  1008→            submitLabel="Salvar alterações"
+  1009→            onSubmit={handleUpdateProfile}
+  1010→          />
+  1011→        </CardContent>
+  1012→      </Card>
+  1013→
+  1014→      {/* 2. Disponibilidade semanal */}
+  1015→      <Card>
+  1016→        <CardHeader>
+  1017→          <CardTitle className="flex items-center gap-2 text-lg">
+  1018→            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+  1019→              <CalendarClock className="size-4" aria-hidden />
+  1020→            </span>
+  1021→            Disponibilidade semanal
+  1022→          </CardTitle>
+  1023→          <CardDescription>
+  1024→            Defina as faixas de horário em que os alunos podem agendar sessões com você.
+  1025→          </CardDescription>
+  1026→        </CardHeader>
+  1027→        <CardContent>
+  1028→          <AvailabilityEditor initialSlots={profile.availabilities} onSave={handleSaveAvailability} />
+  1029→        </CardContent>
+  1030→      </Card>
+  1031→
+  1032→      {/* 3. Mural de conteúdos */}
+  1033→      <ContentsManager contents={profile.contents} userId={user.id} onChanged={reload} />
+  1034→    </div>
+  1035→  )
+  1036→}
+  1037→

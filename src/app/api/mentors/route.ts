@@ -44,6 +44,12 @@ export async function GET(req: NextRequest) {
         hourlyRate: m.hourlyRate,
         experienceYears: m.experienceYears,
         languages: m.languages,
+        socials: {
+          instagram: m.instagram,
+          linkedin: m.linkedin,
+          github: m.github,
+          website: m.website,
+        },
         rating: Math.round(rating * 10) / 10,
         reviewCount: m.reviews.length,
         contentsCount: m.contents.length,
@@ -105,6 +111,12 @@ export async function POST(req: NextRequest) {
     const experienceYears = Number(body?.experienceYears ?? 0)
     const languages = String(body?.languages ?? 'Português').trim() || 'Português'
 
+    const clean = (v: unknown, max = 190) => {
+      const s = String(v ?? '').trim()
+      return s ? s.slice(0, max) : null
+    }
+    const socials = (body?.socials ?? {}) as Record<string, unknown>
+
     if (!headline || headline.length < 8) {
       return NextResponse.json({ error: 'Escreva um título profissional (mín. 8 caracteres).' }, { status: 400 })
     }
@@ -126,6 +138,10 @@ export async function POST(req: NextRequest) {
       experienceYears: Math.max(0, Math.min(60, Math.round(experienceYears))),
       languages,
       isPublished: true,
+      instagram: clean(socials.instagram, 80),
+      linkedin: clean(socials.linkedin, 190),
+      github: clean(socials.github, 80),
+      website: clean(socials.website, 190),
     }
 
     const existing = await db.mentorProfile.findUnique({ where: { userId } })

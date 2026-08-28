@@ -6,6 +6,7 @@ import { Navbar } from '@/components/platform/navbar'
 import { PlatformFooter } from '@/components/platform/footer'
 import { MarketplaceView } from '@/components/platform/marketplace'
 import { MentorProfileView } from '@/components/platform/mentor-profile'
+import { CourseView } from '@/components/platform/course-view'
 import { MeetingRoomView } from '@/components/platform/meeting-room'
 import DashboardView from '@/components/platform/dashboard'
 import OnboardingView from '@/components/platform/onboarding'
@@ -63,6 +64,7 @@ export default function Home() {
         {view.name === 'for-mentors' && <LandingMentor />}
         {view.name === 'marketplace' && <MarketplaceView />}
         {view.name === 'mentor' && <MentorProfileView mentorId={view.mentorId} />}
+        {view.name === 'course' && <CourseView courseId={view.courseId} />}
         {view.name === 'dashboard' && <DashboardView />}
         {view.name === 'meeting' && <MeetingRoomView bookingId={view.bookingId} />}
         {view.name === 'onboarding' && <OnboardingView />}

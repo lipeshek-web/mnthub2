@@ -2,9 +2,14 @@ import type {
   AvailabilitySlotInput,
   BookingDTO,
   ContentPostDTO,
+  CourseDetailDTO,
+  CourseLessonDTO,
+  CourseListItemDTO,
+  EnrolledCourseDTO,
   MentorDetailDTO,
   MentorListItemDTO,
   ReviewDTO,
+  SocialLinksDTO,
   UserDTO,
 } from './types'
 
@@ -56,6 +61,7 @@ export const api = {
     hourlyRate: number
     experienceYears: number
     languages: string
+    socials?: SocialLinksDTO
   }) => request<{ id: string }>('/api/mentors', { method: 'POST', body: JSON.stringify(data) }),
   saveAvailability: (data: { userId: string; slots: AvailabilitySlotInput[] }) =>
     request<{ ok: boolean }>('/api/mentors/availability', {
@@ -96,4 +102,70 @@ export const api = {
   }) => request<ContentPostDTO>('/api/contents', { method: 'POST', body: JSON.stringify(data) }),
   deleteContent: (id: string, userId: string) =>
     request<{ ok: boolean }>(`/api/contents/${id}${qs({ userId })}`, { method: 'DELETE' }),
+
+  // Cursos
+  listCourses: (params: {
+    search?: string
+    category?: string
+    sort?: string
+    mentorId?: string
+    mentorUserId?: string // lista também rascunhos do próprio mentor
+  }) => request<CourseListItemDTO[]>(`/api/courses${qs(params)}`),
+  getCourse: (id: string, userId?: string) =>
+    request<CourseDetailDTO>(`/api/courses/${id}${qs({ userId })}`),
+  createCourse: (data: {
+    userId: string
+    title: string
+    description: string
+    category: string
+    level: string
+    price: number
+  }) => request<{ id: string }>('/api/courses', { method: 'POST', body: JSON.stringify(data) }),
+  updateCourse: (
+    id: string,
+    data: {
+      userId: string
+      title?: string
+      description?: string
+      category?: string
+      level?: string
+      price?: number
+      isPublished?: boolean
+    }
+  ) => request<{ ok: boolean }>(`/api/courses/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteCourse: (id: string, userId: string) =>
+    request<{ ok: boolean }>(`/api/courses/${id}${qs({ userId })}`, { method: 'DELETE' }),
+  createLesson: (
+    courseId: string,
+    data: {
+      userId: string
+      title: string
+      description?: string
+      videoUrl?: string
+      content?: string
+      durationMin: number
+    }
+  ) =>
+    request<CourseLessonDTO>(`/api/courses/${courseId}/lessons`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  deleteLesson: (courseId: string, lessonId: string, userId: string) =>
+    request<{ ok: boolean }>(`/api/courses/${courseId}/lessons${qs({ userId, lessonId })}`, {
+      method: 'DELETE',
+    }),
+  enrollCourse: (courseId: string, userId: string) =>
+    request<{ ok: boolean; alreadyEnrolled: boolean }>(`/api/courses/${courseId}/enroll`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    }),
+  toggleLessonComplete: (courseId: string, data: { userId: string; lessonId: string }) =>
+    request<{ completedLessonIds: string[] }>(`/api/courses/${courseId}/enroll`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  // Matrículas do usuário
+  listMyEnrollments: (userId: string) =>
+    request<EnrolledCourseDTO[]>(`/api/enrollments${qs({ userId })}`),
 }

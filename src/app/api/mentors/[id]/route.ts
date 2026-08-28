@@ -35,6 +35,12 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       hourlyRate: profile.hourlyRate,
       experienceYears: profile.experienceYears,
       languages: profile.languages,
+      socials: {
+        instagram: profile.instagram,
+        linkedin: profile.linkedin,
+        github: profile.github,
+        website: profile.website,
+      },
       contents: profile.contents.map((c) => ({
         id: c.id,
         title: c.title,

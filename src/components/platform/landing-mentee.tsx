@@ -2,16 +2,23 @@
 
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, BadgeCheck, Quote, Search, Sparkles } from 'lucide-react'
+import { ArrowRight, BadgeCheck, BookOpen, Clock, Library, Quote, Search, Sparkles } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, Stars } from '@/components/platform/avatar'
 import { api } from '@/lib/api'
-import { currencyBRL, firstName } from '@/lib/helpers'
+import {
+  LEVEL_LABELS,
+  avatarGradient,
+  currencyBRL,
+  firstName,
+  formatTotalDuration,
+} from '@/lib/helpers'
 import { useAppStore } from '@/lib/store'
-import type { MentorListItemDTO } from '@/lib/types'
+import type { CourseListItemDTO, MentorListItemDTO } from '@/lib/types'
+import { cn } from '@/lib/utils'
 
 const STEPS = [
   {
@@ -52,8 +59,11 @@ const TESTIMONIALS = [
 export function LandingMenteeView() {
   const navigate = useAppStore((s) => s.navigate)
   const setExploreQuery = useAppStore((s) => s.setExploreQuery)
+  const setExploreTab = useAppStore((s) => s.setExploreTab)
   const [mentors, setMentors] = useState<MentorListItemDTO[]>([])
   const [loading, setLoading] = useState(true)
+  const [courses, setCourses] = useState<CourseListItemDTO[]>([])
+  const [coursesLoading, setCoursesLoading] = useState(true)
   const [term, setTerm] = useState('')
 
   useEffect(() => {
@@ -68,6 +78,25 @@ export function LandingMenteeView() {
       })
       .finally(() => {
         if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  // Cursos para a seção "Cursos em destaque" (efeito separado)
+  useEffect(() => {
+    let active = true
+    api
+      .listCourses({})
+      .then((data) => {
+        if (active) setCourses(data)
+      })
+      .catch(() => {
+        if (active) setCourses([])
+      })
+      .finally(() => {
+        if (active) setCoursesLoading(false)
       })
     return () => {
       active = false
@@ -91,9 +120,26 @@ export function LandingMenteeView() {
     [mentors]
   )
 
+  // Top 3 cursos por alunos inscritos, desempate pela nota do mentor
+  const topCourses = useMemo(
+    () =>
+      [...courses]
+        .sort(
+          (a, b) =>
+            b.studentCount - a.studentCount || b.mentor.rating - a.mentor.rating
+        )
+        .slice(0, 3),
+    [courses]
+  )
+
   const handleSearch = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setExploreQuery(term.trim())
+    navigate({ name: 'marketplace' })
+  }
+
+  const handleVerCursos = () => {
+    setExploreTab('courses')
     navigate({ name: 'marketplace' })
   }
 
@@ -293,6 +339,64 @@ export function LandingMenteeView() {
         </div>
       </motion.section>
 
+      {/* ---------- CURSOS EM DESTAQUE ---------- */}
+      {(coursesLoading || topCourses.length > 0) && (
+        <motion.section
+          aria-labelledby="cursos-destaque-title"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: 0.5 }}
+          className="mx-auto w-full max-w-6xl px-4 pb-14 sm:pb-20"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2
+                id="cursos-destaque-title"
+                className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl"
+              >
+                Cursos em destaque
+              </h2>
+              <p className="mt-2 text-sm text-stone-500">
+                Aprenda no seu ritmo com aulas gravadas e materiais dos nossos mentores.
+              </p>
+            </div>
+            <Button
+              variant="link"
+              onClick={handleVerCursos}
+              className="gap-1 px-0 font-semibold text-emerald-700"
+            >
+              Ver todos os cursos
+              <ArrowRight aria-hidden className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="mt-8 grid gap-6 sm:grid-cols-3">
+            {coursesLoading
+              ? Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    aria-hidden
+                    className="overflow-hidden rounded-2xl border border-stone-200"
+                  >
+                    <Skeleton className="h-24 w-full rounded-none" />
+                    <div className="space-y-2.5 p-5">
+                      <div className="flex gap-1.5">
+                        <Skeleton className="h-5 w-20 rounded-full" />
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                      </div>
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/3" />
+                      <Skeleton className="h-3 w-1/2" />
+                      <Skeleton className="mt-3 h-8 w-full rounded-full" />
+                    </div>
+                  </div>
+                ))
+              : topCourses.map((c) => <FeaturedCourseCard key={c.id} course={c} />)}
+          </div>
+        </motion.section>
+      )}
+
       {/* ---------- DEPOIMENTOS ---------- */}
       <motion.section
         aria-labelledby="depoimentos-title"
@@ -421,6 +525,65 @@ function FeaturedMentorCard({ mentor }: { mentor: MentorListItemDTO }) {
         >
           Ver perfil
         </Button>
+      </div>
+    </div>
+  )
+}
+
+function FeaturedCourseCard({ course }: { course: CourseListItemDTO }) {
+  const navigate = useAppStore((s) => s.navigate)
+
+  return (
+    <div className="flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition hover:border-emerald-300 hover:shadow-md">
+      {/* Capa com gradiente determinístico do título */}
+      <div className="relative h-24 w-full" style={avatarGradient(course.title)}>
+        <Library aria-hidden className="pointer-events-none absolute -bottom-2 right-2 h-16 w-16 text-white/20" />
+      </div>
+
+      <div className="flex flex-1 flex-col p-5">
+        <div className="flex flex-wrap gap-1.5">
+          <Badge className="rounded-full bg-emerald-50 text-[11px] text-emerald-800">
+            {course.category}
+          </Badge>
+          <Badge className="rounded-full bg-stone-100 text-[11px] text-stone-600">
+            {LEVEL_LABELS[course.level] ?? course.level}
+          </Badge>
+        </div>
+
+        <p className="mt-2.5 line-clamp-2 min-h-10 font-bold leading-snug text-stone-900">
+          {course.title}
+        </p>
+        <p className="mt-1 truncate text-xs text-stone-500">por {course.mentor.name}</p>
+
+        <div className="mt-2 flex items-center gap-3 text-xs text-stone-400">
+          <span className="inline-flex items-center gap-1">
+            <BookOpen aria-hidden className="h-3.5 w-3.5" />
+            {course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Clock aria-hidden className="h-3.5 w-3.5" />
+            {formatTotalDuration(course.totalDurationMin)}
+          </span>
+        </div>
+
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-3">
+          <p
+            className={cn(
+              'text-sm font-extrabold',
+              course.price === 0 ? 'text-emerald-700' : 'text-stone-900'
+            )}
+          >
+            {course.price === 0 ? 'Grátis' : currencyBRL(course.price)}
+          </p>
+          <Button
+            size="sm"
+            className="h-9 rounded-full px-4 font-semibold"
+            onClick={() => navigate({ name: 'course', courseId: course.id })}
+            aria-label={`Ver curso ${course.title}`}
+          >
+            Ver curso
+          </Button>
+        </div>
       </div>
     </div>
   )

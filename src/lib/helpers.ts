@@ -154,3 +154,64 @@ export function initials(name: string): string {
 export function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] ?? name
 }
+
+// ---------- Redes sociais e portfólio ----------
+
+export type SocialKind = 'instagram' | 'linkedin' | 'github' | 'website'
+
+/** Monta a URL pública a partir do valor salvo (@handle ou URL completa) */
+export function socialUrl(kind: SocialKind, raw: string): string {
+  const value = raw.trim()
+  if (!value) return '#'
+  if (/^https?:\/\//i.test(value)) return value
+  const handle = value.replace(/^@/, '').replace(/\/$/, '')
+  switch (kind) {
+    case 'instagram':
+      return `https://instagram.com/${handle}`
+    case 'github':
+      return `https://github.com/${handle}`
+    case 'linkedin':
+      return `https://linkedin.com/in/${handle.replace(/^in\//, '')}`
+    default:
+      return `https://${handle}`
+  }
+}
+
+/** Rótulo curto para exibir (ex.: domínio do site) */
+export function socialDisplay(kind: SocialKind, raw: string): string {
+  const value = raw.trim()
+  if (!value) return ''
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      const u = new URL(value)
+      return (u.hostname + (u.pathname === '/' ? '' : u.pathname)).replace(/\/$/, '')
+    } catch {
+      return value
+    }
+  }
+  return kind === 'instagram' ? `@${value.replace(/^@/, '')}` : value
+}
+
+// ---------- Cursos ----------
+
+/** URL de vídeo convertida para embed (YouTube watch/youtu.be → /embed) */
+export function toVideoEmbedUrl(raw: string): string | null {
+  const url = raw.trim()
+  if (!url) return null
+  const yt = url.match(
+    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,})/
+  )
+  if (yt) return `https://www.youtube-nocookie.com/embed/${yt[1]}?rel=0`
+  const vimeo = url.match(/vimeo\.com\/(?:video\/)?(\d+)/)
+  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`
+  return /^https?:\/\//i.test(url) ? url : null
+}
+
+/** Duração total em formato legível: "3h 20min" */
+export function formatTotalDuration(totalMin: number): string {
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  if (h === 0) return `${m}min`
+  if (m === 0) return `${h}h`
+  return `${h}h ${m}min`
+}

@@ -10,6 +10,7 @@ import {
   FileText,
   Globe2,
   GraduationCap,
+  Library,
   ListVideo,
   MessageSquareQuote,
   PlayCircle,
@@ -36,6 +37,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Avatar, Stars } from '@/components/platform/avatar'
+import { SocialLinksSection } from '@/components/platform/social-links'
 import { api } from '@/lib/api'
 import {
   CONTENT_TYPE_META,
@@ -45,16 +47,18 @@ import {
   WEEKDAYS_PT,
   addDays,
   addMinutesToTime,
+  avatarGradient,
   currencyBRL,
   dateKey,
   formatDayLabel,
   formatDayLabelLong,
   formatTimeLabel,
+  formatTotalDuration,
   hourToLabel,
   relativeDayLabel,
 } from '@/lib/helpers'
 import { useAppStore } from '@/lib/store'
-import type { MentorDetailDTO } from '@/lib/types'
+import type { CourseListItemDTO, MentorDetailDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -68,6 +72,7 @@ const CONTENT_ICONS: Record<string, React.ElementType> = {
 export function MentorProfileView({ mentorId }: { mentorId: string }) {
   const navigate = useAppStore((s) => s.navigate)
   const [mentor, setMentor] = useState<MentorDetailDTO | null>(null)
+  const [courses, setCourses] = useState<CourseListItemDTO[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -75,7 +80,13 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
     setLoading(true)
     setError(null)
     try {
-      setMentor(await api.getMentor(mentorId))
+      // Perfil e cursos em paralelo; falha nos cursos não derruba o perfil
+      const [mentorData, coursesData] = await Promise.all([
+        api.getMentor(mentorId),
+        api.listCourses({ mentorId }).catch(() => [] as CourseListItemDTO[]),
+      ])
+      setMentor(mentorData)
+      setCourses(coursesData)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao carregar perfil')
     } finally {
@@ -176,6 +187,9 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
         </div>
       </section>
 
+      {/* ---------- REDES SOCIAIS / PORTFÓLIO ---------- */}
+      <SocialLinksSection socials={mentor.socials} mentorName={mentor.name} headline={mentor.headline} />
+
       {/* ---------- CONTEÚDO + AGENDAMENTO ---------- */}
       <div className="mt-7 grid gap-7 lg:grid-cols-3">
         <div className="lg:col-span-2">
@@ -184,6 +198,9 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
               <TabsTrigger value="sobre" className="rounded-lg">Sobre</TabsTrigger>
               <TabsTrigger value="mural" className="rounded-lg">
                 Mural de conteúdos ({mentor.contents.length})
+              </TabsTrigger>
+              <TabsTrigger value="cursos" className="rounded-lg">
+                Cursos{courses.length > 0 ? ` (${courses.length})` : ''}
               </TabsTrigger>
               <TabsTrigger value="horarios" className="rounded-lg">Horários</TabsTrigger>
               <TabsTrigger value="avaliacoes" className="rounded-lg">
@@ -272,6 +289,66 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                       </Card>
                     )
                   })}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="cursos" className="mt-5">
+              {courses.length === 0 ? (
+                <Card className="border-dashed">
+                  <CardContent className="flex flex-col items-center gap-2 p-10 text-center">
+                    <Library className="h-9 w-9 text-stone-300" />
+                    <p className="text-sm text-muted-foreground">
+                      Este mentor ainda não publicou cursos.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {courses.map((course) => (
+                    <Card
+                      key={course.id}
+                      className="flex flex-col overflow-hidden rounded-2xl border-stone-200 py-0 shadow-sm transition-shadow hover:shadow-md"
+                    >
+                      {/* Faixa superior com gradiente determinístico */}
+                      <div
+                        className="relative flex h-20 shrink-0 items-center justify-center"
+                        style={avatarGradient(course.title)}
+                      >
+                        <Library className="h-8 w-8 text-white/20" aria-hidden />
+                        <Badge className="absolute right-3 top-3 bg-white text-stone-700">
+                          {LEVEL_LABELS[course.level] ?? course.level}
+                        </Badge>
+                      </div>
+                      <CardContent className="flex flex-1 flex-col p-4">
+                        <h3 className="line-clamp-1 font-bold text-stone-900">{course.title}</h3>
+                        <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-stone-600">
+                          {course.description}
+                        </p>
+                        <p className="mt-2 text-xs text-stone-500">
+                          {course.lessonCount} aulas · {formatTotalDuration(course.totalDurationMin)} ·{' '}
+                          {course.studentCount}{' '}
+                          {course.studentCount === 1 ? 'aluno' : 'alunos'}
+                        </p>
+                        <div className="mt-auto flex items-center justify-between border-t border-stone-100 pt-3">
+                          {course.price === 0 ? (
+                            <span className="text-sm font-extrabold text-emerald-700">Grátis</span>
+                          ) : (
+                            <span className="text-sm font-extrabold text-stone-900">
+                              {currencyBRL(course.price)}
+                            </span>
+                          )}
+                          <Button
+                            size="sm"
+                            className="rounded-full"
+                            onClick={() => navigate({ name: 'course', courseId: course.id })}
+                          >
+                            Ver curso
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               )}
             </TabsContent>

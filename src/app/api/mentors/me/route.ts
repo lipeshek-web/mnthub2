@@ -33,6 +33,12 @@ export async function GET(req: NextRequest) {
         hourlyRate: profile.hourlyRate,
         experienceYears: profile.experienceYears,
         languages: profile.languages,
+        socials: {
+          instagram: profile.instagram,
+          linkedin: profile.linkedin,
+          github: profile.github,
+          website: profile.website,
+        },
         contents: profile.contents.map((c) => ({
           id: c.id,
           title: c.title,

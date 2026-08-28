@@ -1,0 +1,638 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import { useCallback, useEffect, useState } from 'react'
+     4→     4→import {
+     5→     5→  ArrowLeft,
+     6→     6→  BookOpenCheck,
+     7→     7→  CalendarCheck2,
+     8→     8→  CalendarOff,
+     9→     9→  Clock3,
+    10→    10→  FileText,
+    11→    11→  Globe2,
+    12→    12→  GraduationCap,
+    13→    13→  ListVideo,
+    14→    14→  MessageSquareQuote,
+    15→    15→  PlayCircle,
+    16→    16→  Presentation,
+    17→    17→  Route,
+    18→    18→  Star,
+    19→    19→  UserRound,
+    20→    20→  Video,
+    21→    21→} from 'lucide-react'
+    22→    22→import { Badge } from '@/components/ui/badge'
+    23→    23→import { Button } from '@/components/ui/button'
+    24→    24→import { Card, CardContent } from '@/components/ui/card'
+    25→    25→import {
+    26→    26→  Dialog,
+    27→    27→  DialogContent,
+    28→    28→  DialogDescription,
+    29→    29→  DialogFooter,
+    30→    30→  DialogHeader,
+    31→    31→  DialogTitle,
+    32→    32→} from '@/components/ui/dialog'
+    33→    33→import { Input } from '@/components/ui/input'
+    34→    34→import { Label } from '@/components/ui/label'
+    35→    35→import { Skeleton } from '@/components/ui/skeleton'
+    36→    36→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    37→    37→import { Textarea } from '@/components/ui/textarea'
+    38→    38→import { Avatar, Stars } from '@/components/platform/avatar'
+    39→    39→import { api } from '@/lib/api'
+    40→    40→import {
+    41→    41→  CONTENT_TYPE_META,
+    42→    42→  LEVEL_LABELS,
+    43→    43→  MONTHS_PT,
+    44→    44→  WEEKDAYS_FULL_PT,
+    45→    45→  WEEKDAYS_PT,
+    46→    46→  addDays,
+    47→    47→  addMinutesToTime,
+    48→    48→  currencyBRL,
+    49→    49→  dateKey,
+    50→    50→  formatDayLabel,
+    51→    51→  formatDayLabelLong,
+    52→    52→  formatTimeLabel,
+    53→    53→  hourToLabel,
+    54→    54→  relativeDayLabel,
+    55→    55→} from '@/lib/helpers'
+    56→    56→import { useAppStore } from '@/lib/store'
+    57→    57→import type { MentorDetailDTO } from '@/lib/types'
+    58→    58→import { cn } from '@/lib/utils'
+    59→    59→import { toast } from 'sonner'
+    60→    60→
+    61→    61→const CONTENT_ICONS: Record<string, React.ElementType> = {
+    62→    62→  ARTICLE: FileText,
+    63→    63→  VIDEO: PlayCircle,
+    64→    64→  WORKSHOP: Presentation,
+    65→    65→  TRAIL: Route,
+    66→    66→}
+    67→    67→
+    68→    68→export function MentorProfileView({ mentorId }: { mentorId: string }) {
+    69→    69→  const navigate = useAppStore((s) => s.navigate)
+    70→    70→  const [mentor, setMentor] = useState<MentorDetailDTO | null>(null)
+    71→    71→  const [loading, setLoading] = useState(true)
+    72→    72→  const [error, setError] = useState<string | null>(null)
+    73→    73→
+    74→    74→  const load = useCallback(async () => {
+    75→    75→    setLoading(true)
+    76→    76→    setError(null)
+    77→    77→    try {
+    78→    78→      setMentor(await api.getMentor(mentorId))
+    79→    79→    } catch (e) {
+    80→    80→      setError(e instanceof Error ? e.message : 'Erro ao carregar perfil')
+    81→    81→    } finally {
+    82→    82→      setLoading(false)
+    83→    83→    }
+    84→    84→  }, [mentorId])
+    85→    85→
+    86→    86→  useEffect(() => {
+    87→    87→    load()
+    88→    88→  }, [load])
+    89→    89→
+    90→    90→  if (loading) {
+    91→    91→    return (
+    92→    92→      <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
+    93→    93→        <Skeleton className="h-8 w-40" />
+    94→    94→        <Skeleton className="h-56 w-full rounded-2xl" />
+    95→    95→        <div className="grid gap-6 lg:grid-cols-3">
+    96→    96→          <Skeleton className="h-96 rounded-2xl lg:col-span-2" />
+    97→    97→          <Skeleton className="h-96 rounded-2xl" />
+    98→    98→        </div>
+    99→    99→      </div>
+   100→   100→    )
+   101→   101→  }
+   102→   102→
+   103→   103→  if (error || !mentor) {
+   104→   104→    return (
+   105→   105→      <div className="mx-auto max-w-6xl px-4 py-16">
+   106→   106→        <Card className="mx-auto max-w-md border-dashed">
+   107→   107→          <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
+   108→   108→            <CalendarOff className="h-10 w-10 text-stone-400" />
+   109→   109→            <p className="font-semibold">{error ?? 'Mentor não encontrado'}</p>
+   110→   110→            <Button onClick={() => navigate({ name: 'marketplace' })}>Voltar para mentores</Button>
+   111→   111→          </CardContent>
+   112→   112→        </Card>
+   113→   113→      </div>
+   114→   114→    )
+   115→   115→  }
+   116→   116→
+   117→   117→  return (
+   118→   118→    <div className="mx-auto max-w-6xl px-4 pb-16 pt-6">
+   119→   119→      <button
+   120→   120→        onClick={() => navigate({ name: 'marketplace' })}
+   121→   121→        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 transition-colors hover:text-emerald-700"
+   122→   122→      >
+   123→   123→        <ArrowLeft className="h-4 w-4" /> Voltar para mentores
+   124→   124→      </button>
+   125→   125→
+   126→   126→      {/* ---------- BANNER ---------- */}
+   127→   127→      <section className="overflow-hidden rounded-2xl border border-stone-200 shadow-sm" aria-label="Perfil do mentor">
+   128→   128→        <div className="relative bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-800 px-6 pb-16 pt-8 sm:px-8">
+   129→   129→          <div aria-hidden className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-emerald-500/20 blur-2xl" />
+   130→   130→          <div aria-hidden className="absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-teal-400/10 blur-xl" />
+   131→   131→        </div>
+   132→   132→        <div className="relative -mt-12 px-6 pb-6 sm:px-8">
+   133→   133→          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+   134→   134→            <Avatar name={mentor.name} size="xl" className="shadow-lg" />
+   135→   135→            <div className="flex-1 sm:pb-1">
+   136→   136→              <h1 className="text-2xl font-extrabold tracking-tight text-stone-900">
+   137→   137→                {mentor.name}
+   138→   138→              </h1>
+   139→   139→              <p className="mt-0.5 text-sm font-medium text-stone-600">{mentor.headline}</p>
+   140→   140→            </div>
+   141→   141→            {mentor.rating > 0 && (
+   142→   142→              <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 sm:mb-1">
+   143→   143→                <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+   144→   144→                <div>
+   145→   145→                  <p className="text-lg font-extrabold leading-none text-stone-900">
+   146→   146→                    {mentor.rating.toFixed(1)}
+   147→   147→                  </p>
+   148→   148→                  <p className="text-[11px] text-stone-500">{mentor.reviewCount} avaliações</p>
+   149→   149→                </div>
+   150→   150→              </div>
+   151→   151→            )}
+   152→   152→          </div>
+   153→   153→
+   154→   154→          <div className="mt-5 flex flex-wrap items-center gap-2">
+   155→   155→            {mentor.categories.map((c) => (
+   156→   156→              <Badge key={c} className="bg-emerald-700 font-medium text-white">
+   157→   157→                {c}
+   158→   158→              </Badge>
+   159→   159→            ))}
+   160→   160→            <Badge variant="outline" className="gap-1 border-stone-300 text-stone-600">
+   161→   161→              <GraduationCap className="h-3.5 w-3.5" />{' '}
+   162→   162→              {mentor.totalSessions === 1
+   163→   163→                ? '1 sessão realizada'
+   164→   164→                : `${mentor.totalSessions} sessões realizadas`}
+   165→   165→            </Badge>
+   166→   166→            <Badge variant="outline" className="gap-1 border-stone-300 text-stone-600">
+   167→   167→              <Clock3 className="h-3.5 w-3.5" /> {mentor.experienceYears} anos de experiência
+   168→   168→            </Badge>
+   169→   169→            <Badge variant="outline" className="gap-1 border-stone-300 text-stone-600">
+   170→   170→              <Globe2 className="h-3.5 w-3.5" /> {mentor.languages}
+   171→   171→            </Badge>
+   172→   172→            <Badge variant="outline" className="gap-1 border-stone-300 text-stone-600">
+   173→   173→              <ListVideo className="h-3.5 w-3.5" /> {mentor.contents.length} conteúdos no mural
+   174→   174→            </Badge>
+   175→   175→          </div>
+   176→   176→        </div>
+   177→   177→      </section>
+   178→   178→
+   179→   179→      {/* ---------- CONTEÚDO + AGENDAMENTO ---------- */}
+   180→   180→      <div className="mt-7 grid gap-7 lg:grid-cols-3">
+   181→   181→        <div className="lg:col-span-2">
+   182→   182→          <Tabs defaultValue="sobre">
+   183→   183→            <TabsList className="w-full justify-start overflow-x-auto rounded-xl bg-stone-100 p-1">
+   184→   184→              <TabsTrigger value="sobre" className="rounded-lg">Sobre</TabsTrigger>
+   185→   185→              <TabsTrigger value="mural" className="rounded-lg">
+   186→   186→                Mural de conteúdos ({mentor.contents.length})
+   187→   187→              </TabsTrigger>
+   188→   188→              <TabsTrigger value="horarios" className="rounded-lg">Horários</TabsTrigger>
+   189→   189→              <TabsTrigger value="avaliacoes" className="rounded-lg">
+   190→   190→                Avaliações ({mentor.reviews.length})
+   191→   191→              </TabsTrigger>
+   192→   192→            </TabsList>
+   193→   193→
+   194→   194→            <TabsContent value="sobre" className="mt-5 space-y-5">
+   195→   195→              <Card>
+   196→   196→                <CardContent className="p-6">
+   197→   197→                  <h2 className="flex items-center gap-2 font-bold">
+   198→   198→                    <UserRound className="h-4.5 w-4.5 text-emerald-700" /> Sobre a mentoria
+   199→   199→                  </h2>
+   200→   200→                  <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-stone-600">
+   201→   201→                    {mentor.description}
+   202→   202→                  </p>
+   203→   203→                </CardContent>
+   204→   204→              </Card>
+   205→   205→              {mentor.bio && (
+   206→   206→                <Card>
+   207→   207→                  <CardContent className="p-6">
+   208→   208→                    <h3 className="text-sm font-bold text-stone-900">Em resumo</h3>
+   209→   209→                    <p className="mt-2 text-sm text-stone-600">{mentor.bio}</p>
+   210→   210→                  </CardContent>
+   211→   211→                </Card>
+   212→   212→              )}
+   213→   213→              <div className="grid gap-4 sm:grid-cols-3">
+   214→   214→                {[
+   215→   215→                  { icon: Video, title: 'Reunião integrada', text: 'Sessão por vídeo aqui na própria plataforma.' },
+   216→   216→                  { icon: CalendarCheck2, title: 'Agenda real', text: 'Horários atualizados pelo próprio mentor.' },
+   217→   217→                  { icon: MessageSquareQuote, title: 'Método 1:1', text: 'Conversa focada nos seus objetivos.' },
+   218→   218→                ].map((f) => (
+   219→   219→                  <div key={f.title} className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4">
+   220→   220→                    <f.icon className="h-5 w-5 text-emerald-700" />
+   221→   221→                    <p className="mt-2 text-sm font-bold text-stone-800">{f.title}</p>
+   222→   222→                    <p className="mt-0.5 text-xs leading-relaxed text-stone-500">{f.text}</p>
+   223→   223→                  </div>
+   224→   224→                ))}
+   225→   225→              </div>
+   226→   226→            </TabsContent>
+   227→   227→
+   228→   228→            <TabsContent value="mural" className="mt-5">
+   229→   229→              {mentor.contents.length === 0 ? (
+   230→   230→                <Card className="border-dashed">
+   231→   231→                  <CardContent className="flex flex-col items-center gap-2 p-10 text-center">
+   232→   232→                    <ListVideo className="h-9 w-9 text-stone-300" />
+   233→   233→                    <p className="text-sm text-muted-foreground">
+   234→   234→                      Este mentor ainda não publicou conteúdos no mural.
+   235→   235→                    </p>
+   236→   236→                  </CardContent>
+   237→   237→                </Card>
+   238→   238→              ) : (
+   239→   239→                <div className="space-y-4">
+   240→   240→                  {mentor.contents.map((c) => {
+   241→   241→                    const Icon = CONTENT_ICONS[c.type] ?? BookOpenCheck
+   242→   242→                    const meta = CONTENT_TYPE_META[c.type] ?? CONTENT_TYPE_META.ARTICLE
+   243→   243→                    return (
+   244→   244→                      <Card key={c.id} className="border-stone-200 transition-shadow hover:shadow-md">
+   245→   245→                        <CardContent className="flex gap-4 p-5">
+   246→   246→                          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+   247→   247→                            <Icon className="h-5.5 w-5.5" />
+   248→   248→                          </span>
+   249→   249→                          <div className="min-w-0 flex-1">
+   250→   250→                            <div className="flex flex-wrap items-center gap-2">
+   251→   251→                              <Badge variant="outline" className={cn('border', meta.className)}>
+   252→   252→                                {meta.label}
+   253→   253→                              </Badge>
+   254→   254→                              <Badge variant="outline" className="border-stone-200 text-stone-500">
+   255→   255→                                {LEVEL_LABELS[c.level] ?? c.level}
+   256→   256→                              </Badge>
+   257→   257→                              <span className="text-xs text-muted-foreground">{c.durationMin} min</span>
+   258→   258→                            </div>
+   259→   259→                            <h3 className="mt-2 font-bold text-stone-900">{c.title}</h3>
+   260→   260→                            <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-stone-600">
+   261→   261→                              {c.description}
+   262→   262→                            </p>
+   263→   263→                            <div className="mt-2.5 flex flex-wrap gap-1.5">
+   264→   264→                              {c.tags.map((t) => (
+   265→   265→                                <Badge key={t} variant="secondary" className="bg-stone-100 text-[11px] text-stone-600">
+   266→   266→                                  #{t}
+   267→   267→                                </Badge>
+   268→   268→                              ))}
+   269→   269→                            </div>
+   270→   270→                          </div>
+   271→   271→                        </CardContent>
+   272→   272→                      </Card>
+   273→   273→                    )
+   274→   274→                  })}
+   275→   275→                </div>
+   276→   276→              )}
+   277→   277→            </TabsContent>
+   278→   278→
+   279→   279→            <TabsContent value="horarios" className="mt-5">
+   280→   280→              <Card>
+   281→   281→                <CardContent className="p-6">
+   282→   282→                  <h2 className="font-bold">Disponibilidade semanal</h2>
+   283→   283→                  <p className="mt-1 text-xs text-muted-foreground">
+   284→   284→                    Horários livres são exibidos no widget de agendamento, no seu fuso local.
+   285→   285→                  </p>
+   286→   286→                  <div className="mt-4 space-y-2.5">
+   287→   287→                    {WEEKDAYS_FULL_PT.map((dayName, weekday) => {
+   288→   288→                      const ranges = mentor.availabilities.filter((a) => a.weekday === weekday)
+   289→   289→                      return (
+   290→   290→                        <div
+   291→   291→                          key={dayName}
+   292→   292→                          className={cn(
+   293→   293→                            'flex flex-col gap-2 rounded-xl border px-4 py-3 sm:flex-row sm:items-center',
+   294→   294→                            ranges.length > 0 ? 'border-stone-200 bg-white' : 'border-dashed border-stone-200 bg-stone-50'
+   295→   295→                          )}
+   296→   296→                        >
+   297→   297→                          <p className="w-36 shrink-0 text-sm font-semibold text-stone-800">{dayName}</p>
+   298→   298→                          {ranges.length > 0 ? (
+   299→   299→                            <div className="flex flex-wrap gap-1.5">
+   300→   300→                              {ranges.map((r) => (
+   301→   301→                                <Badge key={r.id} className="bg-emerald-50 font-medium text-emerald-800">
+   302→   302→                                  {hourToLabel(r.startHour)} – {hourToLabel(r.endHour)}
+   303→   303→                                </Badge>
+   304→   304→                              ))}
+   305→   305→                            </div>
+   306→   306→                          ) : (
+   307→   307→                            <p className="text-xs text-stone-400">Indisponível</p>
+   308→   308→                          )}
+   309→   309→                        </div>
+   310→   310→                      )
+   311→   311→                    })}
+   312→   312→                  </div>
+   313→   313→                </CardContent>
+   314→   314→              </Card>
+   315→   315→            </TabsContent>
+   316→   316→
+   317→   317→            <TabsContent value="avaliacoes" className="mt-5 space-y-4">
+   318→   318→              {mentor.reviews.length === 0 ? (
+   319→   319→                <Card className="border-dashed">
+   320→   320→                  <CardContent className="flex flex-col items-center gap-2 p-10 text-center">
+   321→   321→                    <Star className="h-9 w-9 text-stone-300" />
+   322→   322→                    <p className="text-sm text-muted-foreground">
+   323→   323→                      Ainda sem avaliações — seja o primeiro a mentorar com {mentor.name.split(' ')[0]}!
+   324→   324→                    </p>
+   325→   325→                  </CardContent>
+   326→   326→                </Card>
+   327→   327→              ) : (
+   328→   328→                <>
+   329→   329→                  <Card className="border-emerald-100 bg-emerald-50/50">
+   330→   330→                    <CardContent className="flex items-center gap-5 p-6">
+   331→   331→                      <p className="text-4xl font-black text-stone-900">{mentor.rating.toFixed(1)}</p>
+   332→   332→                      <div>
+   333→   333→                        <Stars rating={mentor.rating} size={17} />
+   334→   334→                        <p className="mt-1 text-xs text-stone-500">
+   335→   335→                          Baseado em {mentor.reviewCount} avaliações de sessões reais
+   336→   336→                        </p>
+   337→   337→                      </div>
+   338→   338→                    </CardContent>
+   339→   339→                  </Card>
+   340→   340→                  {mentor.reviews.map((r) => (
+   341→   341→                    <Card key={r.id} className="border-stone-200">
+   342→   342→                      <CardContent className="p-5">
+   343→   343→                        <div className="flex items-center gap-3">
+   344→   344→                          <Avatar name={r.authorName} size="md" />
+   345→   345→                          <div className="flex-1">
+   346→   346→                            <p className="text-sm font-bold text-stone-900">{r.authorName}</p>
+   347→   347→                            <p className="text-xs text-muted-foreground">
+   348→   348→                              {formatDayLabel(r.createdAt.replace('T00:00:00.000Z', 'T12:00'))}
+   349→   349→                            </p>
+   350→   350→                          </div>
+   351→   351→                          <Stars rating={r.rating} size={14} />
+   352→   352→                        </div>
+   353→   353→                        <p className="mt-3 text-sm leading-relaxed text-stone-600">{r.comment}</p>
+   354→   354→                      </CardContent>
+   355→   355→                    </Card>
+   356→   356→                  ))}
+   357→   357→                </>
+   358→   358→              )}
+   359→   359→            </TabsContent>
+   360→   360→          </Tabs>
+   361→   361→        </div>
+   362→   362→
+   363→   363→        <aside className="lg:sticky lg:top-24 lg:self-start">
+   364→   364→          <BookingWidget mentor={mentor} />
+   365→   365→        </aside>
+   366→   366→      </div>
+   367→   367→    </div>
+   368→   368→  )
+   369→   369→}
+   370→   370→
+   371→   371→// ==================== WIDGET DE AGENDAMENTO ====================
+   372→   372→
+   373→   373→function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
+   374→   374→  const navigate = useAppStore((s) => s.navigate)
+   375→   375→  const user = useAppStore((s) => s.user)
+   376→   376→
+   377→   377→  const days = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i))
+   378→   378→  const [selectedDate, setSelectedDate] = useState(() => dateKey(new Date()))
+   379→   379→  const [slots, setSlots] = useState<string[]>([])
+   380→   380→  const [slotsLoading, setSlotsLoading] = useState(true)
+   381→   381→  const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
+   382→   382→  const [topic, setTopic] = useState('')
+   383→   383→  const [notes, setNotes] = useState('')
+   384→   384→  const [confirmOpen, setConfirmOpen] = useState(false)
+   385→   385→  const [submitting, setSubmitting] = useState(false)
+   386→   386→
+   387→   387→  const loadSlots = useCallback(async (date: string) => {
+   388→   388→    setSlotsLoading(true)
+   389→   389→    setSelectedSlot(null)
+   390→   390→    try {
+   391→   391→      const { slots } = await api.getSlots(mentor.id, date)
+   392→   392→      setSlots(slots)
+   393→   393→    } catch {
+   394→   394→      setSlots([])
+   395→   395→    } finally {
+   396→   396→      setSlotsLoading(false)
+   397→   397→    }
+   398→   398→  }, [mentor.id])
+   399→   399→
+   400→   400→  useEffect(() => {
+   401→   401→    loadSlots(selectedDate)
+   402→   402→  }, [loadSlots, selectedDate])
+   403→   403→
+   404→   404→  const isOwner = user?.id === mentor.userId
+   405→   405→
+   406→   406→  const submit = async () => {
+   407→   407→    if (!user) {
+   408→   408→      toast.error('Entre com um usuário no topo da página para agendar.')
+   409→   409→      return
+   410→   410→    }
+   411→   411→    if (!selectedSlot) {
+   412→   412→      toast.error('Escolha um horário disponível.')
+   413→   413→      return
+   414→   414→    }
+   415→   415→    if (topic.trim().length < 5) {
+   416→   416→      toast.error('Descreva o tema da sessão (mín. 5 caracteres).')
+   417→   417→      return
+   418→   418→    }
+   419→   419→    setSubmitting(true)
+   420→   420→    try {
+   421→   421→      await api.createBooking({
+   422→   422→        menteeId: user.id,
+   423→   423→        mentorId: mentor.id,
+   424→   424→        startsAt: selectedSlot,
+   425→   425→        durationMin: 60,
+   426→   426→        topic: topic.trim(),
+   427→   427→        notes: notes.trim() || undefined,
+   428→   428→      })
+   429→   429→      toast.success('Solicitação enviada! O mentor confirmará em breve. 🎉')
+   430→   430→      navigate({ name: 'dashboard' })
+   431→   431→    } catch (e) {
+   432→   432→      toast.error(e instanceof Error ? e.message : 'Erro ao agendar')
+   433→   433→      loadSlots(selectedDate)
+   434→   434→    } finally {
+   435→   435→      setSubmitting(false)
+   436→   436→      setConfirmOpen(false)
+   437→   437→    }
+   438→   438→  }
+   439→   439→
+   440→   440→  if (isOwner) {
+   441→   441→    return (
+   442→   442→      <Card className="border-emerald-200">
+   443→   443→        <CardContent className="flex flex-col items-center gap-3 p-6 text-center">
+   444→   444→          <Avatar name={mentor.name} size="lg" />
+   445→   445→          <p className="font-bold">Este é o seu perfil público de mentor</p>
+   446→   446→          <p className="text-sm text-muted-foreground">
+   447→   447→            Gerencie suas informações, agenda e mural de conteúdos.
+   448→   448→          </p>
+   449→   449→          <Button className="w-full" onClick={() => navigate({ name: 'onboarding' })}>
+   450→   450→            Gerenciar meu perfil
+   451→   451→          </Button>
+   452→   452→        </CardContent>
+   453→   453→      </Card>
+   454→   454→    )
+   455→   455→  }
+   456→   456→
+   457→   457→  return (
+   458→   458→    <Card className="border-stone-200 shadow-md">
+   459→   459→      <CardContent className="space-y-5 p-6">
+   460→   460→        <div className="flex items-end justify-between">
+   461→   461→          <p className="text-3xl font-black tracking-tight text-stone-900">
+   462→   462→            {currencyBRL(mentor.hourlyRate)}
+   463→   463→            <span className="text-sm font-medium text-muted-foreground"> / sessão</span>
+   464→   464→          </p>
+   465→   465→          <Badge variant="secondary" className="bg-stone-100 text-stone-600">60 min · vídeo</Badge>
+   466→   466→        </div>
+   467→   467→
+   468→   468→        {/* Dias */}
+   469→   469→        <div>
+   470→   470→          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Escolha o dia</Label>
+   471→   471→          <div className="mt-2 flex gap-2 overflow-x-auto pb-1.5 [scrollbar-width:thin]">
+   472→   472→            {days.map((d) => {
+   473→   473→              const key = dateKey(d)
+   474→   474→              const active = key === selectedDate
+   475→   475→              return (
+   476→   476→                <button
+   477→   477→                  key={key}
+   478→   478→                  onClick={() => setSelectedDate(key)}
+   479→   479→                  aria-pressed={active}
+   480→   480→                  aria-label={`${WEEKDAYS_PT[d.getDay()]}, ${d.getDate()} de ${MONTHS_PT[d.getMonth()]}`}
+   481→   481→                  className={cn(
+   482→   482→                    'flex h-[62px] w-[52px] shrink-0 flex-col items-center justify-center rounded-xl border text-center transition-all',
+   483→   483→                    active
+   484→   484→                      ? 'border-emerald-700 bg-emerald-700 text-white shadow-md'
+   485→   485→                      : 'border-stone-200 bg-white text-stone-600 hover:border-emerald-300 hover:bg-emerald-50'
+   486→   486→                  )}
+   487→   487→                >
+   488→   488→                  <span className={cn('text-[10px] font-semibold uppercase', active ? 'text-emerald-200' : 'text-stone-400')}>
+   489→   489→                    {WEEKDAYS_PT[d.getDay()]}
+   490→   490→                  </span>
+   491→   491→                  <span className="text-lg font-extrabold leading-tight">{d.getDate()}</span>
+   492→   492→                  <span className={cn('text-[10px]', active ? 'text-emerald-200' : 'text-stone-400')}>
+   493→   493→                    {MONTHS_PT[d.getMonth()]}
+   494→   494→                  </span>
+   495→   495→                </button>
+   496→   496→              )
+   497→   497→            })}
+   498→   498→          </div>
+   499→   499→        </div>
+   500→   500→
+   501→   501→        {/* Horários */}
+   502→   502→        <div>
+   503→   503→          <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+   504→   504→            Horários livres · {formatDayLabel(`${selectedDate}T12:00`)}
+   505→   505→          </Label>
+   506→   506→          {slotsLoading ? (
+   507→   507→            <div className="mt-2 grid grid-cols-4 gap-2">
+   508→   508→              {Array.from({ length: 4 }).map((_, i) => (
+   509→   509→                <Skeleton key={i} className="h-10 rounded-lg" />
+   510→   510→              ))}
+   511→   511→            </div>
+   512→   512→          ) : slots.length === 0 ? (
+   513→   513→            <div className="mt-2 flex items-center gap-2 rounded-xl border border-dashed border-stone-200 bg-stone-50 p-4 text-sm text-stone-500">
+   514→   514→              <CalendarOff className="h-4 w-4 shrink-0" />
+   515→   515→              Sem horários livres neste dia. Tente outra data.
+   516→   516→            </div>
+   517→   517→          ) : (
+   518→   518→            <div className="mt-2 grid max-h-44 grid-cols-4 gap-2 overflow-y-auto pr-1">
+   519→   519→              {slots.map((s) => {
+   520→   520→                const active = s === selectedSlot
+   521→   521→                return (
+   522→   522→                  <button
+   523→   523→                    key={s}
+   524→   524→                    onClick={() => setSelectedSlot(s)}
+   525→   525→                    aria-pressed={active}
+   526→   526→                    className={cn(
+   527→   527→                      'h-10 rounded-lg border text-sm font-semibold transition-all',
+   528→   528→                      active
+   529→   529→                        ? 'border-emerald-700 bg-emerald-700 text-white shadow'
+   530→   530→                        : 'border-stone-200 bg-white text-stone-700 hover:border-emerald-400 hover:text-emerald-700'
+   531→   531→                    )}
+   532→   532→                  >
+   533→   533→                    {formatTimeLabel(s)}
+   534→   534→                  </button>
+   535→   535→                )
+   536→   536→              })}
+   537→   537→            </div>
+   538→   538→          )}
+   539→   539→        </div>
+   540→   540→
+   541→   541→        {/* Resumo */}
+   542→   542→        {selectedSlot && (
+   543→   543→          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-sm">
+   544→   544→            <p className="font-bold text-emerald-900">{formatDayLabelLong(selectedSlot)}</p>
+   545→   545→            <p className="mt-0.5 text-emerald-800">
+   546→   546→              {formatTimeLabel(selectedSlot)} → {addMinutesToTime(selectedSlot, 60)} · {currencyBRL(mentor.hourlyRate)}
+   547→   547→            </p>
+   548→   548→          </div>
+   549→   549→        )}
+   550→   550→
+   551→   551→        {/* Tema */}
+   552→   552→        <div className="space-y-3">
+   553→   553→          <div className="space-y-1.5">
+   554→   554→            <Label htmlFor="booking-topic">Tema da sessão *</Label>
+   555→   555→            <Input
+   556→   556→              id="booking-topic"
+   557→   557→              value={topic}
+   558→   558→              onChange={(e) => setTopic(e.target.value)}
+   559→   559→              placeholder="Ex.: Revisão de portfólio e próximos passos"
+   560→   560→            />
+   561→   561→          </div>
+   562→   562→          <div className="space-y-1.5">
+   563→   563→            <Label htmlFor="booking-notes">Observações (opcional)</Label>
+   564→   564→            <Textarea
+   565→   565→              id="booking-notes"
+   566→   566→              value={notes}
+   567→   567→              onChange={(e) => setNotes(e.target.value)}
+   568→   568→              placeholder="Contexto, links ou materiais para o mentor se preparar..."
+   569→   569→              rows={2}
+   570→   570→            />
+   571→   571→          </div>
+   572→   572→        </div>
+   573→   573→
+   574→   574→        <Button
+   575→   575→          className="h-11 w-full text-base font-bold"
+   576→   576→          disabled={submitting}
+   577→   577→          onClick={() => {
+   578→   578→            if (!user) {
+   579→   579→              toast.error('Entre com um usuário no topo da página para agendar.')
+   580→   580→              return
+   581→   581→            }
+   582→   582→            setConfirmOpen(true)
+   583→   583→          }}
+   584→   584→        >
+   585→   585→          {submitting ? 'Enviando...' : 'Solicitar agendamento'}
+   586→   586→        </Button>
+   587→   587→        <p className="-mt-2 text-center text-[11px] leading-relaxed text-muted-foreground">
+   588→   588→          A sessão nasce como solicitação e é confirmada pelo mentor. Acompanhe tudo em{' '}
+   589→   589→          <strong>Minhas sessões</strong>.
+   590→   590→        </p>
+   591→   591→      </CardContent>
+   592→   592→
+   593→   593→      {/* Confirmação */}
+   594→   594→      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+   595→   595→        <DialogContent className="sm:max-w-md">
+   596→   596→          <DialogHeader>
+   597→   597→            <DialogTitle>Confirmar solicitação</DialogTitle>
+   598→   598→            <DialogDescription>
+   599→   599→              Revise os dados antes de enviar para {mentor.name.split(' ')[0]}.
+   600→   600→            </DialogDescription>
+   601→   601→          </DialogHeader>
+   602→   602→          <div className="space-y-2.5 rounded-xl border border-stone-200 bg-stone-50 p-4 text-sm">
+   603→   603→            <div className="flex justify-between gap-4">
+   604→   604→              <span className="text-muted-foreground">Mentor</span>
+   605→   605→              <span className="font-semibold">{mentor.name}</span>
+   606→   606→            </div>
+   607→   607→            <div className="flex justify-between gap-4">
+   608→   608→              <span className="text-muted-foreground">Quando</span>
+   609→   609→              <span className="text-right font-semibold">
+   610→   610→                {selectedSlot && formatDayLabelLong(selectedSlot)}
+   611→   611→                <br />
+   612→   612→                {selectedSlot &&
+   613→   613→                  `${formatTimeLabel(selectedSlot)} → ${addMinutesToTime(selectedSlot, 60)}`}
+   614→   614→              </span>
+   615→   615→            </div>
+   616→   616→            <div className="flex justify-between gap-4">
+   617→   617→              <span className="text-muted-foreground">Tema</span>
+   618→   618→              <span className="max-w-56 text-right font-semibold">{topic || '—'}</span>
+   619→   619→            </div>
+   620→   620→            <div className="flex justify-between gap-4 border-t border-stone-200 pt-2.5">
+   621→   621→              <span className="text-muted-foreground">Valor</span>
+   622→   622→              <span className="font-extrabold text-emerald-700">{currencyBRL(mentor.hourlyRate)}</span>
+   623→   623→            </div>
+   624→   624→          </div>
+   625→   625→          <DialogFooter>
+   626→   626→            <Button variant="outline" onClick={() => setConfirmOpen(false)}>
+   627→   627→              Revisar
+   628→   628→            </Button>
+   629→   629→            <Button onClick={submit} disabled={submitting}>
+   630→   630→              {submitting ? 'Enviando...' : 'Enviar solicitação'}
+   631→   631→            </Button>
+   632→   632→          </DialogFooter>
+   633→   633→        </DialogContent>
+   634→   634→      </Dialog>
+   635→   635→    </Card>
+   636→   636→  )
+   637→   637→}
+   638→   638→

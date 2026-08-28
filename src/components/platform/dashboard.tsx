@@ -6,12 +6,16 @@ import {
   CalendarOff,
   Check,
   CheckCheck,
+  CheckCircle2,
   Clock,
   Compass,
   History,
   Inbox,
+  Library,
   LogIn,
+  PlayCircle,
   Star,
+  Users,
   Video,
   Wallet,
   X,
@@ -42,6 +46,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
@@ -49,15 +54,18 @@ import { Avatar } from '@/components/platform/avatar'
 import { api } from '@/lib/api'
 import {
   STATUS_META,
+  LEVEL_LABELS,
   addMinutesToTime,
+  avatarGradient,
   currencyBRL,
   formatDayLabelLong,
   formatTimeLabel,
+  formatTotalDuration,
   nowNaive,
   relativeDayLabel,
 } from '@/lib/helpers'
 import { useAppStore } from '@/lib/store'
-import type { BookingDTO, MentorDetailDTO } from '@/lib/types'
+import type { BookingDTO, EnrolledCourseDTO, MentorDetailDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 type ConfirmKind = 'reject' | 'complete' | 'cancel'
@@ -437,21 +445,24 @@ export default function DashboardView() {
 
   const [bookings, setBookings] = useState<BookingDTO[] | null>(null)
   const [mentorProfile, setMentorProfile] = useState<MentorDetailDTO | null>(null)
+  const [enrollments, setEnrollments] = useState<EnrolledCourseDTO[]>([])
   const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<string | null>(null)
 
   const refetch = useCallback(async () => {
     if (!userId) return
     try {
-      const [bookingsRes, profileRes] = await Promise.all([
+      const [bookingsRes, profileRes, enrollmentsRes] = await Promise.all([
         api.listBookings(userId),
         api
           .getMyMentorProfile(userId)
           .then((res) => res.profile)
           .catch(() => null),
+        api.listMyEnrollments(userId).catch(() => []),
       ])
       setBookings(bookingsRes)
       setMentorProfile(profileRes)
+      setEnrollments(enrollmentsRes)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Não foi possível carregar suas sessões.')
       setBookings((prev) => prev ?? [])
@@ -649,6 +660,10 @@ export default function DashboardView() {
             Próximas
             <CountPill n={upcoming.length} className="bg-emerald-100 text-emerald-700" />
           </TabsTrigger>
+          <TabsTrigger value="courses">
+            Meus cursos
+            <CountPill n={enrollments.length} className="bg-emerald-100 text-emerald-700" />
+          </TabsTrigger>
           <TabsTrigger value="review">
             Para avaliar
             <CountPill n={toReview.length} className="bg-amber-100 text-amber-800" />
@@ -673,6 +688,33 @@ export default function DashboardView() {
           ) : (
             upcoming.map((b) => (
               <BookingCard key={b.id} booking={b} busy={actingId === b.id} {...cardProps} />
+            ))
+          )}
+        </TabsContent>
+
+        <TabsContent value="courses" className="flex flex-col gap-4">
+          {enrollments.length === 0 ? (
+            <EmptyState
+              icon={Library}
+              title="Você ainda não se inscreveu em cursos"
+              text="Cursos são aulas gravadas e materiais dos mentores, no seu ritmo. Explore o catálogo e comece hoje."
+            >
+              <Button
+                onClick={() => {
+                  useAppStore.getState().setExploreTab('courses')
+                  navigate({ name: 'marketplace' })
+                }}
+              >
+                <Library className="size-4" aria-hidden /> Explorar cursos
+              </Button>
+            </EmptyState>
+          ) : (
+            enrollments.map((enr) => (
+              <EnrolledCourseCard
+                key={enr.courseId}
+                enrollment={enr}
+                onOpen={() => navigate({ name: 'course', courseId: enr.courseId })}
+              />
             ))
           )}
         </TabsContent>
@@ -702,5 +744,60 @@ export default function DashboardView() {
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+// ---------- Card de curso matriculado (aba Meus cursos) ----------
+
+function EnrolledCourseCard({
+  enrollment,
+  onOpen,
+}: {
+  enrollment: EnrolledCourseDTO
+  onOpen: () => void
+}) {
+  const { course, completedLessonIds } = enrollment
+  const total = Math.max(course.lessonCount, 1)
+  const completed = completedLessonIds.length
+  const pct = Math.round((completed / total) * 100)
+  const isDone = completed >= course.lessonCount && course.lessonCount > 0
+
+  return (
+    <Card className="overflow-hidden p-0">
+      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
+        <span
+          aria-hidden
+          style={avatarGradient(course.title)}
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white"
+        >
+          <Library className="size-6" />
+        </span>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate font-bold text-stone-900">{course.title}</p>
+            {isDone && (
+              <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800">
+                <CheckCircle2 className="size-3" aria-hidden /> Concluído
+              </Badge>
+            )}
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            por {course.mentor.name} · {course.lessonCount} aulas ·{' '}
+            {formatTotalDuration(course.totalDurationMin)}
+          </p>
+          <div className="mt-2.5 flex items-center gap-3">
+            <Progress value={pct} aria-label={`${pct}% do curso concluído`} className="h-2 max-w-64 flex-1" />
+            <span className="shrink-0 text-xs font-semibold text-stone-500">
+              {completed}/{course.lessonCount} aulas
+            </span>
+          </div>
+        </div>
+
+        <Button onClick={onOpen} className="shrink-0 self-start rounded-full sm:self-auto">
+          <PlayCircle className="size-4" aria-hidden /> {isDone ? 'Revisar curso' : 'Continuar'}
+        </Button>
+      </div>
+    </Card>
   )
 }

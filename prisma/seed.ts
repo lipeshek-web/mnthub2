@@ -16,6 +16,9 @@ function at(daysFromNow: number, hour: number, minute = 0): string {
 
 async function main() {
   console.log('🌱 Limpando banco...')
+  await db.enrollment.deleteMany()
+  await db.lesson.deleteMany()
+  await db.course.deleteMany()
   await db.review.deleteMany()
   await db.booking.deleteMany()
   await db.contentPost.deleteMany()
@@ -38,6 +41,10 @@ async function main() {
   const carlosProfile = await db.mentorProfile.create({
     data: {
       userId: carlosUser.id,
+      instagram: 'carlosferreira.dev',
+      linkedin: 'https://linkedin.com/in/carlosferreira',
+      github: 'carlosferreira',
+      website: 'https://carlosferreira.dev',
       headline: 'Engenheiro de Software Sênior · Ex-Nubank',
       description:
         'Sou engenheiro de software há mais de 12 anos, com passagens por grandes fintechs e startups em escala. Ajudo desenvolvedores a evoluírem de júnior para sênior dominando arquitetura de software, React, Node.js e boas práticas de engenharia.\n\nMinhas mentorias são 100% práticas: revisamos seu código juntos, desenhamos arquiteturas de verdade e simulamos entrevistas técnicas para processos nacionais e internacionais. Vou te ajudar a montar um plano de estudos realista e a construir projetos que impressionam recrutadores.',
@@ -59,6 +66,8 @@ async function main() {
       hourlyRate: 150,
       experienceYears: 9,
       languages: 'Português, Inglês, Espanhol',
+      instagram: 'marinacosta.pm',
+      linkedin: 'https://linkedin.com/in/marinacosta',
     },
   })
 
@@ -73,6 +82,8 @@ async function main() {
       hourlyRate: 120,
       experienceYears: 8,
       languages: 'Português, Inglês',
+      instagram: 'rafaelgrowth',
+      website: 'https://rafaelalmeida.com.br',
     },
   })
 
@@ -87,6 +98,9 @@ async function main() {
       hourlyRate: 140,
       experienceYears: 10,
       languages: 'Português, Inglês',
+      instagram: 'beatriz.design',
+      linkedin: 'https://linkedin.com/in/beatrizlima',
+      website: 'https://behance.net/beatrizlima',
     },
   })
 
@@ -101,6 +115,7 @@ async function main() {
       hourlyRate: 160,
       experienceYears: 11,
       languages: 'Português',
+      linkedin: 'https://linkedin.com/in/davidokoye',
     },
   })
 
@@ -115,6 +130,8 @@ async function main() {
       hourlyRate: 90,
       experienceYears: 14,
       languages: 'Português, Inglês, Francês',
+      instagram: 'sofia.english',
+      website: 'https://sofiasantos.com.br',
     },
   })
 
@@ -128,6 +145,9 @@ async function main() {
       hourlyRate: 130,
       experienceYears: 8,
       languages: 'Português, Inglês',
+      instagram: 'anadesign',
+      linkedin: 'https://linkedin.com/in/anasouza',
+      website: 'https://anasouza.design',
     },
   })
 
@@ -193,8 +213,274 @@ async function main() {
     review({ bookingId: b11.id, mentorId: marina.id, authorId: thiago.id, rating: 5, comment: 'A Marina domina priorização como ninguém. trouxe exemplos reais de roadmap dela e adaptou tudo ao meu contexto. Solicitei mais 3 sessões!' }),
   ])
 
+  // ==================== CURSOS ====================
+  console.log('🎓 Cursos, aulas e matrículas...')
+
+  const course = async (
+    mentorId: string,
+    data: { title: string; description: string; category: string; level: string; price: number },
+    lessons: { title: string; description: string; videoUrl?: string; content?: string; durationMin: number }[]
+  ) => {
+    const c = await db.course.create({ data: { mentorId, ...data } })
+    for (let i = 0; i < lessons.length; i++) {
+      const l = lessons[i]
+      await db.lesson.create({
+        data: {
+          courseId: c.id,
+          title: l.title,
+          description: l.description,
+          videoUrl: l.videoUrl ?? null,
+          content: l.content ?? null,
+          durationMin: l.durationMin,
+          order: i + 1,
+        },
+      })
+    }
+    return c
+  }
+
+  const cursoArquitetura = await course(
+    carlosProfile.id,
+    {
+      title: 'Arquitetura de Software na Prática',
+      description:
+        'Do caos de pastas à arquitetura em camadas: um curso direto ao ponto para devs que querem escrever sistemas organizados, testáveis e prontos para escalar. Baseado em 12 anos de projetos reais — incluindo os erros que eu cometerei para você não cometer.',
+      category: 'Tecnologia',
+      level: 'INTERMEDIARIO',
+      price: 189,
+    },
+    [
+      {
+        title: 'Bem-vindo: como aproveitar este curso',
+        description: 'O método do curso, quem é ele para e como extrair o máximo de cada módulo.',
+        durationMin: 5,
+        content:
+          'Bem-vindo!\n\nEste curso nasceu das mentorias 1:1 que eu faço há anos. Percebi que 80% das dúvidas de engenharia giram em torno do mesmo tema: como organizar código para que ele continue crescendo sem virar um monstro.\n\nO formato é simples: cada aula traz um princípio, um exemplo real e um checklist para você aplicar no seu projeto ainda hoje. Recomendo fazer uma aula por dia e aplicar antes de avançar.\n\nPré-requisitos: lógica de programação sólida e alguma experiência com qualquer linguagem (os exemplos usam TypeScript/React, mas os conceitos são universais).\n\nBons estudos — e me conte no mural como está indo!',
+      },
+      {
+        title: 'Camadas e fronteiras: organizando um app real',
+        description: 'A divisão em camadas que sobrevive ao crescimento: UI, aplicação, domínio e infraestrutura.',
+        durationMin: 20,
+        content:
+          'O problema de quase todo projeto: tudo misturado\n\nVocê abre o projeto e o componente React chama a API, formata moeda, decide regras de negócio e salva no cache — tudo na mesma função. Funciona... até a segunda tela, o segundo dev ou o segundo ano.\n\nA solução: 4 camadas com responsabilidades claras\n\n1. UI (interface): componentes, telas, estados visuais. Não sabe nada sobre banco de dados ou regras de negócio — só exibe e coleta informação.\n2. Aplicação (use cases): orquestra fluxos. "Criar pedido" é um caso de uso: valida, chama o domínio, persiste, dispara efeitos. É a camada mais importante e a mais esquecida.\n3. Domínio: as regras que fazem seu negócio ser seu negócio. Cálculo de preço, status possíveis de um pedido, invariantes. Puro, sem dependências de framework.\n4. Infraestrutura: HTTP, banco de dados, filas, cache. Detalhe, não protagonista.\n\nA regra de ouro\n\nDependências apontam para dentro: UI → Aplicação → Domínio, e a infraestrutura é plugada na aplicação. O domínio nunca importa React nem o SDK do banco.\n\nChecklist para aplicar hoje\n\n• Escolha UMA regra de negócio que vive espalhada e centralize-a em um módulo próprio.\n• Crie uma pasta de "services" ou "use cases" e mova a orquestração para lá.\n• Seu componente ficou só com display e chamada ao use case? Perfeito.\n\nNa próxima aula, refatoramos um app real gravado ao vivo.',
+      },
+      {
+        title: 'Refatoração ao vivo: do caos à arquitetura limpa',
+        description: 'Aula gravada: pegamos um app desorganizado e aplicamos camadas passo a passo, sem quebrar nada.',
+        durationMin: 35,
+        videoUrl: 'https://www.youtube.com/watch?v=dSX0pLQXI6E',
+      },
+      {
+        title: 'Modelagem de domínio e casos de uso',
+        description: 'Como traduzir requisitos em entidades, invariantes e casos de uso com nomes que o time entende.',
+        durationMin: 25,
+        content:
+          'Antes do código: a linguagem\n\nUm dos sinais mais claros de arquitetura saudável é o time conversar usando as mesmas palavras do código. Se o comercial fala "reserva" e o código tem "BookingEntityV2", algo está errado.\n\nEntidades e invariantes\n\nUma entidade tem identidade e regras que devem sempre valer (invariantes). Um pedido não pode existir sem cliente; uma matrícula não pode ser para um curso despublicado. Coloque essas regras NO ENTIDADE ou no caso de uso — nunca espalhadas em ifs pela UI.\n\nCasos de uso: os verbos do sistema\n\nCada caso de uso é uma intenção: InscreverAluno, CancelarAgendamento, PublicarCurso. Nomeie como o negócio nomeia. Um caso de uso:\n\n1. Valida entrada (dados fazem sentido?).\n2. Aplica regras de negócio (é permitido?).\n3. Executa efeitos (persistir, notificar).\n4. Retorna um resultado claro (sucesso ou erro de negócio — não stack trace cru).\n\nExercício\n\nPegue 3 telas do seu sistema e escreva, em português, quais casos de uso elas chamam. Se uma tela chama 7 coisas diferentes, ela provavelmente esconde dois casos de uso que merecem nomes próprios.',
+      },
+      {
+        title: 'Cache e performance no frontend sem mágica',
+        description: 'Estratégias de cache em camadas: memoização, SWR, HTTP cache e invalidação que funciona.',
+        durationMin: 18,
+        content:
+          'Performance é arquitetura\n\nGrande parte dos problemas de performance que vejo em mentorias não é algoritmo — é dados sendo buscados e processados mais vezes do que deveriam.\n\nAs 4 camadas de cache que uso\n\n1. Memoização local (useMemo/chave de dependência): para cálculos derivados na renderização.\n2. Cache de estado do servidor (TanStack Query, SWR): deduplica pedidos, mantém dados "frescos por tempo X" e resolve revalidação. É o maior ganho por linha de código do frontend moderno.\n3. HTTP cache: cabeçalhos no backend (Cache-Control, ETag). Muitas equipes ignoram o quanto o browser já ajudaria.\n4. CDN/edge para estáticos: resolvido por padrão na maioria das hospedagens — confira.\n\nInvalidação: a parte difícil\n\nRegra prática: invalide por intenção, não por URL. Quando o usuário publica um comentário, invalide "lista de comentários deste post" — não espere o TTL. Bibliotecas como TanStack Query fazem isso com query keys bem desenhadas: hierárquicas, previsíveis, fáceis de invalidar em lote.\n\nArmadilhas\n\n• Cachear dados que mudam com o contexto do usuário (permissões) em cache global.\n• estados de carregamento sem esqueleto: cache resolve dados, não percepção. Adicione skeletons.\n• TTL infinito "porque nunca muda" — tudo muda.\n\nNa aula final: um checklist para fechar o ciclo.',
+      },
+      {
+        title: 'Encerramento: checklist e próximos passos',
+        description: 'O checklist completo de arquitetura para revisar todo projeto novo — e como continuar evoluindo.',
+        durationMin: 6,
+        content:
+          'Parabéns por chegar até aqui!\n\nO checklist de revisão (use em todo projeto novo)\n\n□ As regras de negócio vivem em um lugar só?\n□ Os componentes UI chamam casos de uso (ou hooks que os envolvem) — e nada mais?\n□ As dependências apontam para dentro (domínio não importa framework)?\n□ Existe uma estratégia de cache escrita em uma linha por tipo de dado?\n□ Erros de negócio são diferenciados de erros técnicos?\n□ O time usa os mesmos nomes do código nas conversas?\n\nPróximos passos\n\n1. Aplique o checklist no seu projeto atual e liste 3 dívidas de arquitetura priorizadas por dor real.\n2. Refatore UMA por semana, com testes por perto.\n3. Traga o resultado para uma mentoria 1:1 — revisamos juntos e destravamos o que travar.\n\nObrigado pela jornada. Agora é prática!',
+      },
+    ]
+  )
+
+  const cursoPM = await course(
+    marina.id,
+    {
+      title: 'Do Zero a Product Manager',
+      description:
+        'Curso gratuito e direto: o que um PM faz de verdade, como fazer discovery que gera insight, priorizar com RICE e montar seu plano de transição em 90 dias. O mesmo conteúdo que uso nas mentorias com quem está migrando para produto.',
+      category: 'Carreira',
+      level: 'INICIANTE',
+      price: 0,
+    },
+    [
+      {
+        title: 'O que faz (e o que não faz) um PM',
+        description: 'Desmistificando a função: responsabilidade sem autoridade, e por que isso é um superpoder.',
+        durationMin: 12,
+        content:
+          'A definição que uso\n\nProduct Manager é responsável por maximizar o impacto gerado pelo time de produto — normalmente sem autoridade direta sobre ninguém. Parece contradição? É justamente aí que mora o trabalho.\n\nO que um PM faz no dia a dia\n\n• Descoberta: conversa com usuários, entende problemas e valida se valem a pena.\n• Priorização: escolhe o que fazer (e, mais importante, o que NÃO fazer).\n• Contexto: garante que engenharia e design entendam o "porquê" de cada entrega.\n• Métricas: define como o sucesso será medido e acompanha depois do lançamento.\n• Comunicação: alinha stakeholders que têm interesses diferentes.\n\nO que NÃO é responsabilidade do PM\n\n• Especificar cada detalhe de tela (isso é design + engenharia).\n• Ser "o dono das ideias" — as melhores soluções quase nunca vêm do PM.\n• Gerenciar pessoas (PM não é gerente de gente, apesar do nome).\n\nTeste rápido: se no seu trabalho você passa mais tempo escrevendo tarefas do que falando com usuários e olhando métricas, você provavelmente virou um "gerente de backlog". O curso vai te ajudar a voltar ao essencial.',
+      },
+      {
+        title: 'Discovery: entrevistas que geram insight',
+        description: 'O roteiro de entrevistas que uso: perguntas sobre comportamento passado, não opiniões sobre o futuro.',
+        durationMin: 18,
+        content:
+          'O erro clássico\n\n"Você usaria um app que faz X?" — Se você já fez essa pergunta, sabe que todo mundo diz sim por educação. Entrevista de discovery não busca opinião sobre ideias; busca EVIDÊNCIA sobre comportamento.\n\nO roteiro em 4 blocos\n\n1. Contexto: "Me conte como você faz X hoje, passo a passo." Deixe a pessoa narrar — interrupções são ouro, mas só depois da história completa.\n2. Dor: "Qual a parte mais chata/trabalhosa desse processo?" Peça o ÚLTIMO episódio concreto, não a regra geral.\n3. Workarounds: "O que você já tentou para resolver?" Quem paga por solução é quem já improvisou uma (planilha no Excel conta).\n4. Fechamento: "Se você pudesse mudar uma coisa, qual?" — e anote; é priorização de graça.\n\nQuantas entrevistas?\n\n5 a 8 por tema costuma saturar: as histórias começam a se repetir. Mais que isso, você já está coletando opinião, não evidência.\n\nSíntese\n\nDepois de cada rodada, escreva as dores em cards (uma dor por card) e agrupe por tema. Dores com workaround + frequência alta = candidatos a problema de produto. Na próxima aula, priorizamos o que resolver primeiro.',
+      },
+      {
+        title: 'Priorização com RICE na prática',
+        description: 'Como pontuar iniciativas com Reach, Impact, Confidence e Effort — e os erros que distorcem o resultado.',
+        durationMin: 15,
+        content:
+          'RICE em 60 segundos\n\nRICE = (Reach × Impact × Confidence) / Effort\n\n• Reach: quantas pessoas/entidades afetadas por período (usuários/mês, sessões/mês).\n• Impact: quanto cada uma é afetada (escala: 0.25 mínimo, 0.5 baixo, 1 médio, 2 alto, 3 massivo).\n• Confidence: sua confiança nas estimativas (100% alta, 80% média, 50% baixa — abaixo disso nem entre na lista).\n• Effort: pessoas-mês de trabalho (quanto maior, pior).\n\nOs 3 erros que distorcem tudo\n\n1. Inflar Impact: todo mundo acha sua iniciativa é "massiva". Exija evidência (entrevistas, dados) antes de pontuar acima de 1.\n2. Effort otimista: multiplique a primeira estimativa de engenharia por 1.5 e pergunte "o que precisa ser verdade para dar certo?"\n3. Tratar o score como sentença: RICE ordena a conversa, não substitui. Números próximos (dentro de 20%) são empates — decida com estratégia.\n\nExercício\n\nPegue as dores da aula anterior e pontue 5 iniciativas candidatas com RICE. Leve a tabela para a mentoria — revisamos os números juntos.',
+      },
+      {
+        title: 'Métricas north star: vídeo comentado',
+        description: 'Como definir a métrica certa, evitar métricas de vaidade e conectar o roadmap ao impacto.',
+        durationMin: 20,
+        videoUrl: 'https://www.youtube.com/watch?v=8nMKRTaD4-E',
+      },
+      {
+        title: 'Seu plano de transição em 90 dias',
+        description: 'O plano mês a mês que mais funcionou com mentorados vindo de engenharia, design e marketing.',
+        durationMin: 14,
+        content:
+          'Transição é processo, não salto\n\nPlano de 90 dias (ajuste ao seu ritmo; 5–8h/semana):\n\nMês 1 — Fundamentos e vocabulário\n\n• Estude os conceitos deste curso e o material complementar (Inspired, do Marty Cagan, e os blogs de Lenny Rachitsky e Julie Zhuo).\n• Reescreva seu currículo em linguagem de produto: impacto e métricas, não tarefas.\n• Marque 2 mentorias para calibrar narrativa (posso ajudar aqui!).\n\nMês 2 — Experiência prática\n\n• Adote produto no trabalho atual: ofereça-se para um discovery, uma análise de métricas ou um teste A/B — mesmo sem o cargo.\n• Escreva 1 case documentado: problema → processo → resultado (números!).\n• Participe de comunidades de produto; ajude alguém com menos bagagem (ensinar consolida).\n\nMês 3 — Posicionamento e entrevistas\n\n• Ajuste LinkedIn para a vaga-alvo (título e headline contam mais que você imagina).\n• Ensaios de entrevista: product sense, métricas e comportamental — simule com colegas e com mentor.\n• Aplique para 5–10 vagas com case adaptado por empresa. Qualidade > volume.\n\nRegra de ouro: ninguém é contratado por "querer ser PM". É contratado por evidência de que já pensa como PM. Este plano é exatamente sobre gerar essa evidência.',
+      },
+    ]
+  )
+
+  const cursoDS = await course(
+    beatriz.id,
+    {
+      title: 'Design Systems do Zero ao Ship',
+      description:
+        'Tokens, componentes, governança e handoff: construa um design system que engenharia ama usar e que sobrevive ao crescimento do produto. Para designers e times enxutos que querem consistência sem burocracia.',
+      category: 'Design',
+      level: 'INTERMEDIARIO',
+      price: 199,
+    },
+    [
+      {
+        title: 'Fundamentos: tokens primitivos e semânticos',
+        description: 'A base de tudo: como estruturar cores, tipografia e espaçamento em duas camadas de tokens.',
+        durationMin: 22,
+        content:
+          'Dois tipos de tokens — e por que separar\n\nTokens primitivos: a paleta bruta. emerald.500, stone.100, spacing.4, radius.lg. São nomes neutros, sem opinião de uso. Servem como matéria-prima.\n\nTokens semânticos: significado de uso. color.bg.surface, color.text.primary, spacing.card.gap, radius.button. Referenciam os primitivos e carregam a intenção.\n\nPor que a separação importa: quando o rebranding chegar (vai chegar), você troca os primitivos e todos os semânticos atualizam. E quando o dark mode chegar, você troca apenas os VALORES dos semânticos por tema — nada de caçar hex code por 40 telas.\n\nEstrutura mínima que recomendo\n\n• Cor: surface (fundo), text (primário/secundário/desabilitado), border, feedback (success/warning/danger/info), brand (primário/hover).\n• Tipografia: escala de 6–8 tamanhos com peso e linha definidos por uso (display, title, body, caption) — não por pixel solto.\n• Espaçamento: escala única (4, 8, 12, 16, 24, 32, 48, 64) e proibição de valores fora dela.\n\nRegra anti-caos\n\nTodo token semântico novo precisa de uma justificativa de uso em uma linha. Se você não consegue escrever quando usar, ele não deve existir.',
+      },
+      {
+        title: 'Componentizando no Figma: vídeo prático',
+        description: 'Variantes, propriedades e auto layout na prática: do botão simples ao padrão composto.',
+        durationMin: 28,
+        videoUrl: 'https://www.youtube.com/watch?v=bEKmDQAIvfM',
+      },
+      {
+        title: 'Governança para times enxutos',
+        description: 'Como decidir o que entra no sistema, contribuições e versionamento — sem virar comitê.',
+        durationMin: 18,
+        content:
+          'O paradoxo da governança\n\nDesign system sem regras vira selo postal (ninguém contribui); com regras pesadas vira gargalo. A saída: governança proporcional ao time.\n\nModelo que aplico em times pequenos (2–10 designers)\n\n1. Um owner claro (você) e um canal público de pedidos. Toda contribuição nasce ali.\n2. Trilhos de decisão: componente novo → precisa de caso de uso real + demanda em 2 telas + revisão do owner. Mudança em componente existente → proposta com antes/depois, owner aprova em até 48h.\n3. Release notes curtas por atualização (o "changelog" do Figma). Quem usa precisa saber o que mudou sem entrar em reunião.\n\nO que NÃO entra no sistema\n\n• Componente usado em UMA tela (mantenha no arquivo do projeto).\n• Componente "futuro" sem uso atual (você vai redesenhá-lo de qualquer forma quando o caso real chegar).\n• Exceções disfarçadas de variantes ("botão-azul-só-para-checkout"). Se é exceção, é conversa — não variante.\n\nSinal de saúde: se o time contribui mais do que consome, o sistema está vivo. Se só você publica, trate isso como alerta e vá atrás dos porquês.',
+      },
+      {
+        title: 'Handoff com engenharia sem atrito',
+        description: 'Especificações que engenharia precisa de verdade, e como trabalhar com storybook e tokens exportados.',
+        durationMin: 16,
+        content:
+          'Handoff não é entrega — é tradução\n\nO designer entrega intenção; a engenharia entrega implementação. O atrito nasce quando a intenção fica implícita e a implementação precisa adivinhar.\n\nO que engenharia realmente precisa\n\n1. Tokens exportados (não hex codes soltos): a mesma fonte de verdade, processada por ferramenta, com nomes idênticos ao do código.\n2. Estados completos: default, hover, focus, ativo, desabilitado, loading, vazio, erro, com dado longo (o texto que quebra o layout sempre existe). A ausência de estados é a maior fonte de retrabalho.\n3. Comportamento responsivo definido como regra ("em telas < 768px, colunas viram empilhado"), não como 3 telas desenhadas.\n4. Critério de aceite visual: o que é "pronto"? Uma frase por componente resolve 90% das discussões de QA.\n\nStorybook como contrato\n\nSe o time usa Storybook, o componente publicado É a especificação. Design revisa o story, não a tela desenhada. Isso soa radical e economiza semanas: o que está no story é o que roda.\n\nChecklist final de handoff\n\n□ Tokens sincronizados?\n□ Todos os estados desenhados ou escritos?\n□ Regra responsiva em texto?\n□ Critério de aceite por componente?\n□ Canal combinado para dúvidas durante a implementação?',
+      },
+    ]
+  )
+
+  const cursoGrowth = await course(
+    rafael.id,
+    {
+      title: 'Growth: Aquisição Previsível',
+      description:
+        'Pare de apostar em campanhas isoladas: construa um sistema de aquisição com funil instrumentado, experimentos priorizados e canais que compostam. O playbook que usei para escalar 3 startups de 0 a 7 dígitos.',
+      category: 'Marketing',
+      level: 'INTERMEDIARIO',
+      price: 149,
+    },
+    [
+      {
+        title: 'Anatomia de um funil que converte',
+        description: 'Visita → cadastro → ativação → retenção: onde está seu gargalo real e como instrumentar.',
+        durationMin: 20,
+        content:
+          'Funil não é marketing — é diagnóstico\n\nAntes de "fazer growth", você precisa saber ONDE o sistema vaza. O funil básico:\n\nVisitante → Cadastro → Ativação → Retenção\n\nA armadilha mais comum: investir em topo (tráfego) quando o vazamento está na ativação. Comprar mais visitas para um funil que perde 90% no primeiro uso é pagar para encher uma banheira sem tampa.\n\nComo instrumentar (mesmo simples)\n\n1. Defina o evento de ativação: a ação que, quando o usuário faz, a chance de reter dispara (ex.: no Notion, criar a primeira página; no seu produto, o equivalente). Descubra o seu olhando os usuários retidos vs. os que churnaram.\n2. Taxa de conversão por etapa, por semana. Planilha resolve; ferramenta facilita.\n3. Segmento por canal de origem desde o dia 1. "Conversão de 3%" sem canal é número de vaidade.\n\nDiagnóstico em 3 perguntas\n\n• Cadastro → ativação < 25%? Problema de onboarding, não de tráfego.\n• Ativação alta mas retenção cai no mês 2? Problema de valor recorrente.\n• Topo pequeno e etapas saudáveis? Aí sim: canais de aquisição (próximas aulas).\n\nTraga seus números para a mentoria — diagnosticamos juntos.',
+      },
+      {
+        title: '25 experimentos de CRO: vídeo ao vivo',
+        description: 'Biblioteca de experimentos de conversão com priorização por ICE e exemplos reais comentados.',
+        durationMin: 42,
+        videoUrl: 'https://www.youtube.com/watch?v=FBnJklzWqtU',
+      },
+      {
+        title: 'SEO e conteúdo: o canal que compõe',
+        description: 'Como construir uma máquina de conteúdo que gera clientes enquanto você dorme — sem virar fábrica de texto.',
+        durationMin: 22,
+        content:
+          'Por que SEO?\n\nTodo canal pago para de funcionar quando você para de pagar. SEO compõe: o artigo certo gera clientes por anos. O custo é tempo e consistência — a moeda de quem está começando.\n\nA estratégia mínima viável\n\n1. Head de cauda longa: busque perguntas específicas que seu comprador digita ("como cobrar mentoria", "template de plano de estudos"). Volumem baixo, intenção alta, concorrência baixa. Vencer 20 keywords de cauda longa > perder 1 head term.\n2. Página por dor, não por keyword: cada artigo resolve UMA dor com profundidade real. Conteúdo raso destrói a autoridade do domínio.\n3. Prova e produto no meio: CTA contextual, não banner genérico no rodapé.\n\nCadência que sobrevive\n\n1 artigo bom/semana durante 6 meses vale mais que 30 no primeiro mês e silêncio depois. Calendário realista + batch de produção (escreva 2 por sessão) é o que sustenta.\n\nMétricas honestas\n\n• Tráfego orgânico por artigo (não total — por artigo você aprende padrão).\n• Conversão artigo → cadastro (2–5% é saudável com CTA bom).\n• Clientes vindos de orgânico por mês (o número que paga as contas).\n\nSEO é lento... até ser rápido. Comece hoje; em 90 dias você tem dados, em 12 meses, ativo.',
+      },
+      {
+        title: 'Seu roadmap de experimentos',
+        description: 'Montando o ciclo de experimentos: hipótese, priorização por ICE, threshold de decisão e cadência.',
+        durationMin: 15,
+        content:
+          'Growth é processo, não inspiração\n\nO motor do growth é o ciclo de experimentos: idear → priorizar → testar → aprender → repetir. Sem cadência, tudo vira opinião.\n\nO template de hipótese (copie e use)\n\n"Como [área do funil] está com [problema medido], acreditamos que [mudança específica] vai [efeito esperado]. Saberemos que funcionou se [métrica] subir de X para Y em [prazo]."\n\nPriorização por ICE\n\nImpact (1–10) × Confidence (1–10) × Ease (1–10) = score. Diferente do RICE de produto, ICE é rápido de propósito: o objetivo é ordenar a fila em 15 minutos, não achismar.\n\nThreshold de decisão (defina ANTES de testar)\n\n• Resultado ≥ meta: scale (dobrar a aposta).\n• Resultado neutro: iterar uma variável do mesmo experimento.\n• Resultado negativo: matar sem drama e documentar o aprendizado.\n\nCadência\n\n2–3 experimentos por semana em time pequeno. Documente TUDO numa planilha viva (hipótese, score, resultado, aprendizado). Em 12 semanas você terá o ativo mais valioso de marketing: conhecimento sobre SEU público que nenhum concorrente copia.\n\nPróximo passo: monte sua primeira fila com 10 hipóteses usando o template — e leve para revisarmos na mentoria.',
+      },
+    ]
+  )
+
+  const cursoIngles = await course(
+    sofia.id,
+    {
+      title: 'Inglês para Entrevistas Internacionais',
+      description:
+        'Prepare-se para processos em inglês com o método que uso com executivos há 14 anos: STAR method, vocabulário de alto impacto e rotina de prática de 20 minutos. Simulações reais, feedback e material autêntico.',
+      category: 'Idiomas',
+      level: 'INICIANTE',
+      price: 89,
+    },
+    [
+      {
+        title: 'Mapeando seus pontos fracos',
+        description: 'Auto-diagnóstico guiado: fluência, vocabulário, pronúncia ou nervosismo — onde focar primeiro?',
+        durationMin: 10,
+        content:
+          'Antes de estudar mais, estude melhor\n\nA maior perda de tempo em preparação é treinar o que você JÁ sabe bem. Este diagnóstico rápido direciona seu esforço:\n\nGrave-se respondendo "Tell me about yourself" por 90 segundos. Depois avalie honestamente:\n\n1. Fluência: você travou mais de 3 vezes? Preencheu silêncios com "äh/né"? → priorize fluência (aula 4).\n2. Vocabulário: repetiu as mesmas 10 palavras? Não soube dizer suas realizações? → priorize vocabulário (aula 2).\n3. Estrutura: a resposta foi circular, sem começo/meio/fim? → priorize método STAR (aula 2 e 3).\n4. Pronúncia: o gravador entendeu você? Peça para alguém ouvir 30 segundos e repetir de volta.\n5. Nervosismo: a versão gravada ficou pior que a sua versão mental? → simule mais (aula 3).\n\nRotina mínima que funciona\n\n20 minutos por dia, 5 dias por semana: 10 min de input (ouvir/shadowing), 10 min de output (responder perguntas em voz alta, gravando). Consistência vence intensidade — sempre.\n\nE não esqueça: o objetivo não é inglês perfeito. É inglês CLARO o suficiente para o seu talento aparecer.',
+      },
+      {
+        title: 'STAR method e vocabulário de alto impacto',
+        description: 'A estrutura que entrevistadores esperam + as palavras que fazem suas respostas soar sênior.',
+        durationMin: 18,
+        content:
+          'STAR: a estrutura universal\n\nSituation → Task → Action → Result\n\n• Situation (1 frase): contexto mínimo. "Our team was migrating a legacy checkout with 40k daily users."\n• Task (1 frase): SEU desafio específico. "I was responsible for zero-downtime traffic migration."\n• Action (60% da resposta): o que VOCÊ fez, com verbos de ação. Aqui mora a avaliação.\n• Result (números!): "Migration completed with zero incidents; conversion improved 4%."\n\nO erro nº1 dos brasileiros: gastar 80% do tempo em Situation/Task (contexto) e 20% em Action/Result. Inverta.\n\nVocabulário de alto impacto\n\nTroque isso → por isso:\n\n• "I helped with..." → "I led / drove / owned..."\n• "We did a lot of things" → "I shipped X, which reduced Y by Z%"\n• "It was hard" → "The main challenge was X, so I..."\n• "I think / maybe" → "The data showed / Based on that, I decided"\n\nFrases-ponte para ganhar tempo sem parecer travado\n\n• "That\'s a great question — let me think for a second."\n• "There are two angles here; let me start with the first."\n\nExercício: escreva 3 histórias suas no formato STAR (em inglês), grave, ouça, reescreva. Na próxima aula, vemos isso em ação numa simulação comentada.',
+      },
+      {
+        title: 'Mock interview comentada',
+        description: 'Simulação real de entrevista técnica em inglês, com erros comuns e correções ao vivo.',
+        durationMin: 25,
+        videoUrl: 'https://www.youtube.com/watch?v=1tUxwfDKv24',
+      },
+      {
+        title: 'Rotina de prática de 20 minutos',
+        description: 'O plano diário de shadowing e output que destrava a fala em 30 dias — com material autêntico.',
+        durationMin: 12,
+        content:
+          'A rotina dos 20 minutos (5 dias/semana)\n\nMinutos 0–10: INPUT ATIVO (shadowing)\n\n1. Escolha 1–2 minutos de áudio autêntico do SEU contexto (entrevistas no YouTube, podcasts de produto/engenharia em inglês).\n2. Ouça uma vez entendendo o geral.\n3. Shadowing: ouça frase por frase e repita IMITANDO ritmo, entonação e pausas — não só as palavras. 4–5 repetições por frase.\n4. Grave sua última repetição e compare com o original.\n\nMinutos 10–20: OUTPUT DIRIGIDO\n\n1. Responda UMA pergunta de entrevista em voz alta (1–2 min), gravando.\n2. Ouça e marque: travadas, muletas ("like", "äh"), uma palavra que você quis dizer e não soube.\n3. Responda DE NOVO a mesma pergunta, melhorando. A segunda versão é sempre visivelmente melhor — esse é o mecanismo de evolução.\n\nBanco de perguntas (rote por temas)\n\n• Tell me about yourself • A project you\'re proud of • A conflict with a colleague • A failure and what you learned • Why this company?\n\nComo acompanhar progresso\n\nGuarde a gravação do dia 1. No dia 30, ouça as duas. A diferença é o seu combustível para os próximos 30 dias.\n\nE quando quiser simulação com correção humana ao vivo — você sabe onde me encontrar: agende uma mentoria e simulamos seu processo real.',
+      },
+    ]
+  )
+
+  // Matrículas com progresso
+  console.log('✏️  Matrículas...')
+  const lessonsPM = await db.lesson.findMany({ where: { courseId: cursoPM.id }, orderBy: { order: 'asc' } })
+  const lessonsArq = await db.lesson.findMany({ where: { courseId: cursoArquitetura.id }, orderBy: { order: 'asc' } })
+  const lessonsGrowth = await db.lesson.findMany({ where: { courseId: cursoGrowth.id }, orderBy: { order: 'asc' } })
+
+  await db.enrollment.createMany({
+    data: [
+      { courseId: cursoPM.id, studentId: ana.id, completedLessonIds: JSON.stringify([lessonsPM[0].id, lessonsPM[1].id]) },
+      { courseId: cursoArquitetura.id, studentId: lucas.id, completedLessonIds: JSON.stringify([lessonsArq[0].id, lessonsArq[1].id, lessonsArq[2].id]) },
+      { courseId: cursoGrowth.id, studentId: thiago.id, completedLessonIds: JSON.stringify([lessonsGrowth[0].id]) },
+    ],
+  })
+
   console.log('✅ Seed concluído!')
-  console.log({ ana: ana.email, mentors: 7, bookings: 11, reviews: 6 })
+  console.log({ ana: ana.email, mentors: 7, cursos: 5, bookings: 11, reviews: 6 })
 }
 
 main()
