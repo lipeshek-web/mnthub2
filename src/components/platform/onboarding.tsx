@@ -12,6 +12,7 @@ import {
   CalendarClock,
   Camera,
   Check,
+  ChevronRight,
   Clock,
   Copy,
   Eye,
@@ -21,6 +22,7 @@ import {
   FolderInput,
   GraduationCap,
   ImagePlus,
+  LayoutDashboard,
   Library,
   Link2,
   ListChecks,
@@ -33,9 +35,11 @@ import {
   Plus,
   Radio,
   RefreshCw,
+  Route,
   Save,
   ShoppingCart,
   Sparkles,
+  Star,
   Trash2,
   TrendingUp,
   Type,
@@ -88,6 +92,7 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Avatar, Stars } from '@/components/platform/avatar'
 import { LibraryManager } from './library-manager'
@@ -110,6 +115,7 @@ import {
   WEEKDAYS_FULL_PT,
   avatarGradient,
   currencyBRL,
+  firstName,
   formatDayLabel,
   formatTimeLabel,
   hourToLabel,
@@ -3661,6 +3667,94 @@ function BenefitCard({ icon: Icon, title, text }: { icon: LucideIcon; title: str
   )
 }
 
+// ---------- Painel em abas (estúdio do criador) ----------
+
+const PANEL_TABS = [
+  { id: 'overview', label: 'Visão geral', icon: LayoutDashboard },
+  { id: 'perfil', label: 'Perfil público', icon: UserRound },
+  { id: 'agenda', label: 'Agenda', icon: CalendarClock },
+  { id: 'mural', label: 'Mural', icon: Newspaper },
+  { id: 'cursos', label: 'Cursos', icon: ListVideo },
+  { id: 'biblioteca', label: 'Biblioteca', icon: Library },
+  { id: 'trilhas', label: 'Trilhas', icon: Route },
+  { id: 'divulgacao', label: 'Divulgação', icon: Megaphone },
+] as const
+
+type PanelTabId = (typeof PANEL_TABS)[number]['id']
+
+const PANEL_SHORTCUTS: ReadonlyArray<{
+  id: PanelTabId
+  label: string
+  description: string
+  icon: LucideIcon
+}> = [
+  {
+    id: 'perfil',
+    label: 'Editar perfil',
+    description: 'Headline, descrição, preço, fotos e fontes.',
+    icon: UserRound,
+  },
+  {
+    id: 'agenda',
+    label: 'Agenda semanal',
+    description: 'Horários em que alunos podem agendar sessões.',
+    icon: CalendarClock,
+  },
+  {
+    id: 'mural',
+    label: 'Publicar conteúdo',
+    description: 'Artigos, vídeos e workshops no mural.',
+    icon: Newspaper,
+  },
+  {
+    id: 'cursos',
+    label: 'Criar curso',
+    description: 'Temas, aulas, anexos e quizzes.',
+    icon: ListVideo,
+  },
+  {
+    id: 'biblioteca',
+    label: 'Biblioteca',
+    description: 'Artigos e livros reutilizáveis nas aulas.',
+    icon: Library,
+  },
+  {
+    id: 'trilhas',
+    label: 'Trilhas',
+    description: 'Combine cursos e conteúdos em jornadas.',
+    icon: Route,
+  },
+  {
+    id: 'divulgacao',
+    label: 'Link & tráfego',
+    description: 'Link rastreável e desempenho de vendas.',
+    icon: Megaphone,
+  },
+]
+
+function OverviewKpi({
+  icon: Icon,
+  label,
+  value,
+  footer,
+}: {
+  icon: LucideIcon
+  label: string
+  value: ReactNode
+  footer?: ReactNode
+}) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-stone-200 bg-white p-4">
+      <div className="flex items-center gap-1.5 text-stone-500">
+        <Icon className="size-3.5 shrink-0" aria-hidden />
+        <span className="text-[11px] font-semibold uppercase tracking-wide">{label}</span>
+      </div>
+      <p className="mt-2 text-2xl font-bold tabular-nums text-stone-900">{value}</p>
+      {footer ? <div className="mt-1.5 text-xs leading-snug text-muted-foreground">{footer}</div> : null}
+    </div>
+  )
+}
+
 // ---------- View principal ----------
 
 export default function OnboardingView() {
@@ -3671,6 +3765,7 @@ export default function OnboardingView() {
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<MentorDetailDTO | null>(null)
   const [mentorCourses, setMentorCourses] = useState<CourseListItemDTO[]>([])
+  const [tab, setTab] = useState<PanelTabId>('overview')
 
   const handleCoursesChange = useCallback((list: CourseListItemDTO[]) => {
     setMentorCourses(list)
@@ -3693,6 +3788,23 @@ export default function OnboardingView() {
     setLoading(true)
     void reload()
   }, [userId, reload])
+
+  // A Visão geral precisa dos números de cursos/alunos mesmo sem montar CoursesManager
+  // (o Radix desmonta abas inativas — CoursesManager só sincroniza quando a aba Cursos abre)
+  const reloadCourses = useCallback(async () => {
+    if (!userId) return
+    try {
+      setMentorCourses(await api.listCourses({ mentorUserId: userId }))
+    } catch {
+      // silencioso: KPIs ficam com o último valor conhecido (ou zero no primeiro load)
+    }
+  }, [userId])
+
+  useEffect(() => {
+    void reloadCourses()
+  }, [reloadCourses])
+
+  const totalStudents = mentorCourses.reduce((acc, course) => acc + (course.studentCount ?? 0), 0)
 
   const handleCreateProfile = useCallback(
     async (values: ProfileFormValues) => {
@@ -3828,110 +3940,214 @@ export default function OnboardingView() {
     )
   }
 
-  // ---------- Com perfil: perfil público + link/tráfego + disponibilidade + mural + cursos ----------
+  // ---------- Com perfil: painel em abas (estúdio do criador) ----------
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:px-6">
+    <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
       <header>
         <h1 className="text-2xl font-bold tracking-tight">Painel do mentor</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Gerencie seu perfil público, seu link de vendas, a agenda semanal, os conteúdos do mural, os
-          cursos e o desempenho de tráfego.
+          Seu estúdio de criação — perfil, conteúdos, cursos e resultados em um só lugar.
         </p>
       </header>
 
-      {/* 1. Perfil público */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
-              <UserRound className="size-4" aria-hidden />
-            </span>
-            Perfil público
-          </CardTitle>
-          <CardDescription>Estas informações aparecem para os alunos no marketplace.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-6">
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-lg bg-stone-50 p-4 ring-1 ring-stone-200">
-            <div className="flex items-center gap-2">
-              <Stars rating={profile.rating} size={16} />
-              <span className="text-sm font-semibold">
-                {profile.rating > 0 ? profile.rating.toFixed(1).replace('.', ',') : '—'}
-              </span>
-              <span className="text-sm text-muted-foreground">de avaliação</span>
-            </div>
-            <Separator orientation="vertical" className="hidden h-8 sm:block" />
-            <div className="text-sm">
-              <span className="font-semibold">{profile.reviewCount}</span>{' '}
-              <span className="text-muted-foreground">
-                {profile.reviewCount === 1 ? 'avaliação' : 'avaliações'}
-              </span>
-            </div>
-            <Separator orientation="vertical" className="hidden h-8 sm:block" />
-            <div className="text-sm">
-              <span className="font-semibold">{profile.contents.length}</span>{' '}
-              <span className="text-muted-foreground">
-                {profile.contents.length === 1 ? 'conteúdo no mural' : 'conteúdos no mural'}
-              </span>
-            </div>
+      <Tabs value={tab} onValueChange={(value) => setTab(value as PanelTabId)}>
+        <div className="lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-6">
+          {/* Navegação única: faixa horizontal rolável no mobile, coluna lateral sticky no desktop */}
+          <TabsList
+            aria-label="Seções do painel"
+            className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl border border-stone-200 bg-white p-1.5 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-200 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:h-1 lg:sticky lg:top-0 lg:flex-col lg:items-stretch lg:justify-start lg:self-start lg:overflow-visible"
+          >
+            {PANEL_TABS.map(({ id, label, icon: Icon }) => (
+              <TabsTrigger
+                key={id}
+                value={id}
+                className="min-h-11 flex-none justify-start gap-2 rounded-xl px-3 hover:bg-stone-100 data-[state=active]:bg-emerald-700 data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:hover:bg-emerald-700"
+              >
+                <Icon className="size-4" aria-hidden />
+                {label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          {/* Radix desmonta o conteúdo inativo — managers remontam ao reabrir a aba */}
+          <div className="min-w-0">
+            <TabsContent value="overview" className="min-w-0 mt-4 sm:mt-6">
+              <div className="flex min-w-0 flex-col gap-6">
+                <section aria-labelledby="panel-overview-title">
+                  <h2 id="panel-overview-title" className="text-xl font-bold tracking-tight">
+                    Olá, {firstName(profile.name)}!
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Este é o seu estúdio — gerencie o que você cria e como os alunos te encontram.
+                  </p>
+                </section>
+
+                <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-4">
+                  <OverviewKpi
+                    icon={Star}
+                    label="Nota"
+                    value={profile.rating > 0 ? profile.rating.toFixed(1).replace('.', ',') : '—'}
+                    footer={
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <Stars rating={profile.rating} size={12} />
+                        <span>
+                          {profile.reviewCount} {profile.reviewCount === 1 ? 'avaliação' : 'avaliações'}
+                        </span>
+                      </span>
+                    }
+                  />
+                  <OverviewKpi icon={Users} label="Alunos" value={totalStudents} footer="soma dos seus cursos" />
+                  <OverviewKpi
+                    icon={GraduationCap}
+                    label="Cursos"
+                    value={mentorCourses.length}
+                    footer="incluindo rascunhos"
+                  />
+                  <OverviewKpi
+                    icon={Newspaper}
+                    label="Conteúdos"
+                    value={profile.contents.length}
+                    footer="publicados no mural"
+                  />
+                </div>
+
+                <section aria-labelledby="panel-shortcuts-title" className="flex flex-col gap-3">
+                  <h3 id="panel-shortcuts-title" className="text-sm font-semibold text-stone-700">
+                    Atalhos rápidos
+                  </h3>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {PANEL_SHORTCUTS.map(({ id, label, description, icon: Icon }) => (
+                      <button
+                        key={id}
+                        type="button"
+                        aria-label={`Ir para a aba ${label}`}
+                        onClick={() => setTab(id)}
+                        className="group flex min-h-11 w-full min-w-0 items-center gap-3 rounded-2xl border border-stone-200 bg-white p-4 text-left transition-colors hover:border-emerald-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+                      >
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+                          <Icon className="size-5" aria-hidden />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold text-stone-900">{label}</span>
+                          <span className="mt-0.5 block text-xs leading-snug text-stone-500">{description}</span>
+                        </span>
+                        <ChevronRight
+                          className="size-4 shrink-0 text-stone-300 transition-all group-hover:translate-x-0.5 group-hover:text-emerald-600"
+                          aria-hidden
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="perfil" className="min-w-0 mt-4 sm:mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+                      <UserRound className="size-4" aria-hidden />
+                    </span>
+                    Perfil público
+                  </CardTitle>
+                  <CardDescription>Estas informações aparecem para os alunos no marketplace.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-6">
+                  <div className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-lg bg-stone-50 p-4 ring-1 ring-stone-200">
+                    <div className="flex items-center gap-2">
+                      <Stars rating={profile.rating} size={16} />
+                      <span className="text-sm font-semibold">
+                        {profile.rating > 0 ? profile.rating.toFixed(1).replace('.', ',') : '—'}
+                      </span>
+                      <span className="text-sm text-muted-foreground">de avaliação</span>
+                    </div>
+                    <Separator orientation="vertical" className="hidden h-8 sm:block" />
+                    <div className="text-sm">
+                      <span className="font-semibold">{profile.reviewCount}</span>{' '}
+                      <span className="text-muted-foreground">
+                        {profile.reviewCount === 1 ? 'avaliação' : 'avaliações'}
+                      </span>
+                    </div>
+                    <Separator orientation="vertical" className="hidden h-8 sm:block" />
+                    <div className="text-sm">
+                      <span className="font-semibold">{profile.contents.length}</span>{' '}
+                      <span className="text-muted-foreground">
+                        {profile.contents.length === 1 ? 'conteúdo no mural' : 'conteúdos no mural'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <MentorProfileForm
+                    initial={{
+                      headline: profile.headline,
+                      description: profile.description,
+                      categories: profile.categories,
+                      hourlyRate: profile.hourlyRate,
+                      experienceYears: profile.experienceYears,
+                      languages: profile.languages,
+                      socials: profile.socials ?? {},
+                      avatarUrl: profile.avatarUrl ?? null,
+                      coverUrl: profile.coverUrl ?? null,
+                      fontHeading: profile.fontHeading ?? null,
+                      fontBody: profile.fontBody ?? null,
+                    }}
+                    mentorName={profile.name}
+                    submitLabel="Salvar alterações"
+                    onSubmit={handleUpdateProfile}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="agenda" className="min-w-0 mt-4 sm:mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+                      <CalendarClock className="size-4" aria-hidden />
+                    </span>
+                    Disponibilidade semanal
+                  </CardTitle>
+                  <CardDescription>
+                    Defina as faixas de horário em que os alunos podem agendar sessões com você.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <AvailabilityEditor initialSlots={profile.availabilities} onSave={handleSaveAvailability} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="mural" className="min-w-0 mt-4 sm:mt-6">
+              <ContentsManager contents={profile.contents} userId={user.id} onChanged={reload} />
+            </TabsContent>
+
+            <TabsContent value="cursos" className="min-w-0 mt-4 sm:mt-6">
+              <CoursesManager userId={user.id} onChanged={reload} onCoursesChange={handleCoursesChange} />
+            </TabsContent>
+
+            <TabsContent value="biblioteca" className="min-w-0 mt-4 sm:mt-6">
+              <LibraryManager userId={user.id} onChanged={reload} />
+            </TabsContent>
+
+            <TabsContent value="trilhas" className="min-w-0 mt-4 sm:mt-6">
+              <TracksManager userId={user.id} onChanged={reload} />
+            </TabsContent>
+
+            <TabsContent value="divulgacao" className="min-w-0 mt-4 sm:mt-6">
+              <div className="flex min-w-0 flex-col gap-6">
+                {/* 2. Link público e tráfego pago */}
+                <TrafficLinksSection profile={profile} courses={mentorCourses} onSaved={reload} />
+
+                {/* 3. Desempenho de tráfego */}
+                <TrafficPanel userId={user.id} />
+              </div>
+            </TabsContent>
           </div>
-
-          <MentorProfileForm
-            initial={{
-              headline: profile.headline,
-              description: profile.description,
-              categories: profile.categories,
-              hourlyRate: profile.hourlyRate,
-              experienceYears: profile.experienceYears,
-              languages: profile.languages,
-              socials: profile.socials ?? {},
-              avatarUrl: profile.avatarUrl ?? null,
-              coverUrl: profile.coverUrl ?? null,
-              fontHeading: profile.fontHeading ?? null,
-              fontBody: profile.fontBody ?? null,
-            }}
-            mentorName={profile.name}
-            submitLabel="Salvar alterações"
-            onSubmit={handleUpdateProfile}
-          />
-        </CardContent>
-      </Card>
-
-      {/* 2. Link público e tráfego pago */}
-      <TrafficLinksSection profile={profile} courses={mentorCourses} onSaved={reload} />
-
-      {/* 3. Desempenho de tráfego */}
-      <TrafficPanel userId={user.id} />
-
-      {/* 4. Disponibilidade semanal */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
-              <CalendarClock className="size-4" aria-hidden />
-            </span>
-            Disponibilidade semanal
-          </CardTitle>
-          <CardDescription>
-            Defina as faixas de horário em que os alunos podem agendar sessões com você.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AvailabilityEditor initialSlots={profile.availabilities} onSave={handleSaveAvailability} />
-        </CardContent>
-      </Card>
-
-      {/* 5. Mural de conteúdos */}
-      <ContentsManager contents={profile.contents} userId={user.id} onChanged={reload} />
-
-      {/* 6. Cursos */}
-      <CoursesManager userId={user.id} onChanged={reload} onCoursesChange={handleCoursesChange} />
-
-      {/* 7. Biblioteca (artigos e livros usáveis como aulas READING) */}
-      <LibraryManager userId={user.id} onChanged={reload} />
-
-      {/* 8. Trilhas */}
-      <TracksManager userId={user.id} onChanged={reload} />
+        </div>
+      </Tabs>
     </div>
   )
 }

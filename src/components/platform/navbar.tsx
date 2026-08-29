@@ -153,7 +153,9 @@ export function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 shrink-0 border-b border-stone-200/70 bg-white/85 backdrop-blur-md">
+    /* Estático no topo do shell (fora do container de rolagem): o corpo da
+       página rola no <main> e NUNCA passa por baixo do header. */
+    <header className="shrink-0 border-b border-stone-200/70 bg-white">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4">
         <button
           className="flex items-center gap-2.5"

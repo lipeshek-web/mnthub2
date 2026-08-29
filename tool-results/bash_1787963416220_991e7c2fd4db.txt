@@ -1,0 +1,300 @@
+Task: Imersão total nas telas de aprendizado — classroom e reader viram experiência tela cheia premium (top bar dark emerald-950, modo foco/teatro, ContentsNav compartilhado + dialog mobile, transição animada entre aulas, palco de vídeo cinema, barra de progresso de leitura na top bar)
+
+Work Log:
+- Lido worklog.md (Task 3 E2E + 1-7/2-b que criaram a sala de aula) e os dois arquivos alvo na íntegra; conferido ui/progress.tsx (data-slot="progress-indicator"), ui/dialog.tsx (DialogContent grid p-6 + close absoluto top-4 right-4), ui/button.tsx (variant ghost) e uso existente de framer-motion (marketplace/navbar) antes de codar; page.tsx/store/navbar/API NÃO tocados
+- classroom.tsx:
+  - Top bar imersiva dark: bg-emerald-950 text-white border-b border-emerald-400/15 — botão Sair (ArrowLeft, ghost branco hover:bg-white/10, aria-label "Sair da sala de aula", mantém volta ao curso), título truncado + sub "X aulas · duração" em emerald-100/70, avatar+nome do mentor (hidden sm, emerald-100/70), Progress com trilha bg-white/20 + indicador emerald-400 + percent emerald-100; skeleton de loading também escurecido para entrada consistente
+  - Modo foco (teatro): estado focusMode (default false) persistido em sessionStorage 'mentorhub-classroom-focus' (initializer SSR-safe com try/catch + effect de persistência); ATIVO → (a) sidebar não renderizada e grid vira lg:grid-cols-1; (b) abas Material/Perguntas/Anotações ocultas ({!focusMode && <Tabs/>}); (c) coluna da aula centralizada max-w-3xl; (d) bloco de celebração/certificado permanece visível; (e) botão flutuante fixed bottom-6 right-6 z-50 (Minimize2 + "Sair do modo foco", emerald-950 ring-emerald-400/25); (f) navegação Anterior/Concluir/Próxima continua visível; botão no top bar alterna (Maximize2 off / Minimize2 on) com aria-label dinâmico "Ativar modo foco"/"Sair do modo foco"
+  - Sidebar mobile: nav de conteúdos EXTRAÍDA no componente local ContentsNav({ groups, themeList, collapsedThemes, onToggleTheme, currentLessonId, completedIds, onSelectLesson, className }) — reutilizado no aside (onSelectLesson=selectLesson) e num Dialog (sm:max-w-md, max-h-[85vh] flex-col p-0, header com "X de Y aulas concluídas", lista flex-1 rolável; selecionar aula fecha o dialog); grupos colapsáveis/ícones por tipo/progresso por seção preservados 1:1 (toggle agora via handleToggleTheme); botão PanelRight (lg:hidden, aria-label "Ver conteúdos do curso") abre o dialog
+  - Transição de aula: bloco da aula atual (player + badges + título + descrição + anexos + abas + navegação) envolvido em <AnimatePresence mode="wait"> + <motion.div key={currentLesson.id} initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-8}} transition={{duration:0.22}}>; estado vazio (sem aulas) fora da animação; CSS @media print do certificado segue na raiz do return e o Dialog do certificado (portal no body) está FORA do motion.div — print e refs internos intactos
+  - Palco do vídeo: aulas RECORDED com videoUrl têm o LessonPlayer envolvido externamente em overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-stone-900/10 (componente interno intocado)
+  - Mantidos 100%: temas colapsáveis, Q&A com resposta do mentor, anotações com autosave + download, anexos, certificado imprimível, auto-avançar, LivePanel (agendada/ao vivo/encerrada), ReadingMaterial (PDF/texto), estados de erro/sem acesso
+- reader-view.tsx:
+  - Root flex h-full flex-col bg-stone-50 confirmada (preenche o overlay fixed inset-0 do page.tsx)
+  - Top bar imersiva dark emerald-950 (mesma linguagem da classroom, border-emerald-400/15): voltar ghost branco (goBackToLibrary mantido, aria-label "Voltar"), tipo Artigo/Livro em badge dark (novo badgeDark em KIND_META — emerald-100/white-10 e amber-100/amber-300-10; badges claros seguem nos cards "Continue lendo"), título truncado centralizado (flex-1 justify-center), autor em emerald-100/70 (md+), tempo de leitura emerald-100/70, "Baixar PDF" dark (border-white/20 bg-transparent shadow-none)
+  - Barra de progresso de leitura (barRef) movida para linha fina h-0.5 colada no fundo da top bar: trilho bg-white/10 + indicador bg-emerald-400; antigo bloco sticky dentro do scroll container removido — lógica rAF/handleScroll/reset intacta, condicionada a canRead && !pdfUrl && content
+  - Mantidos: tipografia editorial max-w-3xl, iframe do PDF (h-[calc(100dvh-8rem)]), card do autor, cursos vinculados, "Continue lendo", estados de erro/404/bloqueio
+- Validação: bun run lint → 0 erros/0 warnings; bunx tsc --noEmit → limpo em src/ (restam só os 4 erros pré-existentes em examples/ e skills/, fora do escopo); GET / → 200 e dev.log com "✓ Compiled" após os edits (classroom/reader são imports estáticos de page.tsx); dev server NÃO reiniciado e build NÃO rodado
+
+Stage Summary:
+- Sala de aula e leitor agora compartilham a linguagem imersiva dark (emerald-950) em tela cheia: top bar premium com progresso emerald-400, modo foco persistente por sessão com saída flutuante, conteúdos do curso acessíveis no mobile via Dialog com o mesmo ContentsNav da sidebar, transição suave (fade+slide) ao trocar de aula e palco de vídeo com moldura de cinema; reader ganhou top bar dark com linha de progresso de leitura emerald-400 colada nela
+- Decisões: (1) ContentsNav recebe props primitivas (groups/ids/callbacks) em vez de closures do pai, viabilizando o reuso entre aside e Dialog — o Dialog passa onSelectLesson que também fecha o modal; (2) no modo foco a sidebar é removida da árvore (não apenas escondida) para o grid 1 coluna não deixar espaço morto; (3) progresso do reader renderizado dentro do header (fora do scroll container) — sempre visível, sem depender de sticky; (4) animação usa framer-motion, dependência já presente no projeto — zero novas deps; (5) "Sair da sala de aula" continua levando à visão geral do curso (mesma navegação de antes, só mudou o rótulo/estilo)
+
+---
+Task ID: 1-d
+Agent: frontend-styling-expert
+Task: REDESIGN do Explorar (marketplace) — nova aba inicial "Tudo" (visão geral editorial premium) em marketplace.tsx
+
+Work Log:
+- Li worklog.md (fim) + store.ts (ExploreTab já com 'all', default 'all', setExploreQuery incrementa exploreSeq) e types.ts (campos dos DTOs: MentorListItemDTO sem createdAt, LibraryItemDTO.author/createdAt etc.) antes de codar; toque APENAS em src/components/platform/marketplace.tsx
+- Controle segmentado: "Tudo" adicionado como PRIMEIRA opção (LayoutGrid, lucide-react), ativo quando tab==='all'; tablist aria-label atualizado para "Seções do Explorar"; as 4 abas existentes (mentors/courses/tracks/library) ficaram intocadas
+- Efeito de mount que resetava a store: useApp.setState({ exploreTab: 'mentors' }) → 'all'
+- Atalho de teclado "/" REMOVIDO (useEffect do keydown + <kbd>/</kbd> do input); mantive searchRef (Input + clearSearch) e o botão X de limpar busca — a busca global agora vive no header (outro agent)
+- Cabeçalho da aba 'all': h1 "Explorar tudo" + subtítulo aria-live com total somado ("N conteúdos — X mentores, Y cursos, Z trilhas e W leituras"); Select de ordenação visível e FUNCIONAL na aba 'all' via novo estado local allSort (Relevância/Populares — Relevância = ordenações editoriais da spec; Populares = sessions/studentCount/usageCount); input de busca com placeholder/aria-label próprios ("Busque em mentores, cursos, trilhas e leituras..."); pílulas de categoria da barra superior ocultas na aba 'all' (o filtro de área agora vive na seção "Explore por área")
+- NOVA SEÇÃO tab==='all' (substitui bento+resultados; os demais grupos agora renderizam só quando tab!=='all'):
+  a) Hero bento: h2 "Tudo em um só lugar" + sub exata da spec; linha de 4 StatTiles com stats globais combinadas das 4 bases (total de conteúdos em tile DARK emerald-950, alunos de cursos+trilhas, nota média, sessões 1:1); abaixo, SpotlightCard (mentor rotativo) + CourseSpotlightCard lado a lado em grid lg:grid-cols-2 (dois blocos emerald-950)
+  b) 4 prateleiras horizontais na ordem pedida — "Mentores em destaque" (rating desc), "Cursos em alta" (studentCount desc), "Trilhas guiadas" (studentCount desc), "Artigos & livros" (createdAt desc) — cada uma com 8 itens, header (título font-extrabold + contagem + link "Ver tudo" com ArrowRight → setTab correspondente) e container EXATO da spec (-mx-4 mt-3 flex gap-4 overflow-x-auto px-4 pb-2 [scrollbar-width:thin] snap-x snap-mandatory, role="region" aria-label); cards envoltos em w-64 shrink-0 snap-start sm:w-72; Skeleton h-72 w-64/w-72 rounded-2xl enquanto a base não carrega; "Ver toda a Biblioteca" também replica category→libCategory para o filtro atravessar
+  c) "Explore por área": pílulas com contagem UNIFICADA (mentores por categories.includes + cursos/trilhas/biblioteca por category===), ordenadas por contagem desc, clicando aplica setCategory(cat) e PERMANECE na aba 'all' (prateleiras filtram); chip ativo "Área: {cat}" com X para limpar + botão "Ver mentores de {cat}" → setTab('mentors') com a categoria aplicada
+  d) "Conheça os mentores": tira de 8 autor-cards (AuthorMiniCard novo) top por reviewCount desc — Avatar xl + nome + headline line-clamp-1 + Stars + "Ver perfil →", h-auto w-56, hover:-translate-y-0.5, clique → navigate mentor
+  e) Busca consciente: memo allView filtra as 4 prateleiras + autores client-side (name/title/headline/description/categories/author.name, case-insensitive) quando search OU category preenchidos; nunca filtra com ambos vazios; headers mostram "N resultados" (contagem REAL antes do slice de 8); prateleira sem resultado é oculta; se NENHUMA tem resultado → empty state SearchX "Nenhum conteúdo encontrado" com "Limpar filtros"
+- Novos helpers/componentes no mesmo arquivo: allView/unifiedAreas (useMemo), shelfCountText, clearAllFilters, ShelfSection (header + trilho scroll), AuthorMiniCard; StatTile ganhou prop opcional dark (usada só no hero; abas existentes inalteradas); h-full adicionado aos roots de MentorCard/CourseCard/TrackCard/LibraryCard para esticar nos wrappers (nos grids continua igual, só alinha alturas)
+- Animações com parcimônia: motion no hero (fade/slide 0.4s) e em cada prateleira/seção com stagger leve (delays 0.05–0.32), hover translate apenas nos autor-cards
+- Validação: `bun run lint` 0 erros/0 warnings; `bunx tsc --noEmit` limpo em src/ (só os 4 erros pré-existentes em examples/ e skills/); GET / 200 e dev.log saudável; dev server NÃO reiniciado, build/seed NÃO rodados
+
+Stage Summary:
+- Aba "Tudo" editorial completa no Explorar: hero bento (stats combinadas + mentor rotativo + curso em destaque), 4 prateleiras horizontais com snap/scroll e "Ver tudo", "Explore por área" com filtro unificado que mantém o usuário na aba (com chip ativo + atalho para mentores) e tira "Conheça os mentores" para induzir visita ao perfil do autor; busca e categoria filtram tudo client-side com empty state gracioso
+- Decisões: (1) Select da aba 'all' funcional via allSort (Relevância = ordenações da spec por padrão; Populares reordena por engajamento) em vez de controle morto; (2) contagem "N resultados" usa o total de matches (pré-slice de 8) para não mentir; (3) prateleiras sem resultado são ocultas durante filtragem (evita headers vazios) e o estado global vazio só aparece quando TODAS ficam vazias; (4) MentorListItemDTO não tem createdAt — ordenação "Novidades" não foi oferecida na aba 'all'; (5) h-full nos 4 cards compartilhados não altera conteúdo das abas existentes, apenas garante alturas iguais nos wrappers de prateleira; (6) sem mudanças em store.ts/page.tsx/navbar/footer/API
+
+---
+Task ID: 4 (super aprimoração de UI: header/footer/explorar/imersão)
+Agent: main (Z.ai Code) + 2 frontend-styling-expert (1-d, 1-e)
+Task: Footer no fim da página, header com busca funcional (sem "Para mentores"), Explorar com aba "Tudo" editorial e aprendizado em tela cheia imersiva
+
+Work Log:
+- store.ts: ExploreTab ganhou 'all' (default); setExploreQuery agora incrementa exploreSeq (re-consumo do termo no Explorar); views classroom ganhou lessonId? e reader ganhou returnTo? {courseId, lessonId} (retorno contextual tipado)
+- page.tsx: shell saiu de h-dvh/overflow-hidden (app shell) para min-h-dvh flex-col com rolagem normal do documento; header sticky; footer com mt-auto no fim da página (gruda no fundo quando curto); classroom/reader agora renderizam em overlay fixed inset-0 z-50 (imERSÃO total, sem header/footer da plataforma); scroll-to-top via window.scrollTo
+- navbar.tsx (reescrito): busca global funcional no header (desktop inline com w crescente + atalho "/" global; mobile expansível com AnimatePresence) que envia para o Explorar aba 'all' com o termo; "Para mentores" REMOVIDO do header (fica no footer e no menu do usuário); esconde botão nativo de cancel do input search
+- footer.tsx (reescrito): footer completo no fim da página — marca + tagline, colunas Plataforma (Explorar tudo/Mentores/Cursos/Trilhas/Biblioteca com setExploreTab) e Sua Conta (Minhas sessões/Para mentores/Painel do mentor ou Entrar), barra de copyright; mobile perde a tab bar fixa em favor do footer empilhado
+- marketplace.tsx [agent 1-d]: nova aba "Tudo" (default) — hero bento com stats globais combinadas + SpotlightCard/CourseSpotlightCard; 4 prateleiras horizontais (snap-x, cards w-64/72) Mentores/Cursos/Trilhas/Artigos & livros com "Ver tudo"; "Explore por área" com contagens unificadas que filtram as prateleiras in-place (chip "Área: X" + "Ver mentores de X"); tira "Conheça os mentores" (AuthorMiniCard → perfil); busca consciente (filtra prateleiras client-side, esconde prateleiras vazias, empty state global); atalho "/" removido (agora é do header)
+- classroom.tsx [agent 1-e + fixes]: top bar imersiva emerald-950 (Sair, título, mentor, progresso); modo foco teatro (sessionStorage) com botão flutuante de saída, sidebar oculta, grade 1 col; ContentsNav extraído e reutilizado no Dialog mobile (botão PanelRight); AnimatePresence na troca de aula; palco de vídeo em bg-black rounded ring/shadow; FIX: abas só são ocultas no modo foco para aulas com vídeo (aulas de texto/leitura mantêm o material, que É o conteúdo); ReadingMaterial recebe courseId
+- reader-view.tsx [agent 1-e + fixes]: top bar imersiva emerald-950 com badge Artigo/Livro, título centralizado, autor, Baixar PDF e barra de progresso de leitura h-0.5 colada no fundo; goBack contextual via view.returnTo → devolve à AULA EXATA da sala (ou Biblioteca quando veio de fora); "Continue lendo" preserva returnTo
+- course-view.tsx: REMOVIDO o auto-redirect de inscritos para a classroom (criava loop inescapável com o botão Sair); novo modo inscrito/owner — hero emerald-950 com progresso (x de y aulas, %) + "Continuar curso"/"Começar agora" + OverviewContent com hero de capa oculto e sidebar "Você já está inscrito" com CTA Continuar; doEnroll: nova inscrição entra direto na sala, already-enrolled permanece na página; OverviewContent ganhou props enrolled?/onContinue?
+
+Validation (browser E2E, viewport 1440x900 e 390x844):
+- Header: busca "inglês" → Explorar aba Tudo com termo aplicado nas prateleiras (1 resultado por seção) ✓; atalho "/" ✓; mobile expansível ✓; sem "Para mentores" ✓
+- Explorar Tudo: hero bento (+21 conteúdos, tile dark), prateleiras com contagem e "Ver tudo", filtro "Área: Tecnologia" filtra in-place com chip e botão "Ver mentores de Tecnologia", tira de autores ✓; abas Mentores/Cursos/Trilhas/Biblioteca intactas ✓
+- Classroom: overlay 100% tela cheia sem header/footer da plataforma; modo foco vídeo = teatro (sem tabs/sidebar, validado via DOM) e texto mantém material ✓; Dialog de conteúdos no mobile ✓; transição de aula animada ✓
+- Reader: fullscreen dark com progresso; retorno contextual — voltar do leitor cai na AULA 7 exata de onde saiu ✓
+- Loop de exit corrigido: Sair da sala → página do curso com hero de progresso (29%, 2 de 7 aulas) em vez de voltar automaticamente ✓
+- Guest: guard do dashboard → AuthView ✓; landing sem personalização ✓; curso mostra CTA de inscrição ✓; logout ✓
+- Mobile: sem overflow horizontal (sw=cw=390) em home/explorar/busca/footer ✓; footer empilhado no fim da página (atEnd true) ✓
+- bun run lint 0/0; bunx tsc --noEmit limpo em src/; sessão fresh do browser com 0 erros (erros anteriores eram artifacts de HMR durante edição — chunk servido verificado correto); dev.log saudável, todas as rotas 200
+
+Stage Summary:
+- Plataforma com navegação de documento real (footer no fim, header sticky com busca global), Explorar editorial em 5 abas com "Tudo" como vitrine, e aprendizado 100% imersivo (sala de aula e leitor em overlay tela cheia com top bar dark, modo foco e retorno contextual à aula)
+- Decisões: (1) auto-redirect de inscritos removido em favor de hero de progresso — evita loop com o Sair e dá uma página de curso digna para alunos; (2) busca do header é a fonte única do atalho "/"; (3) retorno do leitor é tipado no AppView (returnTo) em vez de sessionStorage; (4) modo foco preserva o material em aulas textuais
+
+---
+Task ID: 5 (capa do criador maior + tipografia personalizável + fix sala de aula)
+Agent: main (Z.ai Code)
+Task: Capa do criador mais alta, seletor de fontes (nome/títulos + descrições) com catálogo leve de 24 fontes Google, e correção do erro "Não foi possível abrir a sala de aula"
+
+Work Log:
+- Erro da sala de aula: dev server estava DOWN no início da sessão (curl 000) — o erro "Ocorreu um erro inesperado" vinha de fetch interrompido quando o servidor caiu/reiniciou no meio da requisição. Server reiniciado + classroom.tsx ganhou AUTO-RETRY: falhas transitórias (regex inesperado/fetch/network/load failed/conex) retentam até 2x com 1,2s de delay (retriesRef + timer limpo no unmount); erro real continua com botão "Tentar novamente"
+- prisma/schema.prisma: MentorProfile ganhou fontHeading String? + fontBody String? (IDs do catálogo; null = padrão) → db:push OK
+- src/lib/fonts.ts (NOVO): catálogo de 24 fontes Google via next/font/google — 9 Sans (Inter, Poppins, Montserrat, Nunito, Work Sans, Outfit, Sora, Manrope, Plus Jakarta Sans), 7 Serif (Playfair, DM Serif, Lora, Merriweather, Crimson Pro, Libre Baskerville, Fraunces), 3 Display (Space Grotesk, Archivo, Bebas Neue), 3 Manuscritas (Caveat, Dancing Script, Patrick Hand), 2 Mono (JetBrains, IBM Plex). Cada loader é const de módulo (exigência do transform do Next); exports: MENTOR_FONTS, MENTOR_FONT_IDS, MENTOR_FONT_CATEGORIES, getMentorFont, headingFontStyle, bodyFontStyle, fontPreviewStyle
+- LIÇÕES next/font descobertas no debug: (1) loader next/font/google DEVE ser chamado e atribuído a const no escopo do módulo ("Font loaders must be called..."); (2) font.variable NÃO é nome de CSS var — é o className do módulo CSS gerado (a var real é auto-nomeada, ex.: --l-nunito); usar var(--mh-...) gerava valor inválido que o CSSOM descartava silenciosamente (style attr ficava vazio). SOLUÇÃO FINAL: aplicar font.style diretamente (fontFamily real com fallback size-adjusted) — zero dependência de nomes de variáveis; @font-face entra no CSS da página e o navegador só baixa woff2 das fontes de fato usadas (leve)
+- APIs: POST /api/mentors aceita fontHeading/fontBody com validação contra MENTOR_FONT_IDS (undefined = manter, null/inválido = padrão); GET /api/mentors/me, /api/mentors/[id] e /api/mentors/by-slug/[slug] retornam os campos; api.ts saveMentorProfile + types (MentorDetailDTO, MentorLpDTO.mentor) atualizados
+- mentor-lp.tsx: CAPA MAIS ALTA h-56/64 → h-72 sm:h-80 md:h-96 (fallback gradiente h-64/72/80); headingFontStyle no h1 do nome, títulos de seção (Cursos/Sobre/Conteúdos/Depoimentos/CTA), números da barra de prova social e títulos dos cards de curso; bodyFontStyle no headline, subtítulos, descrição (Sobre), descrição dos cards, depoimentos e CTAs — a página inteira ganha a identidade do criador
+- onboarding.tsx: novo FontPicker montado no MentorProfileForm após as fotos (com Separators) — prévia ao vivo (capa gradiente + nome + headline + descrição renderizados com as fontes escolhidas + legenda "Títulos: X · Textos: Y"), radiogroup "Nome e títulos / Descrições e textos" (define o slot da seleção), chips de categoria (Todas/Sans/Serif/Display/Manuscrita/Mono), grid responsivo 2/3/4 colunas com 25 cards (24 fontes renderizadas EM SI PRÓPRIAS via fontPreviewStyle + card "Padrão da plataforma"), badges mostrando em qual slot cada fonte está em uso, Check no card ativo; ProfileFormValues ganhou fontHeading/fontBody (sempre enviados; null volta ao padrão); initial do painel alimenta as fontes do perfil; prévia da capa no form subiu h-32 → h-44 sm:h-52 com texto melhor
+- prisma/set-demo-fonts.ts (one-off): Carlos Ferreira = playfair/lora (editorial), Marina Costa = sora/inter (moderno) — executado, demo visível de cara
+- FIX crítico de ambiente: turbopack servia módulos STALE (mentor-lp antigo e by-slug sem fontes) mesmo após restart — rm -rf .next + restart resolveu; dev.log saudável
+
+Validation (browser E2E, 1440x900 + 390x844):
+- LP Carlos: capa 384px (era 256), nome "Carlos Ferreira" em Playfair Display, descrições em Lora, document.fonts.check true p/ ambas; LP Marina: Sora + Inter ✓
+- FontPicker: 25 cards renderizados em suas próprias fontes; trocar slot p/ "Descrições" + clicar Space Grotesk → prévia atualizou na hora (headline/descrição em Space Grotesk, nome seguiu Playfair); Salvar → toast e persistência confirmada via /api/mentors/me (playfair/space-grotesk); LP pública refletiu imediatamente; restaurado playfair/lora pelo próprio picker NO MOBILE (390px) — slot + card + salvar funcionam no toque
+- Classroom: abriu SEM o erro ("Não foi possível abrir a sala" ausente no DOM), top bar emerald-950, sidebar com temas e leitura da aula 1 normais
+- Mobile LP: capa 288px (h-72), sem overflow horizontal (sw=cw=390), Playfair no nome ✓
+- bun run lint 0/0; bunx tsc limpo em src/; rotas 200; worklog atualizado
+
+Stage Summary:
+- Criadores agora personalizam a tipografia da própria página: 24 fontes Google (5 categorias) escolhíveis para nome/títulos e descrições separadamente, com prévia ao vivo e badges de uso — implementação leve (fontes auto-hospedadas baixadas on-demand pelo navegador, só as usadas)
+- Capa do criador 50% mais alta na LP (384px desktop / 288px mobile) e prévia maior no painel
+- Sala de aula auto-recupera de falhas transitórias de rede (até 2 retries automáticos)
+- Aprendizados registrados: loaders next/font exigem const no escopo do módulo; NUNCA montar var() com o className de font.variable — usar font.style diretamente
+
+---
+Task ID: 6 (verificação visual completa + polimento)
+Agent: main (Z.ai Code)
+Task: Auditoria visual de TODAS as telas com agent-browser e polimento de UI/UX
+
+Work Log:
+- Auditoria com screenshots (1440x900 e 390x844): landing (visitante/logado), auth (split-screen), Explorar aba Tudo (hero bento + 4 prateleiras), Mentores, Trilhas, Biblioteca, Reader, Sala de aula (leitura + vídeo), página do curso (inscrito e não inscrito), Checkout (PIX/cartão), Dashboard, Painel do mentor (FontPicker), LP pública — tudo funcional e bonito; zero erros no console
+- GAP encontrado: perfil INTERNO do mentor (mentor-profile.tsx, o que abre do marketplace "Ver perfil") não tinha recebido as melhorias da LP — capa ~112px de altura e sem as fontes do criador
+- mentor-profile.tsx REDESIGN do banner: capa explícita h-52 sm:h-64 md:h-72 (era ~112px) com véu gradiente inferior (profundidade + assentamento do avatar), fallback GraduationCap quando sem capa, avatar -mt-14 h-28 ring-4 ring-white shadow-xl, nome text-3xl; seção ecoa a identidade da LP pública
+- Fontes do criador aplicadas em TODO o perfil interno: headingFontStyle no nome, "Sobre a mentoria", "Em resumo", "Disponibilidade semanal", títulos dos cursos/conteúdos do mural e número da nota (4xl); bodyFontStyle no headline, descrição, bio, descrições dos cards e comentários de avaliações — mesmo criador = mesma identidade no app e na LP
+- FIX de layout: grid do conteúdo `grid` sem coluna explícita estourava no mobile (sw=546 > cw=390, min-width:auto dos itens) → `grid-cols-1 lg:grid-cols-3` + `min-w-0` na coluna principal; mobile agora 390=390 e desktop intacto (2 colunas preservadas)
+- Skeleton de loading do perfil alinhado à nova altura (h-72)
+- VÍDEOS MORTOS: as 5 aulas em vídeo do seed apontavam para IDs do YouTube que retornam 404 no oEmbed (player exibia "Video unavailable") — substituídos por open movies do Blender (CC, embeddáveis, estáveis): aqz-KE-bpKQ (Big Buck Bunny), R6MlUcmOul8 (Tears of Steel, 2 aulas), WhWc3b3KhnY (Spring), pKmSdY56VtY (Coffee Run); corrigido no prisma/seed.ts E no banco via one-off prisma/fix-dead-videos.ts (5 aulas atualizadas, sem re-seed)
+- Validação browser: vídeo "Métricas north star" agora carrega com player + moldura de cinema ✓; perfil desktop/mobile sem overflow ✓; footer gruda no fundo ✓; abas Sobre/Cursos/Avaliações com fontes ✓
+- bun run lint 0/0; bunx tsc --noEmit limpo em src/; rotas 200; dev server NÃO reiniciado, build NÃO rodado
+
+Stage Summary:
+- Plataforma auditada tela a tela: landing, auth, explorar (5 abas), biblioteca, leitor, sala de aula (leitura + vídeo), curso (2 estados), checkout, dashboard, painel do mentor e LP pública estão consistentes e polidos
+- Perfil interno do mentor agora é gêmeo da LP pública: capa alta (288px desktop / 208px mobile) e tipografia personalizada do criador em nome, títulos e descrições
+- Conteúdo demo sem surpresas: todas as aulas em vídeo tocam de verdade (vídeos estáveis do Blender)
+- Aprendizado: grids com lg:grid-cols-N precisam de grid-cols-1 + min-w-0 nos itens para não estourar no mobile (min-width:auto do grid item)
+---
+Task ID: 8-b
+Agent: frontend-styling-expert
+Task: Redesign da landing page (home) — hero split com preview do produto, faixa de áreas, stats dark, features grid, FAQ, CTA duplo, fetch preguiçoso de cursos/trilhas
+
+Work Log:
+- Lidos worklog.md (Tasks 5/6 e agentes 4-a/6) e contratos: store.ts (navigate/setExploreQuery/setExploreTab/user), types.ts (MentorListItemDTO com contentsCount, CourseListItemDTO.studentCount, TrackListItemDTO, EnrolledCourseDTO), helpers.ts (CATEGORIES, avatarGradient, initials, currencyBRL), avatar.tsx (Avatar/Stars — só leitura), ui/accordion.tsx (Radix), page.tsx (shell monta apenas o conteúdo)
+- `src/components/platform/landing-mentee.tsx` REDESIGN completo (único arquivo editado; avatar.tsx não alterado):
+  - HERO split (grid-cols-1 lg:grid-cols-2): esquerda com badge pill esmeralda (Sparkles), h1 text-4xl→xl:text-6xl com destaque "vive o que ensina" (underline decoration-emerald-400/60) e variante logada "Olá, {firstName}!", parágrafo, busca (behavior exato mantido: onSubmit → setExploreQuery(term.trim()) + navigate marketplace, placeholder igual, input pill h-13 rounded-full), prova social (5 avatares sobrepostos + Stars da média com vírgula pt-BR + "+N mentores especialistas · N avaliações reais", com skeleton no loading) e 3 trust checks (vídeo integrado / biblioteca / agendamento em minutos); direita = preview de produto decorativo (aria-hidden): tile dark rounded-3xl de chamada de vídeo (dot "rec" animate-ping, "Sessão ao vivo · 24:31", grid 2x2 com 4 mentores reais Avatar+gradiente avatarGradient+nome, tile 1 com anel emerald, placeholders preenchendo até 4, barra de controles Mic/Video/Hand + PhoneOff rose) + 2 cards flutuantes com float y:[0,-8,0] infinite (course-card com gradiente/Progress 57% e rating-card com Stars 5 + iniciais) + glow blob esmeralda; fundo do hero com 2 blobs blur + padrão de pontos (radial-gradient 1px com mask radial, opacity 0.6); floats e tile com framer-motion (entradas initial/animate, tile flutua y:[0,-6,0])
+  - "Explore por área": strip border-y stone-50 com chips rounded-full de CATEGORIES (min-h-11, hover emerald), onClick único → setExploreTab('all') + navigate marketplace
+  - STATS: faixa dark emerald-950 rounded-3xl dentro do container com blobs, dl grid-cols-2 lg:grid-cols-4, +mentores/+sessões/+avaliações (skeleton emerald-100/20 no loading) e 4º número = "+alunos aprendendo" (soma studentCount dos cursos quando o fetch preguiçoso resolve) com fallback "+conteúdos publicados" (soma contentsCount dos mentores) — sempre 4 tiles, whileInView
+  - COMO FUNCIONA: eyebrow + h2 "Três passos até a sua primeira sessão", círculos 01/02/03 em emerald-700 com ring-4 emerald-100, linha tracejada conectando no desktop (left-[16%] right-[16%] top-8), cards com ícone (Search/CalendarClock/Video) em emerald-50, stagger whileInView
+  - FEATURES GRID (novo): 6 cards (MonitorPlay, Library, Route, CalendarCheck, Star, ShieldCheck) white/border-stone-200/rounded-2xl, ícone em emerald-50 rounded-xl, hover border-emerald-300 + shadow-sm, stagger (i%3)*0.07
+  - Continuar de onde parou: mantido (behavior igual), img ganhou decoding="async" e botão Continuar h-11
+  - Mentores/Cursos/Trilhas em destaque: mesmos memos e handlers (Ver todos → marketplace; Ver todos os cursos → setExploreTab('courses')+marketplace; trilhas idem 'tracks'), headers com eyebrow, grids grid-cols-1 sm:grid-cols-2 lg:grid-cols-3; FeaturedMentorCard ganhou capa gradiente avatarGradient(name) h-14 com avatar sobreposto -mt-8 ring-4, chip de nota no topo, hover -translate-y-0.5 + shadow; curso/trilha com capa h-36, hover lift, img loading="lazy" decoding="async", botões h-11; skeletons atualizados ao novo formato
+  - DEPOIMENTOS: cards white border shadow-sm em faixa stone-50, Stars 5 preenchidas (size 14), autor com círculo de iniciais avatarGradient(author) + nome/role (split do author em ' · ', conteúdo TESTIMONIALS intacto), hover lift
+  - FAQ (novo): Accordion shadcn single collapsible max-w-3xl, 5 perguntas pt-BR (mentoria 1:1, reunião por vídeo, pagamentos, certificado/progresso, tornar mentor), trigger font-bold hover:no-underline, whileInView
+  - CTA DUPLO (novo, encerra a página): heading central + card escuro emerald-950 "Quero aprender" (GraduationCap, botão white → marketplace) + card claro bordered "Quero ensinar" (Presentation, outline → navigate({name:'for-mentors'})) + linha final de resegurança com 3 checks
+  - PERFORMANCE: fetch de cursos e trilhas agora LAZY — useInView(ref da section, { once: true, margin: '600px' }) dispara api.listCourses({})/api.listTracks({sort:'popular'}) quando a seção se aproxima (mentores continua no mount para o hero); loading states e skeletons separados mantidos; useMemo para todos os derivados (stats, avgRating, featured, topCourses, topTracks, continueItems, totalStudents)
+- Validação: bun run lint 0 erros/0 warnings; bunx tsc --noEmit limpo em src/ (só erros pré-existentes em examples/ e skills/); dev server NÃO reiniciado, build NÃO rodado; dev.log sem erros (compilações ✓, rotas 200)
+- Browser E2E (agent-browser, dev.log saudável): desktop 1440x900 — hero split com preview e floats ✓; chips → "Explorar tudo" ✓; busca "inglês" → Explorar com query ✓; accordion abre (aria-expanded) ✓; "Ver todos os cursos" → "Explorar cursos" aba ativa ✓; scroll progressivo renderiza mentores(3)+cursos(3)+trilhas(3) artigos e stats com alunos ✓; mobile 390x844 sw=cw=390 (zero overflow) ✓; logado mostra "Olá, ..." + Continuar; guest mostra headline guest e sem Continuar ✓; console sem erros (apenas logs de Fast Refresh)
+- Nota: screenshot full-page aparece com "vazios" entre seções porque whileInView (initial opacity 0) não dispara em captura instantânea — no scroll real todas as seções animam (verificado por scroll progressivo + opacity 1)
+
+Stage Summary:
+- Landing home redesenhada de ponta a ponta: hero split com mock de chamada de vídeo + cards flutuantes, chips de áreas, faixa dark de stats (com +alunos derivado dos cursos), 3 passos com linha tracejada, grid de 6 features, cards de destaque polidos com hover lift, depoimentos com iniciais gradientes, FAQ em accordion e CTA duplo aprender/ensinar
+- Fetch de cursos/trilhas agora carrega sob demanda (useInView margin 600px, once) — no load imediato só /api/mentors (+/api/enrollments se logado); todas as navegações e handlers originais preservados; sem overflow horizontal em 390px e 1440px; alvos de toque ≥44px nos botões/chips; único arquivo alterado: landing-mentee.tsx
+
+---
+Task ID: 8 (desempenho + organização do Explorar + landing atrativa)
+Agent: main (Z.ai Code) + frontend-styling-expert (8-b)
+Task: Melhorar desempenho (code-splitting, fetch preguiçoso, memo), trocar as prateleiras horizontais do Explorar por grades organizadas, e deixar a landing page bem mais atrativa
+
+Work Log:
+- [8-a] src/app/page.tsx REESCRITO com next/dynamic (ssr:false) para as views pesadas — MentorProfileView, CourseView, ClassroomView, TrackView, ReaderView, MeetingRoomView, DashboardView, OnboardingView, MentorLpView, CheckoutView, LandingMentor e o próprio Toaster (sonner) saíram do bundle inicial; fallback enxuto "carregando…" (ViewLoading) evita salto de layout; LandingMentee, Marketplace e AuthView continuam estáticos (telas mais visitadas)
+- [8-a] marketplace.tsx: prateleiras horizontais (overflow-x-auto snap) da aba "Tudo" SUBSTITUÍDAS por seções em grade organizadas — novo GridSection (header com título/contagem/"Ver tudo" + grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 + botão central "Ver mais N {unidade}" expandindo inline até tudo, "Ver menos" para recolher; gridClassName/skeletonClassName configuráveis — autores usam grid-cols-2 sm:3 lg:4 com skeletons h-44); allView agora devolve listas COMPLETAS (visibleSlice decide: 8 por padrão, tudo quando seção expandida OU busca/categoria ativa — filtragem sempre mostra todos os resultados); skeletons agora dentro do GridSection (loading prop); sem nenhum scroll lateral na aba "Tudo"
+- [8-a] marketplace.tsx perf: MentorCard/CourseCard/TrackCard/LibraryCard/AuthorMiniCard envolvidos em React.memo (digitar na busca não re-renderiza cards cujos dados não mudaram); AuthorMiniCard w-56/snap → h-full w-full; TODAS as <img> (capas de cards + miniaturas dos spotlights) ganharam loading="lazy" decoding="async"
+- [8-b] landing-mentee.tsx REDESIGN completo (frontend-styling-expert): hero split com mock do produto (tile de vídeo ao vivo escuro com mentores reais + cards flutuantes de progresso/avaliação com animação float), headline text-6xl com destaque sublinhado, prova social com avatares reais, 3 trust checks; nova faixa "Explore por área" (chips CATEGORIES → marketplace); stats band dark emerald com 4 números (inclui +alunos via studentCount); "Como funciona" com círculos numerados + conector tracejado; NOVA features grid "Tudo em uma única plataforma" (6 cards); cards de destaque com faixa de capa gradiente + avatar sobreposto; depoimentos com 5 estrelas + iniciais gradientadas; NOVA FAQ (accordion, 5 perguntas); CTA duplo final (Quero aprender dark / Quero ensinar → for-mentors) + linha de reasseguro
+- [8-b] landing perf: /api/courses e /api/tracks?sort=popular agora só disparam quando a seção correspondente se aproxima do viewport (useInView margin 600px, once) — carga inicial da home ficou só com mentors (+enrollments se logado); todas as imagens lazy
+
+Validation (browser E2E, 1440x900 e 390x844, guest + logado como Carlos):
+- Landing: hero split impecável, mock de vídeo com 4 participantes reais, chips → marketplace (aba Tudo, 22 conteúdos), stats/features/depoimentos/FAQ/CTA duplo renderizam; saudação "Olá, Carlos!" para logado; footer no fim; sw=cw em 390 e 1440 (zero overflow horizontal)
+- Explorar Tudo: grades 4-col desktop / 1-col mobile substituem as prateleiras; contagens e "Ver tudo" intactos; sem erros de console
+- Code-splitting verificado em uso: página do curso, sala de aula (overlay imersivo completo), leitor de artigo e dashboard carregam sob demanda SEM erros — fluxo course→classroom→reader→dashboard navegado de ponta a ponta
+- Perf: carga fresh da home NÃO dispara /api/courses nem /api/tracks; após scroll até as seções, ambos disparam (timestamps confirmados no network log)
+- bun run lint 0/0; bunx tsc --noEmit limpo em src/; dev server não reiniciado, build não rodado
+
+Stage Summary:
+- Explorar aba "Tudo" agora é uma vitrine organizada em grades (1/2/3/4 colunas responsivas) com expansão "Ver mais" inline — fim das barras de rolagem horizontais, melhor aproveitamento do espaço e leitura natural em mobile
+- Bundle inicial muito menor: 12 chunks pesados (vídeo/PDF/WebRTC/dashboard/fontes/sonner) viraram dynamic imports carregados só na navegação
+- Landing transformada em página de conversão: hero com preview real do produto, prova social, features, FAQ e CTA duplo de audiência (aprender/ensinar)
+- Aprendizados: MultiEdit NÃO é atômico neste ambiente — edições sequenciais anteriores ao old_str que falha PERSISTEM; ao falhar, sempre re-listar o estado real do arquivo antes de continuar
+---
+Task ID: 9-c
+Agent: frontend-styling-expert
+Task: Aba "Quiz" na sala de aula (classroom.tsx) — trigger/tabs, badge violeta no header e componente LessonQuiz completo (responder, feedback, retry, persistido, gabarito do mentor)
+
+Work Log:
+- Lidos worklog.md (Tasks 5/6/8: auto-retry da sala, padrões visuais stone/emerald, aprendizados de grid mobile) e contratos: types.ts (QuizDTO com isMine/myAttempt, QuizAttemptResultDTO, CourseLessonDTO.quizCount), api.ts (listLessonQuizzes, answerQuiz), padrão dos irmãos LessonQuestions/LessonNotes no fim do arquivo
+- classroom.tsx (ÚNICO arquivo editado):
+  - Imports: +ListChecks, +Lightbulb, +XCircle (lucide) e +QuizDTO/QuizAttemptResultDTO (types) — sem duplicações
+  - Tabs do corpo da aula: novo trigger `quiz` (ListChecks h-4 + "Quiz (N)") renderizado somente quando currentLesson.quizCount > 0, entre Perguntas e Anotações; TabsContent correspondente monta <LessonQuiz key={currentLesson.id} lessonId user isOwner /> (remontagem por aula via key, igual LessonNotes)
+  - Header da aula: Badge violeta "bg-violet-100 text-violet-800" com ListChecks h-3 + "Quiz" quando quizCount > 0 (junto aos badges Ao vivo/Vídeo/Leitura/Concluída)
+  - LessonQuiz (padrão dos irmãos): GET api.listLessonQuizzes(lessonId, user.id) no mount; skeleton duplo h-40 no loading; erro → card inline border-dashed com AlertCircle rose + botão "Tentar novamente" (re-fetch); user null → card "Entre com uma conta..."; vazia → isOwner: convite curto para criar perguntas no painel / aluno: "O mentor ainda não publicou perguntas para esta aula." (border-dashed, estilo dos vazios)
+  - Card por quiz (rounded-2xl border bg-white p-5): eyebrow "PERGUNTA N" + prompt font-semibold text-stone-900; alternativas como Button variant="outline" (h-auto min-h-11 w-full justify-start rounded-xl, letra A/B/C/D em círculo h-6 w-6 bg-stone-100 text-xs font-bold) com radiogroup semântico (role="radiogroup" aria-label={prompt}, role="radio" + aria-checked por opção); textos longos quebram (whitespace-normal)
+  - Estados por quiz: (1) myAttempt persistido → escolha emerald-500/bg-emerald-50 (acerto) ou rose-300/bg-rose-50 (erro), badge "Você acertou" (emerald) ou "Respondeu — revise a explicação" (stone), interação desabilitada (aria-disabled + tabIndex -1 + pointer-events-none, sem opacity-50 para manter cores legíveis); (2) isMine (mentor dono) → gabarito: correta destacada + badge violeta "Gabarito" + explanation, sem botão de responder (evita 403 do backend); (3) aluno sem attempt → seleção única + "Responder" (h-10 rounded-full bg-emerald-700 hover:bg-emerald-800 font-bold, desabilitado sem seleção; "Verificando…" durante envio)
+  - Pós-POST answerQuiz: acerto → card verde border-emerald-200 bg-emerald-50/80 com CheckCircle2 "Isso! +N XP" (N quando xpAwarded>0) + toast.success("Você acertou! +N XP ⚡") e card travado; erro → card vermelho border-rose-200 bg-rose-50/80 com XCircle "Não foi dessa vez — a correta é: {opção}" + "Tentar de novo" (limpa feedback, mantém seleção editável — retake permitido) + toast.error("Resposta incorreta — veja a explicação."); correta revelada em emerald no estado de erro; explanation (da resposta ou do DTO) em bloco rounded-xl bg-stone-50 p-3 text-sm text-stone-600 com Lightbulb âmbar
+  - Rodapé: "X de Y respondidas · Z acertos" (text-xs text-stone-400); para o mentor dono mostra "N pergunta(s) · gabarito visível apenas para você"
+- Material/Perguntas/Anotações, modo foco, navegação, certificado e ContentsNav: intocados
+- Ambiente: dev server MORREU no meio da sessão (dev.log truncado em "✓ Starting...", porta 3000 recusava conexão; não fui eu — sessão paralela). Relancei com o script do projeto (`bun run dev`) desanexado via setsid; voltou a responder 200. Credenciais do demo: o e-mail correto é ana@demo.com (ana@test.com do briefing não existe no seed; senha demo123 OK)
+- Validação E2E além do previsto: criei 1 quiz via API como a mentora Marina (dona do curso "Do Zero a Product Manager") na aula 3 para testar o fluxo completo e APAGUEI ao final (estado restaurado: nenhuma aula com quizCount>0)
+
+Validation (tsc/lint/dev.log + agent-browser E2E):
+- bunx tsc --noEmit: limpo em src/ (só erros pré-existentes em examples/ e skills/); checagem filtrada sem nenhum erro em classroom.tsx
+- bun run lint: 0 erros / 0 warnings; dev.log sem erros de compilação (✓ Compiled, rotas 200)
+- Browser como Ana (aluna inscrita): aula com quiz → tab "Quiz (1)" + badge violeta no header; aba ausente em aula sem quiz (comportamento correto); radiogroup/role=radio/aria-checked + aria-label no grupo confirmados no snapshot; min-height 44px e rounded-xl confirmados via getComputedStyle
+- Fluxo completo: resposta errada (SWOT) → card vermelho "Não foi dessa vez — a correta é: RICE" + toast error + rodapé "1 de 1 respondidas · 0 acertos"; "Tentar de novo" limpa feedback mantendo seleção; resposta correta (RICE) → "Isso! +5 XP" + toast success + explanation + "1 de 1 respondidas · 1 acertos"; recarreguei a página → estado persistido do servidor (badge "Você acertou", RICE emerald, tudo desabilitado)
+- Mobile 390x844: sw=cw=390 (zero overflow horizontal) na aba Quiz; console sem erros (apenas logs HMR/Fast Refresh)
+
+Stage Summary:
+- Sala de aula ganhou a aba Quiz: trigger com contagem só em aulas com quizCount>0, badge violeta no header e LessonQuiz com correção no servidor (aluno nunca vê gabarito antes de responder), feedback verde/vermelho com XP, explicação do mentor, retry em erro, estado persistido entre sessões e visão de gabarito para o mentor dono
+- Acessibilidade radiogroup semântica e mobile sem overflow; nenhum outro recurso da sala foi alterado
+
+---
+Task ID: 9-f
+Agent: frontend-styling-expert
+Task: Card "Sua jornada de aprendizado" (XP/ofensiva/recorde/nível) no topo do dashboard do aluno
+
+Work Log:
+- Lidos worklog.md (Tasks 5/6/8 — lições de turbopack stale, grids mobile, dev server), dashboard.tsx (914 linhas — estrutura: header "Minhas sessões" → solicitações → Tabs Próximas/Meus cursos/Para avaliar/Histórico), api.ts (xpStats), types.ts (XpStatsDTO), helpers.ts (XP_LEVELS/levelFromXp), ui/progress.tsx, ui/card.tsx, /api/xp/route.ts e src/lib/xp.ts antes de codar
+- Descoberta de ambiente: /api/xp retornava 500 — `Unknown field 'xp'`: o schema Prisma JÁ declara xp/studyStreak/longestStreak/lastStudyDate e o db:push tinha rodado, mas o Prisma Client NÃO tinha sido regenerado (cliente in-memory do dev server era stale; singleton globalThis em db.ts impede hot-reload). Rodei `bun run db:generate` (sem editar código backend) e confirmei em processo fresco (bun -e) que o cliente novo lê os campos. O servidor rodando só passa a usar o cliente novo após restart do `bun run dev` — restart executado (mesmo comando, dev.log backup em dev.log.bak-9f); /api/xp passou a responder 200
+- dashboard.tsx (ÚNICO arquivo editado):
+  - Imports: Flame/Trophy/Zap (lucide), levelFromXp (helpers), XpStatsDTO (types)
+  - Estado hoisted no DashboardView: xpStats/xpFailed + useEffect próprio (fetch api.xpStats(userId) no mount, flag `alive` contra race no unmount; catch → xpFailed SEM toast/log — falha silenciosa por design)
+  - XpJourneyCard({stats, failed}): failed → return null (card nem renderiza); stats null → skeletons espelhando o layout (Skeleton); dados → card rounded-2xl border bg-white p-5 shadow-sm com role="group" aria-label="Progresso de gamificação" e tabular-nums herdado no root
+  - Header: ícone Flame em círculo bg-orange-100 text-orange-600 + título text-lg font-extrabold
+  - KPIs grid grid-cols-3 gap-3 sm:flex sm:gap-6 (itens min-w-0 sm:flex-1): XP total (Zap emerald, número text-xl sm:text-2xl font-extrabold), Ofensiva (Flame laranja quando streak>0, cinza stone-300 quando 0, label "dias seguidos"/"estude hoje!"), Recorde (Trophy amber-500 + longestStreak); labels text-xs text-stone-400; aria-labels por número
+  - Nível: "Nível atual: {label}" font-bold + Progress (progressPct, aria-label "% do caminho para o nível X") + "Faltam {xpToNext} XP para {next.label}"; next===null → "Nível máximo alcançado! 🏆" sem barra
+  - Micro-proof: "+10 XP por aula concluída · +5 por quiz acertado · +50 por curso completo" (text-xs text-stone-400, border-t stone-100)
+  - Posicionamento: primeiro card da área de conteúdo, logo após o header (acima de solicitações/Tabs) — topo da visão geral, visível em todas as tabs; nenhuma outra seção movida
+- Credenciais do enunciado: ana@test.com NÃO existe (login 401) — aluno demo real é ana@demo.com (senha demo123); E2E feito com ela
+
+Validation (agent-browser, sessão autenticada como ana@demo.com):
+- /api/xp → 200 {xp:5, streak:1, longestStreak:1, lastStudyDate:today} (XP pré-existente de quiz do dia; 0 também seria válido)
+- Card renderiza no dashboard com: "5 XP total", "1 dias seguidos" (Flame text-orange-500 ativo), "1 recorde", "Nível atual: Aprendiz", Progress indicator translateX(-95%) = 5% com aria-label "5% do caminho para o nível Explorador", "Faltam 95 XP para Explorador" (matemática do levelFromXp correta), micro-proof completo; role/aria/tabular-nums/rounded-2xl confirmados via DOM
+- Tabs intactas: Próximas(4)/Meus cursos(1)/Para avaliar(1)/Histórico(2); aba Meus cursos lista Minhas trilhas (29%) + curso (2/7 aulas); solicitações recebidas e BookingCards normais
+- Console sem erros (só logs HMR/Fast Refresh); rede: GET /api/xp 200; page errors vazio
+- Screenshots: tool-results/shot-26-dashboard-xp-desktop.png (1440x900) e shot-27-dashboard-xp-mobile.png (390x844); overflow horizontal ZERO em ambos (scrollWidth=clientWidth=1440 e 390)
+- bunx tsc --noEmit limpo (só erros pré-existentes fora src/); bun run lint 0/0; dev.log saudável com SELECT das colunas novas e GET /api/xp 200; dev server rodando na 3000 (restart documentado acima)
+
+Stage Summary:
+- Dashboard do aluno ganhou o card de gamificação "Sua jornada de aprendizado" (XP total, ofensiva com chama viva/apagada, recorde, nível com Progress até o próximo nível e micro-proof das regras de XP) — com skeleton, falha silenciosa em erro, a11y (role group + aria-labels + tabular-nums) e zero overflow em 390px/1440px
+- Ambiente corrigido no caminho: Prisma Client regenerado (db:generate faltava após o schema novo) e dev server reiniciado para carregá-lo — /api/xp saiu de 500 para 200; sem nenhuma edição em código backend
+- Demo: credencial correta do aluno é ana@demo.com/demo123 (ana@test.com do enunciado não existe)
+---
+Task ID: 9-d
+Agent: general-purpose
+Task: Botão "Quiz" por aula no LessonsManagerDialog + QuizManagerDialog completo (criar/editar/excluir perguntas) no painel do mentor (onboarding.tsx)
+
+Work Log:
+- Lidos worklog.md (Tasks 5/6/8, 9-c/9-f: padrões stone/emerald, quiz na sala de aula, armadilhas de credenciais demo) e contratos: types.ts (QuizDTO, CourseLessonDTO.quizCount), api.ts (listLessonQuizzes/createQuiz/updateQuiz/deleteQuiz), rotas backend (mensagens de erro reais para espelhar na validação client), ui/radio-group.tsx, ui/dialog.tsx e ui/button.tsx antes de codar
+- onboarding.tsx (ÚNICO arquivo editado):
+  - Imports: +ListChecks (lucide), +RadioGroup/RadioGroupItem (@/components/ui/radio-group), +QuizDTO (types) — sem duplicações
+  - LessonsManagerDialog: estado quizLesson/quizOpen + handleQuizOpenChange (ao fechar o quiz, refaz fetchLessons para atualizar o badge de contagem); novo botão por aula na linha (entre o Popover "mover tema" e o Trash de remover): ghost/size-icon size-8, ListChecks size-3.5 + badge emerald-600 absoluto (h-4, text-[10px] bold) com lesson.quizCount quando > 0, aria-label "Gerenciar quiz de {título}"; monta <QuizManagerDialog course lesson user={{id: userId}} open onOpenChange> condicional (padrão lessonsCourse)
+  - QuizManagerDialog (novo componente após LessonsManagerDialog, ~420 linhas): props { course, lesson, user: {id}, open, onOpenChange } (user só precisa do id para as APIs); GET listLessonQuizzes no open (flag active contra race, erro → toast + lista vazia); header "Quiz da aula" + descrição "{curso} · {aula} · N pergunta(s) · correção automática (+5 XP por acerto)"
+  - Lista: card rounded-2xl por pergunta (eyebrow "PERGUNTA N", prompt semibold, Editar/Excluir ghost size-8 com Pencil/Trash2 + aria-labels), alternativas em rounded-xl com letra A-F em círculo — correta em border-emerald-300 bg-emerald-50 + Check emerald com aria-label, explicação em bloco bg-stone-50
+  - Form único para criar/editar (toggle "Adicionar pergunta" dashed outline quando fechado): Textarea prompt, RadioGroup Radix com radio + Input por linha (placeholder "Alternativa A/B/C..."), botões add (disabled em 6) / remover (disabled em 2) — correctIndex reajusta ao remover (null se a correta foi removida), Input "Explicação (opcional)", "Salvar pergunta" (bg-emerald-700) via <form onSubmit>; validação client espelha o servidor (prompt ≥ 5, 2-6 alternativas preenchidas, correta marcada) — erros do servidor chegam via toast e têm prioridade
+  - Criar → api.createQuiz + toast 'Pergunta adicionada ao quiz' + refresh; Editar → form pré-preenchido + api.updateQuiz + toast 'Pergunta atualizada!' + refresh; Excluir → AlertDialog (padrão do projeto, botão rose) + api.deleteQuiz + toast 'Pergunta removida do quiz.' + refresh; loading → 2 Skeletons h-32 rounded-2xl; vazio → "Nenhuma pergunta ainda — crie a primeira para ajudar a fixar o aprendizado."
+  - DialogContent flex max-h-[85dvh] flex-col (tailwind-merge resolve grid→flex) + corpo min-h-0 flex-1 overflow-y-auto com scrollbar estilizada igual à lista de aulas
+  - Temas, anexos, tipo de aula, leitura e todo o resto do painel: intocados
+- Ajuste pós-E2E: no fluxo de EDITAR, o form não fechava após salvar (formOpen permanecia true) — adicionado setFormOpen(false) no branch de update, igualando o fluxo de criar; revalidado no browser
+- Ambiente: dev server NÃO reiniciado (200 na :3000 o tempo todo); E2E confirmou que carlos@mentoria.com do briefing NÃO existe (login falha) — mentor demo real é carlos@demo.com/demo123 (mesmo padrão do ana@test→ana@demo da Task 9-c)
+
+Validation (tsc/lint/dev.log + agent-browser E2E desktop 1440x900 e mobile 390x844):
+- bunx tsc --noEmit: limpo em src/ (só erros pré-existentes em examples/ e skills/); bun run lint: 0 erros / 0 warnings; dev.log saudável (GET/POST/DELETE de quizzes 200, sem ⨯; EADDRINUSE no log é histórico de restart anterior)
+- Desktop: login Carlos → Painel do mentor → Aulas do curso (9 aulas) → botão "Gerenciar quiz" presente em todas as linhas; diálogo abre com contagem no header e estado vazio correto
+- Validação client: salvar vazio exibe os 3 erros inline (prompt/alternativas/correta) sem tocar no servidor
+- Criar com 3 alternativas: radio A/B/C, "(3/6)" no botão add, remover desabilitado em 2; POST 200 → toast 'Pergunta adicionada ao quiz' capturado, header "1 pergunta · correção automática (+5 XP por acerto)", card na lista com a correta (C) em emerald + Check (getComputedStyle/DOM confirmado), badge emerald "1" no botão da aula (fetchLessons no close)
+- Editar: form 100% pré-preenchido (prompt, 3 opções, correta C marcada, explicação) → PATCH 200 → toast 'Pergunta atualizada!' → lista atualizada
+- Excluir: AlertDialog "Excluir pergunta?" com o prompt citado → DELETE 200 → toast 'Pergunta removida do quiz.' → estado vazio restaurado, header "0 perguntas", badge some
+- Mobile 390x844: docScrollW = docClientW = 390 (zero overflow horizontal) com o form aberto; diálogo 358px de largura; criar/excluir re-feitos no mobile com sucesso
+- Console sem erros de página; nenhuma requisição DELETE acidental; estado do demo restaurado (curso do Carlos sem quizzes ao final — pergunta de teste criada e excluída)
+
+Stage Summary:
+- Painel do mentor agora gerencia o quiz de cada aula: botão ListChecks com contagem emerald por aula, diálogo de quiz com lista (gabarito destacado), criação/edição com RadioGroup de correta que se reajusta ao remover alternativas, exclusão com AlertDialog, validação client alinhada ao servidor e toasts em todos os fluxos
+- Completa o ciclo com a Task 9-c: o mentor cria as perguntas no painel e o aluno responde na sala de aula com correção automática (+5 XP)
+- Credencial do mentor demo corrigida para referência futura: carlos@demo.com/demo123
+
+---
+Task ID: 9 (feature pack: quiz + gamificação XP/ofensiva)
+Agent: main (Z.ai Code) + frontend-styling-expert (9-c, 9-f) + general-purpose (9-d)
+Task: Implementar mais coisas de aprendizagem — quiz por aula (correção no servidor), gamificação XP + ofensiva de estudos com níveis, e integração em sala de aula/painel/dashboard; polimento visual leve
+
+Work Log:
+- SCHEMA (9-a): models Quiz (prompt/options JSON/correctIndex/explanation/order), QuizAttempt (@@unique quizId+userId, retake substitui), XpEvent (ledger anti-farm @@unique userId+kind+refId); User ganhou xp/studyStreak/longestStreak/lastStudyDate; Enrollment ganhou bonusAwarded/completedAt → db:push + regeneração do client (nota: singleton do db.ts exige restart do dev após gerar)
+- XP (src/lib/xp.ts NOVO): awardXp() com ledger create-catch-P2002 (skipDuplicates NÃO existe no SQLite); XP_LESSON=10, XP_QUIZ=5, XP_COURSE=50; ofensiva calculada no fuso America/Bahia (en-CA = YYYY-MM-DD), streak ativa se estudou hoje/ontem (activeStreak)
+- APIs NOVAS: GET/POST /api/lessons/[lessonId]/quizzes (acesso inscrito/dono; gabarito SÓ para o dono), PATCH/DELETE /api/quizzes/[id] (dono), POST /api/quizzes/[id]/attempt (correção no servidor — gabarito nunca vai ao cliente antes de responder; upsert + XP na 1ª correta), GET /api/xp?userId= (xp, streak ativa, recorde); PATCH /api/courses/[id]/enroll agora retorna { xpAwarded, courseCompleted } e concede XP de aula + bônus de 100% (guard bonusAwarded + completedAt)
+- CONTRATOS: types.ts (QuizDTO com correctIndex|null para aluno, QuizAttemptResultDTO, XpStatsDTO, CourseLessonDTO.quizCount); api.ts (listLessonQuizzes/createQuiz/updateQuiz/deleteQuiz/answerQuiz/xpStats); helpers.ts (XP_LEVELS Aprendiz→Mestre 0/100/250/500/1000 + levelFromXp com progresso); /api/courses/[id] inclui quizCount por aula
+- CLASSROOM (9-c, agente): aba "Quiz (N)" condicionada a quizCount>0, badge violeta no header da aula, componente LessonQuiz (radiogroup acessível role=radio/aria-checked, alternativa A-D com círculo, responder → feedback verde "+N XP"/vermelho com gabarito+explicação e retry, estado persistido do servidor travado após acerto, rodapé "X de Y · Z acertos", visão de gabarito para o dono); toast de XP ao concluir aula (res.xpAwarded)
+- PAINEL (9-d, agente): botão Quiz por aula no LessonsManagerDialog (badge emerald com contagem) + QuizManagerDialog completo: lista com correta destacada, criar/editar (prompt, 2-6 alternativas com RadioGroup, correctIndex reajusta ao remover, explicação opcional), excluir com AlertDialog, validação client+servidor, "N perguntas · correção automática (+5 XP por acerto)"
+- DASHBOARD (9-f, agente): card "Sua jornada de aprendizado" — 3 KPIs (XP total Zap emerald, ofensiva Flame laranja/estude hoje!, recorde Trophy amber), nível com Progress até o próximo ("Faltam N XP para X", Mestre = máximo 🏆), linha "+10 aula · +5 quiz · +50 curso"; skeleton + falha silenciosa; a11y role=group
+- POLIMENTO (9-h): pluralização "1 dia seguido"/"N dias seguidos" (visível + aria-label)
+- DEMO DATA: prisma/add-demo-quizzes.ts (one-off idempotente) — 6 perguntas reais de arquitetura nas aulas Bem-vindo/Camadas/Modelagem/Cache do curso do Carlos; Ana inscrita no curso de Arquitetura (one-off); prisma/seed.ts atualizado (helper course() aceita quiz[] por aula + cleanup quizAttempt/quiz/xpEvent) para re-seeds futuros
+
+Validation (browser E2E, agente + main, desktop 1440x900 + mobile 390x844):
+- Fluxo do aluno COMPLETO: login ana@demo.com → curso Arquitetura → sala de aula → aba Quiz(1) → respondeu ERRADO de propósito → card vermelho com gabarito + explicação + "Tentar de novo" ✓ → acertou → travado com "1 acertos" ✓ → Concluir aula → +10 XP (xp 10→20 no banco) + auto-avanço ✓ → aba Quiz(2) na aula seguinte ✓
+- Dashboard: card com 20 XP · 1 dia seguido · recorde 1 · Aprendiz 20% · "Faltam 80 XP para Explorador" ✓; mobile 390px sem overflow (sw=cw) ✓
+- Painel do mentor (9-d): criar/editar/excluir pergunta via UI com PATCH/DELETE 200 ✓ (pergunta de teste removida — demo limpo)
+- GET /api/xp 200; toggles retornam xpAwarded; bun run lint 0/0; bunx tsc limpo em src/; dev.log sem erros; console do browser limpo
+
+Stage Summary:
+- Aprendizagem agora tem CICLO COMPLETO: aula → quiz corrigido no servidor (anti-roubo de gabarito) → XP anti-farm via ledger → ofensiva diária por fuso → níveis com progresso → bônus ao concluir curso → certificado (já existente)
+- Mentores criam quizzes direto no painel (correção automática + explicação pedagógica por pergunta)
+- Alunos veem evolução no dashboard (jornada) e feedback imediato na sala de aula
+- Aprendizados: Prisma skipDuplicates não existe no SQLite (use create+catch P2002); regenerar client Prisma exige restart do dev server por causa do singleton globalThis; contas demo: ana@demo.com / carlos@demo.com (senha demo123)

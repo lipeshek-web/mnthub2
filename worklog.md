@@ -814,3 +814,57 @@ Stage Summary:
 - Mentores criam quizzes direto no painel (correção automática + explicação pedagógica por pergunta)
 - Alunos veem evolução no dashboard (jornada) e feedback imediato na sala de aula
 - Aprendizados: Prisma skipDuplicates não existe no SQLite (use create+catch P2002); regenerar client Prisma exige restart do dev server por causa do singleton globalThis; contas demo: ana@demo.com / carlos@demo.com (senha demo123)
+
+---
+Task ID: 11-c
+Agent: frontend-styling-expert
+Task: Painel do mentor reorganizado em abas funcionais
+
+Work Log:
+- Lidos worklog.md (Tasks 8/9/9-c/9-d/9-f: padrões stone+emerald, credenciais demo, Radix desmonta TabsContent inativo) e contratos antes de codar: ui/tabs.tsx (TabsList base com bg-muted/h-9/w-fit — tudo sobrescrito via cn/tailwind-merge), api.ts (listCourses({ mentorUserId }) → CourseListItemDTO[], inclui rascunhos), types.ts (CourseListItemDTO.studentCount: number; MentorDetailDTO.rating/reviewCount/contents/name/availabilities)
+- onboarding.tsx (ÚNICO arquivo editado; bloco final "com perfil" de OnboardingView): painel de 8 seções empilhadas convertido em abas controladas — const [tab, setTab] = useState<PanelTabId>('overview') + <Tabs value onValueChange>; container alargado para max-w-5xl com header "Painel do mentor" + subtítulo "estúdio de criação"
+- TabsList responsiva ÚNICA (um único Root/List no painel — Radix exige 1 List por Root): grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-6 com a TabsList dentro; mobile = faixa horizontal (flex h-auto w-full justify-start gap-1 overflow-x-auto whitespace-nowrap do base, rounded-xl border-stone-200 bg-white p-1.5, scrollbar fina stone-200 via [scrollbar-width:thin] + ::-webkit-scrollbar h-1; justify-start evita clipping de conteúdo em overflow centrado); lg+ = coluna lateral vertical sticky (lg:flex-col lg:items-stretch lg:justify-start lg:sticky lg:top-0 lg:self-start lg:overflow-visible) — sticky ancorada no scroll container (main, único scroller do shell app-nativo); triggers min-h-11 (≥44px) flex-none rounded-xl com ícone, ativo data-[state=active]:bg-emerald-700 text-white, inativo branco/stone com hover:bg-stone-100
+- 8 abas via const PANEL_TABS: overview (LayoutDashboard), perfil (UserRound), agenda (CalendarClock), mural (Newspaper), cursos (ListVideo), biblioteca (Library), trilhas (Route), divulgacao (Megaphone); cada TabsContent com className="min-w-0 mt-4 sm:mt-6" dentro de wrapper min-w-0 (managers remontam ao reabrir a aba — comportamento Radix esperado)
+- Visão geral (novo conteúdo): saudação "Olá, {firstName(profile.name)}!"; 4 KPI cards (grid-cols-2 sm:grid-cols-4, componente OverviewKpi rounded-2xl hairline) — NOTA (rating formatado ou "—" + footer com Stars e "N avaliações" de profile.reviewCount), ALUNOS (soma course.studentCount de mentorCourses), CURSOS (mentorCourses.length, "incluindo rascunhos"), CONTEÚDOS (profile.contents.length); "Atalhos rápidos" com PANEL_SHORTCUTS (7 botões-card grid-cols-1 sm:grid-cols-2: chip emerald-50 + título + descrição 1 linha + ChevronRight, hover:border-emerald-300, aria-label "Ir para a aba {label}") que dão setTab direto
+- Dados para os KPIs sem montar CoursesManager: reloadCourses = useCallback (listCourses({ mentorUserId: userId }), catch silencioso) + useEffect no userId; handleCoursesChange mantido para o CoursesManager re-sincronizar ao editar cursos
+- Abas de managers com props IDÊNTICAS às originais: perfil mantém mini-strip de stats (rating/avaliações/conteúdos) + MentorProfileForm completo; agenda = AvailabilityEditor(initialSlots, onSave); mural = ContentsManager(contents, userId, onChanged); cursos = CoursesManager(userId, onChanged, onCoursesChange) — dialogs de aulas/quiz intocados; biblioteca = LibraryManager(userId, onChanged); trilhas = TracksManager(userId, onChanged); divulgacao = TrafficLinksSection(profile, courses, onSaved) + TrafficPanel(userId)
+- INTACTOS: fluxo "sem perfil" (hero + BenefitCards + criação), guards !user/loading, e todos os managers/dialogs/quiz/font picker (só a organização da view final mudou)
+- Refinos finais alinhando ao briefing: triggers rounded-lg→rounded-xl, TabsContent unificado em "min-w-0 mt-4 sm:mt-6" (antes tinha variação lg:mt-0), scrollbar discreta visível no lugar de scrollbar oculta
+
+Validation (tsc/lint + agent-browser desktop 1440x900 e mobile 390x844):
+- bun run lint: 0 erros/0 warnings; bunx tsc --noEmit: limpo em src/ (só erros pré-existentes em examples/ e skills/, fora de escopo)
+- Login validado do zero: "Entrar" → carlos@demo.com / demo123 → home "Olá, Carlos!" → menu do usuário → "Painel do mentor"
+- Desktop 1440x900: grid 220px + coluna de conteúdo confirmado via getComputedStyle (gridTemplateColumns "220px 732px", TabsList flexDirection column, position sticky, docScrollWidth=docClientWidth=1440); tablist "Seções do painel" com 8 tabs; Visão geral com 4 KPIs (NOTA 5,0 · 1 avaliação, ALUNOS 2, CURSOS 1, CONTEÚDOS 3 — alunos>0) e 7 atalhos; TODOS os 7 atalhos testados um a um → trocam para a aba certa (Perfil público/Agenda/Mural/Cursos/Biblioteca/Trilhas/Divulgação); aba Cursos → dialog "Aulas do curso" (6 aulas) → dialog "Quiz da aula" abre e fecha; abas Perfil/Agenda/Mural/Biblioteca/Trilhas/Divulgação renderizam o conteúdo certo; sticky lateral valida ao rolar o main (preso ao topo do scrollport, 57px = altura da navbar estática acima)
+- Mobile 390x844: docSW=docCW=390 (zero overflow horizontal); KPIs em 2 colunas (173px 173px); faixa de abas com scrollWidth 940 > clientWidth 356 e overflow-x auto (rolável), última aba "Divulgação" alcançável após rolar a faixa e clicável
+- Console sem erros; dev.log sem erros novos (só queries prisma e GETs 200); dev server NÃO reiniciado; nenhum arquivo criado; screenshots em tool-results/shot-11c-panel-overview-desktop.png e shot-11c-panel-overview-mobile.png
+
+Stage Summary:
+- Painel do mentor (bloco "com perfil" do onboarding) agora é um estúdio do criador em 8 abas controladas: Visão geral nova (saudação + 4 KPIs vindos de listCourses/MentorDetailDTO + 7 atalhos que navegam de aba), Perfil/Agenda/Mural/Cursos/Biblioteca/Trilhas/Divulgação com os managers exatos de antes (props intocadas), navegação única responsiva (faixa rolável no mobile, sidebar sticky 220px no desktop) sem duplicar TabsList
+- KPIs alimentados mesmo com abas inativas desmontadas (Radix) via reloadCourses no OnboardingView + handleCoursesChange do CoursesManager
+- Decisões: scrollbar fina visível ("discreta") em vez de oculta; justify-start na faixa mobile para não clipar o primeiro tab em overflow centrado; TabsContent segue o briefing literal (min-w-0 mt-4 sm:mt-6)
+- Zero mudanças em page.tsx/navbar/footer/classroom, api.ts, types.ts, tabs.tsx ou nos managers
+
+---
+Task ID: 11-a + 11-b + 12
+Agent: main (Z.ai Code)
+Task: Header isolado (corpo nunca entra por baixo), sala de aula mais larga (vídeos maiores) e verificação E2E das mudanças + do painel em abas
+
+Work Log:
+- [11-a] src/app/page.tsx: shell convertido em app-nativo definitivo — raiz `flex h-dvh flex-col overflow-hidden bg-white`; `<main ref={mainScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">` é o ÚNICO container de rolagem; wrapper interno `flex min-h-full flex-col` mantém o footer colado no fundo em páginas curtas e empurrado nas longas (footer moveu-se para DENTRO do main); scroll-to-top ao trocar de view agora via `mainScrollRef.scrollTo({top:0})` (window não rola mais); overlays imersivos (classroom/reader) continuam `fixed inset-0 z-50` — inalterados
+- [11-a] navbar.tsx: `sticky top-0 z-40 bg-white/85 backdrop-blur-md` → `shrink-0 border-b bg-white` (estático, opaco, fora do fluxo de rolagem) — o conteúdo rola no main e NUNCA aparece por baixo do header
+- [11-b] classroom.tsx: conteúdo interno da aula alargado de max-w-4xl (normal) / max-w-3xl (foco) para `max-w-5xl` / `max-w-4xl` (+ w-full) — vídeos aspect-video crescem proporcionalmente
+- [11-c] onboarding.tsx (subagente frontend-styling-expert, ver entrada própria acima): painel do mentor em 8 abas controladas com TabsList única responsiva
+- [12] Validação: `bun run lint` 0/0; `bunx tsc --noEmit` limpo em src/; Agent Browser desktop 1440x900 + mobile 390x844
+
+Validation (browser E2E):
+- Header isolado: getBoundingClientRect → header 0–57px estático opaco, main começa exatamente em 57px; rolagem de 1200px no main mantém header intacto sem conteúdo sob ele; wheel real do mouse rola o main (scrollTop 0→737); sticky do booking widget no perfil do mentor continua funcionando DENTRO do main (stuck=true, sem invadir o header)
+- Footer: no fim da página em home longa (footerBottom=900=vh) e no painel mobile (844=vh); gruda no fundo quando o conteúdo é curto
+- Sala de aula (como ana@demo.com, curso "Do Zero a PM"): conteúdo interno max-width 1024px (era 896px), vídeo 994×559px em 1440 (era ~830px); modo foco com vídeo 894px (era ~672px) em coluna única; leitura em prose max-w-3xl preservada; navegação entre aulas/leitura/vídeo intacta
+- Painel do mentor (como carlos@demo.com): 8 abas na sidebar; Visão geral com saudação + 4 KPIs (5,0/2 alunos/1 curso/3 conteúdos) + 7 atalhos que trocam de aba; abas Cursos (gestão + Novo curso) e Divulgação (link rastreável + pixels + gerador UTM) renderizam perfeitamente; mobile 390px com faixa de abas rolável e sw=cw=390 (zero overflow)
+- Console do browser sem erros; dev.log saudável (só queries prisma/GETs 200); dev server NÃO reiniciado; nenhum teste automatizado criado
+
+Stage Summary:
+- Header agora é um elemento estático do shell app: o corpo inteiro rola no <main> isolado — resolvido estruturalmente (não é mais questão de z-index/blur)
+- Sala de aula com tela de conteúdo interna larga (max-w-5xl): vídeos ~20% maiores em janelas grandes e ~33% maiores no modo foco, sensação de "tela focada"
+- Painel do mentor em 8 abas funcionais (Visão geral com KPIs/atalhos, Perfil, Agenda, Mural, Cursos, Biblioteca, Trilhas, Divulgação) — organizado, completo e validado em desktop + mobile
+- Screenshots: tool-results/shot-12a…12k (home, isolamento, footer, classroom leitura/vídeo/foco, painel desktop/mobile)

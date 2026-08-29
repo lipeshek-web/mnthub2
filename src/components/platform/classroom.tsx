@@ -438,9 +438,9 @@ export function ClassroomView({ courseId }: { courseId: string }) {
           focusMode ? 'lg:grid-cols-1' : 'lg:grid-cols-[1fr_380px]'
         )}
       >
-        {/* Coluna esquerda: aula */}
+        {/* Coluna esquerda: aula — conteúdo interno largo p/ vídeos grandes */}
         <div className="min-h-0 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className={cn('mx-auto', focusMode ? 'max-w-3xl' : 'max-w-4xl')}>
+          <div className={cn('mx-auto w-full', focusMode ? 'max-w-4xl' : 'max-w-5xl')}>
             <AnimatePresence mode="wait">
               {currentLesson ? (
                 <motion.div

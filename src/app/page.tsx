@@ -92,6 +92,7 @@ export default function Home() {
   const setUser = useAppStore((s) => s.setUser)
   const navigate = useAppStore((s) => s.navigate)
   const bootstrapped = useRef(false)
+  const mainScrollRef = useRef<HTMLElement | null>(null)
 
   // Detecta montagem no cliente sem setState em effect (hidratação segura
   // com o estado persistido do zustand: no servidor, false).
@@ -145,9 +146,10 @@ export default function Home() {
       .catch(() => {})
   }, [])
 
-  // Volta ao topo do documento ao trocar de view (rolagem normal da página).
+  // Volta ao topo ao trocar de view (a rolagem vive no container <main>,
+  // isolado do header — o conteúdo nunca passa por baixo dele).
   useEffect(() => {
-    window.scrollTo({ top: 0 })
+    mainScrollRef.current?.scrollTo({ top: 0 })
   }, [view])
 
   // Guard central: convidado não acessa views pessoais.
@@ -174,34 +176,43 @@ export default function Home() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-white">
+    /* Shell tipo app: header e rodapé fora do fluxo de rolagem. O <main> é o
+       ÚNICO container de rolagem — o corpo nunca entra por baixo do header. */
+    <div className="flex h-dvh flex-col overflow-hidden bg-white">
       {!immersive && <Navbar />}
 
-      <main key={user?.id ?? 'guest'} className="flex-1">
-        {needsAuth ? (
-          <AuthView />
-        ) : (
-          <>
-            {view.name === 'home' && <LandingMenteeView />}
-            {view.name === 'auth' && <AuthView initialMode={view.mode} />}
-            {view.name === 'for-mentors' && <LandingMentor />}
-            {view.name === 'marketplace' && <MarketplaceView />}
-            {view.name === 'mentor' && <MentorProfileView mentorId={view.mentorId} />}
-            {view.name === 'course' && <CourseView courseId={view.courseId} />}
-            {view.name === 'track' && <TrackView trackId={view.trackId} />}
-            {view.name === 'dashboard' && <DashboardView />}
-            {view.name === 'meeting' && <MeetingRoomView bookingId={view.bookingId} />}
-            {view.name === 'onboarding' && <OnboardingView />}
-            {view.name === 'mentor-lp' && <MentorLpView slug={view.slug} />}
-            {view.name === 'checkout' && (
-              <CheckoutView courseId={view.courseId} trackId={view.trackId} />
-            )}
-          </>
-        )}
-      </main>
+      <main
+        ref={mainScrollRef}
+        key={user?.id ?? 'guest'}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+      >
+        {/* Wrapper interno garante o footer colado no fundo em páginas curtas */}
+        <div className="flex min-h-full flex-col">
+          {needsAuth ? (
+            <AuthView />
+          ) : (
+            <>
+              {view.name === 'home' && <LandingMenteeView />}
+              {view.name === 'auth' && <AuthView initialMode={view.mode} />}
+              {view.name === 'for-mentors' && <LandingMentor />}
+              {view.name === 'marketplace' && <MarketplaceView />}
+              {view.name === 'mentor' && <MentorProfileView mentorId={view.mentorId} />}
+              {view.name === 'course' && <CourseView courseId={view.courseId} />}
+              {view.name === 'track' && <TrackView trackId={view.trackId} />}
+              {view.name === 'dashboard' && <DashboardView />}
+              {view.name === 'meeting' && <MeetingRoomView bookingId={view.bookingId} />}
+              {view.name === 'onboarding' && <OnboardingView />}
+              {view.name === 'mentor-lp' && <MentorLpView slug={view.slug} />}
+              {view.name === 'checkout' && (
+                <CheckoutView courseId={view.courseId} trackId={view.trackId} />
+              )}
+            </>
+          )}
 
-      {/* Footer no fim da página (gruda no fundo quando o conteúdo é curto) */}
-      {!immersive && <PlatformFooter />}
+          {/* Footer no fim da página (gruda no fundo quando o conteúdo é curto) */}
+          {!immersive && <PlatformFooter />}
+        </div>
+      </main>
 
       {/* Imersão: sala de aula e leitor em overlay tela cheia sobre tudo */}
       {view.name === 'classroom' && (
