@@ -1,0 +1,2002 @@
+     1→'use client'
+     2→
+     3→import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
+     4→import {
+     5→  AtSign,
+     6→  BadgeCheck,
+     7→  BadgeDollarSign,
+     8→  Banknote,
+     9→  BarChart3,
+    10→  BookOpen,
+    11→  CalendarCheck,
+    12→  CalendarClock,
+    13→  Camera,
+    14→  Check,
+    15→  ChevronRight,
+    16→  Clock,
+    17→  Copy,
+    18→  Eye,
+    19→  EyeOff,
+    20→  ExternalLink,
+    21→  FileText,
+    22→  FolderInput,
+    23→  GraduationCap,
+    24→  ImagePlus,
+    25→  LayoutDashboard,
+    26→  Library,
+    27→  Link2,
+    28→  ListChecks,
+    29→  ListVideo,
+    30→  LogIn,
+    31→  Megaphone,
+    32→  Newspaper,
+    33→  Paperclip,
+    34→  Pencil,
+    35→  Plus,
+    36→  Radio,
+    37→  RefreshCw,
+    38→  Route,
+    39→  Save,
+    40→  ShoppingCart,
+    41→  Sparkles,
+    42→  Star,
+    43→  Trash2,
+    44→  TrendingUp,
+    45→  Type,
+    46→  UserRound,
+    47→  Users,
+    48→  Video,
+    49→  X,
+    50→  type LucideIcon,
+    51→} from 'lucide-react'
+    52→import { toast } from 'sonner'
+    53→
+    54→import {
+    55→  AlertDialog,
+    56→  AlertDialogAction,
+    57→  AlertDialogCancel,
+    58→  AlertDialogContent,
+    59→  AlertDialogDescription,
+    60→  AlertDialogFooter,
+    61→  AlertDialogHeader,
+    62→  AlertDialogTitle,
+    63→} from '@/components/ui/alert-dialog'
+    64→import { Badge } from '@/components/ui/badge'
+    65→import { Button } from '@/components/ui/button'
+    66→import {
+    67→  Card,
+    68→  CardAction,
+    69→  CardContent,
+    70→  CardDescription,
+    71→  CardHeader,
+    72→  CardTitle,
+    73→} from '@/components/ui/card'
+    74→import {
+    75→  Dialog,
+    76→  DialogContent,
+    77→  DialogDescription,
+    78→  DialogFooter,
+    79→  DialogHeader,
+    80→  DialogTitle,
+    81→} from '@/components/ui/dialog'
+    82→import { Input } from '@/components/ui/input'
+    83→import { Label } from '@/components/ui/label'
+    84→import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+    85→import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+    86→import {
+    87→  Select,
+    88→  SelectContent,
+    89→  SelectItem,
+    90→  SelectTrigger,
+    91→  SelectValue,
+    92→} from '@/components/ui/select'
+    93→import { Separator } from '@/components/ui/separator'
+    94→import { Skeleton } from '@/components/ui/skeleton'
+    95→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    96→import { Textarea } from '@/components/ui/textarea'
+    97→import { Avatar, Stars } from '@/components/platform/avatar'
+    98→import { LibraryManager } from './library-manager'
+    99→import { TracksManager } from './tracks-manager'
+   100→import { api } from '@/lib/api'
+   101→import {
+   102→  MENTOR_FONT_CATEGORIES,
+   103→  MENTOR_FONTS,
+   104→  bodyFontStyle,
+   105→  fontPreviewStyle,
+   106→  getMentorFont,
+   107→  headingFontStyle,
+   108→  type MentorFont,
+   109→  type MentorFontCategory,
+   110→} from '@/lib/fonts'
+   111→import {
+   112→  CATEGORIES,
+   113→  CONTENT_TYPE_META,
+   114→  LEVEL_LABELS,
+   115→  WEEKDAYS_FULL_PT,
+   116→  avatarGradient,
+   117→  currencyBRL,
+   118→  firstName,
+   119→  formatDayLabel,
+   120→  formatTimeLabel,
+   121→  hourToLabel,
+   122→  labelToHour,
+   123→} from '@/lib/helpers'
+   124→import { useAppStore } from '@/lib/store'
+   125→import { buildCourseUrl, buildMentorLpUrl } from '@/lib/tracking'
+   126→import type {
+   127→  AvailabilitySlotInput,
+   128→  ContentPostDTO,
+   129→  CourseLessonDTO,
+   130→  CourseListItemDTO,
+   131→  CourseThemeDTO,
+   132→  LibraryItemDTO,
+   133→  LessonAttachmentDTO,
+   134→  MentorDetailDTO,
+   135→  QuizDTO,
+   136→  SocialLinksDTO,
+   137→  TrackingStatsDTO,
+   138→} from '@/lib/types'
+   139→import { cn } from '@/lib/utils'
+   140→
+   141→// Horários de 30 em 30 min, de 06:00 a 21:30
+   142→const TIME_OPTIONS: string[] = (() => {
+   143→  const options: string[] = []
+   144→  for (let minutes = 6 * 60; minutes <= 21 * 60 + 30; minutes += 30) {
+   145→    const h = Math.floor(minutes / 60)
+   146→    const m = minutes % 60
+   147→    options.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+   148→  }
+   149→  return options
+   150→})()
+   151→
+   152→const CONTENT_TYPES = ['ARTICLE', 'VIDEO', 'WORKSHOP', 'TRAIL'] as const
+   153→const CONTENT_LEVELS = ['INICIANTE', 'INTERMEDIARIO', 'AVANCADO'] as const
+   154→
+   155→// ---------- Upload de imagens e clipboard (fotos e links rastreáveis) ----------
+   156→
+   157→const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+   158→
+   159→/** Valida o tamanho (máx. 5MB), envia o arquivo e devolve a URL — falhas são exibidas via toast */
+   160→async function uploadImageFile(file: File | null | undefined): Promise<string | null> {
+   161→  if (!file) return null
+   162→  if (file.size > MAX_IMAGE_BYTES) {
+   163→    toast.error('A imagem deve ter no máximo 5MB.')
+   164→    return null
+   165→  }
+   166→  try {
+   167→    return await api.uploadImage(file)
+   168→  } catch (err) {
+   169→    toast.error(err instanceof Error ? err.message : 'Não foi possível enviar a imagem.')
+   170→    return null
+   171→  }
+   172→}
+   173→
+   174→function copyToClipboard(text: string, successMessage = 'Link copiado!') {
+   175→  if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+   176→    toast.error('Não foi possível copiar o link.')
+   177→    return
+   178→  }
+   179→  navigator.clipboard
+   180→    .writeText(text)
+   181→    .then(() => toast.success(successMessage))
+   182→    .catch(() => toast.error('Não foi possível copiar o link.'))
+   183→}
+   184→
+   185→// ---------- Seletor de fontes do criador ----------
+   186→
+   187→const FONT_SLOT_LABELS = {
+   188→  heading: 'Nome e títulos',
+   189→  body: 'Descrições e textos',
+   190→} as const
+   191→type FontSlot = keyof typeof FONT_SLOT_LABELS
+   192→
+   193→/** Card individual de fonte do catálogo */
+   194→function FontOptionCard({
+   195→  font,
+   196→  activeHeading,
+   197→  activeBody,
+   198→  onSelect,
+   199→}: {
+   200→  font: MentorFont
+   201→  activeHeading: boolean
+   202→  activeBody: boolean
+   203→  onSelect: () => void
+   204→}) {
+   205→  const active = activeHeading || activeBody
+   206→  return (
+   207→    <button
+   208→      type="button"
+   209→      onClick={onSelect}
+   210→      aria-pressed={active}
+   211→      aria-label={`Selecionar fonte ${font.label}${activeHeading ? ' (em uso nos títulos)' : ''}${activeBody ? ' (em uso nos textos)' : ''}`}
+   212→      className={cn(
+   213→        'group relative flex flex-col items-start gap-1.5 rounded-xl border bg-white p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+   214→        active
+   215→          ? 'border-emerald-400 ring-2 ring-emerald-500/30'
+   216→          : 'border-stone-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-sm',
+   217→      )}
+   218→    >
+   219→      {(activeHeading || activeBody) && (
+   220→        <span className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-emerald-600 text-white">
+   221→          <Check className="size-3" aria-hidden />
+   222→        </span>
+   223→      )}
+   224→      <span
+   225→        className="block text-3xl leading-none text-stone-900"
+   226→        style={fontPreviewStyle(font)}
+   227→        aria-hidden
+   228→      >
+   229→        Aa
+   230→      </span>
+   231→      <span
+   232→        className="block w-full truncate text-xs font-medium text-stone-700"
+   233→        style={fontPreviewStyle(font)}
+   234→      >
+   235→        {font.label}
+   236→      </span>
+   237→      <span className="flex flex-wrap gap-1">
+   238→        {activeHeading && (
+   239→          <Badge className="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0 text-[9px] font-semibold text-emerald-700 hover:bg-emerald-50">
+   240→            {FONT_SLOT_LABELS.heading}
+   241→          </Badge>
+   242→        )}
+   243→        {activeBody && (
+   244→          <Badge className="rounded-full border border-teal-200 bg-teal-50 px-1.5 py-0 text-[9px] font-semibold text-teal-700 hover:bg-teal-50">
+   245→            {FONT_SLOT_LABELS.body}
+   246→          </Badge>
+   247→        )}
+   248→      </span>
+   249→    </button>
+   250→  )
+   251→}
+   252→
+   253→/** Seletor de tipografia da página do criador (nome/títulos + descrições) */
+   254→function FontPicker({
+   255→  heading,
+   256→  body,
+   257→  onHeadingChange,
+   258→  onBodyChange,
+   259→  mentorName,
+   260→}: {
+   261→  heading: string | null
+   262→  body: string | null
+   263→  onHeadingChange: (id: string | null) => void
+   264→  onBodyChange: (id: string | null) => void
+   265→  mentorName: string
+   266→}) {
+   267→  const [slot, setSlot] = useState<FontSlot>('heading')
+   268→  const [category, setCategory] = useState<MentorFontCategory | 'all'>('all')
+   269→
+   270→  const visible = MENTOR_FONTS.filter((f) => category === 'all' || f.category === category)
+   271→  const activeId = slot === 'heading' ? heading : body
+   272→
+   273→  const handleSelect = (id: string | null) => {
+   274→    if (slot === 'heading') onHeadingChange(id)
+   275→    else onBodyChange(id)
+   276→  }
+   277→
+   278→  const headingFont = getMentorFont(heading)
+   279→  const bodyFont = getMentorFont(body)
+   280→
+   281→  return (
+   282→    <div className="flex flex-col gap-4">
+   283→      <div>
+   284→        <p className="flex items-center gap-1.5 text-sm font-semibold text-stone-900">
+   285→          <Type className="size-4 text-emerald-700" aria-hidden /> Tipografia da sua página
+   286→        </p>
+   287→        <p className="mt-0.5 text-xs text-muted-foreground">
+   288→          Escolha a fonte do seu nome e títulos e a fonte das descrições — dá identidade à sua
+   289→          página pública. As fontes só são carregadas quando usadas (nada de página pesada).
+   290→        </p>
+   291→      </div>
+   292→
+   293→      {/* Prévia ao vivo */}
+   294→      <div
+   295→        className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm"
+   296→        aria-label="Prévia da sua página com as fontes escolhidas"
+   297→      >
+   298→        <div className="h-14 w-full" style={avatarGradient(mentorName)} aria-hidden />
+   299→        <div className="px-4 pb-4 pt-3">
+   300→          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Prévia</p>
+   301→          <p
+   302→            className="mt-1 text-xl font-extrabold tracking-tight text-stone-900"
+   303→            style={headingFontStyle(heading)}
+   304→          >
+   305→            {mentorName}
+   306→          </p>
+   307→          <p className="mt-0.5 text-xs font-medium text-stone-600" style={bodyFontStyle(body)}>
+   308→            Mentor verificado · Especialista na área
+   309→          </p>
+   310→          <p
+   311→            className="mt-2 line-clamp-2 text-xs leading-relaxed text-stone-500"
+   312→            style={bodyFontStyle(body)}
+   313→          >
+   314→            É assim que suas descrições serão exibidas para os alunos: contando sua metodologia,
+   315→            seu público e os resultados que você entrega em cada mentoria.
+   316→          </p>
+   317→          {(headingFont || bodyFont) && (
+   318→            <p className="mt-2 flex flex-wrap gap-1.5 text-[10px] text-stone-400">
+   319→              {headingFont && <span>Títulos: {headingFont.label}</span>}
+   320→              {bodyFont && <span>· Textos: {bodyFont.label}</span>}
+   321→            </p>
+   322→          )}
+   323→        </div>
+   324→      </div>
+   325→
+   326→      {/* Slot em que a seleção é aplicada */}
+   327→      <div
+   328→        role="radiogroup"
+   329→        aria-label="Aplicar fonte em"
+   330→        className="flex w-full max-w-sm rounded-full border border-stone-200 bg-stone-50 p-1"
+   331→      >
+   332→        {(Object.keys(FONT_SLOT_LABELS) as FontSlot[]).map((s) => (
+   333→          <button
+   334→            key={s}
+   335→            type="button"
+   336→            role="radio"
+   337→            aria-checked={slot === s}
+   338→            onClick={() => setSlot(s)}
+   339→            className={cn(
+   340→              'flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+   341→              slot === s ? 'bg-emerald-950 text-white shadow-sm' : 'text-stone-600 hover:text-stone-900',
+   342→            )}
+   343→          >
+   344→            {FONT_SLOT_LABELS[s]}
+   345→          </button>
+   346→        ))}
+   347→      </div>
+   348→
+   349→      {/* Filtro por categoria */}
+   350→      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filtrar fontes por estilo">
+   351→        {MENTOR_FONT_CATEGORIES.map((c) => (
+   352→          <button
+   353→            key={c.value}
+   354→            type="button"
+   355→            aria-pressed={category === c.value}
+   356→            onClick={() => setCategory(c.value)}
+   357→            className={cn(
+   358→              'rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+   359→              category === c.value
+   360→                ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+   361→                : 'border-stone-200 bg-white text-stone-500 hover:border-emerald-200 hover:text-emerald-700',
+   362→            )}
+   363→          >
+   364→            {c.label}
+   365→          </button>
+   366→        ))}
+   367→      </div>
+   368→
+   369→      {/* Grade de fontes */}
+   370→      <div
+   371→        className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4"
+   372→        role="listbox"
+   373→        aria-label={`Fontes para ${FONT_SLOT_LABELS[slot]}`}
+   374→      >
+   375→        {/* Opção padrão sempre visível */}
+   376→        <button
+   377→          type="button"
+   378→          onClick={() => handleSelect(null)}
+   379→          aria-pressed={activeId === null}
+   380→          aria-label="Selecionar fonte padrão da plataforma"
+   381→          className={cn(
+   382→            'relative flex flex-col items-start justify-center gap-1 rounded-xl border p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+   383→            activeId === null
+   384→              ? 'border-emerald-400 bg-emerald-50/40 ring-2 ring-emerald-500/30'
+   385→              : 'border-stone-200 bg-stone-50 hover:border-emerald-300',
+   386→          )}
+   387→        >
+   388→          {activeId === null && (
+   389→            <span className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-emerald-600 text-white">
+   390→              <Check className="size-3" aria-hidden />
+   391→            </span>
+   392→          )}
+   393→          <span className="text-2xl font-bold leading-none text-stone-400">Aa</span>
+   394→          <span className="text-xs font-medium text-stone-600">Padrão da plataforma</span>
+   395→        </button>
+   396→        {visible.map((f) => (
+   397→          <FontOptionCard
+   398→            key={f.id}
+   399→            font={f}
+   400→            activeHeading={heading === f.id}
+   401→            activeBody={body === f.id}
+   402→            onSelect={() => handleSelect(f.id)}
+   403→          />
+   404→        ))}
+   405→      </div>
+   406→      <p className="text-xs text-muted-foreground">
+   407→        Selecionando para:{' '}
+   408→        <span className="font-semibold text-stone-700">{FONT_SLOT_LABELS[slot]}</span> — troque o
+   409→        destino acima para definir a outra fonte.
+   410→      </p>
+   411→    </div>
+   412→  )
+   413→}
+   414→
+   415→// ---------- Formulário de perfil (criação e edição) ----------
+   416→
+   417→export interface ProfileFormValues {
+   418→  headline: string
+   419→  description: string
+   420→  categories: string[]
+   421→  hourlyRate: number
+   422→  experienceYears: number
+   423→  languages: string
+   424→  socials: SocialLinksDTO
+   425→  /** Foto do mentor (User.avatarUrl) — null remove a foto atual */
+   426→  avatarUrl?: string | null
+   427→  /** Capa do perfil público — null remove a capa atual */
+   428→  coverUrl?: string | null
+   429→  /** Tipografia da página pública (ids de src/lib/fonts.ts; null = padrão) */
+   430→  fontHeading?: string | null
+   431→  fontBody?: string | null
+   432→}
+   433→
+   434→interface ProfileFormErrors {
+   435→  headline?: string
+   436→  description?: string
+   437→  categories?: string
+   438→  hourlyRate?: string
+   439→  experienceYears?: string
+   440→}
+   441→
+   442→function MentorProfileForm({
+   443→  initial,
+   444→  submitLabel,
+   445→  onSubmit,
+   446→  mentorName,
+   447→}: {
+   448→  initial?: ProfileFormValues
+   449→  submitLabel: string
+   450→  onSubmit: (values: ProfileFormValues) => Promise<void>
+   451→  /** Nome usado como fallback do avatar (iniciais) */
+   452→  mentorName: string
+   453→}) {
+   454→  const [headline, setHeadline] = useState(initial?.headline ?? '')
+   455→  const [description, setDescription] = useState(initial?.description ?? '')
+   456→  const [categories, setCategories] = useState<string[]>(initial?.categories ?? [])
+   457→  const [hourlyRate, setHourlyRate] = useState(initial ? String(initial.hourlyRate) : '')
+   458→  const [experienceYears, setExperienceYears] = useState(initial ? String(initial.experienceYears) : '')
+   459→  const [languages, setLanguages] = useState(initial?.languages || 'Português')
+   460→  const [instagram, setInstagram] = useState(initial?.socials?.instagram ?? '')
+   461→  const [linkedin, setLinkedin] = useState(initial?.socials?.linkedin ?? '')
+   462→  const [github, setGithub] = useState(initial?.socials?.github ?? '')
+   463→  const [website, setWebsite] = useState(initial?.socials?.website ?? '')
+   464→  const [errors, setErrors] = useState<ProfileFormErrors>({})
+   465→  const [saving, setSaving] = useState(false)
+   466→  const [avatarUrl, setAvatarUrl] = useState<string | null>(initial?.avatarUrl ?? null)
+   467→  const [coverUrl, setCoverUrl] = useState<string | null>(initial?.coverUrl ?? null)
+   468→  const [fontHeading, setFontHeading] = useState<string | null>(initial?.fontHeading ?? null)
+   469→  const [fontBody, setFontBody] = useState<string | null>(initial?.fontBody ?? null)
+   470→  const [uploadingPhoto, setUploadingPhoto] = useState<'avatar' | 'cover' | null>(null)
+   471→  // Só envia no payload a foto que o usuário realmente mexeu: undefined = manter atual, null = remover
+   472→  const [photoTouched, setPhotoTouched] = useState<{ avatar: boolean; cover: boolean }>({
+   473→    avatar: false,
+   474→    cover: false,
+   475→  })
+   476→
+   477→  const toggleCategory = (category: string) => {
+   478→    setCategories((prev) =>
+   479→      prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category]
+   480→    )
+   481→    setErrors((prev) => ({ ...prev, categories: undefined }))
+   482→  }
+   483→
+   484→  const handlePhotoFile = async (kind: 'avatar' | 'cover', file: File | null | undefined) => {
+   485→    if (!file || uploadingPhoto) return
+   486→    setUploadingPhoto(kind)
+   487→    const url = await uploadImageFile(file)
+   488→    if (url) {
+   489→      if (kind === 'avatar') {
+   490→        setAvatarUrl(url)
+   491→        setPhotoTouched((prev) => ({ ...prev, avatar: true }))
+   492→      } else {
+   493→        setCoverUrl(url)
+   494→        setPhotoTouched((prev) => ({ ...prev, cover: true }))
+   495→      }
+   496→    }
+   497→    setUploadingPhoto(null)
+   498→  }
+   499→
+   500→  const validate = (): ProfileFormErrors => {
+   501→    const errs: ProfileFormErrors = {}
+   502→    if (headline.trim().length < 8) {
+   503→      errs.headline = 'O título deve ter pelo menos 8 caracteres.'
+   504→    }
+   505→    if (description.trim().length < 30) {
+   506→      errs.description = 'Descreva sua mentoria com pelo menos 30 caracteres.'
+   507→    }
+   508→    if (categories.length === 0) {
+   509→      errs.categories = 'Selecione pelo menos uma categoria.'
+   510→    }
+   511→    const rate = Number(hourlyRate)
+   512→    if (hourlyRate.trim() === '' || Number.isNaN(rate) || rate < 0) {
+   513→      errs.hourlyRate = 'Informe um valor válido por hora (maior ou igual a zero).'
+   514→    }
+   515→    const years = Number(experienceYears)
+   516→    if (experienceYears.trim() === '' || Number.isNaN(years) || years < 0) {
+   517→      errs.experienceYears = 'Informe seus anos de experiência.'
+   518→    }
+   519→    return errs
+   520→  }
+   521→
+   522→  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+   523→    event.preventDefault()
+   524→    const errs = validate()
+   525→    setErrors(errs)
+   526→    if (Object.values(errs).some(Boolean)) return
+   527→    setSaving(true)
+   528→    try {
+   529→      await onSubmit({
+   530→        headline: headline.trim(),
+   531→        description: description.trim(),
+   532→        categories,
+   533→        hourlyRate: Number(hourlyRate),
+   534→        experienceYears: Number(experienceYears),
+   535→        languages: languages.trim() || 'Português',
+   536→        socials: {
+   537→          instagram: instagram.trim() || undefined,
+   538→          linkedin: linkedin.trim() || undefined,
+   539→          github: github.trim() || undefined,
+   540→          website: website.trim() || undefined,
+   541→        },
+   542→        // undefined = não alterar no servidor; null = remover; string = definir
+   543→        avatarUrl: photoTouched.avatar ? avatarUrl : undefined,
+   544→        coverUrl: photoTouched.cover ? coverUrl : undefined,
+   545→        // Tipografia sempre enviada (null volta ao padrão da plataforma)
+   546→        fontHeading,
+   547→        fontBody,
+   548→      })
+   549→    } catch (err) {
+   550→      toast.error(err instanceof Error ? err.message : 'Não foi possível salvar o perfil.')
+   551→    } finally {
+   552→      setSaving(false)
+   553→    }
+   554→  }
+   555→
+   556→  return (
+   557→    <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-6" noValidate>
+   558→      {/* Fotos do perfil (capa + avatar) */}
+   559→      <div className="flex flex-col gap-4">
+   560→        <div>
+   561→          <p className="flex items-center gap-1.5 text-sm font-semibold text-stone-900">
+   562→            <Camera className="size-4 text-emerald-700" aria-hidden /> Fotos do perfil
+   563→          </p>
+   564→          <p className="mt-0.5 text-xs text-muted-foreground">
+   565→            Sua foto aparece no Explorar, nos cursos e na navbar. A capa aparece no topo do seu perfil
+   566→            público.
+   567→          </p>
+   568→        </div>
+   569→
+   570→        <div className="flex flex-col gap-2">
+   571→          {coverUrl ? (
+   572→            <div className="h-44 w-full overflow-hidden rounded-xl border border-stone-200 bg-stone-100 sm:h-52">
+   573→              <img src={coverUrl} alt="Capa do seu perfil" className="h-full w-full object-cover" />
+   574→            </div>
+   575→          ) : (
+   576→            <div className="flex h-44 w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-stone-300 bg-stone-50 sm:h-52">
+   577→              <ImagePlus className="size-6 text-stone-400" aria-hidden />
+   578→              <p className="text-xs text-stone-500">Capa 1440×720 recomendada — aparece em destaque no topo da sua página</p>
+   579→            </div>
+   580→          )}
+   581→          <div className="flex flex-wrap items-center gap-2">
+   582→            {uploadingPhoto !== null ? (
+   583→              <Button type="button" size="sm" variant="outline" disabled>
+   584→                {uploadingPhoto === 'cover' ? 'Enviando...' : 'Enviar capa'}
+   585→              </Button>
+   586→            ) : (
+   587→              <Button type="button" size="sm" variant="outline" asChild>
+   588→                <Label htmlFor="mentor-cover-upload" className="cursor-pointer">
+   589→                  Enviar capa
+   590→                </Label>
+   591→              </Button>
+   592→            )}
+   593→            {coverUrl ? (
+   594→              <Button
+   595→                type="button"
+   596→                size="sm"
+   597→                variant="ghost"
+   598→                disabled={uploadingPhoto !== null}
+   599→                onClick={() => {
+   600→                  setCoverUrl(null)
+   601→                  setPhotoTouched((prev) => ({ ...prev, cover: true }))
+   602→                }}
+   603→              >
+   604→                Remover
+   605→              </Button>
+   606→            ) : null}
+   607→            <input
+   608→              id="mentor-cover-upload"
+   609→              type="file"
+   610→              accept="image/*"
+   611→              className="hidden"
+   612→              tabIndex={-1}
+   613→              onChange={(event) => {
+   614→                void handlePhotoFile('cover', event.target.files?.[0])
+   615→                event.target.value = ''
+   616→              }}
+   617→            />
+   618→          </div>
+   619→        </div>
+   620→
+   621→        <div className="flex flex-wrap items-center gap-4">
+   622→          <Avatar name={mentorName} src={avatarUrl} size="xl" />
+   623→          <div className="flex flex-wrap items-center gap-2">
+   624→            {uploadingPhoto !== null ? (
+   625→              <Button type="button" size="sm" variant="outline" disabled>
+   626→                {uploadingPhoto === 'avatar' ? 'Enviando...' : 'Enviar foto'}
+   627→              </Button>
+   628→            ) : (
+   629→              <Button type="button" size="sm" variant="outline" asChild>
+   630→                <Label htmlFor="mentor-avatar-upload" className="cursor-pointer">
+   631→                  Enviar foto
+   632→                </Label>
+   633→              </Button>
+   634→            )}
+   635→            {avatarUrl ? (
+   636→              <Button
+   637→                type="button"
+   638→                size="sm"
+   639→                variant="ghost"
+   640→                disabled={uploadingPhoto !== null}
+   641→                onClick={() => {
+   642→                  setAvatarUrl(null)
+   643→                  setPhotoTouched((prev) => ({ ...prev, avatar: true }))
+   644→                }}
+   645→              >
+   646→                Remover
+   647→              </Button>
+   648→            ) : null}
+   649→            <input
+   650→              id="mentor-avatar-upload"
+   651→              type="file"
+   652→              accept="image/*"
+   653→              className="hidden"
+   654→              tabIndex={-1}
+   655→              onChange={(event) => {
+   656→                void handlePhotoFile('avatar', event.target.files?.[0])
+   657→                event.target.value = ''
+   658→              }}
+   659→            />
+   660→          </div>
+   661→        </div>
+   662→      </div>
+   663→
+   664→      {/* Tipografia da página pública (nome/títulos + descrições) */}
+   665→      <Separator />
+   666→      <FontPicker
+   667→        heading={fontHeading}
+   668→        body={fontBody}
+   669→        onHeadingChange={setFontHeading}
+   670→        onBodyChange={setFontBody}
+   671→        mentorName={mentorName}
+   672→      />
+   673→      <Separator />
+   674→
+   675→      <div className="flex flex-col gap-2">
+   676→        <Label htmlFor="mentor-headline">Título profissional</Label>
+   677→        <Input
+   678→          id="mentor-headline"
+   679→          value={headline}
+   680→          onChange={(event) => setHeadline(event.target.value)}
+   681→          placeholder="Ex.: Engenheiro de Software Sênior · Ex-Nubank"
+   682→          aria-invalid={Boolean(errors.headline)}
+   683→        />
+   684→        {errors.headline ? (
+   685→          <p className="text-xs text-rose-600">{errors.headline}</p>
+   686→        ) : (
+   687→          <p className="text-xs text-muted-foreground">
+   688→            Uma frase curta que resume quem você é e o que faz.
+   689→          </p>
+   690→        )}
+   691→      </div>
+   692→
+   693→      <div className="flex flex-col gap-2">
+   694→        <Label htmlFor="mentor-description">Como funciona sua mentoria</Label>
+   695→        <Textarea
+   696→          id="mentor-description"
+   697→          rows={6}
+   698→          value={description}
+   699→          onChange={(event) => setDescription(event.target.value)}
+   700→          placeholder="Conte como você trabalha: o que o aluno recebe, como são as sessões e quais resultados você pode ajudar a alcançar..."
+   701→          aria-invalid={Boolean(errors.description)}
+   702→        />
+   703→        {errors.description ? (
+   704→          <p className="text-xs text-rose-600">{errors.description}</p>
+   705→        ) : (
+   706→          <p className="text-xs text-muted-foreground">
+   707→            Detalhe sua metodologia, público ideal e o que o aluno leva de cada sessão (mínimo 30 caracteres).
+   708→          </p>
+   709→        )}
+   710→      </div>
+   711→
+   712→      <div className="flex flex-col gap-2">
+   713→        <Label>Áreas de atuação</Label>
+   714→        <div className="flex flex-wrap gap-2" role="group" aria-label="Categorias de atuação">
+   715→          {CATEGORIES.map((category) => {
+   716→            const selected = categories.includes(category)
+   717→            return (
+   718→              <button
+   719→                key={category}
+   720→                type="button"
+   721→                aria-pressed={selected}
+   722→                onClick={() => toggleCategory(category)}
+   723→                className={cn(
+   724→                  'rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-emerald-600',
+   725→                  selected
+   726→                    ? 'border-emerald-600 bg-emerald-600 text-white'
+   727→                    : 'border-stone-300 bg-white text-stone-700 hover:border-emerald-400 hover:text-emerald-700'
+   728→                )}
+   729→              >
+   730→                {category}
+   731→              </button>
+   732→            )
+   733→          })}
+   734→        </div>
+   735→        {errors.categories ? <p className="text-xs text-rose-600">{errors.categories}</p> : null}
+   736→      </div>
+   737→
+   738→      <div className="grid gap-6 sm:grid-cols-2">
+   739→        <div className="flex flex-col gap-2">
+   740→          <Label htmlFor="mentor-rate">Valor da hora</Label>
+   741→          <div className="relative">
+   742→            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+   743→              R$
+   744→            </span>
+   745→            <Input
+   746→              id="mentor-rate"
+   747→              type="number"
+   748→              min={0}
+   749→              step={10}
+   750→              className="pl-10"
+   751→              value={hourlyRate}
+   752→              onChange={(event) => setHourlyRate(event.target.value)}
+   753→              placeholder="150"
+   754→              aria-invalid={Boolean(errors.hourlyRate)}
+   755→            />
+   756→          </div>
+   757→          {errors.hourlyRate ? (
+   758→            <p className="text-xs text-rose-600">{errors.hourlyRate}</p>
+   759→          ) : (
+   760→            <p className="text-xs text-muted-foreground">
+   761→              Valor por sessão de 1 hora. Você pode ajustar depois.
+   762→            </p>
+   763→          )}
+   764→        </div>
+   765→
+   766→        <div className="flex flex-col gap-2">
+   767→          <Label htmlFor="mentor-experience">Anos de experiência</Label>
+   768→          <Input
+   769→            id="mentor-experience"
+   770→            type="number"
+   771→            min={0}
+   772→            step={1}
+   773→            value={experienceYears}
+   774→            onChange={(event) => setExperienceYears(event.target.value)}
+   775→            placeholder="8"
+   776→            aria-invalid={Boolean(errors.experienceYears)}
+   777→          />
+   778→          {errors.experienceYears ? (
+   779→            <p className="text-xs text-rose-600">{errors.experienceYears}</p>
+   780→          ) : (
+   781→            <p className="text-xs text-muted-foreground">Tempo total de atuação na área.</p>
+   782→          )}
+   783→        </div>
+   784→      </div>
+   785→
+   786→      <div className="flex flex-col gap-2">
+   787→        <Label htmlFor="mentor-languages">Idiomas</Label>
+   788→        <Input
+   789→          id="mentor-languages"
+   790→          value={languages}
+   791→          onChange={(event) => setLanguages(event.target.value)}
+   792→          placeholder="Português"
+   793→        />
+   794→        <p className="text-xs text-muted-foreground">Idiomas em que você pode mentorar, separados por vírgula.</p>
+   795→      </div>
+   796→
+   797→      {/* Redes sociais e portfólio (opcional) */}
+   798→      <div className="flex flex-col gap-4 border-t border-stone-100 pt-5">
+   799→        <div>
+   800→          <p className="flex items-center gap-1.5 text-sm font-semibold text-stone-900">
+   801→            <AtSign className="size-4 text-emerald-700" aria-hidden /> Redes sociais e portfólio
+   802→          </p>
+   803→          <p className="mt-0.5 text-xs text-muted-foreground">
+   804→            Aparecem como cartões de prévia no seu perfil público.
+   805→          </p>
+   806→        </div>
+   807→        <div className="grid gap-4 sm:grid-cols-2">
+   808→          <div className="flex flex-col gap-2">
+   809→            <Label htmlFor="social-instagram">Instagram</Label>
+   810→            <div className="relative">
+   811→              <span
+   812→                aria-hidden
+   813→                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground"
+   814→              >
+   815→                @
+   816→              </span>
+   817→              <Input
+   818→                id="social-instagram"
+   819→                className="pl-8"
+   820→                value={instagram}
+   821→                onChange={(event) => setInstagram(event.target.value)}
+   822→                placeholder="seu.usuario"
+   823→                autoComplete="off"
+   824→              />
+   825→            </div>
+   826→          </div>
+   827→          <div className="flex flex-col gap-2">
+   828→            <Label htmlFor="social-linkedin">LinkedIn</Label>
+   829→            <Input
+   830→              id="social-linkedin"
+   831→              value={linkedin}
+   832→              onChange={(event) => setLinkedin(event.target.value)}
+   833→              placeholder="https://linkedin.com/in/voce"
+   834→              autoComplete="off"
+   835→            />
+   836→          </div>
+   837→          <div className="flex flex-col gap-2">
+   838→            <Label htmlFor="social-github">GitHub</Label>
+   839→            <Input
+   840→              id="social-github"
+   841→              value={github}
+   842→              onChange={(event) => setGithub(event.target.value)}
+   843→              placeholder="seu.usuario"
+   844→              autoComplete="off"
+   845→            />
+   846→          </div>
+   847→          <div className="flex flex-col gap-2">
+   848→            <Label htmlFor="social-website">Site / Portfólio</Label>
+   849→            <Input
+   850→              id="social-website"
+   851→              value={website}
+   852→              onChange={(event) => setWebsite(event.target.value)}
+   853→              placeholder="https://seusite.com.br"
+   854→              autoComplete="off"
+   855→            />
+   856→          </div>
+   857→        </div>
+   858→      </div>
+   859→
+   860→      <div className="flex justify-end">
+   861→        <Button type="submit" disabled={saving} className="min-w-44">
+   862→          {saving ? 'Salvando...' : submitLabel}
+   863→        </Button>
+   864→      </div>
+   865→    </form>
+   866→  )
+   867→}
+   868→
+   869→// ---------- Editor de disponibilidade semanal ----------
+   870→
+   871→function AvailabilityEditor({
+   872→  initialSlots,
+   873→  onSave,
+   874→}: {
+   875→  initialSlots: AvailabilitySlotInput[]
+   876→  onSave: (slots: AvailabilitySlotInput[]) => Promise<void>
+   877→}) {
+   878→  const [slots, setSlots] = useState<AvailabilitySlotInput[]>(() =>
+   879→    [...initialSlots].sort((a, b) => a.weekday - b.weekday || a.startHour - b.startHour)
+   880→  )
+   881→  const [addingDay, setAddingDay] = useState<number | null>(null)
+   882→  const [newStart, setNewStart] = useState('09:00')
+   883→  const [newEnd, setNewEnd] = useState('12:00')
+   884→  const [saving, setSaving] = useState(false)
+   885→
+   886→  const openAdd = (weekday: number) => {
+   887→    setAddingDay(weekday)
+   888→    setNewStart('09:00')
+   889→    setNewEnd('12:00')
+   890→  }
+   891→
+   892→  const removeSlot = (weekday: number, startHour: number, endHour: number) => {
+   893→    setSlots((prev) =>
+   894→      prev.filter((s) => !(s.weekday === weekday && s.startHour === startHour && s.endHour === endHour))
+   895→    )
+   896→  }
+   897→
+   898→  const confirmAdd = () => {
+   899→    if (addingDay === null) return
+   900→    const startHour = labelToHour(newStart)
+   901→    const endHour = labelToHour(newEnd)
+   902→    if (endHour - startHour < 1) {
+   903→      toast.error('A faixa de horário deve ter pelo menos 1 hora de duração.')
+   904→      return
+   905→    }
+   906→    const conflicts = slots.some(
+   907→      (s) => s.weekday === addingDay && startHour < s.endHour && endHour > s.startHour
+   908→    )
+   909→    if (conflicts) {
+   910→      toast.error('Esta faixa conflita com um horário já cadastrado neste dia.')
+   911→      return
+   912→    }
+   913→    setSlots((prev) => [...prev, { weekday: addingDay, startHour, endHour }])
+   914→    setAddingDay(null)
+   915→  }
+   916→
+   917→  const handleSave = async () => {
+   918→    setSaving(true)
+   919→    try {
+   920→      const ordered = [...slots].sort((a, b) => a.weekday - b.weekday || a.startHour - b.startHour)
+   921→      await onSave(ordered)
+   922→    } finally {
+   923→      setSaving(false)
+   924→    }
+   925→  }
+   926→
+   927→  return (
+   928→    <div className="flex flex-col gap-4">
+   929→      <div className="flex flex-col divide-y divide-stone-200 rounded-lg border border-stone-200">
+   930→        {WEEKDAYS_FULL_PT.map((day, weekday) => {
+   931→          const daySlots = slots
+   932→            .filter((s) => s.weekday === weekday)
+   933→            .sort((a, b) => a.startHour - b.startHour)
+   934→          return (
+   935→            <div key={day} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+   936→              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+   937→                <span className="w-28 shrink-0 text-sm font-medium sm:w-32">{day}</span>
+   938→                {daySlots.length === 0 ? (
+   939→                  <span className="text-xs text-stone-400">Sem disponibilidade</span>
+   940→                ) : (
+   941→                  <span className="flex flex-wrap items-center gap-1.5">
+   942→                    {daySlots.map((s) => (
+   943→                      <Badge
+   944→                        key={`${s.weekday}-${s.startHour}-${s.endHour}`}
+   945→                        variant="outline"
+   946→                        className="gap-1 border-emerald-200 bg-emerald-50 py-1 text-emerald-800"
+   947→                      >
+   948→                        {hourToLabel(s.startHour)} – {hourToLabel(s.endHour)}
+   949→                        <button
+   950→                          type="button"
+   951→                          aria-label={`Remover faixa de ${hourToLabel(s.startHour)} às ${hourToLabel(
+   952→                            s.endHour
+   953→                          )} na ${day.toLowerCase()}`}
+   954→                          onClick={() => removeSlot(s.weekday, s.startHour, s.endHour)}
+   955→                          className="rounded-full p-0.5 transition-colors hover:bg-emerald-200/70 focus-visible:outline-2 focus-visible:outline-emerald-600"
+   956→                        >
+   957→                          <X className="size-3" aria-hidden />
+   958→                        </button>
+   959→                      </Badge>
+   960→                    ))}
+   961→                  </span>
+   962→                )}
+   963→              </div>
+   964→
+   965→              <div className="shrink-0">
+   966→                {addingDay === weekday ? (
+   967→                  <div className="flex flex-wrap items-center gap-2">
+   968→                    <Select value={newStart} onValueChange={setNewStart}>
+   969→                      <SelectTrigger size="sm" className="w-24" aria-label="Início da faixa">
+   970→                        <SelectValue />
+   971→                      </SelectTrigger>
+   972→                      <SelectContent>
+   973→                        {TIME_OPTIONS.map((time) => (
+   974→                          <SelectItem key={time} value={time}>
+   975→                            {time}
+   976→                          </SelectItem>
+   977→                        ))}
+   978→                      </SelectContent>
+   979→                    </Select>
+   980→                    <span className="text-sm text-muted-foreground" aria-hidden>
+   981→                      →
+   982→                    </span>
+   983→                    <Select value={newEnd} onValueChange={setNewEnd}>
+   984→                      <SelectTrigger size="sm" className="w-24" aria-label="Fim da faixa">
+   985→                        <SelectValue />
+   986→                      </SelectTrigger>
+   987→                      <SelectContent>
+   988→                        {TIME_OPTIONS.map((time) => (
+   989→                          <SelectItem key={time} value={time}>
+   990→                            {time}
+   991→                          </SelectItem>
+   992→                        ))}
+   993→                      </SelectContent>
+   994→                    </Select>
+   995→                    <Button size="sm" onClick={confirmAdd}>
+   996→                      <Check className="size-4" aria-hidden /> Confirmar
+   997→                    </Button>
+   998→                    <Button size="sm" variant="ghost" onClick={() => setAddingDay(null)}>
+   999→                      Cancelar
+  1000→                    </Button>
+  1001→                  </div>
+  1002→                ) : (
+  1003→                  <Button
+  1004→                    size="sm"
+  1005→                    variant="ghost"
+  1006→                    onClick={() => openAdd(weekday)}
+  1007→                    aria-label={`Adicionar faixa de horário na ${day.toLowerCase()}`}
+  1008→                  >
+  1009→                    <Plus className="size-4" aria-hidden /> Adicionar
+  1010→                  </Button>
+  1011→                )}
+  1012→              </div>
+  1013→            </div>
+  1014→          )
+  1015→        })}
+  1016→      </div>
+  1017→
+  1018→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+  1019→        <p className="text-xs text-muted-foreground">
+  1020→          Alunos só podem agendar dentro destas faixas. Use intervalos de pelo menos 1 hora.
+  1021→        </p>
+  1022→        <Button onClick={() => void handleSave()} disabled={saving} className="shrink-0">
+  1023→          <Save className="size-4" aria-hidden /> {saving ? 'Salvando...' : 'Salvar disponibilidade'}
+  1024→        </Button>
+  1025→      </div>
+  1026→    </div>
+  1027→  )
+  1028→}
+  1029→
+  1030→// ---------- Gerenciador do mural de conteúdos ----------
+  1031→
+  1032→function ContentsManager({
+  1033→  contents,
+  1034→  userId,
+  1035→  onChanged,
+  1036→}: {
+  1037→  contents: ContentPostDTO[]
+  1038→  userId: string
+  1039→  onChanged: () => Promise<void>
+  1040→}) {
+  1041→  const [createOpen, setCreateOpen] = useState(false)
+  1042→  const [toDelete, setToDelete] = useState<ContentPostDTO | null>(null)
+  1043→  const [deleting, setDeleting] = useState(false)
+  1044→  const [title, setTitle] = useState('')
+  1045→  const [description, setDescription] = useState('')
+  1046→  const [type, setType] = useState<string>('ARTICLE')
+  1047→  const [level, setLevel] = useState<string>('INICIANTE')
+  1048→  const [durationMin, setDurationMin] = useState('45')
+  1049→  const [tags, setTags] = useState('')
+  1050→  const [saving, setSaving] = useState(false)
+  1051→  const [formErrors, setFormErrors] = useState<{
+  1052→    title?: string
+  1053→    description?: string
+  1054→    durationMin?: string
+  1055→  }>({})
+  1056→
+  1057→  const handleCreate = async () => {
+  1058→    const errs: typeof formErrors = {}
+  1059→    if (title.trim().length < 3) {
+  1060→      errs.title = 'Dê um título ao conteúdo (mínimo 3 caracteres).'
+  1061→    }
+  1062→    if (description.trim().length < 10) {
+  1063→      errs.description = 'Escreva uma breve descrição (mínimo 10 caracteres).'
+  1064→    }
+  1065→    const duration = Number(durationMin)
+  1066→    if (durationMin.trim() === '' || Number.isNaN(duration) || duration <= 0) {
+  1067→      errs.durationMin = 'Informe a duração em minutos.'
+  1068→    }
+  1069→    setFormErrors(errs)
+  1070→    if (Object.values(errs).some(Boolean)) return
+  1071→
+  1072→    setSaving(true)
+  1073→    try {
+  1074→      await api.createContent({
+  1075→        userId,
+  1076→        title: title.trim(),
+  1077→        description: description.trim(),
+  1078→        type,
+  1079→        level,
+  1080→        durationMin: duration,
+  1081→        tags: tags
+  1082→          .split(',')
+  1083→          .map((t) => t.trim())
+  1084→          .filter((t) => t.length > 0),
+  1085→      })
+  1086→      toast.success('Conteúdo publicado no mural!')
+  1087→      setCreateOpen(false)
+  1088→      setTitle('')
+  1089→      setDescription('')
+  1090→      setType('ARTICLE')
+  1091→      setLevel('INICIANTE')
+  1092→      setDurationMin('45')
+  1093→      setTags('')
+  1094→      await onChanged()
+  1095→    } catch (err) {
+  1096→      toast.error(err instanceof Error ? err.message : 'Não foi possível publicar o conteúdo.')
+  1097→    } finally {
+  1098→      setSaving(false)
+  1099→    }
+  1100→  }
+  1101→
+  1102→  const handleDelete = async () => {
+  1103→    if (!toDelete) return
+  1104→    setDeleting(true)
+  1105→    try {
+  1106→      await api.deleteContent(toDelete.id, userId)
+  1107→      toast.success('Conteúdo removido do mural.')
+  1108→      setToDelete(null)
+  1109→      await onChanged()
+  1110→    } catch (err) {
+  1111→      toast.error(err instanceof Error ? err.message : 'Não foi possível remover o conteúdo.')
+  1112→    } finally {
+  1113→      setDeleting(false)
+  1114→    }
+  1115→  }
+  1116→
+  1117→  return (
+  1118→    <Card>
+  1119→      <CardHeader>
+  1120→        <CardTitle className="flex items-center gap-2 text-lg">
+  1121→          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+  1122→            <Newspaper className="size-4" aria-hidden />
+  1123→          </span>
+  1124→          Mural de conteúdos
+  1125→        </CardTitle>
+  1126→        <CardDescription>
+  1127→          Publique artigos, vídeos, workshops e trilhas para mostrar sua expertise e atrair mais alunos.
+  1128→        </CardDescription>
+  1129→        <CardAction>
+  1130→          <Button size="sm" onClick={() => setCreateOpen(true)}>
+  1131→            <Plus className="size-4" aria-hidden /> Novo conteúdo
+  1132→          </Button>
+  1133→        </CardAction>
+  1134→      </CardHeader>
+  1135→      <CardContent className="flex flex-col gap-4">
+  1136→        {contents.length === 0 ? (
+  1137→          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-stone-300 py-10 text-center">
+  1138→            <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 text-stone-400 ring-1 ring-stone-200">
+  1139→              <BookOpen className="size-6" aria-hidden />
+  1140→            </div>
+  1141→            <h3 className="mt-2 text-base font-semibold">Nenhum conteúdo no mural</h3>
+  1142→            <p className="max-w-sm text-sm text-muted-foreground">
+  1143→              Compartilhe artigos, vídeos e trilhas para demonstrar sua experiência antes mesmo da primeira
+  1144→              sessão.
+  1145→            </p>
+  1146→          </div>
+  1147→        ) : (
+  1148→          <div className="max-h-96 space-y-3 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
+  1149→            {contents.map((content) => {
+  1150→              const meta = CONTENT_TYPE_META[content.type]
+  1151→              return (
+  1152→                <div
+  1153→                  key={content.id}
+  1154→                  className="flex items-start justify-between gap-3 rounded-lg border border-stone-200 bg-white p-4"
+  1155→                >
+  1156→                  <div className="min-w-0 flex-1">
+  1157→                    <div className="flex flex-wrap items-center gap-2">
+  1158→                      {meta ? (
+  1159→                        <Badge variant="outline" className={meta.className}>
+  1160→                          {meta.label}
+  1161→                        </Badge>
+  1162→                      ) : (
+  1163→                        <Badge variant="outline">{content.type}</Badge>
+  1164→                      )}
+  1165→                      <span className="text-sm text-stone-500">
+  1166→                        {LEVEL_LABELS[content.level] ?? content.level}
+  1167→                      </span>
+  1168→                      <span className="inline-flex items-center gap-1 text-sm text-stone-500">
+  1169→                        <Clock className="size-3.5" aria-hidden /> {content.durationMin} min
+  1170→                      </span>
+  1171→                    </div>
+  1172→                    <h4 className="mt-2 font-semibold leading-snug">{content.title}</h4>
+  1173→                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{content.description}</p>
+  1174→                    {content.tags.length > 0 ? (
+  1175→                      <div className="mt-2 flex flex-wrap gap-1.5">
+  1176→                        {content.tags.map((tag) => (
+  1177→                          <Badge key={tag} variant="outline" className="text-stone-500">
+  1178→                            #{tag}
+  1179→                          </Badge>
+  1180→                        ))}
+  1181→                      </div>
+  1182→                    ) : null}
+  1183→                  </div>
+  1184→                  <Button
+  1185→                    variant="ghost"
+  1186→                    size="icon"
+  1187→                    className="shrink-0 text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+  1188→                    aria-label={`Excluir conteúdo ${content.title}`}
+  1189→                    onClick={() => setToDelete(content)}
+  1190→                  >
+  1191→                    <Trash2 className="size-4" aria-hidden />
+  1192→                  </Button>
+  1193→                </div>
+  1194→              )
+  1195→            })}
+  1196→          </div>
+  1197→        )}
+  1198→      </CardContent>
+  1199→
+  1200→      {/* Dialog: novo conteúdo */}
+  1201→      <Dialog
+  1202→        open={createOpen}
+  1203→        onOpenChange={(open) => {
+  1204→          setCreateOpen(open)
+  1205→          if (open) setFormErrors({})
+  1206→        }}
+  1207→      >
+  1208→        <DialogContent className="sm:max-w-lg">
+  1209→          <DialogHeader>
+  1210→            <DialogTitle>Novo conteúdo</DialogTitle>
+  1211→            <DialogDescription>
+  1212→              Publique um conteúdo no seu mural para demonstrar sua expertise aos alunos.
+  1213→            </DialogDescription>
+  1214→          </DialogHeader>
+  1215→          <div className="flex flex-col gap-4">
+  1216→            <div className="flex flex-col gap-2">
+  1217→              <Label htmlFor="content-title">Título</Label>
+  1218→              <Input
+  1219→                id="content-title"
+  1220→                value={title}
+  1221→                onChange={(event) => setTitle(event.target.value)}
+  1222→                placeholder="Ex.: Como estruturar a arquitetura frontend de um produto"
+  1223→                aria-invalid={Boolean(formErrors.title)}
+  1224→              />
+  1225→              {formErrors.title ? <p className="text-xs text-rose-600">{formErrors.title}</p> : null}
+  1226→            </div>
+  1227→            <div className="flex flex-col gap-2">
+  1228→              <Label htmlFor="content-description">Descrição</Label>
+  1229→              <Textarea
+  1230→                id="content-description"
+  1231→                rows={4}
+  1232→                value={description}
+  1233→                onChange={(event) => setDescription(event.target.value)}
+  1234→                placeholder="Do que se trata e o que o aluno vai aprender com este conteúdo..."
+  1235→                aria-invalid={Boolean(formErrors.description)}
+  1236→              />
+  1237→              {formErrors.description ? (
+  1238→                <p className="text-xs text-rose-600">{formErrors.description}</p>
+  1239→              ) : null}
+  1240→            </div>
+  1241→            <div className="grid gap-4 sm:grid-cols-2">
+  1242→              <div className="flex flex-col gap-2">
+  1243→                <Label htmlFor="content-type">Tipo</Label>
+  1244→                <Select value={type} onValueChange={setType}>
+  1245→                  <SelectTrigger id="content-type" className="w-full">
+  1246→                    <SelectValue />
+  1247→                  </SelectTrigger>
+  1248→                  <SelectContent>
+  1249→                    {CONTENT_TYPES.map((t) => (
+  1250→                      <SelectItem key={t} value={t}>
+  1251→                        {CONTENT_TYPE_META[t]?.label ?? t}
+  1252→                      </SelectItem>
+  1253→                    ))}
+  1254→                  </SelectContent>
+  1255→                </Select>
+  1256→              </div>
+  1257→              <div className="flex flex-col gap-2">
+  1258→                <Label htmlFor="content-level">Nível</Label>
+  1259→                <Select value={level} onValueChange={setLevel}>
+  1260→                  <SelectTrigger id="content-level" className="w-full">
+  1261→                    <SelectValue />
+  1262→                  </SelectTrigger>
+  1263→                  <SelectContent>
+  1264→                    {CONTENT_LEVELS.map((l) => (
+  1265→                      <SelectItem key={l} value={l}>
+  1266→                        {LEVEL_LABELS[l] ?? l}
+  1267→                      </SelectItem>
+  1268→                    ))}
+  1269→                  </SelectContent>
+  1270→                </Select>
+  1271→              </div>
+  1272→            </div>
+  1273→            <div className="grid gap-4 sm:grid-cols-2">
+  1274→              <div className="flex flex-col gap-2">
+  1275→                <Label htmlFor="content-duration">Duração (min)</Label>
+  1276→                <Input
+  1277→                  id="content-duration"
+  1278→                  type="number"
+  1279→                  min={5}
+  1280→                  step={5}
+  1281→                  value={durationMin}
+  1282→                  onChange={(event) => setDurationMin(event.target.value)}
+  1283→                  aria-invalid={Boolean(formErrors.durationMin)}
+  1284→                />
+  1285→                {formErrors.durationMin ? (
+  1286→                  <p className="text-xs text-rose-600">{formErrors.durationMin}</p>
+  1287→                ) : null}
+  1288→              </div>
+  1289→              <div className="flex flex-col gap-2">
+  1290→                <Label htmlFor="content-tags">Tags</Label>
+  1291→                <Input
+  1292→                  id="content-tags"
+  1293→                  value={tags}
+  1294→                  onChange={(event) => setTags(event.target.value)}
+  1295→                  placeholder="react, arquitetura (separe por vírgula)"
+  1296→                />
+  1297→              </div>
+  1298→            </div>
+  1299→          </div>
+  1300→          <DialogFooter>
+  1301→            <Button variant="ghost" onClick={() => setCreateOpen(false)} disabled={saving}>
+  1302→              Cancelar
+  1303→            </Button>
+  1304→            <Button onClick={() => void handleCreate()} disabled={saving}>
+  1305→              {saving ? 'Publicando...' : 'Publicar conteúdo'}
+  1306→            </Button>
+  1307→          </DialogFooter>
+  1308→        </DialogContent>
+  1309→      </Dialog>
+  1310→
+  1311→      {/* AlertDialog: excluir conteúdo */}
+  1312→      <AlertDialog
+  1313→        open={toDelete !== null}
+  1314→        onOpenChange={(open) => {
+  1315→          if (!open) setToDelete(null)
+  1316→        }}
+  1317→      >
+  1318→        <AlertDialogContent>
+  1319→          <AlertDialogHeader>
+  1320→            <AlertDialogTitle>Excluir conteúdo?</AlertDialogTitle>
+  1321→            <AlertDialogDescription>
+  1322→              &quot;{toDelete?.title}&quot; será removido do mural permanentemente. Esta ação não pode ser
+  1323→              desfeita.
+  1324→            </AlertDialogDescription>
+  1325→          </AlertDialogHeader>
+  1326→          <AlertDialogFooter>
+  1327→            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+  1328→            <AlertDialogAction
+  1329→              className="bg-rose-600 text-white hover:bg-rose-700"
+  1330→              disabled={deleting}
+  1331→              onClick={(event) => {
+  1332→                event.preventDefault()
+  1333→                void handleDelete()
+  1334→              }}
+  1335→            >
+  1336→              {deleting ? 'Excluindo...' : 'Excluir'}
+  1337→            </AlertDialogAction>
+  1338→          </AlertDialogFooter>
+  1339→        </AlertDialogContent>
+  1340→      </AlertDialog>
+  1341→    </Card>
+  1342→  )
+  1343→}
+  1344→
+  1345→// ---------- Gerenciador de cursos ----------
+  1346→
+  1347→interface CourseFormErrors {
+  1348→  title?: string
+  1349→  description?: string
+  1350→  category?: string
+  1351→  price?: string
+  1352→}
+  1353→
+  1354→function CoursesManager({
+  1355→  userId,
+  1356→  onChanged,
+  1357→  onCoursesChange,
+  1358→}: {
+  1359→  userId: string
+  1360→  onChanged: () => Promise<void>
+  1361→  /** Notifica o pai com a lista de cursos (usada pelo gerador de links) */
+  1362→  onCoursesChange?: (courses: CourseListItemDTO[]) => void
+  1363→}) {
+  1364→  const [courses, setCourses] = useState<CourseListItemDTO[]>([])
+  1365→  const [loading, setLoading] = useState(true)
+  1366→  const [dialogOpen, setDialogOpen] = useState(false)
+  1367→  const [editing, setEditing] = useState<CourseListItemDTO | null>(null)
+  1368→  const [toDelete, setToDelete] = useState<CourseListItemDTO | null>(null)
+  1369→  const [deleting, setDeleting] = useState(false)
+  1370→  const [togglingId, setTogglingId] = useState<string | null>(null)
+  1371→  const [lessonsCourse, setLessonsCourse] = useState<CourseListItemDTO | null>(null)
+  1372→  const [lessonsOpen, setLessonsOpen] = useState(false)
+  1373→  const [coverUrl, setCoverUrl] = useState<string | null>(null)
+  1374→  const [uploadingCover, setUploadingCover] = useState(false)
+  1375→
+  1376→  const [title, setTitle] = useState('')
+  1377→  const [description, setDescription] = useState('')
+  1378→  const [category, setCategory] = useState<string>('')
+  1379→  const [level, setLevel] = useState<string>('INICIANTE')
+  1380→  const [price, setPrice] = useState('0')
+  1381→  const [mentorshipCount, setMentorshipCount] = useState('0')
+  1382→  const [saving, setSaving] = useState(false)
+  1383→  const [formErrors, setFormErrors] = useState<CourseFormErrors>({})
+  1384→
+  1385→  const fetchCourses = useCallback(async (): Promise<CourseListItemDTO[]> => {
+  1386→    const list = await api.listCourses({ mentorUserId: userId })
+  1387→    setCourses(list)
+  1388→    onCoursesChange?.(list)
+  1389→    return list
+  1390→  }, [userId, onCoursesChange])
+  1391→
+  1392→  useEffect(() => {
+  1393→    let active = true
+  1394→    fetchCourses()
+  1395→      .catch((err: unknown) => {
+  1396→        if (active) {
+  1397→          toast.error(err instanceof Error ? err.message : 'Não foi possível carregar seus cursos.')
+  1398→        }
+  1399→      })
+  1400→      .finally(() => {
+  1401→        if (active) setLoading(false)
+  1402→      })
+  1403→    return () => {
+  1404→      active = false
+  1405→    }
+  1406→  }, [fetchCourses])
+  1407→
+  1408→  /** Recarrega os cursos locais e os dados do perfil (contagens) no pai */
+  1409→  const refreshAll = useCallback(async () => {
+  1410→    await Promise.all([onChanged(), fetchCourses()])
+  1411→  }, [onChanged, fetchCourses])
+  1412→
+  1413→  const openCreate = () => {
+  1414→    setEditing(null)
+  1415→    setTitle('')
+  1416→    setDescription('')
+  1417→    setCategory('')
+  1418→    setLevel('INICIANTE')
+  1419→    setPrice('0')
+  1420→    setMentorshipCount('0')
+  1421→    setCoverUrl(null)
+  1422→    setFormErrors({})
+  1423→    setDialogOpen(true)
+  1424→  }
+  1425→
+  1426→  const openEdit = (course: CourseListItemDTO) => {
+  1427→    setEditing(course)
+  1428→    setTitle(course.title)
+  1429→    setDescription(course.description)
+  1430→    setCategory(course.category)
+  1431→    setLevel(course.level)
+  1432→    setPrice(String(course.price))
+  1433→    setMentorshipCount(String(course.mentorshipCount ?? 0))
+  1434→    setCoverUrl(course.coverUrl ?? null)
+  1435→    setFormErrors({})
+  1436→    setDialogOpen(true)
+  1437→  }
+  1438→
+  1439→  const handleCourseCoverFile = async (file: File | null | undefined) => {
+  1440→    if (!file || uploadingCover) return
+  1441→    setUploadingCover(true)
+  1442→    const url = await uploadImageFile(file)
+  1443→    if (url) setCoverUrl(url)
+  1444→    setUploadingCover(false)
+  1445→  }
+  1446→
+  1447→  const copyCourseLink = (course: CourseListItemDTO) => {
+  1448→    copyToClipboard(buildCourseUrl(course.id), 'Link de impulsionamento copiado!')
+  1449→  }
+  1450→
+  1451→  const handleSubmit = async () => {
+  1452→    const errs: CourseFormErrors = {}
+  1453→    if (title.trim().length < 5) {
+  1454→      errs.title = 'O título do curso precisa de ao menos 5 caracteres.'
+  1455→    }
+  1456→    if (description.trim().length < 30) {
+  1457→      errs.description = 'Descreva o curso com pelo menos 30 caracteres.'
+  1458→    }
+  1459→    if (!category) {
+  1460→      errs.category = 'Selecione a categoria do curso.'
+  1461→    }
+  1462→    const priceNum = Number(price)
+  1463→    if (price.trim() === '' || Number.isNaN(priceNum) || priceNum < 0) {
+  1464→      errs.price = 'Informe um preço válido (0 = gratuito).'
+  1465→    }
+  1466→    setFormErrors(errs)
+  1467→    if (Object.values(errs).some(Boolean)) return
+  1468→
+  1469→    setSaving(true)
+  1470→    try {
+  1471→      const mentorships = Math.max(0, Math.min(20, Math.round(Number(mentorshipCount) || 0)))
+  1472→      if (editing) {
+  1473→        await api.updateCourse(editing.id, {
+  1474→          userId,
+  1475→          title: title.trim(),
+  1476→          description: description.trim(),
+  1477→          category,
+  1478→          level,
+  1479→          price: priceNum,
+  1480→          coverUrl,
+  1481→          mentorshipCount: mentorships,
+  1482→        })
+  1483→        toast.success('Curso atualizado!')
+  1484→        setDialogOpen(false)
+  1485→        await refreshAll()
+  1486→      } else {
+  1487→        const created = await api.createCourse({
+  1488→          userId,
+  1489→          title: title.trim(),
+  1490→          description: description.trim(),
+  1491→          category,
+  1492→          level,
+  1493→          price: priceNum,
+  1494→          coverUrl,
+  1495→          mentorshipCount: mentorships,
+  1496→        })
+  1497→        toast.success('Curso criado! Agora adicione aulas.')
+  1498→        setDialogOpen(false)
+  1499→        const [, list] = await Promise.all([onChanged(), fetchCourses()])
+  1500→        const fresh = list.find((c) => c.id === created.id) ?? null
+  1501→        if (fresh) {
+  1502→          setLessonsCourse(fresh)
+  1503→          setLessonsOpen(true)
+  1504→        }
+  1505→      }
+  1506→    } catch (err) {
+  1507→      toast.error(err instanceof Error ? err.message : 'Não foi possível salvar o curso.')
+  1508→    } finally {
+  1509→      setSaving(false)
+  1510→    }
+  1511→  }
+  1512→
+  1513→  const togglePublish = async (course: CourseListItemDTO) => {
+  1514→    setTogglingId(course.id)
+  1515→    try {
+  1516→      await api.updateCourse(course.id, { userId, isPublished: !course.isPublished })
+  1517→      toast.success(
+  1518→        course.isPublished ? 'Curso movido para rascunho.' : 'Curso publicado! Ele já aparece no Explorar.'
+  1519→      )
+  1520→      await refreshAll()
+  1521→    } catch (err) {
+  1522→      toast.error(err instanceof Error ? err.message : 'Não foi possível atualizar o curso.')
+  1523→    } finally {
+  1524→      setTogglingId(null)
+  1525→    }
+  1526→  }
+  1527→
+  1528→  const handleDelete = async () => {
+  1529→    if (!toDelete) return
+  1530→    setDeleting(true)
+  1531→    try {
+  1532→      await api.deleteCourse(toDelete.id, userId)
+  1533→      toast.success('Curso excluído.')
+  1534→      setToDelete(null)
+  1535→      await refreshAll()
+  1536→    } catch (err) {
+  1537→      toast.error(err instanceof Error ? err.message : 'Não foi possível excluir o curso.')
+  1538→    } finally {
+  1539→      setDeleting(false)
+  1540→    }
+  1541→  }
+  1542→
+  1543→  return (
+  1544→    <Card>
+  1545→      <CardHeader>
+  1546→        <CardTitle className="flex items-center gap-2 text-lg">
+  1547→          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+  1548→            <GraduationCap className="size-4" aria-hidden />
+  1549→          </span>
+  1550→          Meus cursos
+  1551→        </CardTitle>
+  1552→        <CardDescription>
+  1553→          Crie cursos com aulas em vídeo ou texto e publique para os alunos se matricularem.
+  1554→        </CardDescription>
+  1555→        <CardAction>
+  1556→          <Button size="sm" onClick={openCreate}>
+  1557→            <Plus className="size-4" aria-hidden /> Novo curso
+  1558→          </Button>
+  1559→        </CardAction>
+  1560→      </CardHeader>
+  1561→      <CardContent className="flex flex-col gap-4">
+  1562→        {loading ? (
+  1563→          <div className="space-y-3">
+  1564→            <Skeleton className="h-28 rounded-lg" />
+  1565→            <Skeleton className="h-28 rounded-lg" />
+  1566→          </div>
+  1567→        ) : courses.length === 0 ? (
+  1568→          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-stone-300 py-10 text-center">
+  1569→            <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 text-stone-400 ring-1 ring-stone-200">
+  1570→              <GraduationCap className="size-6" aria-hidden />
+  1571→            </div>
+  1572→            <h3 className="mt-2 text-base font-semibold">Nenhum curso criado</h3>
+  1573→            <p className="max-w-sm text-sm text-muted-foreground">
+  1574→              Estruture suas aulas em um curso — em vídeo ou texto — e publique quando estiver pronto.
+  1575→            </p>
+  1576→          </div>
+  1577→        ) : (
+  1578→          <div className="max-h-96 space-y-3 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
+  1579→            {courses.map((course) => (
+  1580→              <div
+  1581→                key={course.id}
+  1582→                className="flex items-start justify-between gap-3 rounded-lg border border-stone-200 bg-white p-4"
+  1583→              >
+  1584→                {course.coverUrl ? (
+  1585→                  <img
+  1586→                    src={course.coverUrl}
+  1587→                    alt=""
+  1588→                    className="h-12 w-20 shrink-0 rounded-lg object-cover ring-1 ring-stone-200"
+  1589→                  />
+  1590→                ) : null}
+  1591→                <div className="min-w-0 flex-1">
+  1592→                  <div className="flex flex-wrap items-center gap-2">
+  1593→                    <Badge variant="outline" className="border-stone-200 text-stone-600">
+  1594→                      {course.category}
+  1595→                    </Badge>
+  1596→                    <Badge variant="outline" className="border-stone-200 text-stone-500">
+  1597→                      {LEVEL_LABELS[course.level] ?? course.level}
+  1598→                    </Badge>
+  1599→                    {course.isPublished ? (
+  1600→                      <Badge className="bg-emerald-100 text-emerald-800">Publicado</Badge>
+  1601→                    ) : (
+  1602→                      <Badge variant="secondary" className="bg-stone-100 text-stone-600">
+  1603→                        Rascunho
+  1604→                      </Badge>
+  1605→                    )}
+  1606→                  </div>
+  1607→                  <h4 className="mt-2 font-semibold leading-snug">{course.title}</h4>
+  1608→                  <p className="mt-1 text-sm text-muted-foreground">
+  1609→                    {course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'}
+  1610→                    {course.liveCount > 0 ? ` · ${course.liveCount} ao vivo` : ''} ·{' '}
+  1611→                    {course.price === 0 ? 'Gratuito' : currencyBRL(course.price)} · {course.studentCount}{' '}
+  1612→                    {course.studentCount === 1 ? 'aluno' : 'alunos'}
+  1613→                    {course.mentorshipCount > 0 ? ` · ${course.mentorshipCount} mentoria${course.mentorshipCount > 1 ? 's' : ''}` : ''}
+  1614→                  </p>
+  1615→                </div>
+  1616→                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+  1617→                  <Button
+  1618→                    variant="ghost"
+  1619→                    size="sm"
+  1620→                    className="text-stone-600"
+  1621→                    aria-label={`Copiar link de impulsionamento de ${course.title}`}
+  1622→                    onClick={() => copyCourseLink(course)}
+  1623→                  >
+  1624→                    <Link2 className="size-4" aria-hidden /> Link
+  1625→                  </Button>
+  1626→                  <Button
+  1627→                    variant="ghost"
+  1628→                    size="sm"
+  1629→                    className="text-stone-600"
+  1630→                    aria-label={`Gerenciar aulas de ${course.title}`}
+  1631→                    onClick={() => {
+  1632→                      setLessonsCourse(course)
+  1633→                      setLessonsOpen(true)
+  1634→                    }}
+  1635→                  >
+  1636→                    <ListVideo className="size-4" aria-hidden /> Aulas
+  1637→                  </Button>
+  1638→                  <Button
+  1639→                    variant="ghost"
+  1640→                    size="icon"
+  1641→                    aria-label={`Editar curso ${course.title}`}
+  1642→                    onClick={() => openEdit(course)}
+  1643→                  >
+  1644→                    <Pencil className="size-4" aria-hidden />
+  1645→                  </Button>
+  1646→                  <Button
+  1647→                    variant="ghost"
+  1648→                    size="icon"
+  1649→                    disabled={togglingId === course.id}
+  1650→                    aria-label={
+  1651→                      course.isPublished ? `Despublicar curso ${course.title}` : `Publicar curso ${course.title}`
+  1652→                    }
+  1653→                    onClick={() => void togglePublish(course)}
+  1654→                  >
+  1655→                    {course.isPublished ? (
+  1656→                      <EyeOff className="size-4" aria-hidden />
+  1657→                    ) : (
+  1658→                      <Eye className="size-4" aria-hidden />
+  1659→                    )}
+  1660→                  </Button>
+  1661→                  <Button
+  1662→                    variant="ghost"
+  1663→                    size="icon"
+  1664→                    className="text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+  1665→                    aria-label={`Excluir curso ${course.title}`}
+  1666→                    onClick={() => setToDelete(course)}
+  1667→                  >
+  1668→                    <Trash2 className="size-4" aria-hidden />
+  1669→                  </Button>
+  1670→                </div>
+  1671→              </div>
+  1672→            ))}
+  1673→          </div>
+  1674→        )}
+  1675→      </CardContent>
+  1676→
+  1677→      {/* Dialog: novo/editar curso */}
+  1678→      <Dialog
+  1679→        open={dialogOpen}
+  1680→        onOpenChange={(open) => {
+  1681→          setDialogOpen(open)
+  1682→          if (open) setFormErrors({})
+  1683→        }}
+  1684→      >
+  1685→        <DialogContent className="sm:max-w-lg">
+  1686→          <DialogHeader>
+  1687→            <DialogTitle>{editing ? 'Editar curso' : 'Novo curso'}</DialogTitle>
+  1688→            <DialogDescription>
+  1689→              {editing
+  1690→                ? 'Atualize as informações do curso. As aulas são gerenciadas separadamente.'
+  1691→                : 'Crie a estrutura do curso. Depois de salvar, você adiciona as aulas.'}
+  1692→            </DialogDescription>
+  1693→          </DialogHeader>
+  1694→          <div className="flex flex-col gap-4">
+  1695→            <div className="flex flex-col gap-2">
+  1696→              <Label htmlFor="course-title">Título</Label>
+  1697→              <Input
+  1698→                id="course-title"
+  1699→                value={title}
+  1700→                onChange={(event) => setTitle(event.target.value)}
+  1701→                placeholder="Ex.: Arquitetura de Software na prática"
+  1702→                aria-invalid={Boolean(formErrors.title)}
+  1703→              />
+  1704→              {formErrors.title ? <p className="text-xs text-rose-600">{formErrors.title}</p> : null}
+  1705→            </div>
+  1706→            <div className="flex flex-col gap-2">
+  1707→              <Label htmlFor="course-description">Descrição</Label>
+  1708→              <Textarea
+  1709→                id="course-description"
+  1710→                rows={3}
+  1711→                value={description}
+  1712→                onChange={(event) => setDescription(event.target.value)}
+  1713→                placeholder="O que o aluno vai aprender e para quem é o curso..."
+  1714→                aria-invalid={Boolean(formErrors.description)}
+  1715→              />
+  1716→              {formErrors.description ? (
+  1717→                <p className="text-xs text-rose-600">{formErrors.description}</p>
+  1718→              ) : null}
+  1719→            </div>
+  1720→            <div className="grid gap-4 sm:grid-cols-2">
+  1721→              <div className="flex flex-col gap-2">
+  1722→                <Label htmlFor="course-category">Categoria</Label>
+  1723→                <Select
+  1724→                  value={category}
+  1725→                  onValueChange={(value) => {
+  1726→                    setCategory(value)
+  1727→                    setFormErrors((prev) => ({ ...prev, category: undefined }))
+  1728→                  }}
+  1729→                >
+  1730→                  <SelectTrigger id="course-category" className="w-full" aria-invalid={Boolean(formErrors.category)}>
+  1731→                    <SelectValue placeholder="Selecione..." />
+  1732→                  </SelectTrigger>
+  1733→                  <SelectContent>
+  1734→                    {CATEGORIES.map((c) => (
+  1735→                      <SelectItem key={c} value={c}>
+  1736→                        {c}
+  1737→                      </SelectItem>
+  1738→                    ))}
+  1739→                  </SelectContent>
+  1740→                </Select>
+  1741→                {formErrors.category ? <p className="text-xs text-rose-600">{formErrors.category}</p> : null}
+  1742→              </div>
+  1743→              <div className="flex flex-col gap-2">
+  1744→                <Label htmlFor="course-level">Nível</Label>
+  1745→                <Select value={level} onValueChange={setLevel}>
+  1746→                  <SelectTrigger id="course-level" className="w-full">
+  1747→                    <SelectValue />
+  1748→                  </SelectTrigger>
+  1749→                  <SelectContent>
+  1750→                    {CONTENT_LEVELS.map((l) => (
+  1751→                      <SelectItem key={l} value={l}>
+  1752→                        {LEVEL_LABELS[l] ?? l}
+  1753→                      </SelectItem>
+  1754→                    ))}
+  1755→                  </SelectContent>
+  1756→                </Select>
+  1757→              </div>
+  1758→            </div>
+  1759→            <div className="flex flex-col gap-2">
+  1760→              <Label htmlFor="course-price">Preço (R$)</Label>
+  1761→              <Input
+  1762→                id="course-price"
+  1763→                type="number"
+  1764→                min={0}
+  1765→                step={10}
+  1766→                value={price}
+  1767→                onChange={(event) => setPrice(event.target.value)}
+  1768→                aria-invalid={Boolean(formErrors.price)}
+  1769→              />
+  1770→              {formErrors.price ? (
+  1771→                <p className="text-xs text-rose-600">{formErrors.price}</p>
+  1772→              ) : (
+  1773→                <p className="text-xs text-muted-foreground">Deixe 0 para tornar o curso gratuito.</p>
+  1774→              )}
+  1775→            </div>
+  1776→            <div className="flex flex-col gap-2">
+  1777→              <Label htmlFor="course-mentorships">Mentorias 1:1 inclusas</Label>
+  1778→              <Input
+  1779→                id="course-mentorships"
+  1780→                type="number"
+  1781→                min={0}
+  1782→                max={20}
+  1783→                step={1}
+  1784→                value={mentorshipCount}
+  1785→                onChange={(event) => setMentorshipCount(event.target.value)}
+  1786→              />
+  1787→              <p className="text-xs text-muted-foreground">
+  1788→                Sessões de mentoria que o aluno pode agendar com você (0 = nenhuma).
+  1789→              </p>
+  1790→            </div>
+  1791→            <div className="flex flex-col gap-2">
+  1792→              <Label>Capa do curso</Label>
+  1793→              {coverUrl ? (
+  1794→                <div className="h-24 w-full overflow-hidden rounded-xl border border-stone-200 bg-stone-100">
+  1795→                  <img src={coverUrl} alt="Capa do curso" className="h-full w-full object-cover" />
+  1796→                </div>
+  1797→              ) : (
+  1798→                <div className="flex h-24 w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-stone-300 bg-stone-50">
+  1799→                  <ImagePlus className="size-5 text-stone-400" aria-hidden />
+  1800→                  <p className="text-xs text-stone-500">Capa 1280×720 recomendada</p>
+  1801→                </div>
+  1802→              )}
+  1803→              <div className="flex flex-wrap items-center gap-2">
+  1804→                {uploadingCover ? (
+  1805→                  <Button type="button" size="sm" variant="outline" disabled>
+  1806→                    Enviando...
+  1807→                  </Button>
+  1808→                ) : (
+  1809→                  <Button type="button" size="sm" variant="outline" asChild>
+  1810→                    <Label htmlFor="course-cover-upload" className="cursor-pointer">
+  1811→                      Enviar capa
+  1812→                    </Label>
+  1813→                  </Button>
+  1814→                )}
+  1815→                {coverUrl ? (
+  1816→                  <Button
+  1817→                    type="button"
+  1818→                    size="sm"
+  1819→                    variant="ghost"
+  1820→                    disabled={uploadingCover}
+  1821→                    onClick={() => setCoverUrl(null)}
+  1822→                  >
+  1823→                    Remover
+  1824→                  </Button>
+  1825→                ) : null}
+  1826→                <input
+  1827→                  id="course-cover-upload"
+  1828→                  type="file"
+  1829→                  accept="image/*"
+  1830→                  className="hidden"
+  1831→                  tabIndex={-1}
+  1832→                  onChange={(event) => {
+  1833→                    void handleCourseCoverFile(event.target.files?.[0])
+  1834→                    event.target.value = ''
+  1835→                  }}
+  1836→                />
+  1837→              </div>
+  1838→            </div>
+  1839→          </div>
+  1840→          <DialogFooter>
+  1841→            <Button variant="ghost" onClick={() => setDialogOpen(false)} disabled={saving}>
+  1842→              Cancelar
+  1843→            </Button>
+  1844→            <Button onClick={() => void handleSubmit()} disabled={saving}>
+  1845→              {saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Criar curso'}
+  1846→            </Button>
+  1847→          </DialogFooter>
+  1848→        </DialogContent>
+  1849→      </Dialog>
+  1850→
+  1851→      {/* Dialog: aulas do curso */}
+  1852→      {lessonsCourse && (
+  1853→        <LessonsManagerDialog
+  1854→          course={lessonsCourse}
+  1855→          userId={userId}
+  1856→          open={lessonsOpen}
+  1857→          onOpenChange={setLessonsOpen}
+  1858→          onChanged={refreshAll}
+  1859→        />
+  1860→      )}
+  1861→
+  1862→      {/* AlertDialog: excluir curso */}
+  1863→      <AlertDialog
+  1864→        open={toDelete !== null}
+  1865→        onOpenChange={(open) => {
+  1866→          if (!open) setToDelete(null)
+  1867→        }}
+  1868→      >
+  1869→        <AlertDialogContent>
+  1870→          <AlertDialogHeader>
+  1871→            <AlertDialogTitle>Excluir curso?</AlertDialogTitle>
+  1872→            <AlertDialogDescription>
+  1873→              &quot;{toDelete?.title}&quot; remove o curso, todas as aulas e o progresso dos alunos
+  1874→              permanentemente. Esta ação não pode ser desfeita.
+  1875→            </AlertDialogDescription>
+  1876→          </AlertDialogHeader>
+  1877→          <AlertDialogFooter>
+  1878→            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+  1879→            <AlertDialogAction
+  1880→              className="bg-rose-600 text-white hover:bg-rose-700"
+  1881→              disabled={deleting}
+  1882→              onClick={(event) => {
+  1883→                event.preventDefault()
+  1884→                void handleDelete()
+  1885→              }}
+  1886→            >
+  1887→              {deleting ? 'Excluindo...' : 'Excluir'}
+  1888→            </AlertDialogAction>
+  1889→          </AlertDialogFooter>
+  1890→        </AlertDialogContent>
+  1891→      </AlertDialog>
+  1892→    </Card>
+  1893→  )
+  1894→}
+  1895→
+  1896→// ---------- Dialog de aulas do curso ----------
+  1897→
+  1898→interface LessonFormErrors {
+  1899→  title?: string
+  1900→  durationMin?: string
+  1901→  material?: string
+  1902→  startsAt?: string
+  1903→  meetingUrl?: string
+  1904→}
+  1905→
+  1906→function LessonsManagerDialog({
+  1907→  course,
+  1908→  userId,
+  1909→  open,
+  1910→  onOpenChange,
+  1911→  onChanged,
+  1912→}: {
+  1913→  course: CourseListItemDTO
+  1914→  userId: string
+  1915→  open: boolean
+  1916→  onOpenChange: (open: boolean) => void
+  1917→  onChanged: () => Promise<void>
+  1918→}) {
+  1919→  const [lessons, setLessons] = useState<CourseLessonDTO[]>([])
+  1920→  const [themes, setThemes] = useState<CourseThemeDTO[]>([])
+  1921→  const [loading, setLoading] = useState(true)
+  1922→  const [adding, setAdding] = useState(false)
+  1923→  const [title, setTitle] = useState('')
+  1924→  const [durationMin, setDurationMin] = useState('15')
+  1925→  const [videoUrl, setVideoUrl] = useState('')
+  1926→  const [description, setDescription] = useState('')
+  1927→  const [content, setContent] = useState('')
+  1928→  const [kind, setKind] = useState<'RECORDED' | 'TEXT' | 'LIVE' | 'READING'>('RECORDED')
+  1929→  const [startsAt, setStartsAt] = useState('')
+  1930→  const [meetingUrl, setMeetingUrl] = useState('')
+  1931→  const [attachments, setAttachments] = useState<LessonAttachmentDTO[]>([])
+  1932→  const [uploadingAttachment, setUploadingAttachment] = useState(false)
+  1933→  const [saving, setSaving] = useState(false)
+  1934→  const [formErrors, setFormErrors] = useState<LessonFormErrors>({})
+  1935→  // Temas (módulos) do curso — seletor na nova aula + mover aula de tema
+  1936→  const [themeId, setThemeId] = useState('none')
+  1937→  const [showNewTheme, setShowNewTheme] = useState(false)
+  1938→  const [newThemeTitle, setNewThemeTitle] = useState('')
+  1939→  const [creatingTheme, setCreatingTheme] = useState(false)
+  1940→  const [movingId, setMovingId] = useState<string | null>(null)
+  1941→  // Quiz da aula — gerenciador de perguntas (correção automática)
+  1942→  const [quizLesson, setQuizLesson] = useState<CourseLessonDTO | null>(null)
+  1943→  const [quizOpen, setQuizOpen] = useState(false)
+  1944→  // Conteúdos da Biblioteca do mentor (para aulas READING)
+  1945→  const [libraryItems, setLibraryItems] = useState<LibraryItemDTO[] | null>(null)
+  1946→  const [libraryItemId, setLibraryItemId] = useState('')
+  1947→
+  1948→  const fetchLessons = useCallback(async () => {
+  1949→    const detail = await api.getCourse(course.id)
+  1950→    setLessons(detail.lessons)
+  1951→    setThemes([...(detail.themes ?? [])].sort((a, b) => a.order - b.order))
+  1952→  }, [course.id])
+  1953→
+  1954→  useEffect(() => {
+  1955→    if (!open) return
+  1956→    let active = true
+  1957→    setLoading(true)
+  1958→    setAdding(false)
+  1959→    setTitle('')
+  1960→    setDurationMin('15')
+  1961→    setVideoUrl('')
+  1962→    setDescription('')
+  1963→    setContent('')
+  1964→    setKind('RECORDED')
+  1965→    setStartsAt('')
+  1966→    setMeetingUrl('')
+  1967→    setAttachments([])
+  1968→    setFormErrors({})
+  1969→    setThemeId('none')
+  1970→    setShowNewTheme(false)
+  1971→    setNewThemeTitle('')
+  1972→    setLibraryItemId('')
+  1973→    setLibraryItems(null)
+  1974→    fetchLessons()
+  1975→      .catch((err: unknown) => {
+  1976→        if (active) {
+  1977→          toast.error(err instanceof Error ? err.message : 'Não foi possível carregar as aulas.')
+  1978→        }
+  1979→      })
+  1980→      .finally(() => {
+  1981→        if (active) setLoading(false)
+  1982→      })
+  1983→    // Conteúdos da Biblioteca do próprio mentor (inclui rascunhos)
+  1984→    api
+  1985→      .listLibrary({ authorUserId: userId })
+  1986→      .then((items) => {
+  1987→        if (active) setLibraryItems(items)
+  1988→      })
+  1989→      .catch(() => {
+  1990→        if (active) setLibraryItems([])
+  1991→      })
+  1992→    return () => {
+  1993→      active = false
+  1994→    }
+  1995→  }, [open, fetchLessons, userId])
+  1996→
+  1997→  const handleAdd = async () => {
+  1998→    const errs: LessonFormErrors = {}
+  1999→    if (title.trim().length < 3) {
+  2000→      errs.title = 'Dê um título à aula (mínimo 3 caracteres).'
+
+[showing lines 1-2000 of 4154; use offset=2001 with limit to continue reading]

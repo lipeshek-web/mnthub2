@@ -20,7 +20,9 @@ import {
   QrCode,
   Route,
   ShieldCheck,
+  Tag,
   Users,
+  X,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -36,7 +38,12 @@ import { api } from '@/lib/api'
 import { LEVEL_LABELS, avatarGradient, currencyBRL } from '@/lib/helpers'
 import { getAttribution, loadTrackingScripts, trackEvent } from '@/lib/tracking'
 import { useAppStore } from '@/lib/store'
-import type { CheckoutResultDTO, CourseDetailDTO, TrackDetailDTO } from '@/lib/types'
+import type {
+  CheckoutResultDTO,
+  CouponValidationDTO,
+  CourseDetailDTO,
+  TrackDetailDTO,
+} from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 type PaymentMethodValue = 'PIX' | 'CREDIT_CARD'
@@ -45,6 +52,10 @@ const METHOD_LABEL: Record<string, string> = {
   PIX: 'PIX',
   CREDIT_CARD: 'Cartão de crédito',
 }
+
+/** Moeda com 2 casas fixas (descontos costumam ter centavos: R$ 170,10) */
+const formatBRL = (value: number) =>
+  value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })
 
 /** Resumo normalizado do item em checkout (curso ou trilha) */
 interface ItemSummary {
@@ -81,6 +92,12 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
   const [paying, setPaying] = useState(false)
   const [freeEnrolling, setFreeEnrolling] = useState(false)
   const [order, setOrder] = useState<CheckoutResultDTO | null>(null)
+
+  // Cupom de desconto (apenas itens pagos)
+  const [couponInput, setCouponInput] = useState('')
+  const [couponApplied, setCouponApplied] = useState<CouponValidationDTO | null>(null)
+  const [couponLoading, setCouponLoading] = useState(false)
+  const [couponError, setCouponError] = useState<string | null>(null)
 
   // Guarda: begin_checkout apenas na primeira montagem bem-sucedida
   // (evita duplicidade em re-render/StrictMode)
@@ -138,7 +155,47 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
     void fetchSummary()
   }, [fetchSummary])
 
+  // Trocou o item do checkout: volta o cupom ao estado inicial
+  useEffect(() => {
+    setCouponInput('')
+    setCouponApplied(null)
+    setCouponError(null)
+    setCouponLoading(false)
+  }, [courseId, trackId])
+
   /* ---------- Ações ---------- */
+
+  const applyCoupon = async () => {
+    if (!item || couponLoading) return
+    const code = couponInput.trim().toUpperCase()
+    if (!code) {
+      setCouponApplied(null)
+      setCouponError('Digite um cupom para aplicar.')
+      return
+    }
+    setCouponLoading(true)
+    setCouponError(null)
+    try {
+      const result = await api.validateCoupon({
+        code,
+        courseId: item.kind === 'course' ? item.id : undefined,
+        trackId: item.kind === 'track' ? item.id : undefined,
+      })
+      setCouponApplied(result)
+      setCouponInput('')
+    } catch (err) {
+      setCouponApplied(null)
+      setCouponError(err instanceof Error ? err.message : 'Não foi possível validar o cupom.')
+    } finally {
+      setCouponLoading(false)
+    }
+  }
+
+  const removeCoupon = () => {
+    setCouponApplied(null)
+    setCouponInput('')
+    setCouponError(null)
+  }
 
   const doEnrollFree = async () => {
     if (!user || !item) return
@@ -175,6 +232,7 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
         courseId: item.kind === 'course' ? item.id : undefined,
         trackId: item.kind === 'track' ? item.id : undefined,
         paymentMethod,
+        couponCode: couponApplied?.code || undefined,
         attribution: getAttribution(),
       }
       const result = await api.checkout(payload)
@@ -191,6 +249,13 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Não foi possível concluir o pagamento.'
       toast.error(message)
+      // Cupom pode ter esgotado/expirado entre a validação e o pagamento:
+      // mostra o erro no fluxo normal e volta o cupom ao estado inicial.
+      if (/cupom/i.test(message)) {
+        setCouponApplied(null)
+        setCouponInput('')
+        setCouponError(message)
+      }
       // Matrícula já existia (409): recarrega para exibir o estado "já inscrito"
       if (message.includes('já tem acesso')) void fetchSummary()
     } finally {
@@ -310,7 +375,7 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-stone-500">Total</dt>
-                <dd className="font-extrabold text-emerald-700">{currencyBRL(order.order.amount)}</dd>
+                <dd className="font-extrabold text-emerald-700">{formatBRL(order.order.amount)}</dd>
               </div>
             </dl>
 
@@ -519,10 +584,105 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
 
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-medium text-stone-500">Total</span>
-                <span className="text-2xl font-extrabold tracking-tight text-stone-900">
-                  {currencyBRL(item.price)}
-                </span>
+                {couponApplied ? (
+                  <span className="text-2xl font-extrabold tracking-tight text-emerald-700">
+                    {formatBRL(couponApplied.finalPrice)}
+                  </span>
+                ) : (
+                  <span className="text-2xl font-extrabold tracking-tight text-stone-900">
+                    {currencyBRL(item.price)}
+                  </span>
+                )}
               </div>
+              {couponApplied && (
+                <div className="mt-1 flex items-center justify-between gap-3 text-sm">
+                  <span className="text-emerald-700">Desconto ({couponApplied.code})</span>
+                  <span className="font-bold text-emerald-700">
+                    −{formatBRL(couponApplied.discount)}
+                  </span>
+                </div>
+              )}
+
+              {/* ---- CUPOM DE DESCONTO (apenas itens pagos) ---- */}
+              {couponApplied ? (
+                <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className="rounded-md border border-emerald-300 bg-white px-2 py-0.5 font-mono text-xs font-bold text-emerald-800">
+                        {couponApplied.code}
+                      </span>
+                      <span className="truncate text-xs font-semibold text-emerald-800">
+                        {couponApplied.label}
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      aria-label="Remover cupom"
+                      onClick={removeCoupon}
+                      className="h-11 w-11 shrink-0 rounded-xl text-stone-400 hover:bg-white hover:text-stone-700"
+                    >
+                      <X aria-hidden className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <span className="text-sm text-stone-400 line-through">
+                      {formatBRL(item.price)}
+                    </span>
+                    <span className="text-xs font-medium text-emerald-700">com desconto</span>
+                    <span className="text-lg font-extrabold text-emerald-700">
+                      {formatBRL(couponApplied.finalPrice)}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    void applyCoupon()
+                  }}
+                  className="mt-3"
+                >
+                  <Label htmlFor="checkout-coupon" className="sr-only">
+                    Cupom de desconto
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <div className="relative min-w-0 flex-1">
+                      <Tag
+                        aria-hidden
+                        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400"
+                      />
+                      <Input
+                        id="checkout-coupon"
+                        value={couponInput}
+                        onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                        placeholder="Cupom de desconto"
+                        autoComplete="off"
+                        autoCapitalize="characters"
+                        spellCheck={false}
+                        className="h-11 rounded-xl pl-9 font-mono uppercase"
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      disabled={couponLoading}
+                      className="h-11 shrink-0 rounded-xl px-5 font-bold"
+                    >
+                      {couponLoading ? (
+                        <>
+                          <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> Verificando…
+                        </>
+                      ) : (
+                        'Aplicar'
+                      )}
+                    </Button>
+                  </div>
+                  <p aria-live="polite" className="mt-1.5 min-h-4 text-xs text-rose-600">
+                    {couponError}
+                  </p>
+                </form>
+              )}
+
               <p className="mt-2 text-xs text-stone-400">
                 Pagamento processado pela plataforma · demonstração
               </p>
@@ -674,7 +834,8 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
               </>
             ) : (
               <>
-                <Lock aria-hidden className="h-4 w-4" /> Pagar {currencyBRL(item.price)}
+                <Lock aria-hidden className="h-4 w-4" /> Pagar{' '}
+                {couponApplied ? formatBRL(couponApplied.finalPrice) : currencyBRL(item.price)}
               </>
             )}
           </Button>

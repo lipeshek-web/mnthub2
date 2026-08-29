@@ -31,6 +31,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         },
         themes: { orderBy: [{ order: 'asc' }, { title: 'asc' }] },
         enrollments: { select: { id: true } },
+        reviews: {
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+          include: { student: { select: { id: true, name: true, avatarUrl: true } } },
+        },
+        certificates: { select: { id: true, code: true, studentId: true } },
       },
     })
 
@@ -44,6 +50,21 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         : 0
 
     const isOwner = Boolean(userId && course.mentor.userId === userId)
+
+    // Nota do PRÓPRIO curso (avaliações de alunos)
+    const allRatings = course.reviews.map((r) => r.rating)
+    const courseRating =
+      allRatings.length > 0
+        ? Math.round((allRatings.reduce((a, r) => a + r, 0) / allRatings.length) * 10) / 10
+        : 0
+    const distribution = [5, 4, 3, 2, 1].map((star) => allRatings.filter((r) => r === star).length)
+
+    const myReview = userId
+      ? course.reviews.find((r) => r.student.id === userId) ?? null
+      : null
+    const myCertificate = userId
+      ? course.certificates.find((c) => c.studentId === userId) ?? null
+      : null
 
     let enrollment: { completedLessonIds: string[] } | null = null
     if (userId) {
@@ -94,6 +115,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       totalDurationMin: course.lessons.reduce((a, l) => a + l.durationMin, 0),
       liveCount: course.lessons.filter((l) => l.kind === 'LIVE').length,
       studentCount: course.enrollments.length,
+      rating: courseRating,
+      reviewCount: course.reviews.length,
       themes: course.themes.map((t) => ({
         id: t.id,
         title: t.title,
@@ -142,6 +165,20 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         }
       }),
       enrollment,
+      reviews: course.reviews.map((r) => ({
+        id: r.id,
+        rating: r.rating,
+        comment: r.comment,
+        createdAt: r.createdAt.toISOString(),
+        student: { id: r.student.id, name: r.student.name, avatarUrl: r.student.avatarUrl },
+      })),
+      reviewSummary: {
+        rating: courseRating,
+        count: course.reviews.length,
+        distribution,
+      },
+      myReview: myReview ? { rating: myReview.rating, comment: myReview.comment } : null,
+      certificateCode: myCertificate?.code ?? null,
     })
   } catch (err) {
     console.error('GET /api/courses/[id]', err)

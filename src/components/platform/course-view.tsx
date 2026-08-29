@@ -1,6 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import {
   AlertCircle,
   ArrowLeft,
@@ -15,6 +22,7 @@ import {
   Lock,
   PlayCircle,
   Radio,
+  Star,
   UserRound,
   Users,
 } from 'lucide-react'
@@ -24,6 +32,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Textarea } from '@/components/ui/textarea'
 import { Avatar, Stars } from '@/components/platform/avatar'
 import { api } from '@/lib/api'
 import {
@@ -37,7 +46,7 @@ import {
 } from '@/lib/helpers'
 import { loadTrackingScripts, trackEvent } from '@/lib/tracking'
 import { useAppStore } from '@/lib/store'
-import type { CourseDetailDTO, CourseLessonDTO } from '@/lib/types'
+import type { CourseDetailDTO, CourseLessonDTO, CourseReviewDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 export function CourseView({ courseId }: { courseId: string }) {
@@ -50,6 +59,9 @@ export function CourseView({ courseId }: { courseId: string }) {
 
   // Estado da inscrição (modo visitante)
   const [enrolling, setEnrolling] = useState(false)
+
+  // Estado de envio da avaliação do aluno (modo inscrito)
+  const [reviewSaving, setReviewSaving] = useState(false)
 
   // Tracking (GA4/Meta Pixel do mentor + view_item) — uma única vez por curso/montagem
   const trackedCourseRef = useRef<string | null>(null)
@@ -96,6 +108,62 @@ export function CourseView({ courseId }: { courseId: string }) {
       contentName: course.title,
     })
   }, [course])
+
+  /* ---------- Avaliação do curso (aluno inscrito) ---------- */
+
+  const handleSaveReview = async (rating: number, comment: string) => {
+    if (!user || !course) return
+    setReviewSaving(true)
+    try {
+      const res: { id: string; updated: boolean; createdAt?: string } =
+        await api.saveCourseReview(course.id, { userId: user.id, rating, comment })
+
+      const saved: CourseReviewDTO = {
+        id: res.id,
+        rating,
+        comment,
+        createdAt: res.createdAt ?? new Date().toISOString(),
+        student: { id: user.id, name: user.name, avatarUrl: user.avatarUrl ?? null },
+      }
+
+      // Reflete localmente: atualiza/insere a review na lista, recalcula o resumo
+      // (distribuição → média) e preenche myReview para pré-preencher o formulário.
+      setData((prev) => {
+        if (!prev) return prev
+        const list = [...(prev.reviews ?? [])]
+        const idx = list.findIndex((r) => r.student.id === user.id)
+        const oldRating = idx >= 0 ? list[idx].rating : null
+        if (idx >= 0) list[idx] = saved
+        else list.unshift(saved)
+
+        const dist = [...(prev.reviewSummary?.distribution ?? [0, 0, 0, 0, 0])]
+        if (oldRating != null) {
+          dist[5 - oldRating] = Math.max(0, (dist[5 - oldRating] ?? 0) - 1)
+        }
+        dist[5 - rating] = (dist[5 - rating] ?? 0) + 1
+        const total = dist.reduce((acc, n, i) => acc + n * (5 - i), 0)
+        const newCount = dist.reduce((acc, n) => acc + n, 0)
+        const avg = newCount > 0 ? Math.round((total / newCount) * 10) / 10 : 0
+
+        return {
+          ...prev,
+          reviews: list.slice(0, 20),
+          reviewSummary: { rating: avg, count: newCount, distribution: dist },
+          myReview: { rating, comment },
+          rating: avg,
+          reviewCount: newCount,
+        }
+      })
+
+      toast.success(
+        res.updated ? 'Avaliação atualizada!' : 'Avaliação enviada! Obrigada pela contribuição 💚'
+      )
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao salvar sua avaliação.')
+    } finally {
+      setReviewSaving(false)
+    }
+  }
 
   /* ---------- Inscrição (overview) ---------- */
 
@@ -184,6 +252,14 @@ export function CourseView({ courseId }: { courseId: string }) {
   if (isEnrolled || isOwner) {
     const done = course.enrollment?.completedLessonIds.length ?? 0
     const pct = course.lessonCount > 0 ? Math.round((done / course.lessonCount) * 100) : 0
+    const enr = course.enrollment
+    // Curso 100% concluído → destaque suave no card de avaliação
+    const allDone =
+      enr != null && lessons.length > 0 && enr.completedLessonIds.length >= lessons.length
+    // Remonta o formulário quando a avaliação salva do servidor muda (pré-preencher)
+    const reviewFormKey = course.myReview
+      ? `${course.id}-saved-${course.myReview.rating}-${course.myReview.comment.length}`
+      : `${course.id}-new`
     return (
       <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
         <Button
@@ -247,6 +323,18 @@ export function CourseView({ courseId }: { courseId: string }) {
           enrolling={false}
           isLoggedIn={Boolean(user)}
           enrolled
+          currentUserId={user?.id ?? null}
+          reviewFormNode={
+            enr ? (
+              <ReviewFormCard
+                key={reviewFormKey}
+                myReview={course.myReview}
+                completed={allDone}
+                saving={reviewSaving}
+                onSubmit={handleSaveReview}
+              />
+            ) : null
+          }
           onContinue={() => navigate({ name: 'classroom', courseId: course.id })}
           onEnrollClick={handleEnrollClick}
           onLogin={() => navigate({ name: 'auth', mode: 'login' })}
@@ -271,6 +359,7 @@ export function CourseView({ courseId }: { courseId: string }) {
         lessons={lessons}
         enrolling={enrolling}
         isLoggedIn={Boolean(user)}
+        currentUserId={user?.id ?? null}
         onContinue={
           course.enrollment || isOwner
             ? () => navigate({ name: 'classroom', courseId: course.id })
@@ -292,6 +381,8 @@ function OverviewContent({
   enrolling,
   isLoggedIn,
   enrolled = false,
+  currentUserId = null,
+  reviewFormNode = null,
   onContinue,
   onEnrollClick,
   onLogin,
@@ -302,6 +393,8 @@ function OverviewContent({
   enrolling: boolean
   isLoggedIn: boolean
   enrolled?: boolean
+  currentUserId?: string | null
+  reviewFormNode?: ReactNode
   onContinue?: () => void
   onEnrollClick: () => void
   onLogin: () => void
@@ -559,6 +652,15 @@ function OverviewContent({
             )}
           </section>
 
+          {/* Avaliações dos alunos (público — visitante e inscrito) */}
+          <CourseReviewsSection
+            reviews={course.reviews ?? []}
+            summary={
+              course.reviewSummary ?? { rating: 0, count: 0, distribution: [0, 0, 0, 0, 0] }
+            }
+            currentUserId={currentUserId}
+          />
+
           {/* Mentor */}
           <section
             aria-label="Mentor do curso"
@@ -592,7 +694,8 @@ function OverviewContent({
         </div>
 
         {/* ---------- SIDEBAR DE INSCRIÇÃO ---------- */}
-        <Card className="self-start rounded-2xl border-stone-200 p-6 shadow-none lg:sticky lg:top-6">
+        <div className="min-w-0 space-y-6 self-start lg:sticky lg:top-6">
+        <Card className="rounded-2xl border-stone-200 p-6 shadow-none">
           {enrolled ? (
             <>
               <p className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-emerald-800">
@@ -703,7 +806,223 @@ function OverviewContent({
             </>
           )}
         </Card>
+        {reviewFormNode}
+        </div>
       </div>
     </>
+  )
+}
+
+/* ==================== CARD "AVALIAR ESTE CURSO" (modo inscrito) ==================== */
+
+function ReviewFormCard({
+  myReview,
+  completed,
+  saving,
+  onSubmit,
+}: {
+  myReview: { rating: number; comment: string } | null
+  /** true quando o aluno concluiu 100% das aulas (destaque para avaliar) */
+  completed: boolean
+  saving: boolean
+  onSubmit: (rating: number, comment: string) => Promise<void>
+}) {
+  const [rating, setRating] = useState(myReview?.rating ?? 0)
+  const [hover, setHover] = useState(0)
+  const [comment, setComment] = useState(myReview?.comment ?? '')
+
+  // O componente é remontado (via key no pai) sempre que a avaliação salva do
+  // servidor muda — o estado inicial já nasce pré-preenchido com myReview.
+
+  const shown = hover || rating
+
+  const submit = () => {
+    if (rating < 1 || saving) return
+    void onSubmit(rating, comment.trim())
+  }
+
+  return (
+    <Card className="rounded-2xl border-stone-200 p-6 shadow-none">
+      <p className="text-lg font-extrabold tracking-tight text-stone-900">Avaliar este curso</p>
+
+      {completed && !myReview ? (
+        <p className="mt-2 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs font-semibold leading-relaxed text-amber-800">
+          <Star aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />
+          Você concluiu o curso! Deixe sua avaliação ⭐
+        </p>
+      ) : myReview ? (
+        <p className="mt-1 text-sm text-stone-500">
+          Sua avaliação está salva — você pode atualizá-la quando quiser.
+        </p>
+      ) : (
+        <p className="mt-1 text-sm text-stone-500">
+          Como foi sua experiência? Sua nota ajuda outros alunos.
+        </p>
+      )}
+
+      <div
+        role="radiogroup"
+        aria-label="Sua nota para o curso"
+        className="mt-4 flex items-center gap-1"
+        onMouseLeave={() => setHover(0)}
+      >
+        {[1, 2, 3, 4, 5].map((i) => {
+          const active = i <= shown
+          return (
+            <button
+              key={i}
+              type="button"
+              role="radio"
+              aria-checked={rating === i}
+              aria-label={`${i} ${i === 1 ? 'estrela' : 'estrelas'}`}
+              disabled={saving}
+              onClick={() => setRating(i)}
+              onMouseEnter={() => setHover(i)}
+              className="flex h-9 w-9 items-center justify-center rounded-full transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:pointer-events-none"
+            >
+              <Star
+                aria-hidden
+                className={cn(
+                  'h-6 w-6 transition-colors',
+                  active ? 'fill-amber-400 text-amber-400' : 'text-stone-300'
+                )}
+              />
+            </button>
+          )
+        })}
+        {rating > 0 ? (
+          <span className="ml-2 text-sm font-bold tabular-nums text-stone-700">
+            {rating.toFixed(1).replace('.', ',')}
+          </span>
+        ) : null}
+      </div>
+
+      <Textarea
+        value={comment}
+        onChange={(e) => setComment(e.target.value.slice(0, 800))}
+        maxLength={800}
+        rows={4}
+        placeholder="Conte como foi sua experiência (opcional)"
+        aria-label="Comentário da avaliação (opcional)"
+        className="mt-3 min-h-24 resize-none rounded-2xl border-stone-200 bg-white text-sm focus-visible:ring-emerald-600/30"
+      />
+      <p className="mt-1 text-right text-[11px] tabular-nums text-stone-400">{comment.length}/800</p>
+
+      <Button
+        onClick={submit}
+        disabled={rating < 1 || saving}
+        className="mt-2 h-11 w-full rounded-full bg-emerald-700 font-bold text-white hover:bg-emerald-800"
+      >
+        {saving ? 'Enviando…' : myReview ? 'Atualizar minha avaliação' : 'Enviar avaliação'}
+      </Button>
+    </Card>
+  )
+}
+
+/* ==================== SEÇÃO "AVALIAÇÕES DOS ALUNOS" (pública) ==================== */
+
+/** Data relativa/curta em pt-BR: "agora", "há 5 min", "ontem", "12 de mai. de 2025" */
+function reviewDateLabel(iso: string): string {
+  const d = new Date(iso)
+  const diffMin = Math.floor((Date.now() - d.getTime()) / 60000)
+  if (diffMin < 1) return 'agora'
+  if (diffMin < 60) return `há ${diffMin} min`
+  const hours = Math.floor(diffMin / 60)
+  if (hours < 24) return `há ${hours} h`
+  const days = Math.floor(hours / 24)
+  if (days === 1) return 'ontem'
+  if (days < 30) return `há ${days} dias`
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function CourseReviewsSection({
+  reviews,
+  summary,
+  currentUserId,
+}: {
+  reviews: CourseReviewDTO[]
+  summary: { rating: number; count: number; distribution: number[] }
+  currentUserId?: string | null
+}) {
+  const count = summary.count
+
+  return (
+    <section
+      aria-labelledby="avaliacoes-title"
+      className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6"
+    >
+      <h2 id="avaliacoes-title" className="text-lg font-extrabold tracking-tight text-stone-900">
+        Avaliações dos alunos
+      </h2>
+
+      {count === 0 ? (
+        <p className="mt-4 rounded-2xl border border-dashed border-stone-200 px-4 py-6 text-center text-sm text-stone-400">
+          Este curso ainda não tem avaliações — seja o primeiro a avaliar!
+        </p>
+      ) : (
+        <div className="mt-4 grid gap-6 sm:grid-cols-[220px_minmax(0,1fr)]">
+          {/* Resumo: nota grande + distribuição por estrela */}
+          <div className="self-start rounded-2xl bg-stone-50/80 p-4">
+            <p className="text-4xl font-extrabold tracking-tight text-stone-900">
+              {summary.rating.toFixed(1).replace('.', ',')}
+            </p>
+            <Stars rating={summary.rating} size={15} className="mt-1.5" />
+            <p className="mt-1 text-xs font-medium text-stone-500">
+              {count} {count === 1 ? 'avaliação' : 'avaliações'}
+            </p>
+            <div className="mt-4 space-y-1.5" role="group" aria-label="Distribuição das notas">
+              {summary.distribution.map((n, i) => {
+                const star = 5 - i
+                const pct = count > 0 ? Math.round((n / count) * 100) : 0
+                return (
+                  <div key={star} className="flex items-center gap-1.5">
+                    <span className="w-3 shrink-0 text-right text-[11px] font-semibold tabular-nums text-stone-500">
+                      {star}
+                    </span>
+                    <Star aria-hidden className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
+                    <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-stone-100">
+                      <div className="h-full rounded-full bg-amber-400" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="w-6 shrink-0 text-right text-[11px] tabular-nums text-stone-400">
+                      {n}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Lista de avaliações */}
+          <ul className="min-w-0 space-y-3">
+            {reviews.map((review) => (
+              <li key={review.id} className="rounded-2xl border border-stone-200 p-4">
+                <div className="flex items-center gap-3">
+                  <Avatar name={review.student.name} src={review.student.avatarUrl} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-bold text-stone-900">
+                        {review.student.name}
+                      </p>
+                      {review.student.id === currentUserId ? (
+                        <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                          Você
+                        </span>
+                      ) : null}
+                    </div>
+                    <Stars rating={review.rating} size={12} className="mt-0.5" />
+                  </div>
+                  <span className="shrink-0 text-xs text-stone-400">
+                    {reviewDateLabel(review.createdAt)}
+                  </span>
+                </div>
+                {review.comment ? (
+                  <p className="mt-2.5 text-sm leading-relaxed text-stone-700">{review.comment}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
   )
 }

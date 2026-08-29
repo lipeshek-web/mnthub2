@@ -1,18 +1,24 @@
 import type {
   AvailabilitySlotInput,
   BookingDTO,
+  CertificateDTO,
   CheckoutResultDTO,
   ContentPostDTO,
+  CouponDTO,
+  CouponValidationDTO,
   CourseDetailDTO,
   CourseLessonDTO,
   CourseListItemDTO,
+  CourseReviewsResponseDTO,
   CourseThemeDTO,
   EnrolledCourseDTO,
+  FinanceDTO,
   LibraryItemDTO,
   LibraryItemDetailDTO,
   LessonAttachmentDTO,
   LessonNoteDTO,
   LessonQuestionDTO,
+  NotificationsResponseDTO,
   QuizAttemptResultDTO,
   QuizDTO,
   XpStatsDTO,
@@ -409,15 +415,79 @@ export const api = {
   // LP pública do mentor (tráfego pago) — por slug
   getMentorBySlug: (slug: string) => request<MentorLpDTO>(`/api/mentors/by-slug/${encodeURIComponent(slug)}`),
 
-  // Checkout (pagamento demonstrativo) — curso ou trilha
+  // Checkout (pagamento demonstrativo) — curso ou trilha, com cupom opcional
   checkout: (data: {
     userId: string
     courseId?: string
     trackId?: string
     paymentMethod: 'PIX' | 'CREDIT_CARD'
+    couponCode?: string
   }) => request<CheckoutResultDTO>('/api/checkout', { method: 'POST', body: JSON.stringify(data) }),
 
   // Estatísticas de tráfego do mentor (dashboard)
   trackingStats: (mentorUserId: string) =>
     request<TrackingStatsDTO>(`/api/track/stats${qs({ mentorUserId })}`),
+
+  // Notificações in-app (sino do header)
+  listNotifications: (userId: string) =>
+    request<NotificationsResponseDTO>(`/api/notifications${qs({ userId })}`),
+  markNotificationsRead: (userId: string, ids?: string[]) =>
+    request<{ ok: boolean }>('/api/notifications', {
+      method: 'POST',
+      body: JSON.stringify({ userId, ids }),
+    }),
+
+  // Avaliações de curso
+  listCourseReviews: (courseId: string) =>
+    request<CourseReviewsResponseDTO>(`/api/courses/${courseId}/reviews`),
+  saveCourseReview: (
+    courseId: string,
+    data: { userId: string; rating: number; comment: string }
+  ) =>
+    request<{ id: string; updated: boolean }>(`/api/courses/${courseId}/reviews`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Certificado de conclusão (código público verificável)
+  issueCertificate: (courseId: string, userId: string) =>
+    request<{ code: string; issuedAt: string }>('/api/certificates', {
+      method: 'POST',
+      body: JSON.stringify({ courseId, userId }),
+    }),
+  getCertificate: (code: string) =>
+    request<CertificateDTO>(`/api/certificates/${encodeURIComponent(code)}`),
+
+  // Cupons de desconto (painel do mentor + checkout)
+  listCoupons: (userId: string) => request<CouponDTO[]>(`/api/coupons${qs({ userId })}`),
+  createCoupon: (data: {
+    userId: string
+    code: string
+    percentOff?: number | null
+    amountOff?: number | null
+    maxUses?: number | null
+    expiresAt?: string | null
+  }) => request<CouponDTO>('/api/coupons', { method: 'POST', body: JSON.stringify(data) }),
+  toggleCoupon: (data: { userId: string; id: string; isActive: boolean }) =>
+    request<{ id: string; isActive: boolean }>('/api/coupons', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteCoupon: (id: string, userId: string) =>
+    request<{ ok: boolean }>(`/api/coupons${qs({ userId, id })}`, { method: 'DELETE' }),
+  validateCoupon: (data: { code: string; courseId?: string; trackId?: string }) =>
+    request<CouponValidationDTO>('/api/coupons/validate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Financeiro do mentor
+  finance: (userId: string) => request<FinanceDTO>(`/api/mentors/finance${qs({ userId })}`),
+
+  // Duplicar curso (rascunho com temas/aulas/quizzes)
+  duplicateCourse: (courseId: string, userId: string) =>
+    request<{ id: string; title: string }>(`/api/courses/${courseId}/duplicate`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    }),
 }

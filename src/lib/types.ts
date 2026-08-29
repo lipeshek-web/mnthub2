@@ -236,6 +236,10 @@ export interface CourseListItemDTO {
   liveCount: number
   mentorshipCount: number // sessões de mentoria 1:1 incluídas
   studentCount: number
+  /** Nota média do curso (0 = sem avaliações de curso) */
+  rating: number
+  /** Nº de avaliações de alunos do curso */
+  reviewCount: number
   coverUrl?: string | null
   createdAt: string
 }
@@ -247,6 +251,13 @@ export interface CourseDetailDTO extends CourseListItemDTO {
   themes: CourseThemeDTO[]
   /** Preenchido quando userId é informado e o usuário está inscrito */
   enrollment: { completedLessonIds: string[] } | null
+  /** Avaliações do curso (públicas) + resumo — preenchido no detalhe */
+  reviews: CourseReviewDTO[]
+  reviewSummary: { rating: number; count: number; distribution: number[] }
+  /** Avaliação do próprio usuário (quando logado) */
+  myReview: { rating: number; comment: string } | null
+  /** Código do certificado do usuário neste curso (quando emitido) */
+  certificateCode: string | null
 }
 
 export interface CourseThemeDTO {
@@ -261,6 +272,112 @@ export interface EnrolledCourseDTO {
   enrolledAt: string
   completedLessonIds: string[]
   course: CourseListItemDTO
+}
+
+// ==================== NOTIFICAÇÕES ====================
+
+export type NotificationKind =
+  | 'booking_new'
+  | 'booking_confirmed'
+  | 'booking_cancelled'
+  | 'booking_completed'
+  | 'review_new'
+  | 'lesson_new'
+  | 'enrollment_new'
+  | 'course_review_new'
+  | 'purchase_new'
+  | string
+
+export interface NotificationDTO {
+  id: string
+  kind: NotificationKind
+  title: string
+  body?: string | null
+  linkView?: 'dashboard' | 'course' | 'onboarding' | null
+  refId?: string | null
+  read: boolean
+  createdAt: string
+}
+
+export interface NotificationsResponseDTO {
+  unreadCount: number
+  items: NotificationDTO[]
+}
+
+// ==================== AVALIAÇÕES DE CURSO ====================
+
+export interface CourseReviewDTO {
+  id: string
+  rating: number
+  comment: string
+  createdAt: string
+  student: { id: string; name: string; avatarUrl: string | null }
+}
+
+export interface CourseReviewsResponseDTO {
+  rating: number
+  count: number
+  distribution: number[] // [5★, 4★, 3★, 2★, 1★]
+  items: CourseReviewDTO[]
+}
+
+// ==================== CERTIFICADOS ====================
+
+export interface CertificateDTO {
+  code: string
+  studentName: string
+  courseTitle: string
+  category: string
+  mentorName: string
+  mentorHeadline: string
+  totalMin: number
+  issuedAt: string
+}
+
+// ==================== CUPONS ====================
+
+export interface CouponDTO {
+  id: string
+  code: string
+  percentOff: number | null
+  amountOff: number | null
+  maxUses: number | null
+  uses: number
+  expiresAt: string | null
+  isActive: boolean
+  createdAt: string
+}
+
+export interface CouponValidationDTO {
+  ok: boolean
+  code: string
+  label: string
+  discount: number
+  finalPrice: number
+}
+
+// ==================== FINANCEIRO DO MENTOR ====================
+
+export interface FinanceDTO {
+  totalRevenue: number
+  productsRevenue: number
+  sessionsRevenue: number
+  sessionsCount: number
+  last30Revenue: number
+  ordersCount: number
+  avgTicket: number
+  totalDiscount: number
+  monthSeries: { label: string; revenue: number; orders: number }[] // últimos 6 meses
+  byProduct: { id: string; title: string; revenue: number; orders: number }[]
+  recentOrders: {
+    id: string
+    itemTitle: string
+    amount: number
+    discount: number
+    couponCode: string | null
+    channel: string
+    createdAt: string
+  }[]
 }
 
 // ==================== TRILHAS ====================

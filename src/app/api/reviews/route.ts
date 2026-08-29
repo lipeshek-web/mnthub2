@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { notify } from '@/lib/notify'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,7 +21,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Escreva um comentário com pelo menos 10 caracteres.' }, { status: 400 })
     }
 
-    const booking = await db.booking.findUnique({ where: { id: bookingId } })
+    const booking = await db.booking.findUnique({
+      where: { id: bookingId },
+      include: { mentor: { include: { user: true } } },
+    })
     if (!booking) return NextResponse.json({ error: 'Sessão não encontrada.' }, { status: 404 })
     if (booking.menteeId !== userId)
       return NextResponse.json({ error: 'Apenas o mentorado pode avaliar a sessão.' }, { status: 403 })
@@ -33,6 +37,16 @@ export async function POST(req: NextRequest) {
 
     const review = await db.review.create({
       data: { bookingId, mentorId: booking.mentorId, authorId: userId, rating, comment },
+    })
+
+    // Notifica o mentor sobre a nova avaliação da sessão
+    await notify({
+      userId: booking.mentor.userId,
+      kind: 'review_new',
+      title: `Nova avaliação de ${rating} estrela${rating === 1 ? '' : 's'} ⭐`,
+      body: `${booking.topic} — "${comment.slice(0, 120)}"`,
+      linkView: 'dashboard',
+      refId: review.id,
     })
 
     return NextResponse.json({ id: review.id, ok: true }, { status: 201 })

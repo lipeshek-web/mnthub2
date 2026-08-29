@@ -19,6 +19,7 @@ export type AppView =
   | { name: 'for-mentors' }
   | { name: 'mentor-lp'; slug: string } // LP pública rastreável (tráfego pago)
   | { name: 'checkout'; courseId?: string; trackId?: string } // checkout de curso ou trilha pago
+  | { name: 'certificate'; code: string } // certificado público verificável (?cert=CODE)
 
 /** Aba ativa do Explorar: visão geral (tudo), mentores, cursos, trilhas ou biblioteca */
 export type ExploreTab = 'all' | 'mentors' | 'courses' | 'tracks' | 'library'

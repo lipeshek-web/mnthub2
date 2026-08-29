@@ -57,6 +57,9 @@ const SPOTLIGHT_INTERVAL_MS = 6000
 /** Itens visíveis por seção da aba "Tudo" antes do botão "Ver mais" */
 const ALL_VISIBLE = 8
 
+/** Nota média formatada no padrão pt-BR (vírgula): 4.5 → "4,5" */
+const ratingBR = (rating: number) => rating.toFixed(1).replace('.', ',')
+
 type ExpandedKey = 'mentors' | 'courses' | 'tracks' | 'lib' | 'authors'
 
 export function MarketplaceView() {
@@ -1705,6 +1708,15 @@ function CourseSpotlightCard({ course }: { course: CourseListItemDTO }) {
         </p>
 
         <div className="mt-3.5 flex flex-wrap gap-1.5">
+          {course.rating > 0 ? (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-100"
+              title={`${course.reviewCount} ${course.reviewCount === 1 ? 'avaliação' : 'avaliações'} do curso`}
+            >
+              <Star aria-hidden className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />
+              {ratingBR(course.rating)}
+            </span>
+          ) : null}
           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100">
             <BookOpen aria-hidden className="h-3.5 w-3.5" />
             {course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'}
@@ -1803,6 +1815,13 @@ const CourseCard = memo(function CourseCard({ course }: { course: CourseListItem
         </p>
 
         <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-stone-100 pt-3.5 text-xs text-stone-400">
+          {course.reviewCount > 0 ? (
+            <span className="inline-flex items-center gap-1 font-semibold text-stone-700">
+              <Star aria-hidden className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+              {ratingBR(course.rating)}
+              <span className="font-normal text-stone-400">({course.reviewCount})</span>
+            </span>
+          ) : null}
           <span className="inline-flex items-center gap-1">
             <BookOpen aria-hidden className="h-3.5 w-3.5" />
             {course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'}

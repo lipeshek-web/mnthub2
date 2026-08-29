@@ -9,6 +9,7 @@ import {
   CalendarCheck,
   CalendarClock,
   Check,
+  CheckCircle2,
   Clock,
   GraduationCap,
   Hand,
@@ -35,7 +36,6 @@ import {
 } from '@/components/ui/accordion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -237,7 +237,7 @@ export function LandingMenteeView() {
     }
   }, [tracksInView])
 
-  // "Continuar de onde parou": inscrições do usuário logado (seção oculta para convidados)
+  // "Continue aprendendo": inscrições do usuário logado (seção oculta para convidados)
   const userId = user?.id
   const [enrollments, setEnrollments] = useState<EnrolledCourseDTO[]>([])
   const [enrollmentsLoading, setEnrollmentsLoading] = useState(true)
@@ -307,8 +307,22 @@ export function LandingMenteeView() {
   // Top 3 trilhas (a API já devolve ordenada por popularidade)
   const topTracks = useMemo(() => tracks.slice(0, 3), [tracks])
 
-  // Até 3 inscrições para "Continuar de onde parou"
-  const continueItems = useMemo(() => enrollments.slice(0, 3), [enrollments])
+  // Até 3 inscrições para "Continue aprendendo" — prioridade: em andamento (0 < x < 100%),
+  // depois não iniciadas (0%), concluídas por último; recência (enrolledAt desc) dentro do grupo
+  const continueItems = useMemo(() => {
+    const byRecency = (a: EnrolledCourseDTO, b: EnrolledCourseDTO) =>
+      b.enrolledAt.localeCompare(a.enrolledAt) // ISO-8601: comparação lexicográfica segura
+    const isDone = (e: EnrolledCourseDTO) =>
+      e.course.lessonCount > 0 && e.completedLessonIds.length >= e.course.lessonCount
+    const started = enrollments
+      .filter((e) => !isDone(e) && e.completedLessonIds.length > 0)
+      .sort(byRecency)
+    const untouched = enrollments
+      .filter((e) => e.completedLessonIds.length === 0)
+      .sort(byRecency)
+    const done = enrollments.filter(isDone).sort(byRecency)
+    return [...started, ...untouched, ...done].slice(0, 3)
+  }, [enrollments])
 
   // Tiles do mock de vídeo: mentores reais + placeholders para fechar 4
   const previewMentors = mentors.slice(0, 4)
@@ -621,99 +635,52 @@ export function LandingMenteeView() {
         </div>
       </section>
 
-      {/* ---------- CONTINUAR DE ONDE PAROU (apenas logado com inscrições) ---------- */}
-      {user && (enrollmentsLoading || continueItems.length > 0) && (
+      {/* ---------- CONTINUE APRENDENDO (apenas logado com inscrições; silencioso enquanto carrega) ---------- */}
+      {user && !enrollmentsLoading && continueItems.length > 0 && (
         <section
           aria-labelledby="continue-title"
-          className="border-y border-stone-200/70 bg-stone-50/50 py-10"
+          className="border-y border-stone-200/70 bg-stone-50/50 py-8 sm:py-10"
         >
           <div className="mx-auto max-w-6xl px-4">
-            <div className="flex items-center gap-3">
-              <span
-                aria-hidden
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"
-              >
-                <PlayCircle className="h-5 w-5" />
-              </span>
-              <div className="min-w-0">
-                <h2
-                  id="continue-title"
-                  className="text-lg font-extrabold tracking-tight text-stone-900 sm:text-xl"
-                >
-                  Continuar de onde parou
-                </h2>
-                <p className="text-sm text-stone-500">
-                  Retome seus cursos exatamente onde parou.
-                </p>
-              </div>
-            </div>
+            <h2
+              id="continue-title"
+              className="text-sm font-extrabold uppercase tracking-widest text-stone-500"
+            >
+              Continue aprendendo
+            </h2>
+            <p className="mt-1 text-xs text-stone-400 sm:text-sm">
+              Retome seus cursos exatamente onde parou.
+            </p>
 
-            {enrollmentsLoading ? (
-              <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-28 rounded-2xl" />
-                ))}
-              </div>
-            ) : (
-              <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {continueItems.map((enrollment) => {
-                  const total = enrollment.course.lessonCount
-                  const percent =
-                    total > 0
-                      ? Math.round((enrollment.completedLessonIds.length / total) * 100)
-                      : 0
-                  return (
-                    <Card
-                      key={enrollment.courseId}
-                      className="flex gap-3 rounded-2xl border-stone-200/70 p-4 shadow-sm"
-                    >
-                      {enrollment.course.coverUrl ? (
-                        <img
-                          src={enrollment.course.coverUrl}
-                          alt={`Capa do curso ${enrollment.course.title}`}
-                          className="h-20 w-28 shrink-0 rounded-xl object-cover"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : (
-                        <div
-                          aria-hidden
-                          className="flex h-20 w-28 shrink-0 items-center justify-center rounded-xl"
-                          style={avatarGradient(enrollment.course.title)}
-                        >
-                          <BookOpen className="h-6 w-6 text-white/85" />
-                        </div>
-                      )}
-                      <div className="flex min-w-0 flex-1 flex-col">
-                        <h3 className="line-clamp-2 text-sm font-bold leading-snug text-stone-900">
-                          {enrollment.course.title}
-                        </h3>
-                        <div className="mt-auto pt-2">
-                          <Progress
-                            value={percent}
-                            className="h-1.5"
-                            aria-label={`${percent}% do curso concluído`}
-                          />
-                          <div className="mt-2 flex items-center justify-between gap-2">
-                            <span className="text-xs text-stone-500">{percent}% concluído</span>
-                            <Button
-                              size="sm"
-                              className="h-11 rounded-full px-4 text-xs font-bold"
-                              onClick={() =>
-                                navigate({ name: 'classroom', courseId: enrollment.courseId })
-                              }
-                              aria-label={`Continuar o curso ${enrollment.course.title}`}
-                            >
-                              Continuar
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  )
-                })}
-              </div>
-            )}
+            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {continueItems.map((enrollment) => (
+                <ContinueCourseCard key={enrollment.courseId} enrollment={enrollment} />
+              ))}
+
+              {/* CTA final discreto: vitrine de cursos */}
+              <button
+                type="button"
+                onClick={handleVerCursos}
+                className="group flex h-full min-h-40 min-w-0 flex-col items-start justify-center gap-1.5 rounded-2xl border border-dashed border-stone-300 p-4 text-left transition hover:border-emerald-400 hover:bg-emerald-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+              >
+                <span
+                  aria-hidden
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-stone-500 transition group-hover:bg-emerald-100 group-hover:text-emerald-700"
+                >
+                  <Library className="h-4 w-4" />
+                </span>
+                <span className="mt-1.5 inline-flex items-center gap-1.5 text-sm font-bold text-stone-700 transition group-hover:text-emerald-800">
+                  Explorar mais cursos
+                  <ArrowRight
+                    aria-hidden
+                    className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                  />
+                </span>
+                <span className="text-xs text-stone-400">
+                  Veja o catálogo completo na vitrine de cursos.
+                </span>
+              </button>
+            </div>
           </div>
         </section>
       )}
@@ -1557,6 +1524,75 @@ function FeaturedTrackCard({ track }: { track: TrackListItemDTO }) {
             aria-label={`Ver trilha ${track.title}`}
           >
             Ver trilha
+          </Button>
+        </div>
+      </div>
+    </article>
+  )
+}
+
+// ---------- Card de matrícula para "Continue aprendendo" ----------
+
+function ContinueCourseCard({ enrollment }: { enrollment: EnrolledCourseDTO }) {
+  const navigate = useAppStore((s) => s.navigate)
+  const { course, completedLessonIds } = enrollment
+  // Padrão do dashboard (EnrolledCourseCard): total piso 1 evita divisão por zero
+  const total = Math.max(course.lessonCount, 1)
+  const completed = completedLessonIds.length
+  const pct = Math.min(100, Math.round((completed / total) * 100))
+  const isDone = completed >= course.lessonCount && course.lessonCount > 0
+
+  return (
+    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg hover:shadow-stone-900/5">
+      {/* Capa: foto quando disponível; gradiente determinístico como fallback (padrão FeaturedCourseCard) */}
+      <div className="relative h-16 w-full shrink-0 bg-stone-100">
+        {course.coverUrl ? (
+          <img
+            src={course.coverUrl}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover"
+            loading="lazy"
+            decoding="async"
+          />
+        ) : (
+          <div aria-hidden className="absolute inset-0" style={avatarGradient(course.title)}>
+            <Library className="pointer-events-none absolute -bottom-1 right-1.5 h-10 w-10 text-white/20" />
+          </div>
+        )}
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col p-4">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="min-h-10 line-clamp-2 min-w-0 text-sm font-bold leading-snug text-stone-900">
+            {course.title}
+          </h3>
+          {isDone && (
+            <Badge className="rounded-full border-emerald-200 bg-emerald-100 text-[11px] font-semibold text-emerald-800">
+              <CheckCircle2 aria-hidden /> Concluído
+            </Badge>
+          )}
+        </div>
+        <p className="mt-1 truncate text-xs text-stone-500">por {course.mentor.name}</p>
+
+        <div className="mt-3">
+          <Progress value={pct} className="h-1.5" aria-label={`${pct}% do curso concluído`} />
+          <div className="mt-1.5 flex items-center justify-between gap-2 text-xs">
+            <span className="text-stone-500">
+              {completed} de {course.lessonCount} aulas concluídas
+            </span>
+            <span className="font-semibold text-stone-400">{pct}%</span>
+          </div>
+        </div>
+
+        <div className="mt-auto pt-3.5">
+          <Button
+            size="sm"
+            className="h-11 w-full rounded-full font-bold"
+            onClick={() => navigate({ name: 'course', courseId: enrollment.courseId })}
+            aria-label={`Continuar curso ${course.title}`}
+          >
+            {isDone ? 'Revisar' : 'Continuar'}
           </Button>
         </div>
       </div>

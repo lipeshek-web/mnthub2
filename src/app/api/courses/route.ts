@@ -13,6 +13,7 @@ function baseInclude() {
         reviews: { select: { rating: true } },
       },
     },
+    reviews: { select: { rating: true } },
     lessons: { select: { durationMin: true, kind: true } },
     enrollments: { select: { id: true } },
   }
@@ -37,6 +38,7 @@ function serialize(course: {
     user: { id: string; name: string; avatarUrl: string | null }
     reviews: { rating: number }[]
   }
+  reviews: { rating: number }[]
   lessons: { durationMin: number; kind: string }[]
   enrollments: { id: string }[]
 }) {
@@ -45,6 +47,11 @@ function serialize(course: {
       ? Math.round(
           (course.mentor.reviews.reduce((a, r) => a + r.rating, 0) / course.mentor.reviews.length) * 10
         ) / 10
+      : 0
+  // Nota do PRÓPRIO curso (avaliações de alunos)
+  const courseRating =
+    course.reviews.length > 0
+      ? Math.round((course.reviews.reduce((a, r) => a + r.rating, 0) / course.reviews.length) * 10) / 10
       : 0
   return {
     id: course.id,
@@ -71,6 +78,8 @@ function serialize(course: {
     liveCount: course.lessons.filter((l) => l.kind === 'LIVE').length,
     mentorshipCount: course.mentorshipCount,
     studentCount: course.enrollments.length,
+    rating: courseRating,
+    reviewCount: course.reviews.length,
   }
 }
 
@@ -118,7 +127,9 @@ export async function GET(req: NextRequest) {
         items.sort((a, b) => b.price - a.price)
         break
       case 'popular':
-        items.sort((a, b) => b.studentCount - a.studentCount || b.lessonCount - a.lessonCount)
+        items.sort(
+          (a, b) => b.studentCount - a.studentCount || b.rating - a.rating || b.lessonCount - a.lessonCount
+        )
         break
       case 'new':
         items.sort((a, b) => b.createdAt.localeCompare(a.createdAt))

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { nowNaive, parseNaive } from '@/lib/helpers'
+import { formatWhen, notify } from '@/lib/notify'
 
 export const dynamic = 'force-dynamic'
 
@@ -126,6 +127,16 @@ export async function POST(req: NextRequest) {
         meetingRoom: `mentorhub-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`,
         price: mentor.hourlyRate,
       },
+    })
+
+    // Notifica o mentor sobre a nova solicitação
+    await notify({
+      userId: mentor.userId,
+      kind: 'booking_new',
+      title: `Nova solicitação de sessão de ${mentee.name}`,
+      body: `Tema: ${topic} · ${formatWhen(startsAt)}`,
+      linkView: 'dashboard',
+      refId: booking.id,
     })
 
     return NextResponse.json(

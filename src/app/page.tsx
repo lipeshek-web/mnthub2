@@ -68,6 +68,10 @@ const CheckoutView = dynamic(
   () => import('@/components/platform/checkout').then((m) => m.CheckoutView),
   { ssr: false, loading: ViewLoading }
 )
+const CertificateView = dynamic(
+  () => import('@/components/platform/certificate-view').then((m) => m.CertificateView),
+  { ssr: false, loading: ViewLoading }
+)
 const LandingMentor = dynamic(() => import('@/components/platform/landing-mentor'), {
   ssr: false,
   loading: ViewLoading,
@@ -76,6 +80,28 @@ const LandingMentor = dynamic(() => import('@/components/platform/landing-mentor
 /** Views que exigem sessão ativa — convidado é levado ao login/cadastro */
 const AUTH_REQUIRED: AppViewNames[] = ['dashboard', 'onboarding', 'checkout', 'meeting']
 type AppViewNames = 'dashboard' | 'onboarding' | 'checkout' | 'meeting'
+
+/** Título da aba por view — renderizado como <title> hoisted no shell */
+function docTitleFor(viewName: string): string {
+  const titles: Record<string, string> = {
+    home: 'MentorHub — Aprenda com quem vive o que ensina',
+    'for-mentors': 'MentorHub — Para mentores e criadores',
+    marketplace: 'Explorar — MentorHub',
+    mentor: 'Perfil do mentor — MentorHub',
+    course: 'Curso — MentorHub',
+    classroom: 'Sala de aula — MentorHub',
+    track: 'Trilha de aprendizado — MentorHub',
+    reader: 'Leitor — MentorHub',
+    dashboard: 'Minhas sessões — MentorHub',
+    meeting: 'Sala de reunião — MentorHub',
+    onboarding: 'Painel do mentor — MentorHub',
+    'mentor-lp': 'MentorHub',
+    checkout: 'Checkout — MentorHub',
+    certificate: 'Certificado — MentorHub',
+    auth: 'Entrar — MentorHub',
+  }
+  return titles[viewName] ?? 'MentorHub — Plataforma de Mentorias 1:1'
+}
 
 /** Toaster também é carregado sob demanda (sonner entra no bundle só quando usado) */
 const LazyToaster = dynamic(
@@ -112,6 +138,7 @@ export default function Home() {
     const sp = new URLSearchParams(window.location.search)
     const mentorSlug = sp.get('mentor')?.trim()
     const courseId = sp.get('course')?.trim()
+    const certCode = sp.get('cert')?.trim()
 
     // 1. Atribuição (last non-direct click, janela de 7 dias)
     captureAttributionFromUrl(mentorSlug)
@@ -125,10 +152,12 @@ export default function Home() {
       navigate({ name: 'mentor-lp', slug: mentorSlug })
     } else if (courseId) {
       navigate({ name: 'course', courseId })
+    } else if (certCode) {
+      navigate({ name: 'certificate', code: certCode })
     }
     trackEvent('page_view')
 
-    // 4. Limpa utms da barra de endereço (preserva mentor/course p/ refresh)
+    // 4. Limpa utms da barra de endereço (preserva mentor/course/cert p/ refresh)
     cleanUrlParams()
   }, [])
 
@@ -154,6 +183,25 @@ export default function Home() {
 
   // Guard central: convidado não acessa views pessoais.
   const needsAuth = mounted && !user && AUTH_REQUIRED.includes(view.name as AppViewNames)
+
+  // Título da aba por view (SEO leve, histórico e abas compartilhadas).
+  // Reafirma por ~3s após cada troca: na carga inicial com navegação por URL
+  // (?course=/?cert=), a reconciliação de metadados do Next/React 19 reverte
+  // o document.title de forma assíncrona logo após o efeito.
+  useEffect(() => {
+    const want = docTitleFor(view.name)
+    const apply = () => {
+      if (document.title !== want) document.title = want
+    }
+    apply()
+    const iv = window.setInterval(apply, 500)
+    const stop = () => window.clearInterval(iv)
+    const t = window.setTimeout(stop, 3000)
+    return () => {
+      window.clearTimeout(t)
+      stop()
+    }
+  }, [view])
 
   // Sala de aula e leitor: overlay tela cheia (imersão) cobrindo header/footer.
   const immersive = view.name === 'classroom' || view.name === 'reader'
@@ -206,6 +254,7 @@ export default function Home() {
               {view.name === 'checkout' && (
                 <CheckoutView courseId={view.courseId} trackId={view.trackId} />
               )}
+              {view.name === 'certificate' && <CertificateView code={view.code} />}
             </>
           )}
 

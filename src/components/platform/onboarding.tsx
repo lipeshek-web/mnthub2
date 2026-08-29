@@ -27,11 +27,14 @@ import {
   Link2,
   ListChecks,
   ListVideo,
+  Loader2,
   LogIn,
   Megaphone,
   Newspaper,
   Paperclip,
+  PauseCircle,
   Pencil,
+  PlayCircle,
   Plus,
   Radio,
   RefreshCw,
@@ -40,12 +43,14 @@ import {
   ShoppingCart,
   Sparkles,
   Star,
+  Ticket,
   Trash2,
   TrendingUp,
   Type,
   UserRound,
   Users,
   Video,
+  Wallet,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -126,9 +131,11 @@ import { buildCourseUrl, buildMentorLpUrl } from '@/lib/tracking'
 import type {
   AvailabilitySlotInput,
   ContentPostDTO,
+  CouponDTO,
   CourseLessonDTO,
   CourseListItemDTO,
   CourseThemeDTO,
+  FinanceDTO,
   LibraryItemDTO,
   LessonAttachmentDTO,
   MentorDetailDTO,
@@ -1368,6 +1375,7 @@ function CoursesManager({
   const [toDelete, setToDelete] = useState<CourseListItemDTO | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
   const [lessonsCourse, setLessonsCourse] = useState<CourseListItemDTO | null>(null)
   const [lessonsOpen, setLessonsOpen] = useState(false)
   const [coverUrl, setCoverUrl] = useState<string | null>(null)
@@ -1525,6 +1533,20 @@ function CoursesManager({
     }
   }
 
+  /** Cria uma cópia do curso como rascunho (temas/aulas/quizzes clonados; matrículas não) */
+  const handleDuplicate = async (course: CourseListItemDTO) => {
+    setDuplicatingId(course.id)
+    try {
+      await api.duplicateCourse(course.id, userId)
+      toast.success('Curso duplicado como rascunho — ajuste e publique!')
+      await refreshAll()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível duplicar o curso.')
+    } finally {
+      setDuplicatingId(null)
+    }
+  }
+
   const handleDelete = async () => {
     if (!toDelete) return
     setDeleting(true)
@@ -1634,6 +1656,19 @@ function CoursesManager({
                     }}
                   >
                     <ListVideo className="size-4" aria-hidden /> Aulas
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={duplicatingId === course.id}
+                    aria-label={`Duplicar curso ${course.title}`}
+                    onClick={() => void handleDuplicate(course)}
+                  >
+                    {duplicatingId === course.id ? (
+                      <Loader2 className="size-4 animate-spin" aria-hidden />
+                    ) : (
+                      <Copy className="size-4" aria-hidden />
+                    )}
                   </Button>
                   <Button
                     variant="ghost"
@@ -3678,6 +3713,8 @@ const PANEL_TABS = [
   { id: 'biblioteca', label: 'Biblioteca', icon: Library },
   { id: 'trilhas', label: 'Trilhas', icon: Route },
   { id: 'divulgacao', label: 'Divulgação', icon: Megaphone },
+  { id: 'cupons', label: 'Cupons', icon: Ticket },
+  { id: 'financeiro', label: 'Financeiro', icon: Wallet },
 ] as const
 
 type PanelTabId = (typeof PANEL_TABS)[number]['id']
@@ -3730,6 +3767,18 @@ const PANEL_SHORTCUTS: ReadonlyArray<{
     description: 'Link rastreável e desempenho de vendas.',
     icon: Megaphone,
   },
+  {
+    id: 'cupons',
+    label: 'Cupons',
+    description: 'Códigos de desconto para vender mais.',
+    icon: Ticket,
+  },
+  {
+    id: 'financeiro',
+    label: 'Financeiro',
+    description: 'Receita, pedidos e resultados.',
+    icon: Wallet,
+  },
 ]
 
 function OverviewKpi({
@@ -3752,6 +3801,573 @@ function OverviewKpi({
       <p className="mt-2 text-2xl font-bold tabular-nums text-stone-900">{value}</p>
       {footer ? <div className="mt-1.5 text-xs leading-snug text-muted-foreground">{footer}</div> : null}
     </div>
+  )
+}
+
+// ---------- Aba Financeiro ----------
+
+/** Formata com 2 casas fixas (currencyBRL do projeto trunca para 1 casa em valores com centavos) */
+function formatBRL(value: number): string {
+  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+function FinancePanel({ userId }: { userId: string }) {
+  const [data, setData] = useState<FinanceDTO | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
+
+  useEffect(() => {
+    let active = true
+    api
+      .finance(userId)
+      .then((res) => {
+        if (active) setData(res)
+      })
+      .catch((err: unknown) => {
+        if (active) {
+          setError(err instanceof Error ? err.message : 'Não foi possível carregar seus dados financeiros.')
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [userId, reloadKey])
+
+  const retry = () => {
+    setLoading(true)
+    setError(null)
+    setReloadKey((key) => key + 1)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-w-0 flex-col gap-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-24 rounded-2xl" />
+          ))}
+        </div>
+        <Skeleton className="h-40 rounded-2xl" />
+      </div>
+    )
+  }
+
+  if (error || !data) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+          <div className="flex size-12 items-center justify-center rounded-full bg-rose-50 text-rose-500 ring-1 ring-rose-100">
+            <Wallet className="size-6" aria-hidden />
+          </div>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            {error ?? 'Não foi possível carregar seus dados financeiros.'}
+          </p>
+          <Button size="sm" variant="outline" onClick={retry}>
+            <RefreshCw className="size-4" aria-hidden /> Tentar novamente
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const maxMonthRevenue = Math.max(...data.monthSeries.map((month) => month.revenue), 0)
+  const isEmpty = data.ordersCount === 0 && data.sessionsCount === 0
+
+  if (isEmpty) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
+          <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 text-stone-300 ring-1 ring-stone-200">
+            <Wallet className="size-6" aria-hidden />
+          </div>
+          <h3 className="mt-2 text-base font-semibold">Sem vendas por aqui ainda</h3>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Compartilhe seu link na aba Divulgação 🚀
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="flex min-w-0 flex-col gap-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <OverviewKpi
+          icon={Wallet}
+          label="Receita total"
+          value={<span className="text-emerald-700">{formatBRL(data.totalRevenue)}</span>}
+          footer={`${formatBRL(data.productsRevenue)} em produtos · ${formatBRL(data.sessionsRevenue)} em sessões`}
+        />
+        <OverviewKpi
+          icon={TrendingUp}
+          label="Últimos 30 dias"
+          value={formatBRL(data.last30Revenue)}
+          footer="pedidos pagos no período"
+        />
+        <OverviewKpi
+          icon={Banknote}
+          label="Ticket médio"
+          value={formatBRL(data.avgTicket)}
+          footer="por pedido pago"
+        />
+        <OverviewKpi
+          icon={CalendarCheck}
+          label="Sessões 1:1"
+          value={data.sessionsCount}
+          footer={`${formatBRL(data.sessionsRevenue)} em sessões concluídas`}
+        />
+      </div>
+      <p className="text-xs text-stone-500">
+        {data.ordersCount} {data.ordersCount === 1 ? 'pedido pago' : 'pedidos pagos'} · descontos concedidos:{' '}
+        {formatBRL(data.totalDiscount)}
+      </p>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Receita por mês</CardTitle>
+          <CardDescription>Últimos 6 meses de pedidos pagos.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex h-40 items-end gap-2 sm:gap-3">
+            {data.monthSeries.map((month) => {
+              const heightPct =
+                maxMonthRevenue > 0 && month.revenue > 0
+                  ? Math.max(4, (month.revenue / maxMonthRevenue) * 100)
+                  : 4
+              return (
+                <div
+                  key={month.label}
+                  className="flex h-full min-w-0 flex-1 flex-col items-center gap-1.5"
+                >
+                  <span className="max-w-full truncate text-[10px] font-semibold leading-none text-stone-600">
+                    {month.revenue > 0 ? formatBRL(month.revenue) : ''}
+                  </span>
+                  <div className="flex min-h-0 w-full flex-1 items-end">
+                    <div
+                      role="img"
+                      aria-label={`${month.label}: ${formatBRL(month.revenue)}`}
+                      title={`${month.label}: ${formatBRL(month.revenue)}`}
+                      className="w-full rounded-t-md bg-emerald-600/85"
+                      style={{ height: `${heightPct}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] font-medium uppercase leading-none text-stone-500">
+                    {month.label}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+        <Card className="min-w-0">
+          <CardHeader>
+            <CardTitle className="text-base">Por produto</CardTitle>
+            <CardDescription>Receita por curso e trilha.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {data.byProduct.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhuma venda de cursos ou trilhas ainda.</p>
+            ) : (
+              <ul className="divide-y divide-stone-100">
+                {data.byProduct.map((product) => (
+                  <li
+                    key={product.id}
+                    className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-1 text-sm font-medium text-stone-900">{product.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {product.orders} {product.orders === 1 ? 'pedido' : 'pedidos'}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-sm font-semibold tabular-nums text-stone-900">
+                      {formatBRL(product.revenue)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="min-w-0">
+          <CardHeader>
+            <CardTitle className="text-base">Pedidos recentes</CardTitle>
+            <CardDescription>Últimas compras pagas dos alunos.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {data.recentOrders.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum pedido ainda.</p>
+            ) : (
+              <ul className="divide-y divide-stone-100">
+                {data.recentOrders.map((order) => (
+                  <li
+                    key={order.id}
+                    className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-1 text-sm font-medium text-stone-900">{order.itemTitle}</p>
+                      <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
+                        <span>{new Date(order.createdAt).toLocaleDateString('pt-BR')}</span>
+                        <span aria-hidden>·</span>
+                        <span>{CHANNEL_LABELS[order.channel] ?? order.channel}</span>
+                        {order.couponCode ? (
+                          <code className="rounded bg-stone-100 px-1 py-px font-mono text-[10px] font-semibold text-stone-700">
+                            {order.couponCode}
+                          </code>
+                        ) : null}
+                        {order.discount > 0 ? (
+                          <span className="font-medium text-rose-600">−{formatBRL(order.discount)}</span>
+                        ) : null}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-sm font-semibold tabular-nums text-stone-900">
+                      {formatBRL(order.amount)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+// ---------- Aba Cupons ----------
+
+type CouponKind = 'percent' | 'amount'
+
+function CouponsManager({ userId }: { userId: string }) {
+  const [coupons, setCoupons] = useState<CouponDTO[]>([])
+  const [loading, setLoading] = useState(true)
+  const [code, setCode] = useState('')
+  const [kind, setKind] = useState<CouponKind>('percent')
+  const [value, setValue] = useState('')
+  const [maxUses, setMaxUses] = useState('')
+  const [expiresAt, setExpiresAt] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [toDelete, setToDelete] = useState<CouponDTO | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  const fetchCoupons = useCallback(async () => {
+    const list = await api.listCoupons(userId)
+    setCoupons(list)
+    return list
+  }, [userId])
+
+  useEffect(() => {
+    let active = true
+    fetchCoupons()
+      .catch((err: unknown) => {
+        if (active) {
+          toast.error(err instanceof Error ? err.message : 'Não foi possível carregar seus cupons.')
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [fetchCoupons])
+
+  const handleCreate = async () => {
+    const normalizedCode = code.trim().toUpperCase()
+    const numericValue = Number(value.replace(',', '.'))
+    if (normalizedCode.length < 4) {
+      setFormError('O código precisa de ao menos 4 caracteres.')
+      return
+    }
+    if (value.trim() === '' || Number.isNaN(numericValue) || numericValue <= 0) {
+      setFormError('Informe um valor de desconto maior que zero.')
+      return
+    }
+    const maxUsesNum = Math.round(Number(maxUses))
+    setFormError(null)
+    setCreating(true)
+    try {
+      await api.createCoupon({
+        userId,
+        code: normalizedCode,
+        percentOff: kind === 'percent' ? numericValue : null,
+        amountOff: kind === 'amount' ? numericValue : null,
+        maxUses: maxUses.trim() && Number.isFinite(maxUsesNum) && maxUsesNum > 0 ? maxUsesNum : null,
+        expiresAt: expiresAt ? expiresAt : null,
+      })
+      toast.success('Cupom criado!')
+      setCode('')
+      setValue('')
+      setMaxUses('')
+      setExpiresAt('')
+      await fetchCoupons()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível criar o cupom.')
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const handleToggle = async (coupon: CouponDTO) => {
+    setTogglingId(coupon.id)
+    try {
+      await api.toggleCoupon({ userId, id: coupon.id, isActive: !coupon.isActive })
+      toast.success(coupon.isActive ? 'Cupom pausado.' : 'Cupom reativado!')
+      await fetchCoupons()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível atualizar o cupom.')
+    } finally {
+      setTogglingId(null)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!toDelete) return
+    setDeleting(true)
+    try {
+      await api.deleteCoupon(toDelete.id, userId)
+      toast.success('Cupom excluído.')
+      setToDelete(null)
+      await fetchCoupons()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível excluir o cupom.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+            <Ticket className="size-4" aria-hidden />
+          </span>
+          Cupons de desconto
+        </CardTitle>
+        <CardDescription>
+          Crie códigos de desconto para impulsionar suas vendas — aplicáveis no checkout dos seus cursos e
+          trilhas pagos.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-6">
+        <form
+          className="grid gap-4 sm:grid-cols-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void handleCreate()
+          }}
+        >
+          <div className="flex flex-col gap-2 sm:col-span-2">
+            <Label htmlFor="coupon-code">Código</Label>
+            <Input
+              id="coupon-code"
+              value={code}
+              onChange={(event) => setCode(event.target.value.toUpperCase())}
+              placeholder="PRIMEIRA2025"
+              className="font-mono uppercase"
+              autoComplete="off"
+              aria-invalid={Boolean(formError)}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="coupon-kind">Tipo de desconto</Label>
+            <Select value={kind} onValueChange={(v) => setKind(v as CouponKind)}>
+              <SelectTrigger id="coupon-kind" className="w-full">
+                <SelectValue placeholder="Selecione..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="percent">Percentual (%)</SelectItem>
+                <SelectItem value="amount">Valor fixo (R$)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="coupon-value">{kind === 'percent' ? 'Desconto (%)' : 'Desconto (R$)'}</Label>
+            <Input
+              id="coupon-value"
+              type="number"
+              min="0"
+              step={kind === 'percent' ? '1' : '0.01'}
+              value={value}
+              onChange={(event) => setValue(event.target.value)}
+              placeholder={kind === 'percent' ? 'Ex.: 10' : 'Ex.: 30,00'}
+              aria-invalid={Boolean(formError)}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="coupon-max-uses">Usos máximos (opcional)</Label>
+            <Input
+              id="coupon-max-uses"
+              type="number"
+              min="1"
+              step="1"
+              value={maxUses}
+              onChange={(event) => setMaxUses(event.target.value)}
+              placeholder="Ilimitado"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="coupon-expires">Validade (opcional)</Label>
+            <Input
+              id="coupon-expires"
+              type="date"
+              value={expiresAt}
+              onChange={(event) => setExpiresAt(event.target.value)}
+            />
+          </div>
+          {formError ? (
+            <p className="text-xs text-rose-600 sm:col-span-2" aria-live="polite">
+              {formError}
+            </p>
+          ) : null}
+          <div className="sm:col-span-2">
+            <Button type="submit" disabled={creating} className="rounded-full bg-emerald-700 hover:bg-emerald-800">
+              {creating ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden /> Criando...
+                </>
+              ) : (
+                <>
+                  <Ticket className="size-4" aria-hidden /> Criar cupom
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+
+        <Separator />
+
+        {loading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-20 rounded-lg" />
+            <Skeleton className="h-20 rounded-lg" />
+          </div>
+        ) : coupons.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-stone-300 py-10 text-center">
+            <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 text-stone-300 ring-1 ring-stone-200">
+              <Ticket className="size-6" aria-hidden />
+            </div>
+            <h3 className="mt-2 text-base font-semibold">Nenhum cupom ainda</h3>
+            <p className="max-w-sm text-sm text-muted-foreground">
+              Crie o primeiro e divulgue na sua audiência.
+            </p>
+          </div>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {coupons.map((coupon) => (
+              <li
+                key={coupon.id}
+                className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-stone-200 bg-white p-4"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <code className="rounded-md bg-stone-100 px-2 py-1 font-mono text-sm font-bold tracking-wide text-stone-800">
+                      {coupon.code}
+                    </code>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Copiar código ${coupon.code}`}
+                      onClick={() => copyToClipboard(coupon.code, 'Código copiado!')}
+                    >
+                      <Copy className="size-4" aria-hidden />
+                    </Button>
+                    {coupon.isActive ? (
+                      <Badge className="bg-emerald-100 text-emerald-800">Ativo</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="bg-stone-100 text-stone-600">
+                        Pausado
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="mt-2 text-sm font-medium text-stone-900">
+                    {coupon.percentOff != null
+                      ? `${coupon.percentOff}% de desconto`
+                      : `${formatBRL(coupon.amountOff ?? 0)} de desconto`}
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {coupon.maxUses != null
+                      ? `${coupon.uses} de ${coupon.maxUses} usos`
+                      : `${coupon.uses} ${coupon.uses === 1 ? 'uso' : 'usos'}`}{' '}
+                    ·{' '}
+                    {coupon.expiresAt
+                      ? // Formata a data (UTC) da própria string para evitar deslocamento de fuso
+                        `expira em ${coupon.expiresAt.slice(0, 10).split('-').reverse().join('/')}`
+                      : 'sem validade'}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={togglingId === coupon.id}
+                    aria-label={coupon.isActive ? `Pausar cupom ${coupon.code}` : `Reativar cupom ${coupon.code}`}
+                    onClick={() => void handleToggle(coupon)}
+                  >
+                    {coupon.isActive ? (
+                      <PauseCircle className="size-4" aria-hidden />
+                    ) : (
+                      <PlayCircle className="size-4" aria-hidden />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+                    aria-label={`Excluir cupom ${coupon.code}`}
+                    onClick={() => setToDelete(coupon)}
+                  >
+                    <Trash2 className="size-4" aria-hidden />
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+
+      {/* AlertDialog: excluir cupom */}
+      <AlertDialog
+        open={toDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setToDelete(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir cupom?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O cupom &quot;{toDelete?.code}&quot; deixa de funcionar no checkout. Esta ação não pode ser
+              desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-rose-600 text-white hover:bg-rose-700"
+              disabled={deleting}
+              onClick={(event) => {
+                event.preventDefault()
+                void handleDelete()
+              }}
+            >
+              {deleting ? 'Excluindo...' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Card>
   )
 }
 
@@ -4144,6 +4760,14 @@ export default function OnboardingView() {
                 {/* 3. Desempenho de tráfego */}
                 <TrafficPanel userId={user.id} />
               </div>
+            </TabsContent>
+
+            <TabsContent value="cupons" className="min-w-0 mt-4 sm:mt-6">
+              <CouponsManager userId={user.id} />
+            </TabsContent>
+
+            <TabsContent value="financeiro" className="min-w-0 mt-4 sm:mt-6">
+              <FinancePanel userId={user.id} />
             </TabsContent>
           </div>
         </div>

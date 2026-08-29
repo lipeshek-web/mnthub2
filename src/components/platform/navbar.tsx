@@ -1,20 +1,34 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
+  Bell,
+  BellOff,
+  CalendarCheck,
+  CalendarClock,
   CalendarDays,
+  CalendarX,
+  CheckCircle2,
   Compass,
   GraduationCap,
   LayoutDashboard,
+  ListVideo,
   LogIn,
   LogOut,
+  MessageSquareQuote,
   PlusCircle,
   Search,
+  ShoppingBag,
+  Star,
+  UserPlus,
   UserRoundPlus,
   X,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
+import { api } from '@/lib/api'
+import type { NotificationDTO } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/platform/avatar'
@@ -29,6 +43,236 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+
+// ==================== Sino de notificações in-app ====================
+
+type NotificationChip = { icon: LucideIcon; chipClass: string }
+
+/** Chip de ícone por tipo de notificação (paleta stone/emerald + acentos por kind) */
+const NOTIFICATION_KINDS: Record<string, NotificationChip> = {
+  booking_new: { icon: CalendarClock, chipClass: 'bg-amber-100 text-amber-600' },
+  booking_confirmed: { icon: CalendarCheck, chipClass: 'bg-emerald-100 text-emerald-700' },
+  booking_cancelled: { icon: CalendarX, chipClass: 'bg-rose-100 text-rose-600' },
+  booking_completed: { icon: CheckCircle2, chipClass: 'bg-emerald-100 text-emerald-700' },
+  review_new: { icon: Star, chipClass: 'bg-amber-100 text-amber-600' },
+  lesson_new: { icon: ListVideo, chipClass: 'bg-violet-100 text-violet-600' },
+  enrollment_new: { icon: UserPlus, chipClass: 'bg-emerald-100 text-emerald-700' },
+  course_review_new: { icon: MessageSquareQuote, chipClass: 'bg-violet-100 text-violet-600' },
+  purchase_new: { icon: ShoppingBag, chipClass: 'bg-emerald-100 text-emerald-700' },
+}
+const DEFAULT_KIND: NotificationChip = { icon: Bell, chipClass: 'bg-stone-100 text-stone-500' }
+
+/** Tempo relativo compacto: "agora", "há 5 min", "há 2 h", "há 3 d" (data p/ antigos) */
+function relativeTime(iso: string) {
+  const diffMin = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60_000))
+  if (diffMin < 1) return 'agora'
+  if (diffMin < 60) return `há ${diffMin} min`
+  const hours = Math.floor(diffMin / 60)
+  if (hours < 24) return `há ${hours} h`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `há ${days} d`
+  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+}
+
+function NotificationsBell() {
+  const user = useAppStore((s) => s.user)
+  const navigate = useAppStore((s) => s.navigate)
+
+  const [open, setOpen] = useState(false)
+  const [items, setItems] = useState<NotificationDTO[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  // Guard `alive` + contador de requisição: evita setState de respostas
+  // obsoletas (unmount, troca de usuário ou fetch sobreposto)
+  const aliveRef = useRef(true)
+  const reqIdRef = useRef(0)
+
+  const loadNotifications = useCallback(async (userId: string) => {
+    const reqId = ++reqIdRef.current
+    try {
+      const res = await api.listNotifications(userId)
+      if (!aliveRef.current || reqId !== reqIdRef.current) return
+      setItems(res.items)
+      setUnreadCount(res.unreadCount)
+    } catch {
+      // Erro silencioso: badge apenas não aparece (sem toast)
+    }
+  }, [])
+
+  const userId = user?.id
+  useEffect(() => {
+    if (!userId) return
+    aliveRef.current = true
+    let alive = true
+    // Fetch inicial (setState em callback assíncrono) com guard anti-race:
+    // descartado se o componente desmontar ou se um fetch mais novo existir
+    const reqId = ++reqIdRef.current
+    api
+      .listNotifications(userId)
+      .then((res) => {
+        if (!alive || reqId !== reqIdRef.current) return
+        setItems(res.items)
+        setUnreadCount(res.unreadCount)
+      })
+      .catch(() => {
+        // Erro silencioso: badge apenas não aparece
+      })
+    // Polling a cada 60s enquanto logado
+    const timer = setInterval(() => {
+      loadNotifications(userId)
+    }, 60_000)
+    return () => {
+      alive = false
+      aliveRef.current = false
+      clearInterval(timer)
+    }
+  }, [userId, loadNotifications])
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next)
+    if (next && userId) loadNotifications(userId) // refetch ao abrir o dropdown
+  }
+
+  const handleItemClick = (item: NotificationDTO) => {
+    // Marca como lida de forma otimista (badge/zumbido atualizam na hora)
+    if (!item.read) {
+      setItems((prev) => prev.map((n) => (n.id === item.id ? { ...n, read: true } : n)))
+      setUnreadCount((count) => Math.max(0, count - 1))
+      if (userId) api.markNotificationsRead(userId, [item.id]).catch(() => {})
+    }
+    // Navega conforme o destino sugerido pela notificação
+    if (item.linkView === 'dashboard') navigate({ name: 'dashboard' })
+    else if (item.linkView === 'course' && item.refId) navigate({ name: 'course', courseId: item.refId })
+    else if (item.linkView === 'onboarding') navigate({ name: 'onboarding' })
+    setOpen(false)
+  }
+
+  const handleMarkAll = () => {
+    if (!userId || unreadCount === 0) return
+    const prevItems = items
+    setItems((prev) => prev.map((n) => ({ ...n, read: true })))
+    setUnreadCount(0)
+    api.markNotificationsRead(userId).catch(() => {
+      // Falhou: restaura o estado anterior
+      setItems(prevItems)
+      setUnreadCount(prevItems.filter((n) => !n.read).length)
+    })
+  }
+
+  if (!user) return null
+
+  return (
+    <DropdownMenu open={open} onOpenChange={handleOpenChange}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={
+            unreadCount > 0
+              ? `Notificações, ${unreadCount} não lida${unreadCount === 1 ? '' : 's'}`
+              : 'Notificações'
+          }
+          title="Notificações"
+          className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+        >
+          <Bell className="h-4.5 w-4.5" />
+          {unreadCount > 0 && (
+            <span
+              aria-live="polite"
+              className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white"
+            >
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+        </button>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent align="end" sideOffset={8} className="w-88 overflow-hidden p-0 sm:w-96">
+        {/* Cabeçalho do painel */}
+        <div className="flex items-center justify-between gap-2 border-b border-stone-100 px-4 py-2.5">
+          <DropdownMenuLabel className="p-0 font-semibold text-stone-900">
+            Notificações
+          </DropdownMenuLabel>
+          <button
+            type="button"
+            onClick={handleMarkAll}
+            disabled={unreadCount === 0}
+            className="rounded text-xs font-semibold text-emerald-700 transition-colors hover:text-emerald-900 disabled:pointer-events-none disabled:text-stone-300"
+          >
+            Marcar todas como lidas
+          </button>
+        </div>
+
+        {items.length === 0 ? (
+          /* Empty state */
+          <div className="flex flex-col items-center gap-2 px-6 py-8 text-center">
+            <BellOff className="h-8 w-8 text-stone-300" aria-hidden />
+            <p className="text-sm text-stone-500">Você está em dia! Nenhuma notificação.</p>
+          </div>
+        ) : (
+          <div
+            role="list"
+            aria-label="Lista de notificações"
+            className="max-h-[380px] overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-200 [&::-webkit-scrollbar-track]:bg-transparent"
+          >
+            {items.map((item) => {
+              const chip = NOTIFICATION_KINDS[item.kind] ?? DEFAULT_KIND
+              const Icon = chip.icon
+              return (
+                <div key={item.id} role="listitem">
+                  <button
+                    type="button"
+                    onClick={() => handleItemClick(item)}
+                    className={cn(
+                      'relative flex w-full items-start gap-3 px-4 py-3 text-left transition-colors focus-visible:outline-none',
+                      item.read
+                        ? 'hover:bg-stone-50 focus-visible:bg-stone-50'
+                        : 'bg-emerald-50/50 hover:bg-emerald-50 focus-visible:bg-emerald-50'
+                    )}
+                  >
+                    {!item.read && (
+                      <span
+                        aria-hidden
+                        className="absolute left-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-emerald-500"
+                      />
+                    )}
+                    <span
+                      className={cn(
+                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+                        chip.chipClass
+                      )}
+                    >
+                      <Icon className="h-4 w-4" aria-hidden />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-baseline justify-between gap-2">
+                        <span
+                          className={cn(
+                            'truncate text-sm font-semibold',
+                            item.read ? 'text-stone-500' : 'text-stone-900'
+                          )}
+                        >
+                          {item.title}
+                        </span>
+                        <span className="shrink-0 text-[11px] text-stone-400">
+                          {relativeTime(item.createdAt)}
+                        </span>
+                      </span>
+                      {item.body && (
+                        <span className="mt-0.5 block text-xs leading-snug text-stone-500 line-clamp-2">
+                          {item.body}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
 
 export function Navbar() {
   const { user, view, setUser, navigate } = useAppStore()
@@ -181,6 +425,9 @@ export function Navbar() {
         </div>
 
         <div className={cn('flex items-center gap-2', 'md:ml-0 ml-auto')}>
+          {/* Sino de notificações (apenas logado): antes da busca mobile e do avatar */}
+          {user && <NotificationsBell />}
+
           {/* Busca (mobile): ícone que expande uma linha de busca abaixo */}
           <button
             onClick={() => {

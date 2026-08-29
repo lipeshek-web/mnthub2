@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertCircle,
   ArrowLeft,
-  Award,
   BookOpen,
   CalendarClock,
   Check,
@@ -29,7 +28,6 @@ import {
   Paperclip,
   PencilLine,
   PlayCircle,
-  Printer,
   Radio,
   Send,
   Trash2,
@@ -45,7 +43,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -186,7 +183,8 @@ export function ClassroomView({ courseId }: { courseId: string }) {
 
   // Seções recolhidas da sidebar (default: todas expandidas)
   const [collapsedThemes, setCollapsedThemes] = useState<Record<string, boolean>>({})
-  const [certOpen, setCertOpen] = useState(false)
+  // Emissão do certificado (botão da celebração de 100%)
+  const [issuing, setIssuing] = useState(false)
 
   // Modo foco (teatro): esconde sidebar e abas, centraliza o palco da aula.
   // Persistido na sessão para o aluno retomar a imersão ao voltar para a sala.
@@ -288,6 +286,22 @@ export function ClassroomView({ courseId }: { courseId: string }) {
     }
   }
 
+  // Emite (ou retorna) o certificado e abre a página pública verificável.
+  // O overlay da sala fecha naturalmente: a view global muda para 'certificate'.
+  const handleIssueCertificate = async () => {
+    if (!user || !course) return
+    setIssuing(true)
+    try {
+      const cert = await api.issueCertificate(course.id, user.id)
+      toast.success('Certificado emitido! 🎓')
+      navigate({ name: 'certificate', code: cert.code })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível emitir o certificado.')
+    } finally {
+      setIssuing(false)
+    }
+  }
+
   /* ---------- Estados de tela ---------- */
 
   if (loading) {
@@ -360,11 +374,11 @@ export function ClassroomView({ courseId }: { courseId: string }) {
   }
 
   const firstName = course.mentor.name.split(' ')[0]
+  // Código do certificado do usuário neste curso (null = ainda não emitido)
+  const certificateCode = course.certificateCode
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-stone-50" aria-label={`Sala de aula: ${course.title}`}>
-      {/* CSS de impressão: imprime apenas o certificado quando aberto */}
-      <style>{`@media print { body * { visibility: hidden; } .certificate-print, .certificate-print * { visibility: visible; } .certificate-print { position: absolute; inset: 0; } }`}</style>
       {/* ---------- BARRA SUPERIOR IMERSIVA ---------- */}
       <div className="flex shrink-0 items-center gap-1 border-b border-emerald-400/15 bg-emerald-950 px-3 py-2.5 text-white sm:gap-2.5 sm:px-6">
         <Button
@@ -469,12 +483,26 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                     <p className="text-lg font-extrabold tracking-tight text-emerald-900">
                       Parabéns! Você concluiu este curso 🎉
                     </p>
-                    <Button
-                      onClick={() => setCertOpen(true)}
-                      className="h-11 rounded-full bg-emerald-700 px-6 font-bold text-white hover:bg-emerald-800"
-                    >
-                      <GraduationCap aria-hidden className="h-4 w-4" /> Emitir certificado
-                    </Button>
+                    {certificateCode ? (
+                      <Button
+                        variant="outline"
+                        onClick={() => navigate({ name: 'certificate', code: certificateCode })}
+                        className="h-11 rounded-full border-emerald-300 bg-white px-6 font-bold text-emerald-800 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-900"
+                        aria-label="Ver meu certificado de conclusão"
+                      >
+                        <GraduationCap aria-hidden className="h-4 w-4" /> Ver meu certificado
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => void handleIssueCertificate()}
+                        disabled={issuing}
+                        className="h-11 rounded-full bg-emerald-700 px-6 font-bold text-white hover:bg-emerald-800"
+                        aria-label="Emitir certificado de conclusão"
+                      >
+                        <GraduationCap aria-hidden className="h-4 w-4" />{' '}
+                        {issuing ? 'Emitindo…' : 'Emitir certificado'}
+                      </Button>
+                    )}
                   </div>
                 ) : null}
 
@@ -796,54 +824,6 @@ export function ClassroomView({ courseId }: { courseId: string }) {
             }}
             className="py-2"
           />
-        </DialogContent>
-      </Dialog>
-
-      {/* ---------- CERTIFICADO DE CONCLUSÃO ---------- */}
-      <Dialog open={certOpen} onOpenChange={setCertOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Certificado de conclusão</DialogTitle>
-            <DialogDescription>
-              Comprovante emitido pela MentorHub para o progresso desta conta.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="certificate-print flex flex-col items-center gap-3 rounded-3xl border-2 border-emerald-200 p-6 text-center ring-4 ring-emerald-100 sm:p-8">
-            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-600 text-white">
-              <GraduationCap aria-hidden className="h-8 w-8" />
-            </span>
-            <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700">
-              Certificado de conclusão
-            </p>
-            <p className="font-serif text-3xl font-bold text-stone-900">{user?.name ?? 'Aluno(a)'}</p>
-            <p className="text-sm text-stone-500">concluiu com dedicação o curso</p>
-            <p className="max-w-sm text-lg font-bold leading-snug text-stone-900">{course.title}</p>
-            <p className="text-sm text-stone-500">
-              Mentor:{' '}
-              <span className="font-semibold text-stone-700">{course.mentor.name}</span> · Carga horária:{' '}
-              <span className="font-semibold text-stone-700">
-                {formatTotalDuration(course.totalDurationMin)}
-              </span>
-            </p>
-            <p className="text-xs text-stone-400">
-              Emitido em{' '}
-              {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
-            </p>
-            <span className="mt-2 flex h-16 w-16 items-center justify-center rounded-full border-2 border-emerald-200 bg-emerald-50">
-              <Award aria-hidden className="h-8 w-8 text-emerald-600" />
-            </span>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400">MentorHub</p>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => window.print()}
-              className="h-11 rounded-full font-semibold"
-              aria-label="Imprimir certificado de conclusão"
-            >
-              <Printer aria-hidden className="h-4 w-4" /> Imprimir certificado
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
