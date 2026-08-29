@@ -115,7 +115,7 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
       <div className="mx-auto max-w-6xl px-4 py-16">
         <Card className="mx-auto max-w-md border-dashed">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
-            <Video className="h-10 w-10 text-stone-400" />
+            <Video className="h-10 w-10 text-stone-400 dark:text-stone-500" />
             <p className="font-semibold">Entre para acessar a sala</p>
             <p className="text-sm text-muted-foreground">
               Use o menu <strong>Entrar</strong> no topo da página para selecionar um usuário.
@@ -145,7 +145,7 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
       <div className="mx-auto max-w-6xl px-4 py-16">
         <Card className="mx-auto max-w-md border-dashed">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
-            <Video className="h-10 w-10 text-stone-400" />
+            <Video className="h-10 w-10 text-stone-400 dark:text-stone-500" />
             <p className="font-semibold">Sessão não encontrada</p>
             <p className="text-sm text-muted-foreground">
               Ela pode ter sido removida ou você não tem acesso a ela.
@@ -165,7 +165,7 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
     <div className="mx-auto max-w-6xl px-4 pb-14 pt-6">
       <button
         onClick={() => navigate({ name: 'dashboard' })}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 transition-colors hover:text-emerald-700"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 transition-colors hover:text-emerald-700 dark:text-stone-400 dark:hover:text-emerald-300"
       >
         <ArrowLeft className="h-4 w-4" /> Voltar para minhas sessões
       </button>
@@ -178,13 +178,13 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
       </div>
       <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
         <CalendarDays className="h-4 w-4" />
-        {relative && <strong className="font-semibold text-stone-700">{relative} · </strong>}
+        {relative && <strong className="font-semibold text-stone-700 dark:text-stone-200">{relative} · </strong>}
         {formatDayLabelLong(booking.startsAt)} · {formatTimeLabel(booking.startsAt)} →{' '}
         {addMinutesToTime(booking.startsAt, booking.durationMin)}
       </p>
 
       {booking.status === 'PENDING' && (
-        <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
           <Info className="mt-0.5 h-4.5 w-4.5 shrink-0" />
           <p>
             Esta sessão ainda <strong>aguarda confirmação do mentor</strong>. Você já pode entrar na
@@ -196,9 +196,9 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
       {/* ---------- VÍDEO ---------- */}
       <section aria-label="Sala de reunião por vídeo" className="mt-5">
         {blocked ? (
-          <div className="flex h-[56vh] flex-col items-center justify-center gap-3 rounded-2xl border border-stone-200 bg-stone-100 text-center">
-            <CheckCircle2 className="h-12 w-12 text-stone-400" />
-            <p className="font-bold text-stone-700">
+          <div className="flex h-[56vh] flex-col items-center justify-center gap-3 rounded-2xl border border-stone-200 bg-stone-100 text-center dark:border-stone-800 dark:bg-stone-800">
+            <CheckCircle2 className="h-12 w-12 text-stone-400 dark:text-stone-500" />
+            <p className="font-bold text-stone-700 dark:text-stone-200">
               {booking.status === 'COMPLETED' ? 'Esta sessão foi concluída' : 'Esta sessão foi cancelada'}
             </p>
             <p className="max-w-sm text-sm text-muted-foreground">
@@ -237,8 +237,8 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
               <div className="flex items-center gap-3">
                 <Avatar name={booking.mentor.name} size="lg" />
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Mentor</p>
-                  <p className="font-bold text-stone-900">{booking.mentor.name}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Mentor</p>
+                  <p className="font-bold text-stone-900 dark:text-stone-50">{booking.mentor.name}</p>
                   <p className="max-w-52 truncate text-xs text-muted-foreground">{booking.mentor.headline}</p>
                 </div>
               </div>
@@ -246,18 +246,18 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
               <div className="flex items-center gap-3">
                 <Avatar name={booking.mentee.name} size="lg" />
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">Mentorado</p>
-                  <p className="font-bold text-stone-900">{booking.mentee.name}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">Mentorado</p>
+                  <p className="font-bold text-stone-900 dark:text-stone-50">{booking.mentee.name}</p>
                   <p className="text-xs text-muted-foreground">{currencyBRL(booking.price)} pela sessão</p>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
+            <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 dark:border-stone-800 dark:bg-stone-950/50">
               <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 <Timer className="h-3.5 w-3.5" /> Duração
               </p>
-              <p className="mt-1 text-sm font-semibold text-stone-800">
+              <p className="mt-1 text-sm font-semibold text-stone-800 dark:text-stone-200">
                 {booking.durationMin} minutos ({formatTimeLabel(booking.startsAt)} às{' '}
                 {addMinutesToTime(booking.startsAt, booking.durationMin)})
               </p>
@@ -288,7 +288,7 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
               <p className="flex items-center gap-1.5 text-sm font-bold">
                 <Lightbulb className="h-4 w-4 text-amber-500" /> Dicas para uma boa reunião
               </p>
-              <ul className="space-y-2 text-sm text-stone-600">
+              <ul className="space-y-2 text-sm text-stone-600 dark:text-stone-300">
                 <li className="flex gap-2">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
                   Permita câmera e microfone quando o navegador pedir.
@@ -307,7 +307,7 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
               </Button>
               {!blocked && (
                 <a href={roomUrl} target="_blank" rel="noreferrer" className="block">
-                  <Button variant="ghost" className="w-full text-emerald-700 hover:text-emerald-800">
+                  <Button variant="ghost" className="w-full text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-300">
                     <ExternalLink className="h-4 w-4" /> Abrir sala em nova aba
                   </Button>
                 </a>
@@ -316,10 +316,10 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
           </Card>
 
           {isMentorSide && booking.status === 'CONFIRMED' && (
-            <Card className="border-emerald-200 bg-emerald-50/60">
+            <Card className="border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/50">
               <CardContent className="p-6">
-                <p className="font-bold text-emerald-900">Sessão em andamento?</p>
-                <p className="mt-1 text-sm text-emerald-800">
+                <p className="font-bold text-emerald-900 dark:text-emerald-200">Sessão em andamento?</p>
+                <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-300">
                   Quando a reunião terminar, marque-a como concluída para liberar a avaliação do
                   mentorado.
                 </p>

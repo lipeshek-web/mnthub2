@@ -16,10 +16,10 @@ import { captureAttributionFromUrl, cleanUrlParams, loadTrackingScripts, trackEv
 function ViewLoading() {
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3" aria-busy="true">
-      <span className="flex h-12 w-12 animate-pulse items-center justify-center rounded-2xl bg-emerald-700/10 text-emerald-700">
+      <span className="flex h-12 w-12 animate-pulse items-center justify-center rounded-2xl bg-emerald-700/10 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
         <GraduationCap className="h-6 w-6" />
       </span>
-      <p className="text-sm font-medium text-stone-400">carregando…</p>
+      <p className="text-sm font-medium text-stone-400 dark:text-stone-500">carregando…</p>
     </div>
   )
 }
@@ -72,14 +72,18 @@ const CertificateView = dynamic(
   () => import('@/components/platform/certificate-view').then((m) => m.CertificateView),
   { ssr: false, loading: ViewLoading }
 )
+const MessagesView = dynamic(
+  () => import('@/components/platform/messages-view').then((m) => m.MessagesView),
+  { ssr: false, loading: ViewLoading }
+)
 const LandingMentor = dynamic(() => import('@/components/platform/landing-mentor'), {
   ssr: false,
   loading: ViewLoading,
 })
 
 /** Views que exigem sessão ativa — convidado é levado ao login/cadastro */
-const AUTH_REQUIRED: AppViewNames[] = ['dashboard', 'onboarding', 'checkout', 'meeting']
-type AppViewNames = 'dashboard' | 'onboarding' | 'checkout' | 'meeting'
+const AUTH_REQUIRED: AppViewNames[] = ['dashboard', 'onboarding', 'checkout', 'meeting', 'messages']
+type AppViewNames = 'dashboard' | 'onboarding' | 'checkout' | 'meeting' | 'messages'
 
 /** Título da aba por view — renderizado como <title> hoisted no shell */
 function docTitleFor(viewName: string): string {
@@ -98,6 +102,7 @@ function docTitleFor(viewName: string): string {
     'mentor-lp': 'MentorHub',
     checkout: 'Checkout — MentorHub',
     certificate: 'Certificado — MentorHub',
+    messages: 'Mensagens — MentorHub',
     auth: 'Entrar — MentorHub',
   }
   return titles[viewName] ?? 'MentorHub — Plataforma de Mentorias 1:1'
@@ -209,14 +214,14 @@ export default function Home() {
   if (!mounted) {
     // Evita mismatch de hidratação com o estado persistido (usuário/logado)
     return (
-      <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-white">
+      <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-white dark:bg-stone-950">
         <span className="flex h-14 w-14 animate-pulse items-center justify-center rounded-2xl bg-emerald-700 text-white">
           <GraduationCap className="h-7 w-7" />
         </span>
-        <p className="text-base font-extrabold tracking-tight text-stone-900">
-          Mentor<span className="text-emerald-700">Hub</span>
+        <p className="text-base font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+          Mentor<span className="text-emerald-700 dark:text-emerald-400">Hub</span>
         </p>
-        <p aria-hidden className="text-xs text-stone-400">
+        <p aria-hidden className="text-xs text-stone-400 dark:text-stone-500">
           preparando sua experiência...
         </p>
       </div>
@@ -226,7 +231,7 @@ export default function Home() {
   return (
     /* Shell tipo app: header e rodapé fora do fluxo de rolagem. O <main> é o
        ÚNICO container de rolagem — o corpo nunca entra por baixo do header. */
-    <div className="flex h-dvh flex-col overflow-hidden bg-white">
+    <div className="flex h-dvh flex-col overflow-hidden bg-white dark:bg-stone-950">
       {!immersive && <Navbar />}
 
       <main
@@ -255,6 +260,7 @@ export default function Home() {
                 <CheckoutView courseId={view.courseId} trackId={view.trackId} />
               )}
               {view.name === 'certificate' && <CertificateView code={view.code} />}
+              {view.name === 'messages' && <MessagesView initialPeerId={view.peerId} />}
             </>
           )}
 
@@ -265,12 +271,12 @@ export default function Home() {
 
       {/* Imersão: sala de aula e leitor em overlay tela cheia sobre tudo */}
       {view.name === 'classroom' && (
-        <div className="fixed inset-0 z-50 bg-stone-50">
+        <div className="fixed inset-0 z-50 bg-stone-50 dark:bg-stone-950">
           <ClassroomView courseId={view.courseId} />
         </div>
       )}
       {view.name === 'reader' && (
-        <div className="fixed inset-0 z-50 bg-stone-50">
+        <div className="fixed inset-0 z-50 bg-stone-50 dark:bg-stone-950">
           <ReaderView itemId={view.itemId} />
         </div>
       )}

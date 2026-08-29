@@ -318,7 +318,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
             <Skeleton className="h-7 w-2/3" />
             <Skeleton className="h-24 w-full rounded-2xl" />
           </div>
-          <div className="hidden space-y-2 border-l border-stone-200 bg-white p-4 lg:block">
+          <div className="hidden space-y-2 border-l border-stone-200 bg-white p-4 lg:block dark:border-stone-800 dark:bg-stone-900">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-14 rounded-xl" />
             ))}
@@ -332,12 +332,12 @@ export function ClassroomView({ courseId }: { courseId: string }) {
   if (!course) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <div className="flex w-full max-w-md flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 px-6 py-14 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50">
+        <div className="flex w-full max-w-md flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 px-6 py-14 text-center dark:border-stone-700">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 dark:bg-rose-950/50">
             <AlertCircle aria-hidden className="h-7 w-7 text-rose-500" />
           </span>
-          <p className="font-bold text-stone-900">Não foi possível abrir a sala de aula</p>
-          <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+          <p className="font-bold text-stone-900 dark:text-stone-50">Não foi possível abrir a sala de aula</p>
+          <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
             {error ?? 'Curso não encontrado.'}
           </p>
           <Button variant="outline" className="rounded-full" onClick={() => void fetchCourse()}>
@@ -351,14 +351,14 @@ export function ClassroomView({ courseId }: { courseId: string }) {
   if (!hasAccess) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <Card className="w-full max-w-md rounded-2xl border-stone-200 p-8 text-center shadow-none">
-          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-50">
-            <Lock aria-hidden className="h-6 w-6 text-amber-600" />
+        <Card className="w-full max-w-md rounded-2xl border-stone-200 p-8 text-center shadow-none dark:border-stone-800">
+          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950/50">
+            <Lock aria-hidden className="h-6 w-6 text-amber-600 dark:text-amber-400" />
           </span>
-          <h1 className="mt-4 text-lg font-extrabold tracking-tight text-stone-900">
+          <h1 className="mt-4 text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
             {course.title}
           </h1>
-          <p className="mt-2 text-sm leading-relaxed text-stone-500">
+          <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
             Você ainda não tem acesso a este curso. Inscreva-se para desbloquear todas as aulas,
             perguntas e anotações.
           </p>
@@ -378,7 +378,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
   const certificateCode = course.certificateCode
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-stone-50" aria-label={`Sala de aula: ${course.title}`}>
+    <div className="flex h-full min-h-0 flex-col bg-stone-50 dark:bg-stone-950" aria-label={`Sala de aula: ${course.title}`}>
       {/* ---------- BARRA SUPERIOR IMERSIVA ---------- */}
       <div className="flex shrink-0 items-center gap-1 border-b border-emerald-400/15 bg-emerald-950 px-3 py-2.5 text-white sm:gap-2.5 sm:px-6">
         <Button
@@ -478,16 +478,16 @@ export function ClassroomView({ courseId }: { courseId: string }) {
 
                 {/* Celebração + certificado: 100% das aulas concluídas */}
                 {courseCompleted ? (
-                  <div className="mt-5 flex flex-col items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-6 text-center">
+                  <div className="mt-5 flex flex-col items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-6 text-center dark:border-emerald-900 dark:bg-emerald-950/50">
                     <CheckCircle2 aria-hidden className="h-12 w-12 fill-emerald-600 text-white" />
-                    <p className="text-lg font-extrabold tracking-tight text-emerald-900">
+                    <p className="text-lg font-extrabold tracking-tight text-emerald-900 dark:text-emerald-200">
                       Parabéns! Você concluiu este curso 🎉
                     </p>
                     {certificateCode ? (
                       <Button
                         variant="outline"
                         onClick={() => navigate({ name: 'certificate', code: certificateCode })}
-                        className="h-11 rounded-full border-emerald-300 bg-white px-6 font-bold text-emerald-800 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-900"
+                        className="h-11 rounded-full border-emerald-300 bg-white px-6 font-bold text-emerald-800 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-900 dark:border-emerald-700 dark:bg-stone-900 dark:text-emerald-300 dark:hover:border-emerald-600 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-200"
                         aria-label="Ver meu certificado de conclusão"
                       >
                         <GraduationCap aria-hidden className="h-4 w-4" /> Ver meu certificado
@@ -507,43 +507,43 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                 ) : null}
 
                 <div className="mt-5 flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className="border-stone-200 bg-white text-stone-600">
+                  <Badge variant="outline" className="border-stone-200 bg-white text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
                     Aula {currentIndex + 1} de {orderedLessons.length}
                   </Badge>
                   {currentLesson.kind === 'LIVE' ? (
-                    <Badge className="border-transparent bg-rose-100 text-rose-700">
+                    <Badge className="border-transparent bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-400">
                       <Radio aria-hidden className="h-3 w-3" /> Ao vivo
                     </Badge>
                   ) : currentLesson.kind === 'READING' ? (
-                    <Badge className="border-transparent bg-amber-100 text-amber-800">
+                    <Badge className="border-transparent bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
                       <BookOpen aria-hidden className="h-3 w-3" /> {readingKindLabel(currentLesson.reading?.kind)}
                     </Badge>
                   ) : currentLesson.videoUrl ? (
-                    <Badge variant="outline" className="border-stone-200 bg-white text-stone-600">
+                    <Badge variant="outline" className="border-stone-200 bg-white text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
                       Vídeo
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="border-stone-200 bg-white text-stone-600">
+                    <Badge variant="outline" className="border-stone-200 bg-white text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
                       Leitura
                     </Badge>
                   )}
                   {currentLesson.quizCount > 0 ? (
-                    <Badge className="border-transparent bg-violet-100 text-violet-800">
+                    <Badge className="border-transparent bg-violet-100 text-violet-800 dark:bg-violet-950/50 dark:text-violet-300">
                       <ListChecks aria-hidden className="h-3 w-3" /> Quiz
                     </Badge>
                   ) : null}
                   {completedIds.includes(currentLesson.id) && (
-                    <Badge className="border-transparent bg-emerald-100 text-emerald-800">
+                    <Badge className="border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
                       <Check aria-hidden className="h-3 w-3" /> Concluída
                     </Badge>
                   )}
                 </div>
 
-                <h1 className="mt-2.5 text-xl font-extrabold tracking-tight text-stone-900 sm:text-2xl">
+                <h1 className="mt-2.5 text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50 sm:text-2xl">
                   {currentLesson.title}
                 </h1>
                 {currentLesson.description ? (
-                  <p className="mt-1.5 text-sm leading-relaxed text-stone-500">
+                  <p className="mt-1.5 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
                     {currentLesson.description}
                   </p>
                 ) : null}
@@ -558,12 +558,12 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                         download
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-stone-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800"
+                        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-stone-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300"
                         aria-label={`Baixar anexo ${att.name}`}
                       >
-                        <Paperclip aria-hidden className="h-3.5 w-3.5 text-stone-400" />
+                        <Paperclip aria-hidden className="h-3.5 w-3.5 text-stone-400 dark:text-stone-500" />
                         <span className="max-w-52 truncate">{att.name}</span>
-                        <Download aria-hidden className="h-3.5 w-3.5 text-emerald-600" />
+                        <Download aria-hidden className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                       </a>
                     ))}
                   </div>
@@ -574,7 +574,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                     mantêm o material visível, pois ele É o conteúdo da aula) */}
                 {!(focusMode && currentLesson.kind === 'RECORDED' && currentLesson.videoUrl) && (
                 <Tabs defaultValue="lesson" className="mt-6">
-                  <TabsList className="h-11 w-full justify-start overflow-x-auto rounded-full bg-stone-100 p-1 sm:w-auto">
+                  <TabsList className="h-11 w-full justify-start overflow-x-auto rounded-full bg-stone-100 dark:bg-stone-800 p-1 sm:w-auto">
                     <TabsTrigger value="lesson" className="rounded-full">
                       <FileText aria-hidden className="h-4 w-4" />
                       <span className="hidden sm:inline">Material</span>
@@ -598,7 +598,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
 
                   <TabsContent value="lesson" className="mt-4">
                     {currentLesson.kind === 'READING' ? (
-                      <div className="rounded-2xl border border-stone-200 bg-white p-5 text-sm leading-relaxed text-stone-600 sm:p-6">
+                      <div className="rounded-2xl border border-stone-200 bg-white p-5 text-sm leading-relaxed text-stone-600 sm:p-6 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
                         {currentLesson.reading ? (
                           <>
                             O material desta aula é{' '}
@@ -612,12 +612,12 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                         )}
                       </div>
                     ) : currentLesson.content ? (
-                      <article className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6">
+                      <article className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6 dark:border-stone-800 dark:bg-stone-900">
                         <div className="max-w-prose space-y-4">
                           {currentLesson.content.split(/\n{2,}/).map((para, i) => (
                             <p
                               key={i}
-                              className="whitespace-pre-line text-[15px] leading-relaxed text-stone-700"
+                              className="whitespace-pre-line text-[15px] leading-relaxed text-stone-700 dark:text-stone-200"
                             >
                               {para}
                             </p>
@@ -625,23 +625,23 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                         </div>
                       </article>
                     ) : currentLesson.kind === 'LIVE' ? (
-                      <div className="rounded-2xl border border-stone-200 bg-white p-5 text-sm leading-relaxed text-stone-600 sm:p-6">
+                      <div className="rounded-2xl border border-stone-200 bg-white p-5 text-sm leading-relaxed text-stone-600 sm:p-6 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
                         Esta é uma aula ao vivo — participe no horário agendado e use a aba
                         <strong className="font-semibold"> Perguntas </strong>
                         para enviar suas dúvidas ao mentor. Se perdeu, a gravação aparece no player
                         quando disponível.
                       </div>
                     ) : currentLesson.videoUrl ? (
-                      <div className="rounded-2xl border border-stone-200 bg-white p-5 text-sm leading-relaxed text-stone-600 sm:p-6">
+                      <div className="rounded-2xl border border-stone-200 bg-white p-5 text-sm leading-relaxed text-stone-600 sm:p-6 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
                         Assista à aula acima. Dúvidas? Use a aba{' '}
                         <strong className="font-semibold">Perguntas</strong> — {firstName} responde
                         por lá. Anote ideias em <strong className="font-semibold">Anotações</strong>{' '}
                         e baixe os anexos desta aula.
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-10 text-center">
-                        <FileText aria-hidden className="h-6 w-6 text-stone-300" />
-                        <p className="text-sm text-stone-400">
+                      <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-10 text-center dark:border-stone-700 dark:bg-stone-900">
+                        <FileText aria-hidden className="h-6 w-6 text-stone-300 dark:text-stone-600" />
+                        <p className="text-sm text-stone-400 dark:text-stone-500">
                           O material desta aula será publicado em breve.
                         </p>
                       </div>
@@ -680,7 +680,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                 )}
 
                 {/* Navegação */}
-                <div className="mt-6 flex items-center justify-between gap-3 border-t border-stone-200 pt-5">
+                <div className="mt-6 flex items-center justify-between gap-3 border-t border-stone-200 pt-5 dark:border-stone-800">
                   <Button
                     variant="outline"
                     className="h-11 rounded-full font-semibold"
@@ -696,7 +696,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                     className={cn(
                       'h-11 rounded-full font-semibold',
                       completedIds.includes(currentLesson.id) &&
-                        'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800'
+                        'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300'
                     )}
                   >
                     {toggling ? (
@@ -724,9 +724,9 @@ export function ClassroomView({ courseId }: { courseId: string }) {
               ) : null}
             </AnimatePresence>
             {!currentLesson && (
-              <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-16 text-center">
-                <Library aria-hidden className="h-8 w-8 text-stone-300" />
-                <p className="text-sm text-stone-400">
+              <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-16 text-center dark:border-stone-700 dark:bg-stone-900">
+                <Library aria-hidden className="h-8 w-8 text-stone-300 dark:text-stone-600" />
+                <p className="text-sm text-stone-400 dark:text-stone-500">
                   Nenhuma aula publicada ainda — volte mais tarde.
                 </p>
               </div>
@@ -738,13 +738,13 @@ export function ClassroomView({ courseId }: { courseId: string }) {
         {!focusMode && (
         <aside
           aria-label="Conteúdos do curso"
-          className="flex min-h-0 flex-col border-t border-stone-200 bg-white lg:border-l lg:border-t-0"
+          className="flex min-h-0 flex-col border-t border-stone-200 bg-white lg:border-l lg:border-t-0 dark:border-stone-800 dark:bg-stone-900"
         >
           <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-2 pt-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-stone-400">
+            <p className="text-xs font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">
               Conteúdos do curso
             </p>
-            <span className="text-xs font-semibold text-emerald-700">
+            <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
               {completedIds.length}/{orderedLessons.length}
             </span>
           </div>
@@ -759,14 +759,14 @@ export function ClassroomView({ courseId }: { courseId: string }) {
           />
 
           {/* Mentor no rodapé da lista */}
-          <div className="shrink-0 border-t border-stone-100 p-3">
-            <div className="flex items-center gap-3 rounded-xl bg-stone-50 p-3">
+          <div className="shrink-0 border-t border-stone-100 p-3 dark:border-stone-800">
+            <div className="flex items-center gap-3 rounded-xl bg-stone-50 p-3 dark:bg-stone-950/50">
               <Avatar name={course.mentor.name} src={course.mentor.avatarUrl} size="md" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-stone-800">{course.mentor.name}</p>
+                <p className="truncate text-sm font-bold text-stone-800 dark:text-stone-200">{course.mentor.name}</p>
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <Stars rating={course.mentor.rating} size={12} />
-                  <span className="text-[11px] font-semibold text-stone-500">
+                  <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400">
                     {course.mentor.rating > 0 ? course.mentor.rating.toFixed(1) : 'Novo'}
                   </span>
                 </div>
@@ -774,7 +774,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-9 rounded-full text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                className="h-9 rounded-full text-xs font-semibold text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-900/30"
                 onClick={() => navigate({ name: 'mentor', mentorId: course.mentor.id })}
                 aria-label={`Ver perfil de ${course.mentor.name}`}
               >
@@ -802,8 +802,8 @@ export function ClassroomView({ courseId }: { courseId: string }) {
       {/* ---------- CONTEÚDOS DO CURSO (dialog p/ mobile) ---------- */}
       <Dialog open={contentsOpen} onOpenChange={setContentsOpen}>
         <DialogContent className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
-          <DialogHeader className="shrink-0 gap-1 border-b border-stone-100 py-4 pl-5 pr-12 text-left">
-            <DialogTitle className="text-base font-extrabold tracking-tight text-stone-900">
+          <DialogHeader className="shrink-0 gap-1 border-b border-stone-100 py-4 pl-5 pr-12 text-left dark:border-stone-800">
+            <DialogTitle className="text-base font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
               Conteúdos do curso
             </DialogTitle>
             <DialogDescription className="text-xs">
@@ -857,7 +857,7 @@ function ContentsNav({
     <nav
       aria-label="Conteúdos do curso"
       className={cn(
-        'min-h-0 flex-1 overflow-y-auto px-3 pb-3 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5',
+        'min-h-0 flex-1 overflow-y-auto px-3 pb-3 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-stone-100 dark:[&::-webkit-scrollbar-track]:bg-stone-900 [&::-webkit-scrollbar]:w-1.5',
         className
       )}
     >
@@ -874,26 +874,26 @@ function ContentsNav({
                 onClick={() => onToggleTheme(group.key)}
                 aria-expanded={!isCollapsed}
                 aria-label={`${isCollapsed ? 'Expandir' : 'Recolher'} a seção ${group.title}`}
-                className="flex min-h-11 w-full items-center gap-1.5 rounded-xl px-1.5 py-1.5 text-left transition-colors hover:bg-stone-50"
+                className="flex min-h-11 w-full items-center gap-1.5 rounded-xl px-1.5 py-1.5 text-left transition-colors hover:bg-stone-50 dark:hover:bg-stone-800"
               >
                 {isCollapsed ? (
-                  <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-stone-400" />
+                  <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-stone-400 dark:text-stone-500" />
                 ) : (
-                  <ChevronDown aria-hidden className="h-4 w-4 shrink-0 text-stone-400" />
+                  <ChevronDown aria-hidden className="h-4 w-4 shrink-0 text-stone-400 dark:text-stone-500" />
                 )}
                 {group.theme ? (
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[11px] font-bold text-emerald-800">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
                     {themeList.findIndex((t) => t.id === group.key) + 1}
                   </span>
                 ) : (
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-stone-100">
-                    <Folder aria-hidden className="h-3.5 w-3.5 text-stone-500" />
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
+                    <Folder aria-hidden className="h-3.5 w-3.5 text-stone-500 dark:text-stone-400" />
                   </span>
                 )}
-                <span className="min-w-0 flex-1 truncate text-sm font-bold text-stone-700">
+                <span className="min-w-0 flex-1 truncate text-sm font-bold text-stone-700 dark:text-stone-200">
                   {group.title}
                 </span>
-                <span className="shrink-0 text-[11px] font-semibold text-stone-400">
+                <span className="shrink-0 text-[11px] font-semibold text-stone-400 dark:text-stone-500">
                   {groupTotal} {groupTotal === 1 ? 'aula' : 'aulas'}
                 </span>
                 <Progress
@@ -901,7 +901,7 @@ function ContentsNav({
                   aria-label={`Progresso da seção ${group.title}`}
                   className="h-1.5 w-10 shrink-0 [&_[data-slot=progress-indicator]]:bg-emerald-500"
                 />
-                <span className="w-9 shrink-0 text-right text-[10px] font-bold tabular-nums text-emerald-700">
+                <span className="w-9 shrink-0 text-right text-[10px] font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
                   {groupDone}/{groupTotal}
                 </span>
               </button>
@@ -920,14 +920,14 @@ function ContentsNav({
                     className={cn(
                       'flex min-h-14 w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors',
                       isCurrent
-                        ? 'border-emerald-300 bg-emerald-50/80 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.15)]'
-                        : 'border-transparent hover:bg-stone-50'
+                        ? 'border-emerald-300 bg-emerald-50/80 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.15)] dark:border-emerald-700 dark:bg-emerald-950/50'
+                        : 'border-transparent hover:bg-stone-50 dark:hover:bg-stone-800'
                     )}
                   >
                     <span
                       className={cn(
                         'w-4 shrink-0 text-center text-xs font-bold',
-                        isCurrent ? 'text-emerald-700' : 'text-stone-400'
+                        isCurrent ? 'text-emerald-700 dark:text-emerald-300' : 'text-stone-400 dark:text-stone-500'
                       )}
                     >
                       {lesson.order}
@@ -937,15 +937,15 @@ function ContentsNav({
                         className={cn(
                           'block truncate text-sm font-semibold',
                           isCompleted
-                            ? 'text-stone-400 line-through decoration-stone-300'
+                            ? 'text-stone-400 line-through decoration-stone-300 dark:text-stone-500 dark:decoration-stone-600'
                             : isCurrent
-                              ? 'text-emerald-900'
-                              : 'text-stone-700'
+                              ? 'text-emerald-900 dark:text-emerald-200'
+                              : 'text-stone-700 dark:text-stone-200'
                         )}
                       >
                         {lesson.title}
                       </span>
-                      <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-stone-400">
+                      <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-stone-400 dark:text-stone-500">
                         {live ? (
                           <>
                             <Radio aria-hidden className="h-3 w-3 text-rose-500" />
@@ -995,9 +995,9 @@ function ContentsNav({
                     ) : reading ? (
                       <BookOpen aria-hidden className="h-4 w-4 shrink-0 text-amber-400" />
                     ) : lesson.kind === 'RECORDED' ? (
-                      <PlayCircle aria-hidden className="h-4 w-4 shrink-0 text-stone-300" />
+                      <PlayCircle aria-hidden className="h-4 w-4 shrink-0 text-stone-300 dark:text-stone-600" />
                     ) : (
-                      <FileText aria-hidden className="h-4 w-4 shrink-0 text-stone-300" />
+                      <FileText aria-hidden className="h-4 w-4 shrink-0 text-stone-300 dark:text-stone-600" />
                     )}
                   </button>
                 )
@@ -1006,7 +1006,7 @@ function ContentsNav({
         )
       })}
       {totalLessons === 0 && (
-        <p className="px-2 py-4 text-sm text-stone-400">Nenhuma aula publicada ainda.</p>
+        <p className="px-2 py-4 text-sm text-stone-400 dark:text-stone-500">Nenhuma aula publicada ainda.</p>
       )}
     </nav>
   )
@@ -1047,14 +1047,14 @@ function ReadingMaterial({
 
   if (!reading || !canRead) {
     return (
-      <div className="flex min-h-[420px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-12 text-center">
-        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-50">
-          <Lock aria-hidden className="h-6 w-6 text-amber-600" />
+      <div className="flex min-h-[420px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-12 text-center dark:border-stone-700 dark:bg-stone-900">
+        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950/50">
+          <Lock aria-hidden className="h-6 w-6 text-amber-600 dark:text-amber-400" />
         </span>
-        <p className="font-bold text-stone-900">
+        <p className="font-bold text-stone-900 dark:text-stone-50">
           {reading ? 'Inscreva-se para acessar este material' : 'Material da aula em preparação'}
         </p>
-        <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+        <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
           {reading
             ? 'Este é um conteúdo da Biblioteca — disponível para alunos inscritos no curso.'
             : 'O artigo ou livro vinculado a esta aula ainda não está disponível.'}
@@ -1067,7 +1067,7 @@ function ReadingMaterial({
     <div>
       {/* Cabeçalho do material */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <Badge className="border-transparent bg-amber-100 text-amber-800 hover:bg-amber-100">
+        <Badge className="border-transparent bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:hover:bg-amber-950/50">
           <BookOpen aria-hidden className="h-3 w-3" />
           {readingKindLabel(reading.kind)}
         </Badge>
@@ -1097,9 +1097,9 @@ function ReadingMaterial({
           />
         </div>
       ) : (
-        <div className="min-h-[420px] max-h-[70vh] overflow-y-auto rounded-2xl border border-stone-200 bg-white p-6 shadow-lg shadow-stone-900/5 sm:p-8 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
+        <div className="min-h-[420px] max-h-[70vh] overflow-y-auto rounded-2xl border border-stone-200 bg-white p-6 shadow-lg shadow-stone-900/5 sm:p-8 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-stone-100 dark:[&::-webkit-scrollbar-track]:bg-stone-900 [&::-webkit-scrollbar]:w-1.5 dark:border-stone-800 dark:bg-stone-900">
           <article className="mx-auto max-w-3xl">
-            <h2 className="text-2xl font-extrabold tracking-tight text-stone-900">{reading.title}</h2>
+            <h2 className="text-2xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">{reading.title}</h2>
             <div className="mt-5 space-y-4">
               {(reading.content ?? '')
                 .split(/\n{2,}/)
@@ -1108,14 +1108,14 @@ function ReadingMaterial({
                   para.trim().startsWith('## ') ? (
                     <h3
                       key={i}
-                      className="pt-2 text-lg font-bold tracking-tight text-emerald-900"
+                      className="pt-2 text-lg font-bold tracking-tight text-emerald-900 dark:text-emerald-200"
                     >
                       {para.trim().slice(3)}
                     </h3>
                   ) : (
                     <p
                       key={i}
-                      className="whitespace-pre-line text-[15px] leading-relaxed text-stone-700"
+                      className="whitespace-pre-line text-[15px] leading-relaxed text-stone-700 dark:text-stone-200"
                     >
                       {para}
                     </p>
@@ -1320,7 +1320,7 @@ function LessonQuestions({
 
   if (!user) {
     return (
-      <div className="rounded-2xl border border-stone-200 bg-white p-6 text-center text-sm text-stone-500">
+      <div className="rounded-2xl border border-stone-200 bg-white p-6 text-center text-sm text-stone-500 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-400">
         Entre com uma conta no topo da página para participar das perguntas.
       </div>
     )
@@ -1330,8 +1330,8 @@ function LessonQuestions({
     <div className="space-y-4">
       {/* Formulário de pergunta (aluno) */}
       {!isOwner ? (
-        <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5">
-          <label htmlFor="question-body" className="text-sm font-bold text-stone-800">
+        <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 dark:border-stone-800 dark:bg-stone-900">
+          <label htmlFor="question-body" className="text-sm font-bold text-stone-800 dark:text-stone-200">
             Tirou uma dúvida? Pergunte ao mentor
           </label>
           <Textarea
@@ -1344,7 +1344,7 @@ function LessonQuestions({
             maxLength={1200}
           />
           <div className="mt-3 flex items-center justify-between gap-3">
-            <span className="text-xs text-stone-400">{body.length}/1200</span>
+            <span className="text-xs text-stone-400 dark:text-stone-500">{body.length}/1200</span>
             <Button
               className="h-10 rounded-full font-semibold"
               onClick={() => void ask()}
@@ -1364,24 +1364,24 @@ function LessonQuestions({
           <Skeleton className="h-20 rounded-2xl" />
         </div>
       ) : questions.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-10 text-center">
-          <MessageCircle aria-hidden className="h-6 w-6 text-stone-300" />
-          <p className="text-sm text-stone-400">
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-10 text-center dark:border-stone-700 dark:bg-stone-900">
+          <MessageCircle aria-hidden className="h-6 w-6 text-stone-300 dark:text-stone-600" />
+          <p className="text-sm text-stone-400 dark:text-stone-500">
             Nenhuma pergunta ainda — {isOwner ? 'seus alunos aparecerão aqui.' : 'seja o primeiro a perguntar!'}
           </p>
         </div>
       ) : (
         <ul className="space-y-3">
           {questions.map((q) => (
-            <li key={q.id} className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5">
+            <li key={q.id} className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 dark:border-stone-800 dark:bg-stone-900">
               <div className="flex items-start gap-3">
                 <Avatar name={q.author.name} src={q.author.avatarUrl} size="sm" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-stone-800">
+                  <p className="text-sm font-bold text-stone-800 dark:text-stone-200">
                     {q.author.name}
-                    {q.isMine ? <span className="ml-1.5 text-xs font-semibold text-stone-400">(você)</span> : null}
+                    {q.isMine ? <span className="ml-1.5 text-xs font-semibold text-stone-400 dark:text-stone-500">(você)</span> : null}
                   </p>
-                  <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-stone-700">
+                  <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-stone-700 dark:text-stone-200">
                     {q.body}
                   </p>
                 </div>
@@ -1389,7 +1389,7 @@ function LessonQuestions({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 shrink-0 rounded-full text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+                    className="h-8 w-8 shrink-0 rounded-full text-stone-400 hover:bg-rose-50 hover:text-rose-600 dark:text-stone-500 dark:hover:bg-rose-950/50 dark:hover:text-rose-400"
                     aria-label="Remover minha pergunta"
                     onClick={() => void remove(q.id)}
                   >
@@ -1399,17 +1399,17 @@ function LessonQuestions({
               </div>
 
               {q.answer ? (
-                <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/70 p-3.5">
-                  <p className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-emerald-700">
+                <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/70 p-3.5 dark:border-emerald-900 dark:bg-emerald-950/50">
+                  <p className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
                     <Users aria-hidden className="h-3 w-3" /> Resposta de {mentorName}
                   </p>
-                  <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-emerald-900">
+                  <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-emerald-900 dark:text-emerald-200">
                     {q.answer}
                   </p>
                 </div>
               ) : isOwner ? (
-                <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50/60 p-3.5">
-                  <p className="text-xs font-extrabold uppercase tracking-wide text-amber-700">
+                <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50/60 p-3.5 dark:border-amber-900 dark:bg-amber-950/50">
+                  <p className="text-xs font-extrabold uppercase tracking-wide text-amber-700 dark:text-amber-400">
                     Aguardando sua resposta
                   </p>
                   <Textarea
@@ -1417,7 +1417,7 @@ function LessonQuestions({
                     value={answerDraft[q.id] ?? ''}
                     onChange={(e) => setAnswerDraft((prev) => ({ ...prev, [q.id]: e.target.value }))}
                     placeholder="Escreva a resposta para o aluno..."
-                    className="mt-2 resize-none border-white bg-white"
+                    className="mt-2 resize-none border-white bg-white dark:border-stone-800 dark:bg-stone-900"
                     maxLength={2000}
                     aria-label={`Responder pergunta de ${q.author.name}`}
                   />
@@ -1433,7 +1433,7 @@ function LessonQuestions({
                   </div>
                 </div>
               ) : (
-                <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-950/50 dark:text-amber-400">
                   <MessageCircle aria-hidden className="h-3 w-3" /> Aguardando resposta do mentor
                 </p>
               )}
@@ -1529,22 +1529,22 @@ function LessonNotes({
 
   if (!user) {
     return (
-      <div className="rounded-2xl border border-stone-200 bg-white p-6 text-center text-sm text-stone-500">
+      <div className="rounded-2xl border border-stone-200 bg-white p-6 text-center text-sm text-stone-500 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-400">
         Entre com uma conta para escrever e guardar suas anotações.
       </div>
     )
   }
 
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5">
+    <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 dark:border-stone-800 dark:bg-stone-900">
       <div className="flex items-center justify-between gap-3">
-        <label htmlFor="lesson-notes" className="text-sm font-bold text-stone-800">
+        <label htmlFor="lesson-notes" className="text-sm font-bold text-stone-800 dark:text-stone-200">
           Minhas anotações desta aula
         </label>
         <span
           className={cn(
             'inline-flex items-center gap-1.5 text-xs font-semibold',
-            saveState === 'saving' ? 'text-amber-600' : saveState === 'saved' ? 'text-emerald-600' : 'text-stone-400'
+            saveState === 'saving' ? 'text-amber-600 dark:text-amber-400' : saveState === 'saved' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-400 dark:text-stone-500'
           )}
           aria-live="polite"
         >
@@ -1570,7 +1570,7 @@ function LessonNotes({
         className="mt-2 resize-y"
       />
       <div className="mt-3 flex items-center justify-between gap-3">
-        <span className="text-xs text-stone-400">
+        <span className="text-xs text-stone-400 dark:text-stone-500">
           {savedAt ? `Última atualização: ${new Date(savedAt).toLocaleString('pt-BR')}` : 'Nenhuma edição ainda'}
         </span>
         <Button
@@ -1678,7 +1678,7 @@ function LessonQuiz({
 
   if (!user) {
     return (
-      <div className="rounded-2xl border border-stone-200 bg-white p-6 text-center text-sm text-stone-500">
+      <div className="rounded-2xl border border-stone-200 bg-white p-6 text-center text-sm text-stone-500 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-400">
         Entre com uma conta para responder o quiz desta aula.
       </div>
     )
@@ -1687,9 +1687,9 @@ function LessonQuiz({
   if (quizzes === null) {
     if (error) {
       return (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-10 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-10 text-center dark:border-stone-700 dark:bg-stone-900">
           <AlertCircle aria-hidden className="h-6 w-6 text-rose-400" />
-          <p className="text-sm text-stone-500">{error}</p>
+          <p className="text-sm text-stone-500 dark:text-stone-400">{error}</p>
           <Button variant="outline" className="rounded-full" onClick={() => void load()}>
             Tentar novamente
           </Button>
@@ -1706,17 +1706,17 @@ function LessonQuiz({
 
   if (quizzes.length === 0) {
     return isOwner ? (
-      <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-10 text-center">
-        <ListChecks aria-hidden className="h-6 w-6 text-stone-300" />
-        <p className="text-sm font-semibold text-stone-600">Nenhuma pergunta de quiz nesta aula.</p>
-        <p className="max-w-xs text-xs leading-relaxed text-stone-400">
+      <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-10 text-center dark:border-stone-700 dark:bg-stone-900">
+        <ListChecks aria-hidden className="h-6 w-6 text-stone-300 dark:text-stone-600" />
+        <p className="text-sm font-semibold text-stone-600 dark:text-stone-300">Nenhuma pergunta de quiz nesta aula.</p>
+        <p className="max-w-xs text-xs leading-relaxed text-stone-400 dark:text-stone-500">
           Crie perguntas no painel do curso para seus alunos praticarem aqui.
         </p>
       </div>
     ) : (
-      <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-10 text-center">
-        <ListChecks aria-hidden className="h-6 w-6 text-stone-300" />
-        <p className="text-sm text-stone-400">O mentor ainda não publicou perguntas para esta aula.</p>
+      <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-10 text-center dark:border-stone-700 dark:bg-stone-900">
+        <ListChecks aria-hidden className="h-6 w-6 text-stone-300 dark:text-stone-600" />
+        <p className="text-sm text-stone-400 dark:text-stone-500">O mentor ainda não publicou perguntas para esta aula.</p>
       </div>
     )
   }
@@ -1750,26 +1750,26 @@ function LessonQuiz({
           const explanation = fresh?.explanation || quiz.explanation || ''
 
           return (
-            <li key={quiz.id} className="rounded-2xl border border-stone-200 bg-white p-5">
+            <li key={quiz.id} className="rounded-2xl border border-stone-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-extrabold uppercase tracking-wide text-stone-400">
+                  <p className="text-[11px] font-extrabold uppercase tracking-wide text-stone-400 dark:text-stone-500">
                     Pergunta {qIndex + 1}
                   </p>
-                  <p className="mt-0.5 font-semibold text-stone-900">{quiz.prompt}</p>
+                  <p className="mt-0.5 font-semibold text-stone-900 dark:text-stone-50">{quiz.prompt}</p>
                 </div>
                 {persisted !== null ? (
                   persisted.correct ? (
-                    <Badge className="shrink-0 border-transparent bg-emerald-100 text-emerald-800">
+                    <Badge className="shrink-0 border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
                       <CheckCircle2 aria-hidden className="h-3 w-3" /> Você acertou
                     </Badge>
                   ) : (
-                    <Badge className="shrink-0 border-transparent bg-stone-100 text-stone-600">
+                    <Badge className="shrink-0 border-transparent bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300">
                       <Lightbulb aria-hidden className="h-3 w-3" /> Respondeu — revise a explicação
                     </Badge>
                   )
                 ) : quiz.isMine ? (
-                  <Badge className="shrink-0 border-transparent bg-violet-100 text-violet-800">
+                  <Badge className="shrink-0 border-transparent bg-violet-100 text-violet-800 dark:bg-violet-950/50 dark:text-violet-300">
                     <ListChecks aria-hidden className="h-3 w-3" /> Gabarito
                   </Badge>
                 ) : null}
@@ -1797,14 +1797,14 @@ function LessonQuiz({
                         'h-auto min-h-11 w-full justify-start gap-3 whitespace-normal rounded-xl px-3 py-2.5 text-left',
                         locked && 'pointer-events-none',
                         isCorrectReveal
-                          ? 'border-emerald-500 bg-emerald-50 text-emerald-900 hover:bg-emerald-50'
+                          ? 'border-emerald-500 bg-emerald-50 text-emerald-900 hover:bg-emerald-50 dark:bg-emerald-950/50 dark:text-emerald-200 dark:hover:bg-emerald-950/50'
                           : isWrongReveal
-                            ? 'border-rose-300 bg-rose-50 text-rose-900 hover:bg-rose-50'
+                            ? 'border-rose-300 bg-rose-50 text-rose-900 hover:bg-rose-50 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-200 dark:hover:bg-rose-950/50'
                             : isSelected
-                              ? 'border-emerald-600 bg-emerald-50/60 text-stone-900'
+                              ? 'border-emerald-600 bg-emerald-50/60 text-stone-900 dark:bg-emerald-950/50 dark:text-stone-50'
                               : locked
-                                ? 'border-stone-200 bg-stone-50/40 text-stone-500'
-                                : 'text-stone-700 hover:border-emerald-300 hover:bg-emerald-50/40'
+                                ? 'border-stone-200 bg-stone-50/40 text-stone-500 dark:border-stone-800 dark:bg-stone-950/40 dark:text-stone-400'
+                                : 'text-stone-700 hover:border-emerald-300 hover:bg-emerald-50/40 dark:text-stone-200 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/40'
                       )}
                     >
                       <span
@@ -1817,7 +1817,7 @@ function LessonQuiz({
                               ? 'bg-rose-400 text-white'
                               : isSelected
                                 ? 'bg-emerald-700 text-white'
-                                : 'bg-stone-100 text-stone-600'
+                                : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300'
                         )}
                       >
                         {QUIZ_LETTERS[idx] ?? idx + 1}
@@ -1849,17 +1849,17 @@ function LessonQuiz({
               {/* Feedback da resposta enviada nesta sessão */}
               {fresh ? (
                 fresh.correct ? (
-                  <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50/80 p-3.5">
-                    <CheckCircle2 aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                    <p className="min-w-0 flex-1 text-sm font-bold text-emerald-800">
+                  <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50/80 p-3.5 dark:border-emerald-900 dark:bg-emerald-950/50">
+                    <CheckCircle2 aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <p className="min-w-0 flex-1 text-sm font-bold text-emerald-800 dark:text-emerald-300">
                       Isso!{fresh.xpAwarded > 0 ? ` +${fresh.xpAwarded} XP` : ''}
                     </p>
                   </div>
                 ) : (
-                  <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50/80 p-3.5">
+                  <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50/80 p-3.5 dark:border-rose-900 dark:bg-rose-950/50">
                     <div className="flex items-start gap-2.5">
                       <XCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
-                      <p className="min-w-0 flex-1 text-sm leading-relaxed text-rose-800">
+                      <p className="min-w-0 flex-1 text-sm leading-relaxed text-rose-800 dark:text-rose-300">
                         Não foi dessa vez — a correta é:{' '}
                         <span className="font-bold">{quiz.options[fresh.correctIndex] ?? '—'}</span>
                       </p>
@@ -1867,7 +1867,7 @@ function LessonQuiz({
                     <div className="mt-2.5 flex justify-end">
                       <Button
                         variant="outline"
-                        className="h-9 rounded-full border-rose-200 bg-white font-semibold text-rose-700 hover:bg-rose-100 hover:text-rose-800"
+                        className="h-9 rounded-full border-rose-200 bg-white font-semibold text-rose-700 hover:bg-rose-100 hover:text-rose-800 dark:border-rose-900 dark:bg-stone-900 dark:text-rose-400 dark:hover:bg-rose-950/50 dark:hover:text-rose-300"
                         onClick={() => retry(quiz.id)}
                       >
                         Tentar de novo
@@ -1879,9 +1879,9 @@ function LessonQuiz({
 
               {/* Explicação do mentor */}
               {explanation ? (
-                <div className="mt-3 flex items-start gap-2 rounded-xl bg-stone-50 p-3">
+                <div className="mt-3 flex items-start gap-2 rounded-xl bg-stone-50 p-3 dark:bg-stone-950/50">
                   <Lightbulb aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-                  <p className="min-w-0 flex-1 text-sm leading-relaxed text-stone-600">{explanation}</p>
+                  <p className="min-w-0 flex-1 text-sm leading-relaxed text-stone-600 dark:text-stone-300">{explanation}</p>
                 </div>
               ) : null}
             </li>
@@ -1889,7 +1889,7 @@ function LessonQuiz({
         })}
       </ul>
 
-      <p className="text-xs text-stone-400">
+      <p className="text-xs text-stone-400 dark:text-stone-500">
         {mentorOnly
           ? `${quizzes.length} ${quizzes.length === 1 ? 'pergunta' : 'perguntas'} · gabarito visível apenas para você`
           : `${answeredCount} de ${quizzes.length} respondidas · ${correctCount} acertos`}

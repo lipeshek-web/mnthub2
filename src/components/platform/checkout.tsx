@@ -282,11 +282,11 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
       <div className="mx-auto w-full max-w-3xl px-4 py-16">
         <Card className="mx-auto max-w-md border-dashed">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 dark:bg-rose-950/50">
               <AlertCircle aria-hidden className="h-7 w-7 text-rose-500" />
             </span>
-            <p className="font-bold text-stone-900">Não foi possível carregar o checkout</p>
-            <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+            <p className="font-bold text-stone-900 dark:text-stone-50">Não foi possível carregar o checkout</p>
+            <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
               {error ?? 'Item não encontrado.'}
             </p>
             <Button variant="outline" className="rounded-full" onClick={() => void fetchSummary()}>
@@ -351,31 +351,31 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
       <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:py-14">
         <Card className="mx-auto max-w-md rounded-2xl">
           <CardContent className="flex flex-col items-center gap-1.5 p-8 text-center">
-            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
-              <CheckCircle2 aria-hidden className="h-9 w-9 text-emerald-600" />
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-950/50">
+              <CheckCircle2 aria-hidden className="h-9 w-9 text-emerald-600 dark:text-emerald-400" />
             </span>
-            <h1 className="mt-2 text-xl font-extrabold tracking-tight text-stone-900 sm:text-2xl">
+            <h1 className="mt-2 text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50 sm:text-2xl">
               Pagamento confirmado!
             </h1>
-            <p className="text-sm leading-relaxed text-stone-500">
+            <p className="text-sm leading-relaxed text-stone-500 dark:text-stone-400">
               Você já tem acesso a{' '}
-              <span className="font-semibold text-stone-700">“{order.order.itemTitle}”</span>
+              <span className="font-semibold text-stone-700 dark:text-stone-200">“{order.order.itemTitle}”</span>
             </p>
 
-            <dl className="mt-5 w-full space-y-2 rounded-xl border border-stone-200 bg-stone-50/60 p-4 text-left text-sm">
+            <dl className="mt-5 w-full space-y-2 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-950/50 p-4 text-left text-sm">
               <div className="flex items-center justify-between gap-3">
-                <dt className="text-stone-500">Pedido</dt>
-                <dd className="font-bold text-stone-800">#{order.order.id.slice(0, 8).toUpperCase()}</dd>
+                <dt className="text-stone-500 dark:text-stone-400">Pedido</dt>
+                <dd className="font-bold text-stone-800 dark:text-stone-200">#{order.order.id.slice(0, 8).toUpperCase()}</dd>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <dt className="text-stone-500">Método</dt>
-                <dd className="font-bold text-stone-800">
+                <dt className="text-stone-500 dark:text-stone-400">Método</dt>
+                <dd className="font-bold text-stone-800 dark:text-stone-200">
                   {METHOD_LABEL[order.order.paymentMethod] ?? order.order.paymentMethod}
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <dt className="text-stone-500">Total</dt>
-                <dd className="font-extrabold text-emerald-700">{formatBRL(order.order.amount)}</dd>
+                <dt className="text-stone-500 dark:text-stone-400">Total</dt>
+                <dd className="font-extrabold text-emerald-700 dark:text-emerald-300">{formatBRL(order.order.amount)}</dd>
               </div>
             </dl>
 
@@ -432,12 +432,12 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
             ? navigate({ name: 'track', trackId: item.id })
             : navigate({ name: 'course', courseId: item.id })
         }
-        className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 hover:text-stone-900"
+        className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-50"
       >
         <ArrowLeft aria-hidden className="h-4 w-4" />
         {isTrack ? 'Voltar à trilha' : 'Voltar ao curso'}
       </Button>
-      <h1 className="mt-1 text-xl font-extrabold tracking-tight text-stone-900 sm:text-2xl">
+      <h1 className="mt-1 text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50 sm:text-2xl">
         Checkout
       </h1>
 
@@ -445,11 +445,11 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
       {!user && (
         <Card className="mt-5 border-dashed">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
-              <LogIn aria-hidden className="h-7 w-7 text-emerald-700" />
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-950/50">
+              <LogIn aria-hidden className="h-7 w-7 text-emerald-700 dark:text-emerald-300" />
             </span>
-            <p className="font-bold text-stone-900">Entre para concluir a compra</p>
-            <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+            <p className="font-bold text-stone-900 dark:text-stone-50">Entre para concluir a compra</p>
+            <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
               Entre com uma conta para concluir a compra de “{item.title}”.
             </p>
             <Button
@@ -464,15 +464,15 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
 
       {/* Já inscrito: acesso liberado */}
       {user && item.isEnrolled && (
-        <Card className="mt-5 rounded-2xl border-emerald-200 bg-emerald-50/40">
+        <Card className="mt-5 rounded-2xl border-emerald-200 dark:border-emerald-900 bg-emerald-50/40 dark:bg-emerald-950/50">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
-              <CheckCircle2 aria-hidden className="h-7 w-7 text-emerald-700" />
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/50">
+              <CheckCircle2 aria-hidden className="h-7 w-7 text-emerald-700 dark:text-emerald-300" />
             </span>
-            <p className="font-bold text-stone-900">
+            <p className="font-bold text-stone-900 dark:text-stone-50">
               {isTrack ? 'Você já tem acesso a esta trilha' : 'Você já tem acesso a este curso'}
             </p>
-            <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+            <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
               Sua matrícula em “{item.title}” já está ativa — bons estudos!
             </p>
             <Button
@@ -492,11 +492,11 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
       {/* Item gratuito: matrícula direta (defensivo — trilhas gratuitas normalmente
           são inscritas direto na tela da trilha, sem passar pelo checkout) */}
       {user && !item.isEnrolled && item.price === 0 && (
-        <div className="mt-5 flex flex-col items-center gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-8 text-center">
-          <p className="font-bold text-stone-900">
+        <div className="mt-5 flex flex-col items-center gap-2.5 rounded-2xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/50 p-8 text-center">
+          <p className="font-bold text-stone-900 dark:text-stone-50">
             {isTrack ? 'Esta trilha é gratuita' : 'Este curso é gratuito'}
           </p>
-          <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+          <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
             Não é preciso pagar nada: matricule-se e comece a aprender agora mesmo.
           </p>
           <Button
@@ -537,27 +537,27 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
 
             <div className="p-5 sm:p-6">
               <div className="flex flex-wrap items-center gap-1.5">
-                <Badge className="rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+                <Badge className="rounded-full border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50">
                   {item.category}
                 </Badge>
-                <Badge variant="outline" className="rounded-full border-stone-300 text-stone-600">
+                <Badge variant="outline" className="rounded-full border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-300">
                   {LEVEL_LABELS[item.level] ?? item.level}
                 </Badge>
               </div>
 
-              <h2 className="mt-2.5 text-lg font-extrabold leading-snug text-stone-900">
+              <h2 className="mt-2.5 text-lg font-extrabold leading-snug text-stone-900 dark:text-stone-50">
                 {item.title}
               </h2>
 
               {isTrack && item.trackStats && (
-                <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-stone-500">
+                <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-stone-500 dark:text-stone-400">
                   <span className="inline-flex items-center gap-1.5">
-                    <BookOpen aria-hidden className="h-4 w-4 text-stone-400" />
+                    <BookOpen aria-hidden className="h-4 w-4 text-stone-400 dark:text-stone-500" />
                     Trilha com {item.trackStats.courseCount}{' '}
                     {item.trackStats.courseCount === 1 ? 'curso' : 'cursos'}
                   </span>
                   <span className="inline-flex items-center gap-1.5">
-                    <Users aria-hidden className="h-4 w-4 text-stone-400" />e{' '}
+                    <Users aria-hidden className="h-4 w-4 text-stone-400 dark:text-stone-500" />e{' '}
                     {item.trackStats.mentorshipSessions}{' '}
                     {item.trackStats.mentorshipSessions === 1 ? 'mentoria' : 'mentorias'} 1:1
                   </span>
@@ -567,11 +567,11 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
               <div className="mt-3 flex items-center gap-3">
                 <Avatar name={item.mentor.name} src={item.mentor.avatarUrl} size="sm" />
                 <div>
-                  <p className="text-sm font-bold text-stone-800">{item.mentor.name}</p>
+                  <p className="text-sm font-bold text-stone-800 dark:text-stone-200">{item.mentor.name}</p>
                   {item.mentor.rating > 0 && (
                     <div className="mt-0.5 flex items-center gap-1.5">
                       <Stars rating={item.mentor.rating} size={12} />
-                      <span className="text-xs text-stone-400">
+                      <span className="text-xs text-stone-400 dark:text-stone-500">
                         ({item.mentor.reviewCount}{' '}
                         {item.mentor.reviewCount === 1 ? 'avaliação' : 'avaliações'})
                       </span>
@@ -583,21 +583,21 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
               <Separator className="my-4" />
 
               <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-medium text-stone-500">Total</span>
+                <span className="text-sm font-medium text-stone-500 dark:text-stone-400">Total</span>
                 {couponApplied ? (
-                  <span className="text-2xl font-extrabold tracking-tight text-emerald-700">
+                  <span className="text-2xl font-extrabold tracking-tight text-emerald-700 dark:text-emerald-300">
                     {formatBRL(couponApplied.finalPrice)}
                   </span>
                 ) : (
-                  <span className="text-2xl font-extrabold tracking-tight text-stone-900">
+                  <span className="text-2xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
                     {currencyBRL(item.price)}
                   </span>
                 )}
               </div>
               {couponApplied && (
                 <div className="mt-1 flex items-center justify-between gap-3 text-sm">
-                  <span className="text-emerald-700">Desconto ({couponApplied.code})</span>
-                  <span className="font-bold text-emerald-700">
+                  <span className="text-emerald-700 dark:text-emerald-300">Desconto ({couponApplied.code})</span>
+                  <span className="font-bold text-emerald-700 dark:text-emerald-300">
                     −{formatBRL(couponApplied.discount)}
                   </span>
                 </div>
@@ -605,13 +605,13 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
 
               {/* ---- CUPOM DE DESCONTO (apenas itens pagos) ---- */}
               {couponApplied ? (
-                <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+                <div className="mt-3 rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/70 dark:bg-emerald-950/50 p-3">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
-                      <span className="rounded-md border border-emerald-300 bg-white px-2 py-0.5 font-mono text-xs font-bold text-emerald-800">
+                      <span className="rounded-md border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-stone-950/50 px-2 py-0.5 font-mono text-xs font-bold text-emerald-800 dark:text-emerald-300">
                         {couponApplied.code}
                       </span>
-                      <span className="truncate text-xs font-semibold text-emerald-800">
+                      <span className="truncate text-xs font-semibold text-emerald-800 dark:text-emerald-300">
                         {couponApplied.label}
                       </span>
                     </div>
@@ -619,17 +619,17 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
                       variant="ghost"
                       aria-label="Remover cupom"
                       onClick={removeCoupon}
-                      className="h-11 w-11 shrink-0 rounded-xl text-stone-400 hover:bg-white hover:text-stone-700"
+                      className="h-11 w-11 shrink-0 rounded-xl text-stone-400 dark:text-stone-500 hover:bg-white dark:hover:bg-stone-950/50 hover:text-stone-700 dark:hover:text-stone-200"
                     >
                       <X aria-hidden className="h-4 w-4" />
                     </Button>
                   </div>
                   <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                    <span className="text-sm text-stone-400 line-through">
+                    <span className="text-sm text-stone-400 dark:text-stone-500 line-through">
                       {formatBRL(item.price)}
                     </span>
-                    <span className="text-xs font-medium text-emerald-700">com desconto</span>
-                    <span className="text-lg font-extrabold text-emerald-700">
+                    <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">com desconto</span>
+                    <span className="text-lg font-extrabold text-emerald-700 dark:text-emerald-300">
                       {formatBRL(couponApplied.finalPrice)}
                     </span>
                   </div>
@@ -649,7 +649,7 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
                     <div className="relative min-w-0 flex-1">
                       <Tag
                         aria-hidden
-                        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400"
+                        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-stone-500"
                       />
                       <Input
                         id="checkout-coupon"
@@ -677,13 +677,13 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
                       )}
                     </Button>
                   </div>
-                  <p aria-live="polite" className="mt-1.5 min-h-4 text-xs text-rose-600">
+                  <p aria-live="polite" className="mt-1.5 min-h-4 text-xs text-rose-600 dark:text-rose-400">
                     {couponError}
                   </p>
                 </form>
               )}
 
-              <p className="mt-2 text-xs text-stone-400">
+              <p className="mt-2 text-xs text-stone-400 dark:text-stone-500">
                 Pagamento processado pela plataforma · demonstração
               </p>
             </div>
@@ -692,7 +692,7 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
           {/* ---- AVISO DEMO ---- */}
           <div
             role="note"
-            className="mt-5 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-800"
+            className="mt-5 flex items-start gap-2 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 px-4 py-3 text-xs leading-relaxed text-amber-800 dark:text-amber-300"
           >
             <Info aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
@@ -705,7 +705,7 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
           <section aria-labelledby="lp-pagamento-title" className="mt-6">
             <h2
               id="lp-pagamento-title"
-              className="text-sm font-extrabold uppercase tracking-wider text-stone-500"
+              className="text-sm font-extrabold uppercase tracking-wider text-stone-500 dark:text-stone-400"
             >
               Forma de pagamento
             </h2>
@@ -721,15 +721,15 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
                 className={cn(
                   'cursor-pointer rounded-2xl border p-4 transition-colors',
                   paymentMethod === 'PIX'
-                    ? 'border-emerald-500 bg-emerald-50/60 ring-1 ring-emerald-500'
-                    : 'border-stone-200 bg-white hover:border-stone-300'
+                    ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/50 ring-1 ring-emerald-500'
+                    : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-700'
                 )}
               >
                 <RadioGroupItem value="PIX" id="pay-pix" className="mt-0.5" />
-                <QrCode aria-hidden className="h-5 w-5 shrink-0 text-emerald-700" />
+                <QrCode aria-hidden className="h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-300" />
                 <span className="flex-1">
-                  <span className="block text-sm font-bold text-stone-900">PIX</span>
-                  <span className="block text-xs text-stone-500">Aprovação imediata</span>
+                  <span className="block text-sm font-bold text-stone-900 dark:text-stone-50">PIX</span>
+                  <span className="block text-xs text-stone-500 dark:text-stone-400">Aprovação imediata</span>
                 </span>
               </Label>
 
@@ -738,24 +738,24 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
                 className={cn(
                   'cursor-pointer rounded-2xl border p-4 transition-colors',
                   paymentMethod === 'CREDIT_CARD'
-                    ? 'border-emerald-500 bg-emerald-50/60 ring-1 ring-emerald-500'
-                    : 'border-stone-200 bg-white hover:border-stone-300'
+                    ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/50 ring-1 ring-emerald-500'
+                    : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-700'
                 )}
               >
                 <RadioGroupItem value="CREDIT_CARD" id="pay-card" className="mt-0.5" />
-                <CreditCard aria-hidden className="h-5 w-5 shrink-0 text-emerald-700" />
+                <CreditCard aria-hidden className="h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-300" />
                 <span className="flex-1">
-                  <span className="block text-sm font-bold text-stone-900">Cartão de crédito</span>
-                  <span className="block text-xs text-stone-500">Em até 12x — simulação</span>
+                  <span className="block text-sm font-bold text-stone-900 dark:text-stone-50">Cartão de crédito</span>
+                  <span className="block text-xs text-stone-500 dark:text-stone-400">Em até 12x — simulação</span>
                 </span>
               </Label>
             </RadioGroup>
 
             {/* PIX: QR Code ilustrativo */}
             {paymentMethod === 'PIX' && (
-              <div className="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 bg-stone-50/60 p-6 text-center">
-                <QrCode aria-hidden className="h-24 w-24 text-stone-300" strokeWidth={1.25} />
-                <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+              <div className="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 dark:border-stone-700 bg-stone-50/60 dark:bg-stone-900/60 p-6 text-center">
+                <QrCode aria-hidden className="h-24 w-24 text-stone-300 dark:text-stone-600" strokeWidth={1.25} />
+                <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
                   O QR Code aparece aqui em produção — pagamentos reais via gateway (Stripe/Mercado
                   Pago).
                 </p>
@@ -764,10 +764,10 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
 
             {/* Cartão: formulário apenas visual (demo) */}
             {paymentMethod === 'CREDIT_CARD' && (
-              <div className="mt-4 rounded-2xl border border-stone-200 bg-white p-4 sm:p-5">
+              <div className="mt-4 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 sm:p-5">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="sm:col-span-2">
-                    <Label htmlFor="cc-number" className="text-xs font-semibold text-stone-600">
+                    <Label htmlFor="cc-number" className="text-xs font-semibold text-stone-600 dark:text-stone-300">
                       Número do cartão
                     </Label>
                     <Input
@@ -779,7 +779,7 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <Label htmlFor="cc-name" className="text-xs font-semibold text-stone-600">
+                    <Label htmlFor="cc-name" className="text-xs font-semibold text-stone-600 dark:text-stone-300">
                       Nome no cartão
                     </Label>
                     <Input
@@ -790,7 +790,7 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
                     />
                   </div>
                   <div>
-                    <Label htmlFor="cc-exp" className="text-xs font-semibold text-stone-600">
+                    <Label htmlFor="cc-exp" className="text-xs font-semibold text-stone-600 dark:text-stone-300">
                       Validade
                     </Label>
                     <Input
@@ -802,7 +802,7 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
                     />
                   </div>
                   <div>
-                    <Label htmlFor="cc-cvv" className="text-xs font-semibold text-stone-600">
+                    <Label htmlFor="cc-cvv" className="text-xs font-semibold text-stone-600 dark:text-stone-300">
                       CVV
                     </Label>
                     <Input
@@ -814,7 +814,7 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
                     />
                   </div>
                 </div>
-                <p className="mt-3 flex items-start gap-1.5 text-xs leading-relaxed text-amber-700">
+                <p className="mt-3 flex items-start gap-1.5 text-xs leading-relaxed text-amber-700 dark:text-amber-400">
                   <Info aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   Ambiente de demonstração — não insira dados reais.
                 </p>
@@ -841,9 +841,9 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
           </Button>
 
           {/* ---- SEGURANÇA ---- */}
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-stone-400">
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-stone-400 dark:text-stone-500">
             <span className="inline-flex items-center gap-1.5">
-              <ShieldCheck aria-hidden className="h-4 w-4 text-emerald-600" />
+              <ShieldCheck aria-hidden className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               Compra protegida · 7 dias de garantia
             </span>
             <span className="inline-flex items-center gap-1.5">

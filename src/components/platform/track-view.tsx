@@ -182,12 +182,12 @@ export function TrackView({ trackId }: { trackId: string }) {
   if (!track) {
     return (
       <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 px-6 py-14 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 dark:border-stone-700 px-6 py-14 text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 dark:bg-rose-950/50">
             <AlertCircle aria-hidden className="h-7 w-7 text-rose-500" />
           </span>
-          <p className="font-bold text-stone-900">Não foi possível carregar a trilha.</p>
-          <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+          <p className="font-bold text-stone-900 dark:text-stone-50">Não foi possível carregar a trilha.</p>
+          <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
             {error ?? 'Trilha não encontrada.'}
           </p>
           <Button variant="outline" className="rounded-full" onClick={() => void fetchTrack()}>
@@ -211,7 +211,7 @@ export function TrackView({ trackId }: { trackId: string }) {
       <Button
         variant="ghost"
         onClick={() => navigate({ name: 'marketplace' })}
-        className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 hover:text-stone-900"
+        className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-50"
       >
         <ArrowLeft aria-hidden className="h-4 w-4" /> Voltar
       </Button>
@@ -283,14 +283,14 @@ export function TrackView({ trackId }: { trackId: string }) {
           {/* Como a trilha funciona (+ progresso geral se inscrito) */}
           <section
             aria-labelledby="como-funciona-title"
-            className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6"
+            className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 sm:p-6"
           >
-            <h2 id="como-funciona-title" className="text-lg font-extrabold tracking-tight text-stone-900">
+            <h2 id="como-funciona-title" className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
               Como a trilha funciona
             </h2>
             {track.myEnrollment ? (
-              <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/60 p-4">
-                <div className="flex items-center justify-between gap-2 text-sm font-bold text-emerald-900">
+              <div className="mt-4 rounded-xl border border-emerald-100 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/50 p-4">
+                <div className="flex items-center justify-between gap-2 text-sm font-bold text-emerald-900 dark:text-emerald-200">
                   <span>Seu progresso na trilha</span>
                   <span>{overallPercent}%</span>
                 </div>
@@ -299,12 +299,12 @@ export function TrackView({ trackId }: { trackId: string }) {
                   className="mt-2 h-2"
                   aria-label={`${overallPercent}% da trilha concluída`}
                 />
-                <p className="mt-2 text-xs font-medium text-emerald-800/80">
+                <p className="mt-2 text-xs font-medium text-emerald-800/80 dark:text-emerald-300/80">
                   {overallCompleted} de {overallTotal} aulas concluídas · {overallPercent}%
                 </p>
               </div>
             ) : null}
-            <p className="mt-4 text-sm leading-relaxed text-stone-600">
+            <p className="mt-4 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
               Siga as etapas na ordem sugerida: conclua cada curso no seu ritmo e agende as sessões de
               mentoria 1:1 nos blocos indicados. O progresso é salvo automaticamente conforme você avança.
             </p>
@@ -313,13 +313,13 @@ export function TrackView({ trackId }: { trackId: string }) {
           {/* Timeline numerada dos itens */}
           <section
             aria-labelledby="jornada-title"
-            className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6"
+            className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 sm:p-6"
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 id="jornada-title" className="text-lg font-extrabold tracking-tight text-stone-900">
+              <h2 id="jornada-title" className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
                 Conteúdo da trilha
               </h2>
-              <span className="text-xs font-medium text-stone-400">
+              <span className="text-xs font-medium text-stone-400 dark:text-stone-500">
                 {track.items.length} {track.items.length === 1 ? 'etapa' : 'etapas'}
               </span>
             </div>
@@ -337,7 +337,7 @@ export function TrackView({ trackId }: { trackId: string }) {
                       {index + 1}
                     </span>
                     {index < track.items.length - 1 ? (
-                      <span aria-hidden className="my-1 w-px flex-1 border-l border-dashed border-stone-200" />
+                      <span aria-hidden className="my-1 w-px flex-1 border-l border-dashed border-stone-200 dark:border-stone-800" />
                     ) : null}
                   </div>
                   <div className="min-w-0 flex-1 pb-6 last:pb-0">
@@ -361,7 +361,7 @@ export function TrackView({ trackId }: { trackId: string }) {
               ))}
             </ol>
             {track.items.length === 0 ? (
-              <p className="py-4 text-sm text-stone-400">
+              <p className="py-4 text-sm text-stone-400 dark:text-stone-500">
                 Os itens desta trilha estão sendo preparados.
               </p>
             ) : null}
@@ -370,20 +370,20 @@ export function TrackView({ trackId }: { trackId: string }) {
           {/* Sobre o mentor */}
           <section
             aria-label="Mentor da trilha"
-            className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6"
+            className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 sm:p-6"
           >
-            <h2 className="text-lg font-extrabold tracking-tight text-stone-900">Sobre o mentor</h2>
+            <h2 className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">Sobre o mentor</h2>
             <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
               <Avatar name={track.mentor.name} src={track.mentor.avatarUrl} size="lg" />
               <div className="min-w-0 flex-1">
-                <p className="font-bold text-stone-900">{track.mentor.name}</p>
-                <p className="line-clamp-1 text-sm text-stone-500">{track.mentor.headline}</p>
+                <p className="font-bold text-stone-900 dark:text-stone-50">{track.mentor.name}</p>
+                <p className="line-clamp-1 text-sm text-stone-500 dark:text-stone-400">{track.mentor.headline}</p>
                 <div className="mt-1.5 flex items-center gap-1.5">
                   <Stars rating={track.mentor.rating} size={13} />
-                  <span className="text-xs font-semibold text-stone-700">
+                  <span className="text-xs font-semibold text-stone-700 dark:text-stone-200">
                     {track.mentor.rating > 0 ? track.mentor.rating.toFixed(1) : 'Novo'}
                   </span>
-                  <span className="text-xs text-stone-400">
+                  <span className="text-xs text-stone-400 dark:text-stone-500">
                     ({track.mentor.reviewCount}{' '}
                     {track.mentor.reviewCount === 1 ? 'avaliação' : 'avaliações'})
                   </span>
@@ -402,14 +402,14 @@ export function TrackView({ trackId }: { trackId: string }) {
         </div>
 
         {/* ---------- SIDEBAR DE INSCRIÇÃO ---------- */}
-        <Card className="self-start rounded-2xl border-stone-200 p-6 shadow-none lg:sticky lg:top-6">
+        <Card className="self-start rounded-2xl border-stone-200 dark:border-stone-800 p-6 shadow-none lg:sticky lg:top-6">
           {track.myEnrollment ? (
-            <div className="mb-4 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3.5">
-              <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+            <div className="mb-4 rounded-xl border border-emerald-100 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/50 p-3.5">
+              <Badge className="bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-950/50">
                 <CheckCircle2 aria-hidden className="h-3 w-3" />
                 Você está inscrito
               </Badge>
-              <p className="mt-1.5 text-xs font-medium text-emerald-800/80">
+              <p className="mt-1.5 text-xs font-medium text-emerald-800/80 dark:text-emerald-300/80">
                 Inscrito em {formatDayLabel(track.myEnrollment.createdAt)}
               </p>
             </div>
@@ -418,12 +418,12 @@ export function TrackView({ trackId }: { trackId: string }) {
           <p
             className={cn(
               'text-3xl font-extrabold tracking-tight',
-              track.price === 0 ? 'text-emerald-700' : 'text-stone-900'
+              track.price === 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-stone-900 dark:text-stone-50'
             )}
           >
             {track.price === 0 ? 'Grátis' : currencyBRL(track.price)}
           </p>
-          <p className="mt-1 text-sm text-stone-500">
+          <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
             Inclui acesso a todos os cursos e às sessões de mentoria da trilha.
           </p>
 
@@ -435,31 +435,31 @@ export function TrackView({ trackId }: { trackId: string }) {
             {ctaLabel}
           </Button>
           {enrolling ? (
-            <p className="mt-2 text-center text-xs text-stone-400">Processando inscrição…</p>
+            <p className="mt-2 text-center text-xs text-stone-400 dark:text-stone-500">Processando inscrição…</p>
           ) : !track.myEnrollment && !user ? (
-            <p className="mt-2 text-center text-xs text-stone-400">
+            <p className="mt-2 text-center text-xs text-stone-400 dark:text-stone-500">
               Entre com uma conta para se inscrever nesta trilha.
             </p>
           ) : null}
 
-          <ul className="mt-5 space-y-2.5 border-t border-stone-100 pt-5 text-sm text-stone-600">
+          <ul className="mt-5 space-y-2.5 border-t border-stone-100 dark:border-stone-800 pt-5 text-sm text-stone-600 dark:text-stone-300">
             <li className="flex items-start gap-2">
-              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
               {track.courseCount} {track.courseCount === 1 ? 'curso completo' : 'cursos completos'}
             </li>
             <li className="flex items-start gap-2">
-              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
               {track.mentorshipSessions}{' '}
               {track.mentorshipSessions === 1
                 ? 'sessão de mentoria 1:1'
                 : 'sessões de mentoria 1:1'}
             </li>
             <li className="flex items-start gap-2">
-              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
               Progresso salvo automaticamente
             </li>
             <li className="flex items-start gap-2">
-              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
               Certificado de conclusão da trilha
             </li>
           </ul>
@@ -495,7 +495,7 @@ function CourseItemCard({
           onOpenCourse?.()
         }
       }}
-      className="group flex cursor-pointer flex-col gap-4 rounded-2xl border border-stone-200 bg-white p-4 transition-colors hover:border-emerald-300 hover:bg-emerald-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/40 sm:flex-row"
+      className="group flex cursor-pointer flex-col gap-4 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 transition-colors hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-emerald-50/40 dark:hover:bg-emerald-900/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/40 sm:flex-row"
     >
       <div
         className="h-28 w-full shrink-0 overflow-hidden rounded-xl sm:w-44"
@@ -515,16 +515,16 @@ function CourseItemCard({
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <Badge variant="outline" className="border-stone-200 text-stone-500">
+        <Badge variant="outline" className="border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-400">
           Curso
         </Badge>
-        <h3 className="mt-2 font-bold leading-snug text-stone-900 group-hover:text-emerald-900">
+        <h3 className="mt-2 font-bold leading-snug text-stone-900 dark:text-stone-50 group-hover:text-emerald-900 dark:group-hover:text-emerald-300">
           {item.title}
         </h3>
         {item.description ? (
-          <p className="mt-1 line-clamp-2 text-sm text-stone-500">{item.description}</p>
+          <p className="mt-1 line-clamp-2 text-sm text-stone-500 dark:text-stone-400">{item.description}</p>
         ) : null}
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-stone-500">
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-stone-500 dark:text-stone-400">
           <span className="inline-flex items-center gap-1">
             <PlayCircle aria-hidden className="h-3.5 w-3.5" />
             {item.lessonCount} {item.lessonCount === 1 ? 'aula' : 'aulas'}
@@ -534,13 +534,13 @@ function CourseItemCard({
             {formatTotalDuration(item.totalDurationMin)}
           </span>
           {item.liveCount > 0 ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 font-bold text-rose-600">
+            <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 font-bold text-rose-600 dark:text-rose-400">
               <Radio aria-hidden className="h-3 w-3" />
               {item.liveCount} ao vivo
             </span>
           ) : null}
           {item.mentorshipCount > 0 ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700">
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 font-semibold text-emerald-700 dark:text-emerald-300">
               <Users aria-hidden className="h-3 w-3" />
               Inclui {item.mentorshipCount}{' '}
               {item.mentorshipCount === 1 ? 'mentoria' : 'mentorias'}
@@ -554,7 +554,7 @@ function CourseItemCard({
               className="h-2"
               aria-label={`${progress.completed} de ${progress.total} aulas concluídas`}
             />
-            <p className="mt-1 text-xs font-medium text-stone-500">
+            <p className="mt-1 text-xs font-medium text-stone-500 dark:text-stone-400">
               {progress.completed}/{progress.total} aulas
             </p>
           </div>
@@ -592,21 +592,21 @@ function MentorshipItemCard({
   return (
     <article
       aria-label={`Etapa: bloco de mentoria ${item.title}`}
-      className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4 sm:p-5"
+      className="rounded-2xl border border-emerald-100 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/50 p-4 sm:p-5"
     >
       <div className="flex items-start gap-3">
         <span
           aria-hidden
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"
+          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300"
         >
           <Users className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="font-bold leading-snug text-stone-900">{item.title}</h3>
+          <h3 className="font-bold leading-snug text-stone-900 dark:text-stone-50">{item.title}</h3>
           {item.description ? (
-            <p className="mt-1 text-sm leading-relaxed text-stone-600">{item.description}</p>
+            <p className="mt-1 text-sm leading-relaxed text-stone-600 dark:text-stone-300">{item.description}</p>
           ) : null}
-          <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 ring-1 ring-emerald-200">
+          <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-white dark:bg-stone-950/50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-900">
             <CalendarCheck aria-hidden className="h-3 w-3" />
             {item.sessionCount} {item.sessionCount === 1 ? 'sessão' : 'sessões'} de 60min
           </span>

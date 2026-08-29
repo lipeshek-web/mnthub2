@@ -293,7 +293,7 @@ export interface NotificationDTO {
   kind: NotificationKind
   title: string
   body?: string | null
-  linkView?: 'dashboard' | 'course' | 'onboarding' | null
+  linkView?: 'dashboard' | 'course' | 'onboarding' | 'messages' | null
   refId?: string | null
   read: boolean
   createdAt: string
@@ -302,6 +302,34 @@ export interface NotificationDTO {
 export interface NotificationsResponseDTO {
   unreadCount: number
   items: NotificationDTO[]
+}
+
+// ==================== MENSAGENS DIRETAS (chat) ====================
+
+export interface MessageDTO {
+  id: string
+  body: string
+  mine: boolean
+  read: boolean
+  createdAt: string
+}
+
+export interface ThreadDTO {
+  peer: { id: string; name: string; avatarUrl: string | null; isMentor: boolean }
+  lastBody: string
+  lastAt: string
+  lastMine: boolean
+  unread: number
+}
+
+export interface MessagesResponseDTO {
+  peer: { id: string; name: string; avatarUrl: string | null; isMentor: boolean; headline?: string | null }
+  items: MessageDTO[]
+}
+
+export interface ThreadsResponseDTO {
+  unreadTotal: number
+  threads: ThreadDTO[]
 }
 
 // ==================== AVALIAÇÕES DE CURSO ====================

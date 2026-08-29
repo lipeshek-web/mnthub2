@@ -89,13 +89,13 @@ export function CertificateView({ code }: { code: string }) {
   if (failed || !cert) {
     return (
       <div className="mx-auto flex w-full max-w-md flex-col items-center gap-4 px-4 py-20 text-center">
-        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 text-stone-400">
+        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 text-stone-400 dark:bg-stone-800 dark:text-stone-500">
           <Link2 className="h-7 w-7" aria-hidden />
         </span>
-        <h1 className="text-xl font-extrabold tracking-tight text-stone-900">
+        <h1 className="text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
           Certificado não encontrado
         </h1>
-        <p className="text-sm leading-relaxed text-stone-500">
+        <p className="text-sm leading-relaxed text-stone-500 dark:text-stone-400">
           O código <span className="font-mono font-semibold">{code}</span> não corresponde a nenhum
           certificado emitido. Confira o link e tente novamente.
         </p>
@@ -115,21 +115,21 @@ export function CertificateView({ code }: { code: string }) {
       <div className="mb-6 flex flex-wrap items-center justify-center gap-2 print:hidden">
         <Button
           variant="outline"
-          className="h-10 rounded-full border-stone-200 bg-white font-semibold text-stone-700 hover:border-emerald-300 hover:bg-emerald-50"
+          className="h-10 rounded-full border-stone-200 bg-white font-semibold text-stone-700 hover:border-emerald-300 hover:bg-emerald-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/30"
           onClick={copyLink}
         >
           <Copy className="h-4 w-4" aria-hidden /> Copiar link
         </Button>
         <Button
           variant="outline"
-          className="h-10 rounded-full border-stone-200 bg-white font-semibold text-stone-700 hover:border-emerald-300 hover:bg-emerald-50"
+          className="h-10 rounded-full border-stone-200 bg-white font-semibold text-stone-700 hover:border-emerald-300 hover:bg-emerald-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/30"
           onClick={linkedInShare}
         >
           <Linkedin className="h-4 w-4" aria-hidden /> Compartilhar no LinkedIn
         </Button>
         <Button
           variant="outline"
-          className="h-10 rounded-full border-stone-200 bg-white font-semibold text-stone-700 hover:border-emerald-300 hover:bg-emerald-50"
+          className="h-10 rounded-full border-stone-200 bg-white font-semibold text-stone-700 hover:border-emerald-300 hover:bg-emerald-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/30"
           onClick={() => window.print()}
         >
           <Printer className="h-4 w-4" aria-hidden /> Imprimir / PDF
@@ -206,7 +206,7 @@ export function CertificateView({ code }: { code: string }) {
         </div>
       </article>
 
-      <p className="mt-6 text-center text-xs leading-relaxed text-stone-400 print:hidden">
+      <p className="mt-6 text-center text-xs leading-relaxed text-stone-400 print:hidden dark:text-stone-500">
         Emitido pela plataforma MentorHub · mentorias, cursos e trilhas com certificação
       </p>
     </div>

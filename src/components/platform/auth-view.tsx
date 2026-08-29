@@ -182,7 +182,7 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
   }
 
   return (
-    <div className="grid min-h-full bg-stone-50 lg:grid-cols-2">
+    <div className="grid min-h-full bg-stone-50 dark:bg-stone-950 lg:grid-cols-2">
       {/* ---------- Painel esquerdo (header compacto no mobile, completo no lg+) ---------- */}
       <section
         aria-label="Sobre o MentorHub"
@@ -237,18 +237,18 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
 
       {/* ---------- Painel direito: formulário ---------- */}
       <section className="flex items-center justify-center p-4 sm:p-6 lg:p-8 xl:p-12">
-        <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
+        <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900 p-6 shadow-sm sm:p-8">
           <Tabs value={tab} onValueChange={switchTab}>
-            <TabsList className="grid h-11 w-full grid-cols-2 rounded-full bg-stone-100 p-1">
+            <TabsList className="grid h-11 w-full grid-cols-2 rounded-full bg-stone-100 dark:bg-stone-800 p-1">
               <TabsTrigger
                 value="login"
-                className="rounded-full text-sm font-semibold text-stone-500 data-[state=active]:bg-white data-[state=active]:text-stone-900 data-[state=active]:shadow-sm"
+                className="rounded-full text-sm font-semibold text-stone-500 data-[state=active]:bg-white data-[state=active]:text-stone-900 data-[state=active]:shadow-sm dark:text-stone-400 dark:data-[state=active]:bg-stone-900 dark:data-[state=active]:text-stone-50"
               >
                 Entrar
               </TabsTrigger>
               <TabsTrigger
                 value="register"
-                className="rounded-full text-sm font-semibold text-stone-500 data-[state=active]:bg-white data-[state=active]:text-stone-900 data-[state=active]:shadow-sm"
+                className="rounded-full text-sm font-semibold text-stone-500 data-[state=active]:bg-white data-[state=active]:text-stone-900 data-[state=active]:shadow-sm dark:text-stone-400 dark:data-[state=active]:bg-stone-900 dark:data-[state=active]:text-stone-50"
               >
                 Criar conta
               </TabsTrigger>
@@ -258,16 +258,16 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
             <TabsContent value="login" className="mt-6">
               <form onSubmit={handleLogin} noValidate className="space-y-4">
                 <div>
-                  <h2 className="text-xl font-extrabold tracking-tight text-stone-900">
+                  <h2 className="text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
                     Bem-vindo de volta
                   </h2>
-                  <p className="mt-1 text-sm text-stone-500">
+                  <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
                     Entre para continuar sua jornada de aprendizado.
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="login-email" className="text-sm font-medium text-stone-700">
+                  <Label htmlFor="login-email" className="text-sm font-medium text-stone-700 dark:text-stone-200">
                     E-mail
                   </Label>
                   <Input
@@ -286,14 +286,14 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
                     aria-describedby={loginErrors.email ? 'login-email-error' : undefined}
                   />
                   {loginErrors.email && (
-                    <p id="login-email-error" className="text-xs text-rose-600">
+                    <p id="login-email-error" className="text-xs text-rose-600 dark:text-rose-400">
                       {loginErrors.email}
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="login-password" className="text-sm font-medium text-stone-700">
+                  <Label htmlFor="login-password" className="text-sm font-medium text-stone-700 dark:text-stone-200">
                     Senha
                   </Label>
                   <div className="relative">
@@ -316,7 +316,7 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
                       type="button"
                       onClick={() => setShowLoginPassword((v) => !v)}
                       aria-label={showLoginPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                      className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center text-stone-400 transition-colors hover:text-stone-600"
+                      className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center text-stone-400 transition-colors hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
                     >
                       {showLoginPassword ? (
                         <EyeOff className="h-4 w-4" aria-hidden />
@@ -326,7 +326,7 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
                     </button>
                   </div>
                   {loginErrors.password && (
-                    <p id="login-password-error" className="text-xs text-rose-600">
+                    <p id="login-password-error" className="text-xs text-rose-600 dark:text-rose-400">
                       {loginErrors.password}
                     </p>
                   )}
@@ -336,14 +336,14 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
                   <button
                     type="button"
                     onClick={handleForgotPassword}
-                    className="text-xs font-medium text-emerald-700 underline-offset-2 transition-colors hover:text-emerald-800 hover:underline"
+                    className="text-xs font-medium text-emerald-700 underline-offset-2 transition-colors hover:text-emerald-800 hover:underline dark:text-emerald-300 dark:hover:text-emerald-300"
                   >
                     Esqueceu a senha?
                   </button>
                 </div>
 
                 {loginFormError && (
-                  <p role="alert" className="text-xs font-medium text-rose-600">
+                  <p role="alert" className="text-xs font-medium text-rose-600 dark:text-rose-400">
                     {loginFormError}
                   </p>
                 )}
@@ -369,16 +369,16 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
             <TabsContent value="register" className="mt-6">
               <form onSubmit={handleRegister} noValidate className="space-y-4">
                 <div>
-                  <h2 className="text-xl font-extrabold tracking-tight text-stone-900">
+                  <h2 className="text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
                     Crie sua conta
                   </h2>
-                  <p className="mt-1 text-sm text-stone-500">
+                  <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
                     Estude com os melhores e, se quiser, vire mentor.
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="reg-name" className="text-sm font-medium text-stone-700">
+                  <Label htmlFor="reg-name" className="text-sm font-medium text-stone-700 dark:text-stone-200">
                     Nome completo
                   </Label>
                   <Input
@@ -395,14 +395,14 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
                     aria-describedby={regErrors.name ? 'reg-name-error' : undefined}
                   />
                   {regErrors.name && (
-                    <p id="reg-name-error" className="text-xs text-rose-600">
+                    <p id="reg-name-error" className="text-xs text-rose-600 dark:text-rose-400">
                       {regErrors.name}
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="reg-email" className="text-sm font-medium text-stone-700">
+                  <Label htmlFor="reg-email" className="text-sm font-medium text-stone-700 dark:text-stone-200">
                     E-mail
                   </Label>
                   <Input
@@ -420,14 +420,14 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
                     aria-describedby={regErrors.email ? 'reg-email-error' : undefined}
                   />
                   {regErrors.email && (
-                    <p id="reg-email-error" className="text-xs text-rose-600">
+                    <p id="reg-email-error" className="text-xs text-rose-600 dark:text-rose-400">
                       {regErrors.email}
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="reg-password" className="text-sm font-medium text-stone-700">
+                  <Label htmlFor="reg-password" className="text-sm font-medium text-stone-700 dark:text-stone-200">
                     Senha
                   </Label>
                   <div className="relative">
@@ -452,7 +452,7 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
                       type="button"
                       onClick={() => setShowRegPassword((v) => !v)}
                       aria-label={showRegPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                      className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center text-stone-400 transition-colors hover:text-stone-600"
+                      className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center text-stone-400 transition-colors hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
                     >
                       {showRegPassword ? (
                         <EyeOff className="h-4 w-4" aria-hidden />
@@ -462,18 +462,18 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
                     </button>
                   </div>
                   {regErrors.password ? (
-                    <p id="reg-password-error" className="text-xs text-rose-600">
+                    <p id="reg-password-error" className="text-xs text-rose-600 dark:text-rose-400">
                       {regErrors.password}
                     </p>
                   ) : (
-                    <p id="reg-password-hint" className="text-xs text-stone-400">
+                    <p id="reg-password-hint" className="text-xs text-stone-400 dark:text-stone-500">
                       Mínimo de 6 caracteres
                     </p>
                   )}
                 </div>
 
                 {regFormError && (
-                  <p role="alert" className="text-xs font-medium text-rose-600">
+                  <p role="alert" className="text-xs font-medium text-rose-600 dark:text-rose-400">
                     {regFormError}
                   </p>
                 )}
@@ -499,14 +499,14 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
           {/* ----- Divisor + contas de demonstração ----- */}
           <div className="mt-7">
             <div className="flex items-center gap-3" aria-hidden>
-              <span className="h-px flex-1 bg-stone-200" />
-              <span className="text-xs font-medium text-stone-400">ou continue com</span>
-              <span className="h-px flex-1 bg-stone-200" />
+              <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" />
+              <span className="text-xs font-medium text-stone-400 dark:text-stone-500">ou continue com</span>
+              <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" />
             </div>
 
             <div className="mt-5">
-              <p className="text-xs font-semibold text-stone-500">Contas de demonstração</p>
-              <p className="mt-0.5 text-xs text-stone-400">
+              <p className="text-xs font-semibold text-stone-500 dark:text-stone-400">Contas de demonstração</p>
+              <p className="mt-0.5 text-xs text-stone-400 dark:text-stone-500">
                 Ideal para conhecer a plataforma · senha: demo123
               </p>
 
@@ -517,7 +517,7 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
                   ))}
                 </div>
               ) : demoUsers.length > 0 ? (
-                <div className="mt-3 flex max-h-40 flex-wrap gap-2 overflow-y-auto pr-1 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-200 [&::-webkit-scrollbar]:w-1">
+                <div className="mt-3 flex max-h-40 flex-wrap gap-2 overflow-y-auto pr-1 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-200 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar]:w-1">
                   {demoUsers.map((u) => (
                     <button
                       key={u.id}
@@ -525,13 +525,13 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
                       onClick={() => handleDemoLogin(u)}
                       disabled={demoBusyId !== null}
                       aria-label={`Entrar como ${u.name}`}
-                      className="flex h-11 items-center gap-2 rounded-full border border-stone-200 bg-white pl-1.5 pr-4 text-xs font-semibold text-stone-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 disabled:cursor-wait disabled:opacity-60"
+                      className="flex h-11 items-center gap-2 rounded-full border border-stone-200 bg-white pl-1.5 pr-4 text-xs font-semibold text-stone-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300 disabled:cursor-wait disabled:opacity-60"
                     >
                       <Avatar name={u.name} src={u.avatarUrl} size="sm" className="ring-0" />
                       <span className="max-w-36 truncate">{u.name}</span>
                       {demoBusyId === u.id && (
                         <Loader2
-                          className="h-3.5 w-3.5 animate-spin text-emerald-700"
+                          className="h-3.5 w-3.5 animate-spin text-emerald-700 dark:text-emerald-300"
                           aria-hidden
                         />
                       )}

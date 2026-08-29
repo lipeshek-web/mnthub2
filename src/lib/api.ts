@@ -18,7 +18,10 @@ import type {
   LessonAttachmentDTO,
   LessonNoteDTO,
   LessonQuestionDTO,
+  MessageDTO,
+  MessagesResponseDTO,
   NotificationsResponseDTO,
+  ThreadsResponseDTO,
   QuizAttemptResultDTO,
   QuizDTO,
   XpStatsDTO,
@@ -436,6 +439,19 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ userId, ids }),
     }),
+
+  // Mensagens diretas (chat aluno ↔ mentor)
+  listThreads: (userId: string) =>
+    request<ThreadsResponseDTO>(`/api/messages/threads${qs({ userId })}`),
+  listMessages: (userId: string, peerId: string) =>
+    request<MessagesResponseDTO>(`/api/messages${qs({ userId, peerId })}`),
+  sendMessage: (userId: string, peerId: string, body: string) =>
+    request<MessageDTO>('/api/messages', {
+      method: 'POST',
+      body: JSON.stringify({ userId, peerId, body }),
+    }),
+  unreadMessages: (userId: string) =>
+    request<{ count: number }>(`/api/messages/unread${qs({ userId })}`),
 
   // Avaliações de curso
   listCourseReviews: (courseId: string) =>

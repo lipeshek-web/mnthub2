@@ -1,0 +1,642 @@
+     1→'use client'
+     2→
+     3→import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+     4→import {
+     5→  AlertCircle,
+     6→  ArrowLeft,
+     7→  BookOpen,
+     8→  CalendarClock,
+     9→  Check,
+    10→  CheckCircle2,
+    11→  ChevronDown,
+    12→  ChevronLeft,
+    13→  ChevronRight,
+    14→  Copy,
+    15→  Download,
+    16→  FileDown,
+    17→  FileText,
+    18→  Folder,
+    19→  GraduationCap,
+    20→  Library,
+    21→  Lightbulb,
+    22→  ListChecks,
+    23→  Lock,
+    24→  Maximize2,
+    25→  MessageCircle,
+    26→  Minimize2,
+    27→  PanelRight,
+    28→  Paperclip,
+    29→  PencilLine,
+    30→  PlayCircle,
+    31→  Radio,
+    32→  Send,
+    33→  Trash2,
+    34→  Users,
+    35→  XCircle,
+    36→} from 'lucide-react'
+    37→import { AnimatePresence, motion } from 'framer-motion'
+    38→import { toast } from 'sonner'
+    39→import { Badge } from '@/components/ui/badge'
+    40→import { Button } from '@/components/ui/button'
+    41→import { Card } from '@/components/ui/card'
+    42→import {
+    43→  Dialog,
+    44→  DialogContent,
+    45→  DialogDescription,
+    46→  DialogHeader,
+    47→  DialogTitle,
+    48→} from '@/components/ui/dialog'
+    49→import { Progress } from '@/components/ui/progress'
+    50→import { Skeleton } from '@/components/ui/skeleton'
+    51→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    52→import { Textarea } from '@/components/ui/textarea'
+    53→import { Avatar, Stars } from '@/components/platform/avatar'
+    54→import { api } from '@/lib/api'
+    55→import {
+    56→  LEVEL_LABELS,
+    57→  avatarGradient,
+    58→  formatDayLabel,
+    59→  formatTimeLabel,
+    60→  formatTotalDuration,
+    61→  liveStatus,
+    62→  toVideoEmbedUrl,
+    63→} from '@/lib/helpers'
+    64→import { useAppStore } from '@/lib/store'
+    65→import type {
+    66→  CourseDetailDTO,
+    67→  CourseLessonDTO,
+    68→  CourseThemeDTO,
+    69→  LessonQuestionDTO,
+    70→  QuizAttemptResultDTO,
+    71→  QuizDTO,
+    72→} from '@/lib/types'
+    73→import { cn } from '@/lib/utils'
+    74→
+    75→/* ==================== SALA DE AULA PROFISSIONAL ====================
+    76→   Tela cheia (só o header da plataforma): player de um lado, lista de
+    77→   conteúdos do outro, com Q&A, anotações e anexos por aula.
+    78→   Aulas agrupadas por temas (módulos); READING abre no leitor embutido;
+    79→   certificado de conclusão ao completar 100% das aulas. */
+    80→
+    81→interface LessonGroup {
+    82→  key: string
+    83→  title: string
+    84→  theme: CourseThemeDTO | null
+    85→  lessons: CourseLessonDTO[]
+    86→}
+    87→
+    88→/** Rótulo do material de leitura: "Artigo" ou "Livro" (kind do item da Biblioteca) */
+    89→function readingKindLabel(kind: string | null | undefined): string {
+    90→  return kind === 'BOOK' ? 'Livro' : 'Artigo'
+    91→}
+    92→
+    93→export function ClassroomView({ courseId }: { courseId: string }) {
+    94→  const navigate = useAppStore((s) => s.navigate)
+    95→  const user = useAppStore((s) => s.user)
+    96→
+    97→  const [data, setData] = useState<CourseDetailDTO | null>(null)
+    98→  const [loading, setLoading] = useState(true)
+    99→  const [error, setError] = useState<string | null>(null)
+   100→
+   101→  const [currentLessonId, setCurrentLessonId] = useState<string | null>(null)
+   102→  const [completedIds, setCompletedIds] = useState<string[]>([])
+   103→  const [toggling, setToggling] = useState(false)
+   104→
+   105→  // Auto-retry para falhas transitórias de rede/servidor (ex.: dev server reiniciando)
+   106→  const retriesRef = useRef(0)
+   107→  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+   108→
+   109→  const fetchCourse = useCallback(async () => {
+   110→    setLoading(true)
+   111→    setError(null)
+   112→    try {
+   113→      const d = await api.getCourse(courseId, user?.id)
+   114→      retriesRef.current = 0
+   115→      setData(d)
+   116→    } catch (err) {
+   117→      const message = err instanceof Error ? err.message : 'Não foi possível carregar o curso.'
+   118→      const transient =
+   119→        /inesperado|fetch|network|load failed|conex/i.test(message) && retriesRef.current < 2
+   120→      if (transient) {
+   121→        retriesRef.current += 1
+   122→        if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
+   123→        retryTimerRef.current = setTimeout(() => void fetchCourse(), 1200)
+   124→      } else {
+   125→        setError(message)
+   126→      }
+   127→    } finally {
+   128→      setLoading(false)
+   129→    }
+   130→  }, [courseId, user?.id])
+   131→
+   132→  useEffect(() => {
+   133→    void fetchCourse()
+   134→    return () => {
+   135→      if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
+   136→    }
+   137→  }, [fetchCourse])
+   138→
+   139→  const course = data
+   140→  const isOwner = Boolean(user && course && course.mentor.userId === user.id)
+   141→  const isEnrolled = course?.enrollment != null
+   142→  const hasAccess = isEnrolled || isOwner
+   143→
+   144→  const lessons = useMemo<CourseLessonDTO[]>(
+   145→    () => [...(course?.lessons ?? [])].sort((a, b) => a.order - b.order),
+   146→    [course]
+   147→  )
+   148→
+   149→  // Temas (módulos) em ordem; aulas sem tema (ou com tema removido) vão para o
+   150→  // grupo virtual "Outros conteúdos", sempre no fim da lista.
+   151→  const themeList = useMemo<CourseThemeDTO[]>(
+   152→    () => [...(course?.themes ?? [])].sort((a, b) => a.order - b.order),
+   153→    [course]
+   154→  )
+   155→
+   156→  const lessonGroups = useMemo<LessonGroup[]>(() => {
+   157→    const byTheme = new Map<string, CourseLessonDTO[]>()
+   158→    const loose: CourseLessonDTO[] = []
+   159→    for (const lesson of lessons) {
+   160→      if (lesson.themeId && themeList.some((t) => t.id === lesson.themeId)) {
+   161→        const bucket = byTheme.get(lesson.themeId) ?? []
+   162→        bucket.push(lesson)
+   163→        byTheme.set(lesson.themeId, bucket)
+   164→      } else {
+   165→        loose.push(lesson)
+   166→      }
+   167→    }
+   168→    const groups: LessonGroup[] = themeList.map((theme) => ({
+   169→      key: theme.id,
+   170→      title: theme.title,
+   171→      theme,
+   172→      lessons: byTheme.get(theme.id) ?? [],
+   173→    }))
+   174→    if (loose.length > 0) {
+   175→      groups.push({ key: 'none', title: 'Outros conteúdos', theme: null, lessons: loose })
+   176→    }
+   177→    return groups
+   178→  }, [lessons, themeList])
+   179→
+   180→  // Lista achatada (temas em ordem → aulas em ordem): base do índice global,
+   181→  // do avançar/voltar e do progresso geral.
+   182→  const orderedLessons = useMemo(() => lessonGroups.flatMap((g) => g.lessons), [lessonGroups])
+   183→
+   184→  // Seções recolhidas da sidebar (default: todas expandidas)
+   185→  const [collapsedThemes, setCollapsedThemes] = useState<Record<string, boolean>>({})
+   186→  // Emissão do certificado (botão da celebração de 100%)
+   187→  const [issuing, setIssuing] = useState(false)
+   188→
+   189→  // Modo foco (teatro): esconde sidebar e abas, centraliza o palco da aula.
+   190→  // Persistido na sessão para o aluno retomar a imersão ao voltar para a sala.
+   191→  const [focusMode, setFocusMode] = useState(() => {
+   192→    if (typeof window === 'undefined') return false
+   193→    try {
+   194→      return window.sessionStorage.getItem('mentorhub-classroom-focus') === '1'
+   195→    } catch {
+   196→      return false
+   197→    }
+   198→  })
+   199→  const [contentsOpen, setContentsOpen] = useState(false)
+   200→
+   201→  useEffect(() => {
+   202→    try {
+   203→      if (focusMode) window.sessionStorage.setItem('mentorhub-classroom-focus', '1')
+   204→      else window.sessionStorage.removeItem('mentorhub-classroom-focus')
+   205→    } catch {
+   206→      /* storage indisponível */
+   207→    }
+   208→  }, [focusMode])
+   209→
+   210→  // Aula inicial: a indicada na view (retorno do leitor) ou a primeira ainda
+   211→  // não concluída (só define uma vez por curso)
+   212→  const initializedRef = useRef<string | null>(null)
+   213→  useEffect(() => {
+   214→    if (!course || !hasAccess) return
+   215→    if (initializedRef.current === course.id) return
+   216→    initializedRef.current = course.id
+   217→    const enrollment = course.enrollment
+   218→    const completed = enrollment?.completedLessonIds ?? []
+   219→    setCompletedIds(completed)
+   220→    const view = useAppStore.getState().view
+   221→    const returnLessonId = view.name === 'classroom' ? view.lessonId : undefined
+   222→    const target =
+   223→      (returnLessonId && orderedLessons.some((l) => l.id === returnLessonId) ? returnLessonId : undefined) ??
+   224→      orderedLessons.find((l) => !completed.includes(l.id))?.id ??
+   225→      orderedLessons[0]?.id ??
+   226→      null
+   227→    setCurrentLessonId(target)
+   228→  }, [course, hasAccess, orderedLessons])
+   229→
+   230→  const currentLesson = useMemo(
+   231→    () => orderedLessons.find((l) => l.id === currentLessonId) ?? orderedLessons[0] ?? null,
+   232→    [orderedLessons, currentLessonId]
+   233→  )
+   234→  const currentIndex = currentLesson ? orderedLessons.findIndex((l) => l.id === currentLesson.id) : -1
+   235→  const percent =
+   236→    orderedLessons.length > 0 ? Math.round((completedIds.length / orderedLessons.length) * 100) : 0
+   237→  const courseCompleted =
+   238→    orderedLessons.length > 0 && completedIds.length >= orderedLessons.length
+   239→
+   240→  const handleToggleTheme = (key: string) =>
+   241→    setCollapsedThemes((prev) => ({ ...prev, [key]: !prev[key] }))
+   242→
+   243→  const selectLesson = (lessonId: string) => {
+   244→    setCurrentLessonId(lessonId)
+   245→    // Ao selecionar uma aula, garante o tema dela expandido
+   246→    const lessonThemeId = orderedLessons.find((l) => l.id === lessonId)?.themeId
+   247→    if (lessonThemeId) setCollapsedThemes((prev) => ({ ...prev, [lessonThemeId]: false }))
+   248→  }
+   249→
+   250→  const toggleComplete = async (autoAdvance = false) => {
+   251→    if (!user || !course || !currentLesson) return
+   252→    setToggling(true)
+   253→    try {
+   254→      const res = await api.toggleLessonComplete(course.id, {
+   255→        userId: user.id,
+   256→        lessonId: currentLesson.id,
+   257→      })
+   258→      const nowCompleted = res.completedLessonIds.includes(currentLesson.id)
+   259→      setCompletedIds(res.completedLessonIds)
+   260→      if (res.xpAwarded > 0) {
+   261→        toast.success(`+${res.xpAwarded} XP de estudo ⚡`)
+   262→      }
+   263→      if (nowCompleted && res.courseCompleted) {
+   264→        toast.success('Curso concluído! Parabéns 🎉')
+   265→      } else if (nowCompleted) {
+   266→        toast.success('Aula marcada como concluída.')
+   267→      } else {
+   268→        toast('Marcação removida desta aula.')
+   269→      }
+   270→      if (autoAdvance && nowCompleted && currentIndex < orderedLessons.length - 1) {
+   271→        setCurrentLessonId(orderedLessons[currentIndex + 1].id)
+   272→      }
+   273→    } catch (err) {
+   274→      toast.error(err instanceof Error ? err.message : 'Não foi possível atualizar o progresso.')
+   275→    } finally {
+   276→      setToggling(false)
+   277→    }
+   278→  }
+   279→
+   280→  const goPrev = () => {
+   281→    if (currentLesson && currentIndex > 0) setCurrentLessonId(orderedLessons[currentIndex - 1].id)
+   282→  }
+   283→  const goNext = () => {
+   284→    if (currentLesson && currentIndex < orderedLessons.length - 1) {
+   285→      setCurrentLessonId(orderedLessons[currentIndex + 1].id)
+   286→    }
+   287→  }
+   288→
+   289→  // Emite (ou retorna) o certificado e abre a página pública verificável.
+   290→  // O overlay da sala fecha naturalmente: a view global muda para 'certificate'.
+   291→  const handleIssueCertificate = async () => {
+   292→    if (!user || !course) return
+   293→    setIssuing(true)
+   294→    try {
+   295→      const cert = await api.issueCertificate(course.id, user.id)
+   296→      toast.success('Certificado emitido! 🎓')
+   297→      navigate({ name: 'certificate', code: cert.code })
+   298→    } catch (err) {
+   299→      toast.error(err instanceof Error ? err.message : 'Não foi possível emitir o certificado.')
+   300→    } finally {
+   301→      setIssuing(false)
+   302→    }
+   303→  }
+   304→
+   305→  /* ---------- Estados de tela ---------- */
+   306→
+   307→  if (loading) {
+   308→    return (
+   309→      <div className="flex h-full min-h-0 flex-col" aria-busy="true">
+   310→        <div className="flex items-center gap-3 border-b border-emerald-400/15 bg-emerald-950 px-4 py-3 sm:px-6">
+   311→          <Skeleton className="h-9 w-9 rounded-full bg-white/10" />
+   312→          <Skeleton className="h-5 w-48 bg-white/10" />
+   313→          <Skeleton className="ml-auto h-6 w-28 rounded-full bg-white/10" />
+   314→        </div>
+   315→        <div className="grid flex-1 grid-cols-1 lg:grid-cols-[1fr_380px]">
+   316→          <div className="space-y-4 p-4 sm:p-6">
+   317→            <Skeleton className="aspect-video w-full rounded-2xl" />
+   318→            <Skeleton className="h-7 w-2/3" />
+   319→            <Skeleton className="h-24 w-full rounded-2xl" />
+   320→          </div>
+   321→          <div className="hidden space-y-2 border-l border-stone-200 bg-white p-4 lg:block">
+   322→            {Array.from({ length: 6 }).map((_, i) => (
+   323→              <Skeleton key={i} className="h-14 rounded-xl" />
+   324→            ))}
+   325→          </div>
+   326→        </div>
+   327→        <p className="sr-only">Abrindo sala de aula…</p>
+   328→      </div>
+   329→    )
+   330→  }
+   331→
+   332→  if (!course) {
+   333→    return (
+   334→      <div className="flex h-full items-center justify-center p-6">
+   335→        <div className="flex w-full max-w-md flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 px-6 py-14 text-center">
+   336→          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50">
+   337→            <AlertCircle aria-hidden className="h-7 w-7 text-rose-500" />
+   338→          </span>
+   339→          <p className="font-bold text-stone-900">Não foi possível abrir a sala de aula</p>
+   340→          <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+   341→            {error ?? 'Curso não encontrado.'}
+   342→          </p>
+   343→          <Button variant="outline" className="rounded-full" onClick={() => void fetchCourse()}>
+   344→            Tentar novamente
+   345→          </Button>
+   346→        </div>
+   347→      </div>
+   348→    )
+   349→  }
+   350→
+   351→  if (!hasAccess) {
+   352→    return (
+   353→      <div className="flex h-full items-center justify-center p-6">
+   354→        <Card className="w-full max-w-md rounded-2xl border-stone-200 p-8 text-center shadow-none">
+   355→          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-50">
+   356→            <Lock aria-hidden className="h-6 w-6 text-amber-600" />
+   357→          </span>
+   358→          <h1 className="mt-4 text-lg font-extrabold tracking-tight text-stone-900">
+   359→            {course.title}
+   360→          </h1>
+   361→          <p className="mt-2 text-sm leading-relaxed text-stone-500">
+   362→            Você ainda não tem acesso a este curso. Inscreva-se para desbloquear todas as aulas,
+   363→            perguntas e anotações.
+   364→          </p>
+   365→          <Button
+   366→            className="mt-5 h-11 w-full rounded-full font-bold"
+   367→            onClick={() => navigate({ name: 'course', courseId })}
+   368→          >
+   369→            Ver o curso e se inscrever
+   370→          </Button>
+   371→        </Card>
+   372→      </div>
+   373→    )
+   374→  }
+   375→
+   376→  const firstName = course.mentor.name.split(' ')[0]
+   377→  // Código do certificado do usuário neste curso (null = ainda não emitido)
+   378→  const certificateCode = course.certificateCode
+   379→
+   380→  return (
+   381→    <div className="flex h-full min-h-0 flex-col bg-stone-50" aria-label={`Sala de aula: ${course.title}`}>
+   382→      {/* ---------- BARRA SUPERIOR IMERSIVA ---------- */}
+   383→      <div className="flex shrink-0 items-center gap-1 border-b border-emerald-400/15 bg-emerald-950 px-3 py-2.5 text-white sm:gap-2.5 sm:px-6">
+   384→        <Button
+   385→          variant="ghost"
+   386→          size="icon"
+   387→          className="h-9 w-9 shrink-0 rounded-full text-white hover:bg-white/10 hover:text-white"
+   388→          aria-label="Sair da sala de aula"
+   389→          onClick={() => navigate({ name: 'course', courseId })}
+   390→        >
+   391→          <ArrowLeft aria-hidden className="h-4 w-4" />
+   392→        </Button>
+   393→        <div className="min-w-0 flex-1">
+   394→          <p className="truncate text-sm font-extrabold tracking-tight text-white sm:text-base">
+   395→            {course.title}
+   396→          </p>
+   397→          <p className="hidden text-xs text-emerald-100/70 sm:block">
+   398→            {orderedLessons.length} {orderedLessons.length === 1 ? 'aula' : 'aulas'} ·{' '}
+   399→            {formatTotalDuration(course.totalDurationMin)}
+   400→          </p>
+   401→        </div>
+   402→        <Button
+   403→          variant="ghost"
+   404→          size="icon"
+   405→          className="h-9 w-9 shrink-0 rounded-full text-emerald-100 hover:bg-white/10 hover:text-white lg:hidden"
+   406→          aria-label="Ver conteúdos do curso"
+   407→          onClick={() => setContentsOpen(true)}
+   408→        >
+   409→          <PanelRight aria-hidden className="h-4 w-4" />
+   410→        </Button>
+   411→        <Button
+   412→          variant="ghost"
+   413→          size="icon"
+   414→          className="h-9 w-9 shrink-0 rounded-full text-emerald-100 hover:bg-white/10 hover:text-white"
+   415→          aria-label={focusMode ? 'Sair do modo foco' : 'Ativar modo foco'}
+   416→          title={focusMode ? 'Sair do modo foco' : 'Ativar modo foco'}
+   417→          onClick={() => setFocusMode((v) => !v)}
+   418→        >
+   419→          {focusMode ? (
+   420→            <Minimize2 aria-hidden className="h-4 w-4" />
+   421→          ) : (
+   422→            <Maximize2 aria-hidden className="h-4 w-4" />
+   423→          )}
+   424→        </Button>
+   425→        <div className="hidden items-center gap-2 sm:flex" aria-hidden>
+   426→          <Avatar
+   427→            name={course.mentor.name}
+   428→            src={course.mentor.avatarUrl}
+   429→            size="sm"
+   430→            className="h-6 w-6 text-[10px]"
+   431→          />
+   432→          <span className="max-w-36 truncate text-xs font-semibold text-emerald-100/70">
+   433→            {course.mentor.name}
+   434→          </span>
+   435→        </div>
+   436→        <div className="flex w-32 shrink-0 items-center gap-2 sm:w-44">
+   437→          <Progress
+   438→            value={percent}
+   439→            aria-label="Progresso do curso"
+   440→            className="h-2 bg-white/20 [&_[data-slot=progress-indicator]]:bg-emerald-400"
+   441→          />
+   442→          <span className="w-9 shrink-0 text-right text-xs font-bold tabular-nums text-emerald-100">
+   443→            {percent}%
+   444→          </span>
+   445→        </div>
+   446→      </div>
+   447→
+   448→      {/* ---------- CORPO: PLAYER + CONTEÚDOS (sidebar oculta no modo foco) ---------- */}
+   449→      <div
+   450→        className={cn(
+   451→          'grid min-h-0 flex-1 grid-cols-1',
+   452→          focusMode ? 'lg:grid-cols-1' : 'lg:grid-cols-[1fr_380px]'
+   453→        )}
+   454→      >
+   455→        {/* Coluna esquerda: aula — conteúdo interno largo p/ vídeos grandes */}
+   456→        <div className="min-h-0 overflow-y-auto p-4 sm:p-6 lg:p-8">
+   457→          <div className={cn('mx-auto w-full', focusMode ? 'max-w-4xl' : 'max-w-5xl')}>
+   458→            <AnimatePresence mode="wait">
+   459→              {currentLesson ? (
+   460→                <motion.div
+   461→                  key={currentLesson.id}
+   462→                  initial={{ opacity: 0, y: 12 }}
+   463→                  animate={{ opacity: 1, y: 0 }}
+   464→                  exit={{ opacity: 0, y: -8 }}
+   465→                  transition={{ duration: 0.22 }}
+   466→                >
+   467→                {currentLesson.kind === 'LIVE' ? (
+   468→                  <LivePanel lesson={currentLesson} isOwner={isOwner} />
+   469→                ) : currentLesson.kind === 'READING' ? (
+   470→                  <ReadingMaterial lesson={currentLesson} courseId={courseId} />
+   471→                ) : currentLesson.kind === 'RECORDED' && currentLesson.videoUrl ? (
+   472→                  <div className="overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-stone-900/10">
+   473→                    <LessonPlayer lesson={currentLesson} />
+   474→                  </div>
+   475→                ) : (
+   476→                  <LessonPlayer lesson={currentLesson} />
+   477→                )}
+   478→
+   479→                {/* Celebração + certificado: 100% das aulas concluídas */}
+   480→                {courseCompleted ? (
+   481→                  <div className="mt-5 flex flex-col items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-6 text-center">
+   482→                    <CheckCircle2 aria-hidden className="h-12 w-12 fill-emerald-600 text-white" />
+   483→                    <p className="text-lg font-extrabold tracking-tight text-emerald-900">
+   484→                      Parabéns! Você concluiu este curso 🎉
+   485→                    </p>
+   486→                    {certificateCode ? (
+   487→                      <Button
+   488→                        variant="outline"
+   489→                        onClick={() => navigate({ name: 'certificate', code: certificateCode })}
+   490→                        className="h-11 rounded-full border-emerald-300 bg-white px-6 font-bold text-emerald-800 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-900"
+   491→                        aria-label="Ver meu certificado de conclusão"
+   492→                      >
+   493→                        <GraduationCap aria-hidden className="h-4 w-4" /> Ver meu certificado
+   494→                      </Button>
+   495→                    ) : (
+   496→                      <Button
+   497→                        onClick={() => void handleIssueCertificate()}
+   498→                        disabled={issuing}
+   499→                        className="h-11 rounded-full bg-emerald-700 px-6 font-bold text-white hover:bg-emerald-800"
+   500→                        aria-label="Emitir certificado de conclusão"
+   501→                      >
+   502→                        <GraduationCap aria-hidden className="h-4 w-4" />{' '}
+   503→                        {issuing ? 'Emitindo…' : 'Emitir certificado'}
+   504→                      </Button>
+   505→                    )}
+   506→                  </div>
+   507→                ) : null}
+   508→
+   509→                <div className="mt-5 flex flex-wrap items-center gap-2">
+   510→                  <Badge variant="outline" className="border-stone-200 bg-white text-stone-600">
+   511→                    Aula {currentIndex + 1} de {orderedLessons.length}
+   512→                  </Badge>
+   513→                  {currentLesson.kind === 'LIVE' ? (
+   514→                    <Badge className="border-transparent bg-rose-100 text-rose-700">
+   515→                      <Radio aria-hidden className="h-3 w-3" /> Ao vivo
+   516→                    </Badge>
+   517→                  ) : currentLesson.kind === 'READING' ? (
+   518→                    <Badge className="border-transparent bg-amber-100 text-amber-800">
+   519→                      <BookOpen aria-hidden className="h-3 w-3" /> {readingKindLabel(currentLesson.reading?.kind)}
+   520→                    </Badge>
+   521→                  ) : currentLesson.videoUrl ? (
+   522→                    <Badge variant="outline" className="border-stone-200 bg-white text-stone-600">
+   523→                      Vídeo
+   524→                    </Badge>
+   525→                  ) : (
+   526→                    <Badge variant="outline" className="border-stone-200 bg-white text-stone-600">
+   527→                      Leitura
+   528→                    </Badge>
+   529→                  )}
+   530→                  {currentLesson.quizCount > 0 ? (
+   531→                    <Badge className="border-transparent bg-violet-100 text-violet-800">
+   532→                      <ListChecks aria-hidden className="h-3 w-3" /> Quiz
+   533→                    </Badge>
+   534→                  ) : null}
+   535→                  {completedIds.includes(currentLesson.id) && (
+   536→                    <Badge className="border-transparent bg-emerald-100 text-emerald-800">
+   537→                      <Check aria-hidden className="h-3 w-3" /> Concluída
+   538→                    </Badge>
+   539→                  )}
+   540→                </div>
+   541→
+   542→                <h1 className="mt-2.5 text-xl font-extrabold tracking-tight text-stone-900 sm:text-2xl">
+   543→                  {currentLesson.title}
+   544→                </h1>
+   545→                {currentLesson.description ? (
+   546→                  <p className="mt-1.5 text-sm leading-relaxed text-stone-500">
+   547→                    {currentLesson.description}
+   548→                  </p>
+   549→                ) : null}
+   550→
+   551→                {/* Anexos para download */}
+   552→                {currentLesson.attachments.length > 0 ? (
+   553→                  <div className="mt-4 flex flex-wrap gap-2">
+   554→                    {currentLesson.attachments.map((att, i) => (
+   555→                      <a
+   556→                        key={`${att.url}-${i}`}
+   557→                        href={att.url}
+   558→                        download
+   559→                        target="_blank"
+   560→                        rel="noopener noreferrer"
+   561→                        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-stone-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800"
+   562→                        aria-label={`Baixar anexo ${att.name}`}
+   563→                      >
+   564→                        <Paperclip aria-hidden className="h-3.5 w-3.5 text-stone-400" />
+   565→                        <span className="max-w-52 truncate">{att.name}</span>
+   566→                        <Download aria-hidden className="h-3.5 w-3.5 text-emerald-600" />
+   567→                      </a>
+   568→                    ))}
+   569→                  </div>
+   570→                ) : null}
+   571→
+   572→                {/* Abas: material / perguntas / anotações (ocultas no modo foco apenas
+   573→                    para aulas em vídeo — o palco é o conteúdo; aulas de texto/leitura
+   574→                    mantêm o material visível, pois ele É o conteúdo da aula) */}
+   575→                {!(focusMode && currentLesson.kind === 'RECORDED' && currentLesson.videoUrl) && (
+   576→                <Tabs defaultValue="lesson" className="mt-6">
+   577→                  <TabsList className="h-11 w-full justify-start overflow-x-auto rounded-full bg-stone-100 p-1 sm:w-auto">
+   578→                    <TabsTrigger value="lesson" className="rounded-full">
+   579→                      <FileText aria-hidden className="h-4 w-4" />
+   580→                      <span className="hidden sm:inline">Material</span>
+   581→                    </TabsTrigger>
+   582→                    <TabsTrigger value="qa" className="rounded-full">
+   583→                      <MessageCircle aria-hidden className="h-4 w-4" />
+   584→                      Perguntas
+   585→                      {currentLesson.questionCount > 0 ? ` (${currentLesson.questionCount})` : ''}
+   586→                    </TabsTrigger>
+   587→                    {currentLesson.quizCount > 0 ? (
+   588→                      <TabsTrigger value="quiz" className="rounded-full">
+   589→                        <ListChecks aria-hidden className="h-4 w-4" />
+   590→                        Quiz ({currentLesson.quizCount})
+   591→                      </TabsTrigger>
+   592→                    ) : null}
+   593→                    <TabsTrigger value="notes" className="rounded-full">
+   594→                      <PencilLine aria-hidden className="h-4 w-4" />
+   595→                      <span className="hidden sm:inline">Anotações</span>
+   596→                    </TabsTrigger>
+   597→                  </TabsList>
+   598→
+   599→                  <TabsContent value="lesson" className="mt-4">
+   600→                    {currentLesson.kind === 'READING' ? (
+   601→                      <div className="rounded-2xl border border-stone-200 bg-white p-5 text-sm leading-relaxed text-stone-600 sm:p-6">
+   602→                        {currentLesson.reading ? (
+   603→                          <>
+   604→                            O material desta aula é{' '}
+   605→                            {currentLesson.reading.kind === 'BOOK' ? 'um livro' : 'um artigo'} — leia no leitor
+   606→                            acima ou use <strong className="font-semibold">Abrir em tela cheia</strong>. Dúvidas?
+   607→                            Use a aba <strong className="font-semibold">Perguntas</strong> — {firstName} responde
+   608→                            por lá.
+   609→                          </>
+   610→                        ) : (
+   611→                          'O material desta aula será publicado em breve.'
+   612→                        )}
+   613→                      </div>
+   614→                    ) : currentLesson.content ? (
+   615→                      <article className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6">
+   616→                        <div className="max-w-prose space-y-4">
+   617→                          {currentLesson.content.split(/\n{2,}/).map((para, i) => (
+   618→                            <p
+   619→                              key={i}
+   620→                              className="whitespace-pre-line text-[15px] leading-relaxed text-stone-700"
+   621→                            >
+   622→                              {para}
+   623→                            </p>
+   624→                          ))}
+   625→                        </div>
+   626→                      </article>
+   627→                    ) : currentLesson.kind === 'LIVE' ? (
+   628→                      <div className="rounded-2xl border border-stone-200 bg-white p-5 text-sm leading-relaxed text-stone-600 sm:p-6">
+   629→                        Esta é uma aula ao vivo — participe no horário agendado e use a aba
+   630→                        <strong className="font-semibold"> Perguntas </strong>
+   631→                        para enviar suas dúvidas ao mentor. Se perdeu, a gravação aparece no player
+   632→                        quando disponível.
+   633→                      </div>
+   634→                    ) : currentLesson.videoUrl ? (
+   635→                      <div className="rounded-2xl border border-stone-200 bg-white p-5 text-sm leading-relaxed text-stone-600 sm:p-6">
+   636→                        Assista à aula acima. Dúvidas? Use a aba{' '}
+   637→                        <strong className="font-semibold">Perguntas</strong> — {firstName} responde
+   638→                        por lá. Anote ideias em <strong className="font-semibold">Anotações</strong>{' '}
+   639→                        e baixe os anexos desta aula.
+   640→                      </div>
+
+[showing lines 1-640 of 1900; use offset=641 with limit to continue reading]

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   Bell,
@@ -16,17 +16,21 @@ import {
   ListVideo,
   LogIn,
   LogOut,
+  MessageCircle,
   MessageSquareQuote,
+  Moon,
   PlusCircle,
   Search,
   ShoppingBag,
   Star,
+  Sun,
   UserPlus,
   UserRoundPlus,
   X,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTheme } from 'next-themes'
 import { api } from '@/lib/api'
 import type { NotificationDTO } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
@@ -59,6 +63,7 @@ const NOTIFICATION_KINDS: Record<string, NotificationChip> = {
   enrollment_new: { icon: UserPlus, chipClass: 'bg-emerald-100 text-emerald-700' },
   course_review_new: { icon: MessageSquareQuote, chipClass: 'bg-violet-100 text-violet-600' },
   purchase_new: { icon: ShoppingBag, chipClass: 'bg-emerald-100 text-emerald-700' },
+  message_new: { icon: MessageCircle, chipClass: 'bg-teal-100 text-teal-700' },
 }
 const DEFAULT_KIND: NotificationChip = { icon: Bell, chipClass: 'bg-stone-100 text-stone-500' }
 
@@ -72,6 +77,98 @@ function relativeTime(iso: string) {
   const days = Math.floor(hours / 24)
   if (days < 30) return `há ${days} d`
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+}
+
+// ==================== Mensagens diretas (chat) ====================
+
+/** Ícone de mensagens com badge de não lidas (polling leve a cada 45s) */
+function MessagesButton() {
+  const user = useAppStore((s) => s.user)
+  const navigate = useAppStore((s) => s.navigate)
+  const [unread, setUnread] = useState(0)
+  const aliveRef = useRef(true)
+
+  useEffect(() => {
+    const userId = user?.id
+    if (!userId) return
+    aliveRef.current = true
+    let alive = true
+    const load = () =>
+      api
+        .unreadMessages(userId)
+        .then((r) => {
+          if (alive) setUnread(r.count)
+        })
+        .catch(() => {
+          /* silencioso */
+        })
+    load()
+    const timer = setInterval(load, 45_000)
+    return () => {
+      alive = false
+      aliveRef.current = false
+      clearInterval(timer)
+    }
+  }, [user?.id])
+
+  if (!user) return null
+
+  return (
+    <button
+      type="button"
+      onClick={() => navigate({ name: 'messages' })}
+      aria-label={
+        unread > 0 ? `Mensagens, ${unread} não lida${unread === 1 ? '' : 's'}` : 'Mensagens'
+      }
+      title="Mensagens"
+      className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
+    >
+      <MessageCircle className="h-4.5 w-4.5" />
+      {unread > 0 && (
+        <span
+          aria-live="polite"
+          className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold leading-none text-white"
+        >
+          {unread > 99 ? '99+' : unread}
+        </span>
+      )}
+    </button>
+  )
+}
+
+// ==================== Alternador de tema (claro/escuro) ====================
+
+function ThemeToggle() {
+  const { resolvedTheme, setTheme } = useTheme()
+  // next-themes só sabe o tema no cliente — evita mismatch de hidratação
+  // (useSyncExternalStore em vez de setState em effect: sem render cascata)
+  const emptySubscribe = useCallback(() => () => {}, [])
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  )
+
+  const isDark = mounted && resolvedTheme === 'dark'
+  return (
+    <button
+      type="button"
+      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+      aria-label={isDark ? 'Mudar para o tema claro' : 'Mudar para o tema escuro'}
+      title={isDark ? 'Tema claro' : 'Tema escuro'}
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
+    >
+      {mounted ? (
+        isDark ? (
+          <Sun className="h-4.5 w-4.5" />
+        ) : (
+          <Moon className="h-4.5 w-4.5" />
+        )
+      ) : (
+        <span className="h-4.5 w-4.5" aria-hidden />
+      )}
+    </button>
+  )
 }
 
 function NotificationsBell() {
@@ -144,6 +241,7 @@ function NotificationsBell() {
     if (item.linkView === 'dashboard') navigate({ name: 'dashboard' })
     else if (item.linkView === 'course' && item.refId) navigate({ name: 'course', courseId: item.refId })
     else if (item.linkView === 'onboarding') navigate({ name: 'onboarding' })
+    else if (item.linkView === 'messages') navigate({ name: 'messages', peerId: item.refId ?? undefined })
     setOpen(false)
   }
 
@@ -188,15 +286,15 @@ function NotificationsBell() {
 
       <DropdownMenuContent align="end" sideOffset={8} className="w-88 overflow-hidden p-0 sm:w-96">
         {/* Cabeçalho do painel */}
-        <div className="flex items-center justify-between gap-2 border-b border-stone-100 px-4 py-2.5">
-          <DropdownMenuLabel className="p-0 font-semibold text-stone-900">
+        <div className="flex items-center justify-between gap-2 border-b border-stone-100 px-4 py-2.5 dark:border-stone-800">
+          <DropdownMenuLabel className="p-0 font-semibold text-stone-900 dark:text-stone-100">
             Notificações
           </DropdownMenuLabel>
           <button
             type="button"
             onClick={handleMarkAll}
             disabled={unreadCount === 0}
-            className="rounded text-xs font-semibold text-emerald-700 transition-colors hover:text-emerald-900 disabled:pointer-events-none disabled:text-stone-300"
+            className="rounded text-xs font-semibold text-emerald-700 transition-colors hover:text-emerald-900 disabled:pointer-events-none disabled:text-stone-300 dark:text-emerald-400 dark:hover:text-emerald-300 dark:disabled:text-stone-600"
           >
             Marcar todas como lidas
           </button>
@@ -205,14 +303,14 @@ function NotificationsBell() {
         {items.length === 0 ? (
           /* Empty state */
           <div className="flex flex-col items-center gap-2 px-6 py-8 text-center">
-            <BellOff className="h-8 w-8 text-stone-300" aria-hidden />
-            <p className="text-sm text-stone-500">Você está em dia! Nenhuma notificação.</p>
+            <BellOff className="h-8 w-8 text-stone-300 dark:text-stone-600" aria-hidden />
+            <p className="text-sm text-stone-500 dark:text-stone-400">Você está em dia! Nenhuma notificação.</p>
           </div>
         ) : (
           <div
             role="list"
             aria-label="Lista de notificações"
-            className="max-h-[380px] overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-200 [&::-webkit-scrollbar-track]:bg-transparent"
+            className="max-h-[380px] overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-200 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent"
           >
             {items.map((item) => {
               const chip = NOTIFICATION_KINDS[item.kind] ?? DEFAULT_KIND
@@ -225,8 +323,8 @@ function NotificationsBell() {
                     className={cn(
                       'relative flex w-full items-start gap-3 px-4 py-3 text-left transition-colors focus-visible:outline-none',
                       item.read
-                        ? 'hover:bg-stone-50 focus-visible:bg-stone-50'
-                        : 'bg-emerald-50/50 hover:bg-emerald-50 focus-visible:bg-emerald-50'
+                        ? 'hover:bg-stone-50 focus-visible:bg-stone-50 dark:hover:bg-stone-800/60 dark:focus-visible:bg-stone-800/60'
+                        : 'bg-emerald-50/50 hover:bg-emerald-50 focus-visible:bg-emerald-50 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/30 dark:focus-visible:bg-emerald-900/30'
                     )}
                   >
                     {!item.read && (
@@ -253,12 +351,12 @@ function NotificationsBell() {
                         >
                           {item.title}
                         </span>
-                        <span className="shrink-0 text-[11px] text-stone-400">
+                        <span className="shrink-0 text-[11px] text-stone-400 dark:text-stone-500">
                           {relativeTime(item.createdAt)}
                         </span>
                       </span>
                       {item.body && (
-                        <span className="mt-0.5 block text-xs leading-snug text-stone-500 line-clamp-2">
+                        <span className="mt-0.5 block text-xs leading-snug text-stone-500 line-clamp-2 dark:text-stone-400">
                           {item.body}
                         </span>
                       )}
@@ -339,6 +437,8 @@ export function Navbar() {
           className={cn(
             'h-9 w-full rounded-full border border-transparent bg-stone-100 pl-10 pr-9 text-sm text-stone-900 outline-none transition-all placeholder:text-stone-400',
             'focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100',
+            'dark:bg-stone-800/70 dark:text-stone-100 dark:placeholder:text-stone-500',
+            'dark:focus:border-emerald-700 dark:focus:bg-stone-900 dark:focus:ring-emerald-900/40',
             '[&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden'
           )}
         />
@@ -347,13 +447,13 @@ export function Navbar() {
             type="button"
             onClick={() => setValue('')}
             aria-label="Limpar busca"
-            className="absolute right-2.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-200 hover:text-stone-700"
+            className="absolute right-2.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-200 hover:text-stone-700 dark:hover:bg-stone-700 dark:hover:text-stone-200"
           >
             <X className="h-3.5 w-3.5" />
           </button>
         ) : (
           !isMobile && (
-            <kbd className="pointer-events-none absolute right-3 top-1/2 hidden h-5 -translate-y-1/2 items-center rounded border border-stone-200 bg-white px-1 font-mono text-[10px] font-medium text-stone-400 md:inline-flex">
+            <kbd className="pointer-events-none absolute right-3 top-1/2 hidden h-5 -translate-y-1/2 items-center rounded border border-stone-200 bg-white px-1 font-mono text-[10px] font-medium text-stone-400 md:inline-flex dark:border-stone-700 dark:bg-stone-900">
               /
             </kbd>
           )
@@ -373,7 +473,7 @@ export function Navbar() {
         title={label}
         className={cn(
           'relative flex h-9 items-center gap-2 rounded-full px-3.5 text-sm font-medium transition-colors',
-          active ? 'text-emerald-800' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900'
+          active ? 'text-emerald-800 dark:text-emerald-300' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800/70 dark:hover:text-stone-100'
         )}
       >
         {active && (
@@ -381,7 +481,7 @@ export function Navbar() {
             layoutId="navbar-nav-pill"
             aria-hidden
             transition={{ type: 'spring', bounce: 0.25, duration: 0.5 }}
-            className="absolute inset-0 -z-10 rounded-full bg-emerald-50"
+            className="absolute inset-0 -z-10 rounded-full bg-emerald-50 dark:bg-emerald-900/30"
           />
         )}
         {icon}
@@ -399,7 +499,7 @@ export function Navbar() {
   return (
     /* Estático no topo do shell (fora do container de rolagem): o corpo da
        página rola no <main> e NUNCA passa por baixo do header. */
-    <header className="shrink-0 border-b border-stone-200/70 bg-white">
+    <header className="shrink-0 border-b border-stone-200/70 bg-white dark:border-stone-800 dark:bg-stone-950">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4">
         <button
           className="flex items-center gap-2.5"
@@ -409,8 +509,8 @@ export function Navbar() {
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-700 text-white transition-transform duration-200 hover:scale-[1.02]">
             <GraduationCap className="h-4.5 w-4.5" />
           </span>
-          <span className="text-base font-extrabold tracking-tight text-stone-900">
-            Mentor<span className="text-emerald-700">Hub</span>
+          <span className="text-base font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+            Mentor<span className="text-emerald-700 dark:text-emerald-400">Hub</span>
           </span>
         </button>
 
@@ -425,7 +525,9 @@ export function Navbar() {
         </div>
 
         <div className={cn('flex items-center gap-2', 'md:ml-0 ml-auto')}>
-          {/* Sino de notificações (apenas logado): antes da busca mobile e do avatar */}
+          {/* Tema claro/escuro (todos) + mensagens e sino (apenas logado) */}
+          <ThemeToggle />
+          {user && <MessagesButton />}
           {user && <NotificationsBell />}
 
           {/* Busca (mobile): ícone que expande uma linha de busca abaixo */}
@@ -436,7 +538,7 @@ export function Navbar() {
             }}
             aria-expanded={mobileSearchOpen}
             aria-label={mobileSearchOpen ? 'Fechar busca' : 'Abrir busca'}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 md:hidden"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 md:hidden dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
           >
             {mobileSearchOpen ? <X className="h-4.5 w-4.5" /> : <Search className="h-4.5 w-4.5" />}
           </button>
@@ -445,11 +547,11 @@ export function Navbar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="flex items-center gap-2.5 rounded-full border border-stone-200 bg-white py-1 pl-1 pr-3 transition-colors hover:border-emerald-300 hover:bg-emerald-50"
+                  className="flex items-center gap-2.5 rounded-full border border-stone-200 bg-white py-1 pl-1 pr-3 transition-colors hover:border-emerald-300 hover:bg-emerald-50 dark:border-stone-700/80 dark:bg-stone-900 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/50"
                   aria-label="Menu do usuário"
                 >
                   <Avatar name={user.name} src={user.avatarUrl} size="sm" className="ring-transparent" />
-                  <span className="hidden max-w-28 truncate text-sm font-semibold text-stone-700 sm:inline">
+                  <span className="hidden max-w-28 truncate text-sm font-semibold text-stone-700 sm:inline dark:text-stone-200">
                     {firstName(user.name)}
                   </span>
                 </button>
@@ -476,6 +578,9 @@ export function Navbar() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate({ name: 'dashboard' })}>
                   <CalendarDays className="h-4 w-4" /> Minhas sessões
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate({ name: 'messages' })}>
+                  <MessageCircle className="h-4 w-4" /> Mensagens
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate({ name: 'marketplace' })}>
                   <Compass className="h-4 w-4" /> Explorar
@@ -540,7 +645,7 @@ export function Navbar() {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="overflow-hidden border-t border-stone-100 bg-white md:hidden"
+            className="overflow-hidden border-t border-stone-100 bg-white md:hidden dark:border-stone-800 dark:bg-stone-950"
           >
             <div className="px-4 py-2.5">{searchField(true)}</div>
           </motion.div>

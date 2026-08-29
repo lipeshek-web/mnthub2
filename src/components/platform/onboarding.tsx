@@ -217,10 +217,10 @@ function FontOptionCard({
       aria-pressed={active}
       aria-label={`Selecionar fonte ${font.label}${activeHeading ? ' (em uso nos títulos)' : ''}${activeBody ? ' (em uso nos textos)' : ''}`}
       className={cn(
-        'group relative flex flex-col items-start gap-1.5 rounded-xl border bg-white p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+        'group relative flex flex-col items-start gap-1.5 rounded-xl border bg-white dark:bg-stone-900 p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
         active
           ? 'border-emerald-400 ring-2 ring-emerald-500/30'
-          : 'border-stone-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-sm',
+          : 'border-stone-200 dark:border-stone-800 hover:-translate-y-0.5 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-sm',
       )}
     >
       {(activeHeading || activeBody) && (
@@ -229,26 +229,26 @@ function FontOptionCard({
         </span>
       )}
       <span
-        className="block text-3xl leading-none text-stone-900"
+        className="block text-3xl leading-none text-stone-900 dark:text-stone-50"
         style={fontPreviewStyle(font)}
         aria-hidden
       >
         Aa
       </span>
       <span
-        className="block w-full truncate text-xs font-medium text-stone-700"
+        className="block w-full truncate text-xs font-medium text-stone-700 dark:text-stone-200"
         style={fontPreviewStyle(font)}
       >
         {font.label}
       </span>
       <span className="flex flex-wrap gap-1">
         {activeHeading && (
-          <Badge className="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0 text-[9px] font-semibold text-emerald-700 hover:bg-emerald-50">
+          <Badge className="rounded-full border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0 text-[9px] font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30">
             {FONT_SLOT_LABELS.heading}
           </Badge>
         )}
         {activeBody && (
-          <Badge className="rounded-full border border-teal-200 bg-teal-50 px-1.5 py-0 text-[9px] font-semibold text-teal-700 hover:bg-teal-50">
+          <Badge className="rounded-full border border-teal-200 dark:border-teal-900 bg-teal-50 dark:bg-teal-950/50 px-1.5 py-0 text-[9px] font-semibold text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/50">
             {FONT_SLOT_LABELS.body}
           </Badge>
         )}
@@ -288,8 +288,8 @@ function FontPicker({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <p className="flex items-center gap-1.5 text-sm font-semibold text-stone-900">
-          <Type className="size-4 text-emerald-700" aria-hidden /> Tipografia da sua página
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-stone-900 dark:text-stone-50">
+          <Type className="size-4 text-emerald-700 dark:text-emerald-300" aria-hidden /> Tipografia da sua página
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Escolha a fonte do seu nome e títulos e a fonte das descrições — dá identidade à sua
@@ -299,30 +299,30 @@ function FontPicker({
 
       {/* Prévia ao vivo */}
       <div
-        className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm"
+        className="overflow-hidden rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-sm"
         aria-label="Prévia da sua página com as fontes escolhidas"
       >
         <div className="h-14 w-full" style={avatarGradient(mentorName)} aria-hidden />
         <div className="px-4 pb-4 pt-3">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Prévia</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Prévia</p>
           <p
-            className="mt-1 text-xl font-extrabold tracking-tight text-stone-900"
+            className="mt-1 text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50"
             style={headingFontStyle(heading)}
           >
             {mentorName}
           </p>
-          <p className="mt-0.5 text-xs font-medium text-stone-600" style={bodyFontStyle(body)}>
+          <p className="mt-0.5 text-xs font-medium text-stone-600 dark:text-stone-300" style={bodyFontStyle(body)}>
             Mentor verificado · Especialista na área
           </p>
           <p
-            className="mt-2 line-clamp-2 text-xs leading-relaxed text-stone-500"
+            className="mt-2 line-clamp-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400"
             style={bodyFontStyle(body)}
           >
             É assim que suas descrições serão exibidas para os alunos: contando sua metodologia,
             seu público e os resultados que você entrega em cada mentoria.
           </p>
           {(headingFont || bodyFont) && (
-            <p className="mt-2 flex flex-wrap gap-1.5 text-[10px] text-stone-400">
+            <p className="mt-2 flex flex-wrap gap-1.5 text-[10px] text-stone-400 dark:text-stone-500">
               {headingFont && <span>Títulos: {headingFont.label}</span>}
               {bodyFont && <span>· Textos: {bodyFont.label}</span>}
             </p>
@@ -334,7 +334,7 @@ function FontPicker({
       <div
         role="radiogroup"
         aria-label="Aplicar fonte em"
-        className="flex w-full max-w-sm rounded-full border border-stone-200 bg-stone-50 p-1"
+        className="flex w-full max-w-sm rounded-full border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/50 p-1"
       >
         {(Object.keys(FONT_SLOT_LABELS) as FontSlot[]).map((s) => (
           <button
@@ -345,7 +345,7 @@ function FontPicker({
             onClick={() => setSlot(s)}
             className={cn(
               'flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
-              slot === s ? 'bg-emerald-950 text-white shadow-sm' : 'text-stone-600 hover:text-stone-900',
+              slot === s ? 'bg-emerald-950 text-white shadow-sm' : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-50',
             )}
           >
             {FONT_SLOT_LABELS[s]}
@@ -364,8 +364,8 @@ function FontPicker({
             className={cn(
               'rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
               category === c.value
-                ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-                : 'border-stone-200 bg-white text-stone-500 hover:border-emerald-200 hover:text-emerald-700',
+                ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300'
+                : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-500 dark:text-stone-400 hover:border-emerald-200 dark:hover:border-emerald-900 hover:text-emerald-700 dark:hover:text-emerald-300',
             )}
           >
             {c.label}
@@ -388,8 +388,8 @@ function FontPicker({
           className={cn(
             'relative flex flex-col items-start justify-center gap-1 rounded-xl border p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
             activeId === null
-              ? 'border-emerald-400 bg-emerald-50/40 ring-2 ring-emerald-500/30'
-              : 'border-stone-200 bg-stone-50 hover:border-emerald-300',
+              ? 'border-emerald-400 bg-emerald-50/40 dark:bg-emerald-950/50 ring-2 ring-emerald-500/30'
+              : 'border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/50 hover:border-emerald-300 dark:hover:border-emerald-700',
           )}
         >
           {activeId === null && (
@@ -397,8 +397,8 @@ function FontPicker({
               <Check className="size-3" aria-hidden />
             </span>
           )}
-          <span className="text-2xl font-bold leading-none text-stone-400">Aa</span>
-          <span className="text-xs font-medium text-stone-600">Padrão da plataforma</span>
+          <span className="text-2xl font-bold leading-none text-stone-400 dark:text-stone-500">Aa</span>
+          <span className="text-xs font-medium text-stone-600 dark:text-stone-300">Padrão da plataforma</span>
         </button>
         {visible.map((f) => (
           <FontOptionCard
@@ -412,7 +412,7 @@ function FontPicker({
       </div>
       <p className="text-xs text-muted-foreground">
         Selecionando para:{' '}
-        <span className="font-semibold text-stone-700">{FONT_SLOT_LABELS[slot]}</span> — troque o
+        <span className="font-semibold text-stone-700 dark:text-stone-200">{FONT_SLOT_LABELS[slot]}</span> — troque o
         destino acima para definir a outra fonte.
       </p>
     </div>
@@ -565,8 +565,8 @@ function MentorProfileForm({
       {/* Fotos do perfil (capa + avatar) */}
       <div className="flex flex-col gap-4">
         <div>
-          <p className="flex items-center gap-1.5 text-sm font-semibold text-stone-900">
-            <Camera className="size-4 text-emerald-700" aria-hidden /> Fotos do perfil
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-stone-900 dark:text-stone-50">
+            <Camera className="size-4 text-emerald-700 dark:text-emerald-300" aria-hidden /> Fotos do perfil
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Sua foto aparece no Explorar, nos cursos e na navbar. A capa aparece no topo do seu perfil
@@ -576,13 +576,13 @@ function MentorProfileForm({
 
         <div className="flex flex-col gap-2">
           {coverUrl ? (
-            <div className="h-44 w-full overflow-hidden rounded-xl border border-stone-200 bg-stone-100 sm:h-52">
+            <div className="h-44 w-full overflow-hidden rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-100 dark:bg-stone-800 sm:h-52">
               <img src={coverUrl} alt="Capa do seu perfil" className="h-full w-full object-cover" />
             </div>
           ) : (
-            <div className="flex h-44 w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-stone-300 bg-stone-50 sm:h-52">
-              <ImagePlus className="size-6 text-stone-400" aria-hidden />
-              <p className="text-xs text-stone-500">Capa 1440×720 recomendada — aparece em destaque no topo da sua página</p>
+            <div className="flex h-44 w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-950/50 sm:h-52">
+              <ImagePlus className="size-6 text-stone-400 dark:text-stone-500" aria-hidden />
+              <p className="text-xs text-stone-500 dark:text-stone-400">Capa 1440×720 recomendada — aparece em destaque no topo da sua página</p>
             </div>
           )}
           <div className="flex flex-wrap items-center gap-2">
@@ -689,7 +689,7 @@ function MentorProfileForm({
           aria-invalid={Boolean(errors.headline)}
         />
         {errors.headline ? (
-          <p className="text-xs text-rose-600">{errors.headline}</p>
+          <p className="text-xs text-rose-600 dark:text-rose-400">{errors.headline}</p>
         ) : (
           <p className="text-xs text-muted-foreground">
             Uma frase curta que resume quem você é e o que faz.
@@ -708,7 +708,7 @@ function MentorProfileForm({
           aria-invalid={Boolean(errors.description)}
         />
         {errors.description ? (
-          <p className="text-xs text-rose-600">{errors.description}</p>
+          <p className="text-xs text-rose-600 dark:text-rose-400">{errors.description}</p>
         ) : (
           <p className="text-xs text-muted-foreground">
             Detalhe sua metodologia, público ideal e o que o aluno leva de cada sessão (mínimo 30 caracteres).
@@ -731,7 +731,7 @@ function MentorProfileForm({
                   'rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-emerald-600',
                   selected
                     ? 'border-emerald-600 bg-emerald-600 text-white'
-                    : 'border-stone-300 bg-white text-stone-700 hover:border-emerald-400 hover:text-emerald-700'
+                    : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-200 hover:border-emerald-400 dark:hover:border-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-300'
                 )}
               >
                 {category}
@@ -739,7 +739,7 @@ function MentorProfileForm({
             )
           })}
         </div>
-        {errors.categories ? <p className="text-xs text-rose-600">{errors.categories}</p> : null}
+        {errors.categories ? <p className="text-xs text-rose-600 dark:text-rose-400">{errors.categories}</p> : null}
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2">
@@ -762,7 +762,7 @@ function MentorProfileForm({
             />
           </div>
           {errors.hourlyRate ? (
-            <p className="text-xs text-rose-600">{errors.hourlyRate}</p>
+            <p className="text-xs text-rose-600 dark:text-rose-400">{errors.hourlyRate}</p>
           ) : (
             <p className="text-xs text-muted-foreground">
               Valor por sessão de 1 hora. Você pode ajustar depois.
@@ -783,7 +783,7 @@ function MentorProfileForm({
             aria-invalid={Boolean(errors.experienceYears)}
           />
           {errors.experienceYears ? (
-            <p className="text-xs text-rose-600">{errors.experienceYears}</p>
+            <p className="text-xs text-rose-600 dark:text-rose-400">{errors.experienceYears}</p>
           ) : (
             <p className="text-xs text-muted-foreground">Tempo total de atuação na área.</p>
           )}
@@ -802,10 +802,10 @@ function MentorProfileForm({
       </div>
 
       {/* Redes sociais e portfólio (opcional) */}
-      <div className="flex flex-col gap-4 border-t border-stone-100 pt-5">
+      <div className="flex flex-col gap-4 border-t border-stone-100 dark:border-stone-800 pt-5">
         <div>
-          <p className="flex items-center gap-1.5 text-sm font-semibold text-stone-900">
-            <AtSign className="size-4 text-emerald-700" aria-hidden /> Redes sociais e portfólio
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-stone-900 dark:text-stone-50">
+            <AtSign className="size-4 text-emerald-700 dark:text-emerald-300" aria-hidden /> Redes sociais e portfólio
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Aparecem como cartões de prévia no seu perfil público.
@@ -933,7 +933,7 @@ function AvailabilityEditor({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col divide-y divide-stone-200 rounded-lg border border-stone-200">
+      <div className="flex flex-col divide-y divide-stone-200 dark:divide-stone-800 rounded-lg border border-stone-200 dark:border-stone-800">
         {WEEKDAYS_FULL_PT.map((day, weekday) => {
           const daySlots = slots
             .filter((s) => s.weekday === weekday)
@@ -943,14 +943,14 @@ function AvailabilityEditor({
               <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                 <span className="w-28 shrink-0 text-sm font-medium sm:w-32">{day}</span>
                 {daySlots.length === 0 ? (
-                  <span className="text-xs text-stone-400">Sem disponibilidade</span>
+                  <span className="text-xs text-stone-400 dark:text-stone-500">Sem disponibilidade</span>
                 ) : (
                   <span className="flex flex-wrap items-center gap-1.5">
                     {daySlots.map((s) => (
                       <Badge
                         key={`${s.weekday}-${s.startHour}-${s.endHour}`}
                         variant="outline"
-                        className="gap-1 border-emerald-200 bg-emerald-50 py-1 text-emerald-800"
+                        className="gap-1 border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/50 py-1 text-emerald-800 dark:text-emerald-300"
                       >
                         {hourToLabel(s.startHour)} – {hourToLabel(s.endHour)}
                         <button
@@ -959,7 +959,7 @@ function AvailabilityEditor({
                             s.endHour
                           )} na ${day.toLowerCase()}`}
                           onClick={() => removeSlot(s.weekday, s.startHour, s.endHour)}
-                          className="rounded-full p-0.5 transition-colors hover:bg-emerald-200/70 focus-visible:outline-2 focus-visible:outline-emerald-600"
+                          className="rounded-full p-0.5 transition-colors hover:bg-emerald-200/70 dark:hover:bg-emerald-900/40 focus-visible:outline-2 focus-visible:outline-emerald-600"
                         >
                           <X className="size-3" aria-hidden />
                         </button>
@@ -1125,7 +1125,7 @@ function ContentsManager({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
             <Newspaper className="size-4" aria-hidden />
           </span>
           Mural de conteúdos
@@ -1141,8 +1141,8 @@ function ContentsManager({
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {contents.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-stone-300 py-10 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 text-stone-400 ring-1 ring-stone-200">
+          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-stone-300 dark:border-stone-700 py-10 text-center">
+            <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500 ring-1 ring-stone-200 dark:ring-stone-800">
               <BookOpen className="size-6" aria-hidden />
             </div>
             <h3 className="mt-2 text-base font-semibold">Nenhum conteúdo no mural</h3>
@@ -1152,13 +1152,13 @@ function ContentsManager({
             </p>
           </div>
         ) : (
-          <div className="max-h-96 space-y-3 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
+          <div className="max-h-96 space-y-3 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-stone-100 dark:[&::-webkit-scrollbar-track]:bg-stone-800 [&::-webkit-scrollbar]:w-1.5">
             {contents.map((content) => {
               const meta = CONTENT_TYPE_META[content.type]
               return (
                 <div
                   key={content.id}
-                  className="flex items-start justify-between gap-3 rounded-lg border border-stone-200 bg-white p-4"
+                  className="flex items-start justify-between gap-3 rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -1169,10 +1169,10 @@ function ContentsManager({
                       ) : (
                         <Badge variant="outline">{content.type}</Badge>
                       )}
-                      <span className="text-sm text-stone-500">
+                      <span className="text-sm text-stone-500 dark:text-stone-400">
                         {LEVEL_LABELS[content.level] ?? content.level}
                       </span>
-                      <span className="inline-flex items-center gap-1 text-sm text-stone-500">
+                      <span className="inline-flex items-center gap-1 text-sm text-stone-500 dark:text-stone-400">
                         <Clock className="size-3.5" aria-hidden /> {content.durationMin} min
                       </span>
                     </div>
@@ -1181,7 +1181,7 @@ function ContentsManager({
                     {content.tags.length > 0 ? (
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {content.tags.map((tag) => (
-                          <Badge key={tag} variant="outline" className="text-stone-500">
+                          <Badge key={tag} variant="outline" className="text-stone-500 dark:text-stone-400">
                             #{tag}
                           </Badge>
                         ))}
@@ -1191,7 +1191,7 @@ function ContentsManager({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="shrink-0 text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+                    className="shrink-0 text-stone-400 dark:text-stone-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 dark:hover:text-rose-400"
                     aria-label={`Excluir conteúdo ${content.title}`}
                     onClick={() => setToDelete(content)}
                   >
@@ -1229,7 +1229,7 @@ function ContentsManager({
                 placeholder="Ex.: Como estruturar a arquitetura frontend de um produto"
                 aria-invalid={Boolean(formErrors.title)}
               />
-              {formErrors.title ? <p className="text-xs text-rose-600">{formErrors.title}</p> : null}
+              {formErrors.title ? <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.title}</p> : null}
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="content-description">Descrição</Label>
@@ -1242,7 +1242,7 @@ function ContentsManager({
                 aria-invalid={Boolean(formErrors.description)}
               />
               {formErrors.description ? (
-                <p className="text-xs text-rose-600">{formErrors.description}</p>
+                <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.description}</p>
               ) : null}
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -1290,7 +1290,7 @@ function ContentsManager({
                   aria-invalid={Boolean(formErrors.durationMin)}
                 />
                 {formErrors.durationMin ? (
-                  <p className="text-xs text-rose-600">{formErrors.durationMin}</p>
+                  <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.durationMin}</p>
                 ) : null}
               </div>
               <div className="flex flex-col gap-2">
@@ -1566,7 +1566,7 @@ function CoursesManager({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
             <GraduationCap className="size-4" aria-hidden />
           </span>
           Meus cursos
@@ -1587,8 +1587,8 @@ function CoursesManager({
             <Skeleton className="h-28 rounded-lg" />
           </div>
         ) : courses.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-stone-300 py-10 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 text-stone-400 ring-1 ring-stone-200">
+          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-stone-300 dark:border-stone-700 py-10 text-center">
+            <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500 ring-1 ring-stone-200 dark:ring-stone-800">
               <GraduationCap className="size-6" aria-hidden />
             </div>
             <h3 className="mt-2 text-base font-semibold">Nenhum curso criado</h3>
@@ -1597,31 +1597,31 @@ function CoursesManager({
             </p>
           </div>
         ) : (
-          <div className="max-h-96 space-y-3 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
+          <div className="max-h-96 space-y-3 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-stone-100 dark:[&::-webkit-scrollbar-track]:bg-stone-800 [&::-webkit-scrollbar]:w-1.5">
             {courses.map((course) => (
               <div
                 key={course.id}
-                className="flex items-start justify-between gap-3 rounded-lg border border-stone-200 bg-white p-4"
+                className="flex items-start justify-between gap-3 rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4"
               >
                 {course.coverUrl ? (
                   <img
                     src={course.coverUrl}
                     alt=""
-                    className="h-12 w-20 shrink-0 rounded-lg object-cover ring-1 ring-stone-200"
+                    className="h-12 w-20 shrink-0 rounded-lg object-cover ring-1 ring-stone-200 dark:ring-stone-800"
                   />
                 ) : null}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline" className="border-stone-200 text-stone-600">
+                    <Badge variant="outline" className="border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300">
                       {course.category}
                     </Badge>
-                    <Badge variant="outline" className="border-stone-200 text-stone-500">
+                    <Badge variant="outline" className="border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-400">
                       {LEVEL_LABELS[course.level] ?? course.level}
                     </Badge>
                     {course.isPublished ? (
-                      <Badge className="bg-emerald-100 text-emerald-800">Publicado</Badge>
+                      <Badge className="bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300">Publicado</Badge>
                     ) : (
-                      <Badge variant="secondary" className="bg-stone-100 text-stone-600">
+                      <Badge variant="secondary" className="bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
                         Rascunho
                       </Badge>
                     )}
@@ -1639,7 +1639,7 @@ function CoursesManager({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-stone-600"
+                    className="text-stone-600 dark:text-stone-300"
                     aria-label={`Copiar link de impulsionamento de ${course.title}`}
                     onClick={() => copyCourseLink(course)}
                   >
@@ -1648,7 +1648,7 @@ function CoursesManager({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-stone-600"
+                    className="text-stone-600 dark:text-stone-300"
                     aria-label={`Gerenciar aulas de ${course.title}`}
                     onClick={() => {
                       setLessonsCourse(course)
@@ -1696,7 +1696,7 @@ function CoursesManager({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+                    className="text-stone-400 dark:text-stone-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 dark:hover:text-rose-400"
                     aria-label={`Excluir curso ${course.title}`}
                     onClick={() => setToDelete(course)}
                   >
@@ -1736,7 +1736,7 @@ function CoursesManager({
                 placeholder="Ex.: Arquitetura de Software na prática"
                 aria-invalid={Boolean(formErrors.title)}
               />
-              {formErrors.title ? <p className="text-xs text-rose-600">{formErrors.title}</p> : null}
+              {formErrors.title ? <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.title}</p> : null}
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="course-description">Descrição</Label>
@@ -1749,7 +1749,7 @@ function CoursesManager({
                 aria-invalid={Boolean(formErrors.description)}
               />
               {formErrors.description ? (
-                <p className="text-xs text-rose-600">{formErrors.description}</p>
+                <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.description}</p>
               ) : null}
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -1773,7 +1773,7 @@ function CoursesManager({
                     ))}
                   </SelectContent>
                 </Select>
-                {formErrors.category ? <p className="text-xs text-rose-600">{formErrors.category}</p> : null}
+                {formErrors.category ? <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.category}</p> : null}
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="course-level">Nível</Label>
@@ -1803,7 +1803,7 @@ function CoursesManager({
                 aria-invalid={Boolean(formErrors.price)}
               />
               {formErrors.price ? (
-                <p className="text-xs text-rose-600">{formErrors.price}</p>
+                <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.price}</p>
               ) : (
                 <p className="text-xs text-muted-foreground">Deixe 0 para tornar o curso gratuito.</p>
               )}
@@ -1826,13 +1826,13 @@ function CoursesManager({
             <div className="flex flex-col gap-2">
               <Label>Capa do curso</Label>
               {coverUrl ? (
-                <div className="h-24 w-full overflow-hidden rounded-xl border border-stone-200 bg-stone-100">
+                <div className="h-24 w-full overflow-hidden rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-100 dark:bg-stone-800">
                   <img src={coverUrl} alt="Capa do curso" className="h-full w-full object-cover" />
                 </div>
               ) : (
-                <div className="flex h-24 w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-stone-300 bg-stone-50">
-                  <ImagePlus className="size-5 text-stone-400" aria-hidden />
-                  <p className="text-xs text-stone-500">Capa 1280×720 recomendada</p>
+                <div className="flex h-24 w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-950/50">
+                  <ImagePlus className="size-5 text-stone-400 dark:text-stone-500" aria-hidden />
+                  <p className="text-xs text-stone-500 dark:text-stone-400">Capa 1280×720 recomendada</p>
                 </div>
               )}
               <div className="flex flex-wrap items-center gap-2">
@@ -2191,17 +2191,17 @@ function LessonsManagerDialog({
               <Skeleton className="h-14 rounded-lg" />
             </div>
           ) : lessons.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-stone-300 py-6 text-center text-sm text-muted-foreground">
+            <p className="rounded-lg border border-dashed border-stone-300 dark:border-stone-700 py-6 text-center text-sm text-muted-foreground">
               Nenhuma aula ainda — adicione a primeira abaixo.
             </p>
           ) : (
-            <div className="max-h-64 space-y-2 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
+            <div className="max-h-64 space-y-2 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-stone-100 dark:[&::-webkit-scrollbar-track]:bg-stone-800 [&::-webkit-scrollbar]:w-1.5">
               {lessons.map((lesson) => (
                 <div
                   key={lesson.id}
-                  className="flex items-center gap-3 rounded-lg border border-stone-200 bg-white px-3 py-2.5"
+                  className="flex items-center gap-3 rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-3 py-2.5"
                 >
-                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-bold text-stone-600">
+                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-xs font-bold text-stone-600 dark:text-stone-300">
                     {lesson.order}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -2209,7 +2209,7 @@ function LessonsManagerDialog({
                     <p className="flex items-center gap-1 text-xs text-muted-foreground">
                       {lesson.kind === 'LIVE' ? (
                         <>
-                          <Radio className="size-3 text-rose-500" aria-hidden />
+                          <Radio className="size-3 text-rose-500 dark:text-rose-400" aria-hidden />
                           <span>
                             Ao vivo ·{' '}
                             {lesson.startsAt
@@ -2219,7 +2219,7 @@ function LessonsManagerDialog({
                         </>
                       ) : lesson.kind === 'READING' ? (
                         <>
-                          <BookOpen className="size-3 text-amber-600" aria-hidden />
+                          <BookOpen className="size-3 text-amber-600 dark:text-amber-400" aria-hidden />
                           <span>Artigo/Livro · {lesson.durationMin} min</span>
                         </>
                       ) : lesson.videoUrl ? (
@@ -2239,7 +2239,7 @@ function LessonsManagerDialog({
                         </span>
                       ) : null}
                     </p>
-                    <span className="mt-1 inline-flex max-w-full items-center rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-500">
+                    <span className="mt-1 inline-flex max-w-full items-center rounded-full bg-stone-100 dark:bg-stone-800 px-2 py-0.5 text-[10px] font-semibold text-stone-500 dark:text-stone-400">
                       <span className="truncate">
                         {themes.find((t) => t.id === lesson.themeId)?.title ?? 'Sem tema'}
                       </span>
@@ -2250,14 +2250,14 @@ function LessonsManagerDialog({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="size-8 shrink-0 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
+                        className="size-8 shrink-0 text-stone-400 dark:text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-700 dark:hover:text-stone-200"
                         aria-label={`Mover para tema: ${lesson.title}`}
                       >
                         <FolderInput className="size-3.5" aria-hidden />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent align="end" className="w-56 p-1.5">
-                      <p className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide text-stone-400">
+                      <p className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide text-stone-400 dark:text-stone-500">
                         Mover para tema
                       </p>
                       <div className="max-h-48 overflow-y-auto">
@@ -2265,11 +2265,11 @@ function LessonsManagerDialog({
                           type="button"
                           disabled={movingId === lesson.id}
                           onClick={() => void handleMoveLesson(lesson, null)}
-                          className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-100 disabled:opacity-50"
+                          className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-left text-sm text-stone-700 dark:text-stone-200 transition-colors hover:bg-stone-100 dark:hover:bg-stone-800 disabled:opacity-50"
                         >
                           Sem tema
                           {lesson.themeId === null ? (
-                            <Check className="size-3.5 shrink-0 text-emerald-600" aria-hidden />
+                            <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
                           ) : null}
                         </button>
                         {themes.map((t) => (
@@ -2278,11 +2278,11 @@ function LessonsManagerDialog({
                             type="button"
                             disabled={movingId === lesson.id}
                             onClick={() => void handleMoveLesson(lesson, t.id)}
-                            className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-100 disabled:opacity-50"
+                            className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-left text-sm text-stone-700 dark:text-stone-200 transition-colors hover:bg-stone-100 dark:hover:bg-stone-800 disabled:opacity-50"
                           >
                             <span className="truncate">{t.title}</span>
                             {lesson.themeId === t.id ? (
-                              <Check className="size-3.5 shrink-0 text-emerald-600" aria-hidden />
+                              <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
                             ) : null}
                           </button>
                         ))}
@@ -2292,7 +2292,7 @@ function LessonsManagerDialog({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="relative size-8 shrink-0 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
+                    className="relative size-8 shrink-0 text-stone-400 dark:text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-700 dark:hover:text-stone-200"
                     aria-label={`Gerenciar quiz de ${lesson.title}`}
                     onClick={() => {
                       setQuizLesson(lesson)
@@ -2309,7 +2309,7 @@ function LessonsManagerDialog({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="size-8 shrink-0 text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+                    className="size-8 shrink-0 text-stone-400 dark:text-stone-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 dark:hover:text-rose-400"
                     aria-label={`Remover aula ${lesson.title}`}
                     onClick={() => void handleDeleteLesson(lesson)}
                   >
@@ -2321,7 +2321,7 @@ function LessonsManagerDialog({
           )}
 
           {adding ? (
-            <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
+            <div className="flex flex-col gap-3 rounded-lg border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/50 p-3">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="lesson-title">Título</Label>
                 <Input
@@ -2331,7 +2331,7 @@ function LessonsManagerDialog({
                   placeholder="Ex.: Boas-vindas e visão geral"
                   aria-invalid={Boolean(formErrors.title)}
                 />
-                {formErrors.title ? <p className="text-xs text-rose-600">{formErrors.title}</p> : null}
+                {formErrors.title ? <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.title}</p> : null}
               </div>
 
               {/* Tema (módulo) da aula + criação rápida de tema */}
@@ -2409,8 +2409,8 @@ function LessonsManagerDialog({
                       className={cn(
                         'flex min-h-11 items-center justify-center gap-1.5 rounded-lg border text-sm font-semibold transition-colors',
                         kind === opt.value
-                          ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                          : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-100'
+                          ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300'
+                          : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
                       )}
                     >
                       <opt.icon className="size-4" aria-hidden /> {opt.label}
@@ -2432,7 +2432,7 @@ function LessonsManagerDialog({
                         aria-invalid={Boolean(formErrors.startsAt)}
                       />
                       {formErrors.startsAt ? (
-                        <p className="text-xs text-rose-600">{formErrors.startsAt}</p>
+                        <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.startsAt}</p>
                       ) : null}
                     </div>
                     <div className="flex flex-col gap-2">
@@ -2447,7 +2447,7 @@ function LessonsManagerDialog({
                         aria-invalid={Boolean(formErrors.durationMin)}
                       />
                       {formErrors.durationMin ? (
-                        <p className="text-xs text-rose-600">{formErrors.durationMin}</p>
+                        <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.durationMin}</p>
                       ) : null}
                     </div>
                   </div>
@@ -2462,7 +2462,7 @@ function LessonsManagerDialog({
                       aria-invalid={Boolean(formErrors.meetingUrl)}
                     />
                     {formErrors.meetingUrl ? (
-                      <p className="text-xs text-rose-600">{formErrors.meetingUrl}</p>
+                      <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.meetingUrl}</p>
                     ) : (
                       <p className="text-xs text-muted-foreground">
                         Meet, Zoom, YouTube — aberto pelos alunos no horário da live.
@@ -2490,7 +2490,7 @@ function LessonsManagerDialog({
                     {libraryItems === null ? (
                       <Skeleton className="h-10 w-full rounded-lg" />
                     ) : libraryItems.length === 0 ? (
-                      <p className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-800">
+                      <p className="flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 px-3 py-2.5 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
                         <Library className="mt-0.5 size-3.5 shrink-0" aria-hidden />
                         Você ainda não publicou artigos ou livros. Crie na seção Minha Biblioteca.
                       </p>
@@ -2513,7 +2513,7 @@ function LessonsManagerDialog({
                       </Select>
                     )}
                     {formErrors.material ? (
-                      <p className="text-xs text-rose-600">{formErrors.material}</p>
+                      <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.material}</p>
                     ) : null}
                   </div>
                   <div className="flex flex-col gap-2">
@@ -2528,7 +2528,7 @@ function LessonsManagerDialog({
                       aria-invalid={Boolean(formErrors.durationMin)}
                     />
                     {formErrors.durationMin ? (
-                      <p className="text-xs text-rose-600">{formErrors.durationMin}</p>
+                      <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.durationMin}</p>
                     ) : (
                       <p className="text-xs text-muted-foreground">
                         Pré-preenchida com o tempo de leitura do item escolhido.
@@ -2552,7 +2552,7 @@ function LessonsManagerDialog({
                       aria-invalid={Boolean(formErrors.durationMin)}
                     />
                     {formErrors.durationMin ? (
-                      <p className="text-xs text-rose-600">{formErrors.durationMin}</p>
+                      <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.durationMin}</p>
                     ) : null}
                   </div>
                   <div className="flex flex-col gap-2">
@@ -2580,7 +2580,7 @@ function LessonsManagerDialog({
                     aria-invalid={Boolean(formErrors.material)}
                   />
                   {formErrors.material ? (
-                    <p className="text-xs text-rose-600">{formErrors.material}</p>
+                    <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.material}</p>
                   ) : null}
                 </div>
               ) : null}
@@ -2594,16 +2594,16 @@ function LessonsManagerDialog({
                       {attachments.map((att, i) => (
                         <li
                           key={`${att.url}-${i}`}
-                          className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5"
+                          className="flex items-center gap-2 rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-2.5 py-1.5"
                         >
-                          <Paperclip className="size-3.5 shrink-0 text-stone-400" aria-hidden />
-                          <span className="min-w-0 flex-1 truncate text-xs font-medium text-stone-700">
+                          <Paperclip className="size-3.5 shrink-0 text-stone-400 dark:text-stone-500" aria-hidden />
+                          <span className="min-w-0 flex-1 truncate text-xs font-medium text-stone-700 dark:text-stone-200">
                             {att.name}
                           </span>
                           <button
                             type="button"
                             aria-label={`Remover anexo ${att.name}`}
-                            className="rounded p-1 text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+                            className="rounded p-1 text-stone-400 dark:text-stone-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 dark:hover:text-rose-400"
                             onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
                           >
                             <X className="size-3.5" aria-hidden />
@@ -2870,7 +2870,7 @@ function QuizManagerDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-stone-100 dark:[&::-webkit-scrollbar-track]:bg-stone-800 [&::-webkit-scrollbar]:w-1.5">
           {quizzes === null ? (
             <div className="space-y-3" aria-hidden>
               <Skeleton className="h-32 rounded-2xl" />
@@ -2879,18 +2879,18 @@ function QuizManagerDialog({
           ) : (
             <>
               {quizzes.length === 0 ? (
-                <p className="rounded-2xl border border-dashed border-stone-300 px-4 py-8 text-center text-sm text-muted-foreground">
+                <p className="rounded-2xl border border-dashed border-stone-300 dark:border-stone-700 px-4 py-8 text-center text-sm text-muted-foreground">
                   Nenhuma pergunta ainda — crie a primeira para ajudar a fixar o aprendizado.
                 </p>
               ) : (
                 quizzes.map((quiz, index) => (
-                  <div key={quiz.id} className="rounded-2xl border border-stone-200 bg-white p-4">
+                  <div key={quiz.id} className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-bold uppercase tracking-wide text-stone-400">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-stone-400 dark:text-stone-500">
                           Pergunta {index + 1}
                         </p>
-                        <p className="mt-0.5 text-sm font-semibold break-words text-stone-900">
+                        <p className="mt-0.5 text-sm font-semibold break-words text-stone-900 dark:text-stone-50">
                           {quiz.prompt}
                         </p>
                       </div>
@@ -2898,7 +2898,7 @@ function QuizManagerDialog({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="size-8 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
+                          className="size-8 text-stone-400 dark:text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-700 dark:hover:text-stone-200"
                           aria-label={`Editar pergunta ${index + 1}`}
                           onClick={() => openEdit(quiz)}
                         >
@@ -2907,7 +2907,7 @@ function QuizManagerDialog({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="size-8 text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+                          className="size-8 text-stone-400 dark:text-stone-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 dark:hover:text-rose-400"
                           aria-label={`Excluir pergunta ${index + 1}`}
                           disabled={deleting}
                           onClick={() => setToDelete(quiz)}
@@ -2925,14 +2925,14 @@ function QuizManagerDialog({
                             className={cn(
                               'flex items-center gap-2 rounded-xl border px-3 py-2 text-sm',
                               correct
-                                ? 'border-emerald-300 bg-emerald-50 font-medium text-emerald-900'
-                                : 'border-stone-200 bg-stone-50 text-stone-700'
+                                ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 font-medium text-emerald-900 dark:text-emerald-300'
+                                : 'border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/50 text-stone-700 dark:text-stone-200'
                             )}
                           >
                             <span
                               className={cn(
                                 'flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold',
-                                correct ? 'bg-emerald-600 text-white' : 'bg-stone-200 text-stone-600'
+                                correct ? 'bg-emerald-600 text-white' : 'bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
                               )}
                             >
                               {QUIZ_OPTION_LETTERS[i] ?? i + 1}
@@ -2940,7 +2940,7 @@ function QuizManagerDialog({
                             <span className="min-w-0 flex-1 break-words">{option}</span>
                             {correct ? (
                               <Check
-                                className="size-4 shrink-0 text-emerald-600"
+                                className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
                                 aria-label="Alternativa correta"
                               />
                             ) : null}
@@ -2949,8 +2949,8 @@ function QuizManagerDialog({
                       })}
                     </ul>
                     {quiz.explanation ? (
-                      <p className="mt-3 rounded-xl bg-stone-50 p-3 text-xs leading-relaxed text-stone-600">
-                        <span className="font-semibold text-stone-700">Explicação: </span>
+                      <p className="mt-3 rounded-xl bg-stone-50 dark:bg-stone-950/50 p-3 text-xs leading-relaxed text-stone-600 dark:text-stone-300">
+                        <span className="font-semibold text-stone-700 dark:text-stone-200">Explicação: </span>
                         {quiz.explanation}
                       </p>
                     ) : null}
@@ -2960,13 +2960,13 @@ function QuizManagerDialog({
 
               {formVisible ? (
                 <form
-                  className="flex flex-col gap-4 rounded-2xl border border-stone-200 bg-stone-50 p-4"
+                  className="flex flex-col gap-4 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/50 p-4"
                   onSubmit={(event) => {
                     event.preventDefault()
                     void handleSave()
                   }}
                 >
-                  <p className="text-sm font-bold text-stone-900">
+                  <p className="text-sm font-bold text-stone-900 dark:text-stone-50">
                     {editingId ? 'Editar pergunta' : 'Nova pergunta'}
                   </p>
 
@@ -2981,7 +2981,7 @@ function QuizManagerDialog({
                       aria-invalid={Boolean(formErrors.prompt)}
                     />
                     {formErrors.prompt ? (
-                      <p className="text-xs text-rose-600">{formErrors.prompt}</p>
+                      <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.prompt}</p>
                     ) : null}
                   </div>
 
@@ -2998,7 +2998,7 @@ function QuizManagerDialog({
                           <RadioGroupItem
                             value={String(i)}
                             aria-label={`Marcar alternativa ${QUIZ_OPTION_LETTERS[i]} como correta`}
-                            className="shrink-0 border-stone-300 text-emerald-600"
+                            className="shrink-0 border-stone-300 dark:border-stone-700 text-emerald-600 dark:text-emerald-400"
                           />
                           <Input
                             value={option}
@@ -3015,7 +3015,7 @@ function QuizManagerDialog({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="size-8 shrink-0 text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+                            className="size-8 shrink-0 text-stone-400 dark:text-stone-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 dark:hover:text-rose-400"
                             aria-label={`Remover alternativa ${QUIZ_OPTION_LETTERS[i]}`}
                             disabled={options.length <= 2}
                             onClick={() => removeOption(i)}
@@ -3036,10 +3036,10 @@ function QuizManagerDialog({
                       <Plus className="size-4" aria-hidden /> Adicionar alternativa ({options.length}/6)
                     </Button>
                     {formErrors.options ? (
-                      <p className="text-xs text-rose-600">{formErrors.options}</p>
+                      <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.options}</p>
                     ) : null}
                     {formErrors.correctIndex ? (
-                      <p className="text-xs text-rose-600">{formErrors.correctIndex}</p>
+                      <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.correctIndex}</p>
                     ) : null}
                   </div>
 
@@ -3214,7 +3214,7 @@ function TrafficLinksSection({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
             <TrendingUp className="size-4" aria-hidden />
           </span>
           Link público e tráfego pago
@@ -3227,10 +3227,10 @@ function TrafficLinksSection({
         {/* 1. Sua página de vendas */}
         <section className="flex flex-col gap-2" aria-labelledby="lp-sales-url-title">
           <div>
-            <p id="lp-sales-url-title" className="text-sm font-semibold text-stone-900">
+            <p id="lp-sales-url-title" className="text-sm font-semibold text-stone-900 dark:text-stone-50">
               Sua página de vendas
             </p>
-            <p className="mt-0.5 text-xs text-stone-500">
+            <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">
               Use este link em anúncios e bio — todos os acessos ficam rastreados com UTM.
             </p>
           </div>
@@ -3257,7 +3257,7 @@ function TrafficLinksSection({
               </div>
             </div>
           ) : (
-            <p className="rounded-lg border border-dashed border-stone-300 px-3 py-2.5 text-xs text-stone-500">
+            <p className="rounded-lg border border-dashed border-stone-300 dark:border-stone-700 px-3 py-2.5 text-xs text-stone-500 dark:text-stone-400">
               Salve seu perfil para gerar o seu link público.
             </p>
           )}
@@ -3268,10 +3268,10 @@ function TrafficLinksSection({
         {/* 2. Google Analytics 4 & Meta Pixel */}
         <section className="flex flex-col gap-3" aria-labelledby="tracking-ids-title">
           <div>
-            <p id="tracking-ids-title" className="text-sm font-semibold text-stone-900">
+            <p id="tracking-ids-title" className="text-sm font-semibold text-stone-900 dark:text-stone-50">
               Google Analytics 4 &amp; Meta Pixel
             </p>
-            <p className="mt-0.5 text-xs text-stone-500">
+            <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">
               Cole seus IDs para que suas campanhas recebam as conversões (PageView, ViewContent,
               InitiateCheckout, Purchase) disparadas pela plataforma.
             </p>
@@ -3291,7 +3291,7 @@ function TrafficLinksSection({
                 className="font-mono"
                 aria-invalid={Boolean(idErrors.ga)}
               />
-              {idErrors.ga ? <p className="text-xs text-rose-600">{idErrors.ga}</p> : null}
+              {idErrors.ga ? <p className="text-xs text-rose-600 dark:text-rose-400">{idErrors.ga}</p> : null}
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="tracking-pixel-id">Meta Pixel ID</Label>
@@ -3308,7 +3308,7 @@ function TrafficLinksSection({
                 inputMode="numeric"
                 aria-invalid={Boolean(idErrors.pixel)}
               />
-              {idErrors.pixel ? <p className="text-xs text-rose-600">{idErrors.pixel}</p> : null}
+              {idErrors.pixel ? <p className="text-xs text-rose-600 dark:text-rose-400">{idErrors.pixel}</p> : null}
             </div>
           </div>
           <div className="flex justify-end">
@@ -3331,18 +3331,18 @@ function TrafficLinksSection({
           <div>
             <p
               id="boost-link-title"
-              className="flex items-center gap-1.5 text-sm font-semibold text-stone-900"
+              className="flex items-center gap-1.5 text-sm font-semibold text-stone-900 dark:text-stone-50"
             >
-              <Megaphone className="size-4 text-emerald-700" aria-hidden /> Gerador de link de
+              <Megaphone className="size-4 text-emerald-700 dark:text-emerald-300" aria-hidden /> Gerador de link de
               impulsionamento
             </p>
-            <p className="mt-0.5 text-xs text-stone-500">
+            <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">
               Monte um link com UTM para cada campanha e acompanhe o retorno no painel de desempenho.
             </p>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="utm-source" className="text-xs text-stone-500">
+              <Label htmlFor="utm-source" className="text-xs text-stone-500 dark:text-stone-400">
                 utm_source
               </Label>
               <Input
@@ -3355,7 +3355,7 @@ function TrafficLinksSection({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="utm-medium" className="text-xs text-stone-500">
+              <Label htmlFor="utm-medium" className="text-xs text-stone-500 dark:text-stone-400">
                 utm_medium
               </Label>
               <Input
@@ -3368,7 +3368,7 @@ function TrafficLinksSection({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="utm-campaign" className="text-xs text-stone-500">
+              <Label htmlFor="utm-campaign" className="text-xs text-stone-500 dark:text-stone-400">
                 utm_campaign
               </Label>
               <Input
@@ -3382,7 +3382,7 @@ function TrafficLinksSection({
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="boost-target" className="text-xs text-stone-500">
+            <Label htmlFor="boost-target" className="text-xs text-stone-500 dark:text-stone-400">
               Destino do link
             </Label>
             <Select value={genTarget} onValueChange={setGenTarget}>
@@ -3436,28 +3436,28 @@ function TrafficKpiTile({
   accent?: boolean
 }) {
   return (
-    <div className="rounded-xl border border-stone-200 bg-white p-3.5">
+    <div className="rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-3.5">
       <div
         className={cn(
           'flex size-8 items-center justify-center rounded-lg',
           accent
-            ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
-            : 'bg-stone-100 text-stone-600'
+            ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-100 dark:ring-emerald-900/40'
+            : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
         )}
       >
         <Icon className="size-4" aria-hidden />
       </div>
-      <p className="mt-2 truncate text-lg font-bold tracking-tight text-stone-900">{value}</p>
-      <p className="text-xs text-stone-500">{label}</p>
+      <p className="mt-2 truncate text-lg font-bold tracking-tight text-stone-900 dark:text-stone-50">{value}</p>
+      <p className="text-xs text-stone-500 dark:text-stone-400">{label}</p>
     </div>
   )
 }
 
 function TrafficListBox({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="flex min-w-0 flex-col gap-2 rounded-xl border border-stone-200 bg-white p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{title}</p>
-      <div className="max-h-64 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
+    <div className="flex min-w-0 flex-col gap-2 rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">{title}</p>
+      <div className="max-h-64 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-stone-100 dark:[&::-webkit-scrollbar-track]:bg-stone-800 [&::-webkit-scrollbar]:w-1.5">
         {children}
       </div>
     </div>
@@ -3498,7 +3498,7 @@ function TrafficPanel({ userId }: { userId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
             <BarChart3 className="size-4" aria-hidden />
           </span>
           Desempenho de tráfego
@@ -3518,7 +3518,7 @@ function TrafficPanel({ userId }: { userId: string }) {
             <Skeleton className="h-24 rounded-xl" />
           </div>
         ) : failed || !totals || !stats ? (
-          <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-stone-300 py-8 text-center">
+          <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-stone-300 dark:border-stone-700 py-8 text-center">
             <p className="text-sm text-muted-foreground">
               Não foi possível carregar as estatísticas agora.
             </p>
@@ -3547,14 +3547,14 @@ function TrafficPanel({ userId }: { userId: string }) {
               />
               <TrafficKpiTile icon={Banknote} label="Receita" value={currencyBRL(totals.revenue)} accent />
             </div>
-            <p className="text-xs text-stone-500">
+            <p className="text-xs text-stone-500 dark:text-stone-400">
               Taxa de conversão:{' '}
-              <span className="font-semibold text-stone-900">{formatPercent(totals.conversionRate)}</span>
+              <span className="font-semibold text-stone-900 dark:text-stone-50">{formatPercent(totals.conversionRate)}</span>
             </p>
 
             {!hasTraffic && !hasBreakdown ? (
-              <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-stone-300 py-8 text-center">
-                <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 text-stone-400 ring-1 ring-stone-200">
+              <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-stone-300 dark:border-stone-700 py-8 text-center">
+                <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500 ring-1 ring-stone-200 dark:ring-stone-800">
                   <BarChart3 className="size-6" aria-hidden />
                 </div>
                 <h3 className="mt-1 text-base font-semibold">Sem dados de tráfego ainda</h3>
@@ -3578,7 +3578,7 @@ function TrafficPanel({ userId }: { userId: string }) {
                           title={`${day.pageviews} ${day.pageviews === 1 ? 'visita' : 'visitas'} · ${day.purchases} ${day.purchases === 1 ? 'venda' : 'vendas'}`}
                           className={cn(
                             'flex-1 rounded-t-sm',
-                            day.purchases > 0 ? 'bg-emerald-600' : 'bg-emerald-200'
+                            day.purchases > 0 ? 'bg-emerald-600' : 'bg-emerald-200 dark:bg-emerald-800'
                           )}
                           style={{
                             height: `${Math.max(6, Math.round((day.pageviews / maxDailyPageviews) * 100))}%`,
@@ -3586,9 +3586,9 @@ function TrafficPanel({ userId }: { userId: string }) {
                         />
                       ))}
                     </div>
-                    <div className="flex flex-wrap items-center gap-4 text-xs text-stone-500">
+                    <div className="flex flex-wrap items-center gap-4 text-xs text-stone-500 dark:text-stone-400">
                       <span className="flex items-center gap-1.5">
-                        <span className="size-2.5 rounded-sm bg-emerald-200" aria-hidden /> Visitas
+                        <span className="size-2.5 rounded-sm bg-emerald-200 dark:bg-emerald-800" aria-hidden /> Visitas
                       </span>
                       <span className="flex items-center gap-1.5">
                         <span className="size-2.5 rounded-sm bg-emerald-600" aria-hidden /> Dia com venda
@@ -3600,25 +3600,25 @@ function TrafficPanel({ userId }: { userId: string }) {
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                   <TrafficListBox title="Por canal">
                     {stats.byChannel.length === 0 ? (
-                      <p className="py-2 text-xs text-stone-400">Sem dados ainda.</p>
+                      <p className="py-2 text-xs text-stone-400 dark:text-stone-500">Sem dados ainda.</p>
                     ) : (
-                      <div className="divide-y divide-stone-100">
+                      <div className="divide-y divide-stone-100 dark:divide-stone-800">
                         {stats.byChannel.map((channel) => (
                           <div key={channel.channel} className="flex items-start justify-between gap-3 py-2.5">
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-stone-900">
+                              <p className="truncate text-sm font-medium text-stone-900 dark:text-stone-50">
                                 {CHANNEL_LABELS[channel.channel] ?? channel.channel}
                               </p>
-                              <p className="text-xs text-stone-500">
+                              <p className="text-xs text-stone-500 dark:text-stone-400">
                                 {channel.pageviews.toLocaleString('pt-BR')}{' '}
                                 {channel.pageviews === 1 ? 'visita' : 'visitas'}
                               </p>
                             </div>
                             <div className="shrink-0 text-right">
-                              <p className="text-sm font-semibold text-emerald-700">
+                              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
                                 {channel.purchases} {channel.purchases === 1 ? 'venda' : 'vendas'}
                               </p>
-                              <p className="text-xs text-stone-500">{currencyBRL(channel.revenue)}</p>
+                              <p className="text-xs text-stone-500 dark:text-stone-400">{currencyBRL(channel.revenue)}</p>
                             </div>
                           </div>
                         ))}
@@ -3628,28 +3628,28 @@ function TrafficPanel({ userId }: { userId: string }) {
 
                   <TrafficListBox title="Principais origens">
                     {stats.bySource.length === 0 ? (
-                      <p className="py-2 text-xs text-stone-400">Sem dados ainda.</p>
+                      <p className="py-2 text-xs text-stone-400 dark:text-stone-500">Sem dados ainda.</p>
                     ) : (
-                      <div className="divide-y divide-stone-100">
+                      <div className="divide-y divide-stone-100 dark:divide-stone-800">
                         {stats.bySource.map((source) => (
                           <div
                             key={source.source || 'direct'}
                             className="flex items-start justify-between gap-3 py-2.5"
                           >
                             <div className="min-w-0">
-                              <p className="truncate font-mono text-sm font-medium text-stone-900">
+                              <p className="truncate font-mono text-sm font-medium text-stone-900 dark:text-stone-50">
                                 {source.source || 'direto'}
                               </p>
-                              <p className="text-xs text-stone-500">
+                              <p className="text-xs text-stone-500 dark:text-stone-400">
                                 {source.pageviews.toLocaleString('pt-BR')}{' '}
                                 {source.pageviews === 1 ? 'visita' : 'visitas'}
                               </p>
                             </div>
                             <div className="shrink-0 text-right">
-                              <p className="text-sm font-semibold text-emerald-700">
+                              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
                                 {source.purchases} {source.purchases === 1 ? 'venda' : 'vendas'}
                               </p>
-                              <p className="text-xs text-stone-500">{currencyBRL(source.revenue)}</p>
+                              <p className="text-xs text-stone-500 dark:text-stone-400">{currencyBRL(source.revenue)}</p>
                             </div>
                           </div>
                         ))}
@@ -3659,19 +3659,19 @@ function TrafficPanel({ userId }: { userId: string }) {
 
                   <TrafficListBox title="Cursos que mais vendem">
                     {stats.byCourse.length === 0 ? (
-                      <p className="py-2 text-xs text-stone-400">Sem vendas de cursos ainda.</p>
+                      <p className="py-2 text-xs text-stone-400 dark:text-stone-500">Sem vendas de cursos ainda.</p>
                     ) : (
-                      <div className="divide-y divide-stone-100">
+                      <div className="divide-y divide-stone-100 dark:divide-stone-800">
                         {stats.byCourse.map((course) => (
                           <div key={course.courseId} className="flex items-start justify-between gap-3 py-2.5">
-                            <p className="min-w-0 truncate text-sm font-medium text-stone-900">
+                            <p className="min-w-0 truncate text-sm font-medium text-stone-900 dark:text-stone-50">
                               {course.title}
                             </p>
                             <div className="shrink-0 text-right">
-                              <p className="text-sm font-semibold text-emerald-700">
+                              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
                                 {course.purchases} {course.purchases === 1 ? 'venda' : 'vendas'}
                               </p>
-                              <p className="text-xs text-stone-500">{currencyBRL(course.revenue)}</p>
+                              <p className="text-xs text-stone-500 dark:text-stone-400">{currencyBRL(course.revenue)}</p>
                             </div>
                           </div>
                         ))}
@@ -3693,7 +3693,7 @@ function TrafficPanel({ userId }: { userId: string }) {
 function BenefitCard({ icon: Icon, title, text }: { icon: LucideIcon; title: string; text: string }) {
   return (
     <Card className="p-6 text-left">
-      <div className="flex size-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+      <div className="flex size-10 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
         <Icon className="size-5" aria-hidden />
       </div>
       <h3 className="mt-3 font-semibold">{title}</h3>
@@ -3793,12 +3793,12 @@ function OverviewKpi({
   footer?: ReactNode
 }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-stone-200 bg-white p-4">
-      <div className="flex items-center gap-1.5 text-stone-500">
+    <div className="min-w-0 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4">
+      <div className="flex items-center gap-1.5 text-stone-500 dark:text-stone-400">
         <Icon className="size-3.5 shrink-0" aria-hidden />
         <span className="text-[11px] font-semibold uppercase tracking-wide">{label}</span>
       </div>
-      <p className="mt-2 text-2xl font-bold tabular-nums text-stone-900">{value}</p>
+      <p className="mt-2 text-2xl font-bold tabular-nums text-stone-900 dark:text-stone-50">{value}</p>
       {footer ? <div className="mt-1.5 text-xs leading-snug text-muted-foreground">{footer}</div> : null}
     </div>
   )
@@ -3860,7 +3860,7 @@ function FinancePanel({ userId }: { userId: string }) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-          <div className="flex size-12 items-center justify-center rounded-full bg-rose-50 text-rose-500 ring-1 ring-rose-100">
+          <div className="flex size-12 items-center justify-center rounded-full bg-rose-50 dark:bg-rose-950/50 text-rose-500 dark:text-rose-400 ring-1 ring-rose-100 dark:ring-rose-900">
             <Wallet className="size-6" aria-hidden />
           </div>
           <p className="max-w-sm text-sm text-muted-foreground">
@@ -3881,7 +3881,7 @@ function FinancePanel({ userId }: { userId: string }) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
-          <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 text-stone-300 ring-1 ring-stone-200">
+          <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-stone-300 dark:text-stone-600 ring-1 ring-stone-200 dark:ring-stone-800">
             <Wallet className="size-6" aria-hidden />
           </div>
           <h3 className="mt-2 text-base font-semibold">Sem vendas por aqui ainda</h3>
@@ -3899,7 +3899,7 @@ function FinancePanel({ userId }: { userId: string }) {
         <OverviewKpi
           icon={Wallet}
           label="Receita total"
-          value={<span className="text-emerald-700">{formatBRL(data.totalRevenue)}</span>}
+          value={<span className="text-emerald-700 dark:text-emerald-300">{formatBRL(data.totalRevenue)}</span>}
           footer={`${formatBRL(data.productsRevenue)} em produtos · ${formatBRL(data.sessionsRevenue)} em sessões`}
         />
         <OverviewKpi
@@ -3921,7 +3921,7 @@ function FinancePanel({ userId }: { userId: string }) {
           footer={`${formatBRL(data.sessionsRevenue)} em sessões concluídas`}
         />
       </div>
-      <p className="text-xs text-stone-500">
+      <p className="text-xs text-stone-500 dark:text-stone-400">
         {data.ordersCount} {data.ordersCount === 1 ? 'pedido pago' : 'pedidos pagos'} · descontos concedidos:{' '}
         {formatBRL(data.totalDiscount)}
       </p>
@@ -3943,7 +3943,7 @@ function FinancePanel({ userId }: { userId: string }) {
                   key={month.label}
                   className="flex h-full min-w-0 flex-1 flex-col items-center gap-1.5"
                 >
-                  <span className="max-w-full truncate text-[10px] font-semibold leading-none text-stone-600">
+                  <span className="max-w-full truncate text-[10px] font-semibold leading-none text-stone-600 dark:text-stone-300">
                     {month.revenue > 0 ? formatBRL(month.revenue) : ''}
                   </span>
                   <div className="flex min-h-0 w-full flex-1 items-end">
@@ -3955,7 +3955,7 @@ function FinancePanel({ userId }: { userId: string }) {
                       style={{ height: `${heightPct}%` }}
                     />
                   </div>
-                  <span className="text-[10px] font-medium uppercase leading-none text-stone-500">
+                  <span className="text-[10px] font-medium uppercase leading-none text-stone-500 dark:text-stone-400">
                     {month.label}
                   </span>
                 </div>
@@ -3975,19 +3975,19 @@ function FinancePanel({ userId }: { userId: string }) {
             {data.byProduct.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhuma venda de cursos ou trilhas ainda.</p>
             ) : (
-              <ul className="divide-y divide-stone-100">
+              <ul className="divide-y divide-stone-100 dark:divide-stone-800">
                 {data.byProduct.map((product) => (
                   <li
                     key={product.id}
                     className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="line-clamp-1 text-sm font-medium text-stone-900">{product.title}</p>
+                      <p className="line-clamp-1 text-sm font-medium text-stone-900 dark:text-stone-50">{product.title}</p>
                       <p className="text-xs text-muted-foreground">
                         {product.orders} {product.orders === 1 ? 'pedido' : 'pedidos'}
                       </p>
                     </div>
-                    <span className="shrink-0 text-sm font-semibold tabular-nums text-stone-900">
+                    <span className="shrink-0 text-sm font-semibold tabular-nums text-stone-900 dark:text-stone-50">
                       {formatBRL(product.revenue)}
                     </span>
                   </li>
@@ -4006,29 +4006,29 @@ function FinancePanel({ userId }: { userId: string }) {
             {data.recentOrders.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhum pedido ainda.</p>
             ) : (
-              <ul className="divide-y divide-stone-100">
+              <ul className="divide-y divide-stone-100 dark:divide-stone-800">
                 {data.recentOrders.map((order) => (
                   <li
                     key={order.id}
                     className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="line-clamp-1 text-sm font-medium text-stone-900">{order.itemTitle}</p>
+                      <p className="line-clamp-1 text-sm font-medium text-stone-900 dark:text-stone-50">{order.itemTitle}</p>
                       <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
                         <span>{new Date(order.createdAt).toLocaleDateString('pt-BR')}</span>
                         <span aria-hidden>·</span>
                         <span>{CHANNEL_LABELS[order.channel] ?? order.channel}</span>
                         {order.couponCode ? (
-                          <code className="rounded bg-stone-100 px-1 py-px font-mono text-[10px] font-semibold text-stone-700">
+                          <code className="rounded bg-stone-100 dark:bg-stone-800 px-1 py-px font-mono text-[10px] font-semibold text-stone-700 dark:text-stone-200">
                             {order.couponCode}
                           </code>
                         ) : null}
                         {order.discount > 0 ? (
-                          <span className="font-medium text-rose-600">−{formatBRL(order.discount)}</span>
+                          <span className="font-medium text-rose-600 dark:text-rose-400">−{formatBRL(order.discount)}</span>
                         ) : null}
                       </p>
                     </div>
-                    <span className="shrink-0 text-sm font-semibold tabular-nums text-stone-900">
+                    <span className="shrink-0 text-sm font-semibold tabular-nums text-stone-900 dark:text-stone-50">
                       {formatBRL(order.amount)}
                     </span>
                   </li>
@@ -4150,7 +4150,7 @@ function CouponsManager({ userId }: { userId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
             <Ticket className="size-4" aria-hidden />
           </span>
           Cupons de desconto
@@ -4227,7 +4227,7 @@ function CouponsManager({ userId }: { userId: string }) {
             />
           </div>
           {formError ? (
-            <p className="text-xs text-rose-600 sm:col-span-2" aria-live="polite">
+            <p className="text-xs text-rose-600 dark:text-rose-400 sm:col-span-2" aria-live="polite">
               {formError}
             </p>
           ) : null}
@@ -4254,8 +4254,8 @@ function CouponsManager({ userId }: { userId: string }) {
             <Skeleton className="h-20 rounded-lg" />
           </div>
         ) : coupons.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-stone-300 py-10 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 text-stone-300 ring-1 ring-stone-200">
+          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-stone-300 dark:border-stone-700 py-10 text-center">
+            <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-stone-300 dark:text-stone-600 ring-1 ring-stone-200 dark:ring-stone-800">
               <Ticket className="size-6" aria-hidden />
             </div>
             <h3 className="mt-2 text-base font-semibold">Nenhum cupom ainda</h3>
@@ -4268,11 +4268,11 @@ function CouponsManager({ userId }: { userId: string }) {
             {coupons.map((coupon) => (
               <li
                 key={coupon.id}
-                className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-stone-200 bg-white p-4"
+                className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <code className="rounded-md bg-stone-100 px-2 py-1 font-mono text-sm font-bold tracking-wide text-stone-800">
+                    <code className="rounded-md bg-stone-100 dark:bg-stone-800 px-2 py-1 font-mono text-sm font-bold tracking-wide text-stone-800 dark:text-stone-200">
                       {coupon.code}
                     </code>
                     <Button
@@ -4284,14 +4284,14 @@ function CouponsManager({ userId }: { userId: string }) {
                       <Copy className="size-4" aria-hidden />
                     </Button>
                     {coupon.isActive ? (
-                      <Badge className="bg-emerald-100 text-emerald-800">Ativo</Badge>
+                      <Badge className="bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300">Ativo</Badge>
                     ) : (
-                      <Badge variant="secondary" className="bg-stone-100 text-stone-600">
+                      <Badge variant="secondary" className="bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
                         Pausado
                       </Badge>
                     )}
                   </div>
-                  <p className="mt-2 text-sm font-medium text-stone-900">
+                  <p className="mt-2 text-sm font-medium text-stone-900 dark:text-stone-50">
                     {coupon.percentOff != null
                       ? `${coupon.percentOff}% de desconto`
                       : `${formatBRL(coupon.amountOff ?? 0)} de desconto`}
@@ -4324,7 +4324,7 @@ function CouponsManager({ userId }: { userId: string }) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+                    className="text-stone-400 dark:text-stone-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 dark:hover:text-rose-400"
                     aria-label={`Excluir cupom ${coupon.code}`}
                     onClick={() => setToDelete(coupon)}
                   >
@@ -4471,7 +4471,7 @@ export default function OnboardingView() {
       <div className="flex min-h-[70vh] items-center justify-center px-4 py-10">
         <Card className="w-full max-w-md p-6 text-center">
           <div className="flex flex-col items-center gap-3">
-            <div className="flex size-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200">
+            <div className="flex size-12 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-200 dark:ring-emerald-900">
               <LogIn className="size-6" aria-hidden />
             </div>
             <h1 className="text-xl font-semibold">Entre para configurar seu perfil de mentor</h1>
@@ -4572,13 +4572,13 @@ export default function OnboardingView() {
           {/* Navegação única: faixa horizontal rolável no mobile, coluna lateral sticky no desktop */}
           <TabsList
             aria-label="Seções do painel"
-            className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl border border-stone-200 bg-white p-1.5 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-200 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:h-1 lg:sticky lg:top-0 lg:flex-col lg:items-stretch lg:justify-start lg:self-start lg:overflow-visible"
+            className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-1.5 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-200 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:h-1 lg:sticky lg:top-0 lg:flex-col lg:items-stretch lg:justify-start lg:self-start lg:overflow-visible"
           >
             {PANEL_TABS.map(({ id, label, icon: Icon }) => (
               <TabsTrigger
                 key={id}
                 value={id}
-                className="min-h-11 flex-none justify-start gap-2 rounded-xl px-3 hover:bg-stone-100 data-[state=active]:bg-emerald-700 data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:hover:bg-emerald-700"
+                className="min-h-11 flex-none justify-start gap-2 rounded-xl px-3 hover:bg-stone-100 dark:hover:bg-stone-800 data-[state=active]:bg-emerald-700 data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:hover:bg-emerald-700"
               >
                 <Icon className="size-4" aria-hidden />
                 {label}
@@ -4629,7 +4629,7 @@ export default function OnboardingView() {
                 </div>
 
                 <section aria-labelledby="panel-shortcuts-title" className="flex flex-col gap-3">
-                  <h3 id="panel-shortcuts-title" className="text-sm font-semibold text-stone-700">
+                  <h3 id="panel-shortcuts-title" className="text-sm font-semibold text-stone-700 dark:text-stone-200">
                     Atalhos rápidos
                   </h3>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -4639,17 +4639,17 @@ export default function OnboardingView() {
                         type="button"
                         aria-label={`Ir para a aba ${label}`}
                         onClick={() => setTab(id)}
-                        className="group flex min-h-11 w-full min-w-0 items-center gap-3 rounded-2xl border border-stone-200 bg-white p-4 text-left transition-colors hover:border-emerald-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+                        className="group flex min-h-11 w-full min-w-0 items-center gap-3 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 text-left transition-colors hover:border-emerald-300 dark:hover:border-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
                       >
-                        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
                           <Icon className="size-5" aria-hidden />
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block text-sm font-semibold text-stone-900">{label}</span>
-                          <span className="mt-0.5 block text-xs leading-snug text-stone-500">{description}</span>
+                          <span className="block text-sm font-semibold text-stone-900 dark:text-stone-50">{label}</span>
+                          <span className="mt-0.5 block text-xs leading-snug text-stone-500 dark:text-stone-400">{description}</span>
                         </span>
                         <ChevronRight
-                          className="size-4 shrink-0 text-stone-300 transition-all group-hover:translate-x-0.5 group-hover:text-emerald-600"
+                          className="size-4 shrink-0 text-stone-300 dark:text-stone-600 transition-all group-hover:translate-x-0.5 group-hover:text-emerald-600 dark:group-hover:text-emerald-400"
                           aria-hidden
                         />
                       </button>
@@ -4663,7 +4663,7 @@ export default function OnboardingView() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
                       <UserRound className="size-4" aria-hidden />
                     </span>
                     Perfil público
@@ -4671,7 +4671,7 @@ export default function OnboardingView() {
                   <CardDescription>Estas informações aparecem para os alunos no marketplace.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-6">
-                  <div className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-lg bg-stone-50 p-4 ring-1 ring-stone-200">
+                  <div className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-lg bg-stone-50 dark:bg-stone-950/50 p-4 ring-1 ring-stone-200 dark:ring-stone-800">
                     <div className="flex items-center gap-2">
                       <Stars rating={profile.rating} size={16} />
                       <span className="text-sm font-semibold">
@@ -4721,7 +4721,7 @@ export default function OnboardingView() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
                       <CalendarClock className="size-4" aria-hidden />
                     </span>
                     Disponibilidade semanal

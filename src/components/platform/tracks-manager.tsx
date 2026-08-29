@@ -425,7 +425,7 @@ export function TracksManager({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-600 ring-1 ring-teal-100">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 ring-1 ring-teal-100 dark:ring-teal-900/40">
             <Route className="size-4" aria-hidden />
           </span>
           Minhas trilhas
@@ -446,8 +446,8 @@ export function TracksManager({
             <Skeleton className="h-28 rounded-lg" />
           </div>
         ) : tracks.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-stone-300 py-10 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 text-stone-400 ring-1 ring-stone-200">
+          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-stone-300 dark:border-stone-700 py-10 text-center">
+            <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500 ring-1 ring-stone-200 dark:ring-stone-800">
               <Route className="size-6" aria-hidden />
             </div>
             <h3 className="mt-2 text-base font-semibold">Nenhuma trilha criada</h3>
@@ -456,31 +456,31 @@ export function TracksManager({
             </p>
           </div>
         ) : (
-          <div className="max-h-96 space-y-3 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
+          <div className="max-h-96 space-y-3 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-stone-100 dark:[&::-webkit-scrollbar-track]:bg-stone-800 [&::-webkit-scrollbar]:w-1.5">
             {tracks.map((track) => (
               <div
                 key={track.id}
-                className="flex items-start justify-between gap-3 rounded-lg border border-stone-200 bg-white p-4"
+                className="flex items-start justify-between gap-3 rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4"
               >
                 {track.coverUrl ? (
                   <img
                     src={track.coverUrl}
                     alt=""
-                    className="h-12 w-20 shrink-0 rounded-lg object-cover ring-1 ring-stone-200"
+                    className="h-12 w-20 shrink-0 rounded-lg object-cover ring-1 ring-stone-200 dark:ring-stone-800"
                   />
                 ) : null}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline" className="border-stone-200 text-stone-600">
+                    <Badge variant="outline" className="border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300">
                       {track.category}
                     </Badge>
-                    <Badge variant="outline" className="border-stone-200 text-stone-500">
+                    <Badge variant="outline" className="border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-400">
                       {LEVEL_LABELS[track.level] ?? track.level}
                     </Badge>
                     {track.isPublished ? (
-                      <Badge className="bg-emerald-100 text-emerald-800">Publicado</Badge>
+                      <Badge className="bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300">Publicado</Badge>
                     ) : (
-                      <Badge variant="secondary" className="bg-stone-100 text-stone-600">
+                      <Badge variant="secondary" className="bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
                         Rascunho
                       </Badge>
                     )}
@@ -521,7 +521,7 @@ export function TracksManager({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+                    className="text-stone-400 dark:text-stone-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 dark:hover:text-rose-400"
                     aria-label={`Excluir trilha ${track.title}`}
                     onClick={() => setToDelete(track)}
                   >
@@ -561,7 +561,7 @@ export function TracksManager({
                 placeholder="Ex.: Trilha completa de Produto: do zero ao PM pleno"
                 aria-invalid={Boolean(formErrors.title)}
               />
-              {formErrors.title ? <p className="text-xs text-rose-600">{formErrors.title}</p> : null}
+              {formErrors.title ? <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.title}</p> : null}
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="track-description">Descrição</Label>
@@ -574,7 +574,7 @@ export function TracksManager({
                 aria-invalid={Boolean(formErrors.description)}
               />
               {formErrors.description ? (
-                <p className="text-xs text-rose-600">{formErrors.description}</p>
+                <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.description}</p>
               ) : null}
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -598,7 +598,7 @@ export function TracksManager({
                     ))}
                   </SelectContent>
                 </Select>
-                {formErrors.category ? <p className="text-xs text-rose-600">{formErrors.category}</p> : null}
+                {formErrors.category ? <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.category}</p> : null}
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="track-level">Nível</Label>
@@ -628,7 +628,7 @@ export function TracksManager({
                 aria-invalid={Boolean(formErrors.price)}
               />
               {formErrors.price ? (
-                <p className="text-xs text-rose-600">{formErrors.price}</p>
+                <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.price}</p>
               ) : (
                 <p className="text-xs text-muted-foreground">Deixe 0 para tornar a trilha gratuita.</p>
               )}
@@ -636,13 +636,13 @@ export function TracksManager({
             <div className="flex flex-col gap-2">
               <Label>Capa da trilha</Label>
               {coverUrl ? (
-                <div className="h-24 w-full overflow-hidden rounded-xl border border-stone-200 bg-stone-100">
+                <div className="h-24 w-full overflow-hidden rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-100 dark:bg-stone-800">
                   <img src={coverUrl} alt="Capa da trilha" className="h-full w-full object-cover" />
                 </div>
               ) : (
-                <div className="flex h-24 w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-stone-300 bg-stone-50">
-                  <ImagePlus className="size-5 text-stone-400" aria-hidden />
-                  <p className="text-xs text-stone-500">Capa 1280×720 recomendada</p>
+                <div className="flex h-24 w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-950/50">
+                  <ImagePlus className="size-5 text-stone-400 dark:text-stone-500" aria-hidden />
+                  <p className="text-xs text-stone-500 dark:text-stone-400">Capa 1280×720 recomendada</p>
                 </div>
               )}
               <div className="flex flex-wrap items-center gap-2">
@@ -689,7 +689,7 @@ export function TracksManager({
                 Os alunos percorrem os itens de cima para baixo — use as setas para ordenar a jornada.
               </p>
               {draftItems.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-stone-300 px-4 py-5 text-center text-sm text-stone-400">
+                <p className="rounded-xl border border-dashed border-stone-300 dark:border-stone-700 px-4 py-5 text-center text-sm text-stone-400 dark:text-stone-500">
                   Adicione cursos e blocos de mentoria para montar a jornada.
                 </p>
               ) : (
@@ -697,23 +697,23 @@ export function TracksManager({
                   {draftItems.map((item, index) => (
                     <li
                       key={item.key}
-                      className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2"
+                      className="flex items-center gap-2 rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-3 py-2"
                     >
                       <Badge
                         variant="outline"
                         className={
                           item.type === 'COURSE'
-                            ? 'border-stone-200 text-stone-600'
-                            : 'border-teal-200 bg-teal-50 text-teal-700'
+                            ? 'border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300'
+                            : 'border-teal-200 dark:border-teal-900 bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300'
                         }
                       >
                         {item.type === 'COURSE' ? 'Curso' : 'Mentoria'}
                       </Badge>
-                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-stone-800">
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-stone-800 dark:text-stone-200">
                         {item.title}
                       </span>
                       {item.type === 'MENTORSHIP' ? (
-                        <span className="shrink-0 text-xs text-stone-400">
+                        <span className="shrink-0 text-xs text-stone-400 dark:text-stone-500">
                           {item.sessionCount} {item.sessionCount === 1 ? 'sessão' : 'sessões'}
                         </span>
                       ) : null}
@@ -741,7 +741,7 @@ export function TracksManager({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="size-8 text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+                          className="size-8 text-stone-400 dark:text-stone-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 dark:hover:text-rose-400"
                           aria-label={`Remover ${item.title} da trilha`}
                           onClick={() => removeItem(index)}
                         >
@@ -752,7 +752,7 @@ export function TracksManager({
                   ))}
                 </ol>
               )}
-              {formErrors.items ? <p className="text-xs text-rose-600">{formErrors.items}</p> : null}
+              {formErrors.items ? <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.items}</p> : null}
 
               {/* Adicionar curso */}
               <div className="mt-1 flex flex-col gap-2 sm:flex-row">
@@ -789,7 +789,7 @@ export function TracksManager({
               </div>
 
               {/* Adicionar bloco de mentoria */}
-              <div className="mt-1 rounded-xl border border-stone-200 bg-stone-50/60 p-3">
+              <div className="mt-1 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-950/50 p-3">
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_5.5rem]">
                   <div className="flex flex-col gap-1">
                     <Input
@@ -802,7 +802,7 @@ export function TracksManager({
                       aria-label="Título do bloco de mentoria"
                       aria-invalid={Boolean(msError)}
                     />
-                    {msError ? <p className="text-xs text-rose-600">{msError}</p> : null}
+                    {msError ? <p className="text-xs text-rose-600 dark:text-rose-400">{msError}</p> : null}
                   </div>
                   <Input
                     type="number"

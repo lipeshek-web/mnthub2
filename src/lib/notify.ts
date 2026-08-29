@@ -16,9 +16,10 @@ export async function notify(input: {
     | 'enrollment_new'
     | 'course_review_new'
     | 'purchase_new'
+    | 'message_new'
   title: string
   body?: string | null
-  linkView?: 'dashboard' | 'course' | 'onboarding' | null
+  linkView?: 'dashboard' | 'course' | 'onboarding' | 'messages' | null
   refId?: string | null
 }): Promise<void> {
   try {

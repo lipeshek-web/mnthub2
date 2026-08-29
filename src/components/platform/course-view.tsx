@@ -233,12 +233,12 @@ export function CourseView({ courseId }: { courseId: string }) {
   if (!course) {
     return (
       <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 px-6 py-14 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 dark:border-stone-700 px-6 py-14 text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 dark:bg-rose-950/50">
             <AlertCircle aria-hidden className="h-7 w-7 text-rose-500" />
           </span>
-          <p className="font-bold text-stone-900">Não foi possível carregar o curso</p>
-          <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+          <p className="font-bold text-stone-900 dark:text-stone-50">Não foi possível carregar o curso</p>
+          <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
             {error ?? 'Curso não encontrado.'}
           </p>
           <Button variant="outline" className="rounded-full" onClick={() => void fetchCourse()}>
@@ -265,7 +265,7 @@ export function CourseView({ courseId }: { courseId: string }) {
         <Button
           variant="ghost"
           onClick={() => navigate({ name: 'marketplace' })}
-          className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 hover:text-stone-900"
+          className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-50"
         >
           <ArrowLeft aria-hidden className="h-4 w-4" /> Voltar
         </Button>
@@ -349,7 +349,7 @@ export function CourseView({ courseId }: { courseId: string }) {
       <Button
         variant="ghost"
         onClick={() => navigate({ name: 'marketplace' })}
-        className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 hover:text-stone-900"
+        className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-50"
       >
         <ArrowLeft aria-hidden className="h-4 w-4" /> Voltar
       </Button>
@@ -500,22 +500,22 @@ function OverviewContent({
           {/* O que você vai aprender */}
           <section
             aria-labelledby="aprender-title"
-            className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6"
+            className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 sm:p-6"
           >
-            <h2 id="aprender-title" className="text-lg font-extrabold tracking-tight text-stone-900">
+            <h2 id="aprender-title" className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
               O que você vai aprender
             </h2>
             {lessons.length > 0 ? (
               <ul className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
                 {lessons.slice(0, 6).map((lesson) => (
-                  <li key={lesson.id} className="flex items-start gap-2.5 text-sm text-stone-700">
-                    <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  <li key={lesson.id} className="flex items-start gap-2.5 text-sm text-stone-700 dark:text-stone-200">
+                    <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                     <span className="leading-snug">{lesson.title}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="mt-3 text-sm text-stone-400">
+              <p className="mt-3 text-sm text-stone-400 dark:text-stone-500">
                 As aulas deste curso estão sendo preparadas.
               </p>
             )}
@@ -524,14 +524,14 @@ function OverviewContent({
           {/* Currículo */}
           <section
             aria-labelledby="curriculo-title"
-            className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6"
+            className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 sm:p-6"
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 id="curriculo-title" className="text-lg font-extrabold tracking-tight text-stone-900">
+              <h2 id="curriculo-title" className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
                 Currículo do curso
               </h2>
               {lessons.length > 0 && (
-                <span className="text-xs font-medium text-stone-400">
+                <span className="text-xs font-medium text-stone-400 dark:text-stone-500">
                   {lessons.length} {lessons.length === 1 ? 'aula' : 'aulas'} ·{' '}
                   {formatTotalDuration(course.totalDurationMin)}
                 </span>
@@ -545,8 +545,8 @@ function OverviewContent({
                     <section key={group.key} aria-label={`Tema: ${group.title}`}>
                       <header className="flex items-center gap-3">
                         {group.key === 'none' ? (
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-stone-100">
-                            <Folder aria-hidden className="h-4 w-4 text-stone-500" />
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
+                            <Folder aria-hidden className="h-4 w-4 text-stone-500 dark:text-stone-400" />
                           </span>
                         ) : (
                           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-sm font-bold text-white">
@@ -554,33 +554,33 @@ function OverviewContent({
                           </span>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-bold text-stone-900">{group.title}</p>
-                          <p className="text-xs text-stone-400">
+                          <p className="truncate text-sm font-bold text-stone-900 dark:text-stone-50">{group.title}</p>
+                          <p className="text-xs text-stone-400 dark:text-stone-500">
                             {group.lessons.length} {group.lessons.length === 1 ? 'aula' : 'aulas'} ·{' '}
                             {formatTotalDuration(groupDuration)}
                           </p>
                         </div>
                       </header>
-                      <ol className="mt-1 divide-y divide-stone-100">
+                      <ol className="mt-1 divide-y divide-stone-100 dark:divide-stone-800">
                         {group.lessons.map((lesson) => (
                           <li key={lesson.id} className="flex items-center gap-3 py-3 first:pt-3 last:pb-0">
-                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
                               {lesson.kind === 'LIVE' ? (
                                 <Radio aria-hidden className="h-3.5 w-3.5 text-rose-500" />
                               ) : lesson.kind === 'READING' ? (
-                                <BookOpen aria-hidden className="h-3.5 w-3.5 text-amber-600" />
+                                <BookOpen aria-hidden className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                               ) : lesson.videoUrl ? (
-                                <PlayCircle aria-hidden className="h-3.5 w-3.5 text-stone-500" />
+                                <PlayCircle aria-hidden className="h-3.5 w-3.5 text-stone-500 dark:text-stone-400" />
                               ) : (
-                                <FileText aria-hidden className="h-3.5 w-3.5 text-stone-500" />
+                                <FileText aria-hidden className="h-3.5 w-3.5 text-stone-500 dark:text-stone-400" />
                               )}
                             </span>
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-semibold text-stone-800">{lesson.title}</p>
-                              <p className="mt-0.5 line-clamp-1 text-xs text-stone-400">{lesson.description}</p>
+                              <p className="truncate text-sm font-semibold text-stone-800 dark:text-stone-200">{lesson.title}</p>
+                              <p className="mt-0.5 line-clamp-1 text-xs text-stone-400 dark:text-stone-500">{lesson.description}</p>
                             </div>
                             {lesson.kind === 'LIVE' ? (
-                              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-600">
+                              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 text-[11px] font-bold text-rose-600 dark:text-rose-400">
                                 <Radio aria-hidden className="h-3 w-3" />
                                 {lesson.startsAt
                                   ? `${formatDayLabel(lesson.startsAt)} · ${formatTimeLabel(lesson.startsAt)}`
@@ -588,19 +588,19 @@ function OverviewContent({
                               </span>
                             ) : null}
                             {lesson.kind === 'READING' ? (
-                              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">
+                              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 text-[11px] font-bold text-amber-700 dark:text-amber-400">
                                 <BookOpen aria-hidden className="h-3 w-3" />
                                 {lesson.reading?.kind === 'BOOK' ? 'Livro' : 'Artigo'}
                               </span>
                             ) : null}
                             {lesson.kind !== 'LIVE' ? (
-                              <span className="hidden shrink-0 items-center gap-1 text-xs text-stone-400 sm:inline-flex">
+                              <span className="hidden shrink-0 items-center gap-1 text-xs text-stone-400 dark:text-stone-500 sm:inline-flex">
                                 {lesson.durationMin} min
                               </span>
                             ) : null}
                             <Lock
                               aria-label="Aula bloqueada — inscreva-se para acessar"
-                              className="h-3.5 w-3.5 shrink-0 text-stone-300"
+                              className="h-3.5 w-3.5 shrink-0 text-stone-300 dark:text-stone-600"
                             />
                           </li>
                         ))}
@@ -610,25 +610,25 @@ function OverviewContent({
                 })}
               </div>
             ) : (
-              <ol className="mt-3 divide-y divide-stone-100">
+              <ol className="mt-3 divide-y divide-stone-100 dark:divide-stone-800">
                 {lessons.map((lesson, i) => (
                   <li key={lesson.id} className="flex items-center gap-3 py-3.5 first:pt-4 last:pb-0">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-bold text-stone-500">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-xs font-bold text-stone-500 dark:text-stone-400">
                       {i + 1}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-stone-800">{lesson.title}</p>
-                      <p className="mt-0.5 line-clamp-1 text-xs text-stone-400">{lesson.description}</p>
+                      <p className="truncate text-sm font-semibold text-stone-800 dark:text-stone-200">{lesson.title}</p>
+                      <p className="mt-0.5 line-clamp-1 text-xs text-stone-400 dark:text-stone-500">{lesson.description}</p>
                     </div>
                     {lesson.kind === 'LIVE' ? (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-600">
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 text-[11px] font-bold text-rose-600 dark:text-rose-400">
                         <Radio aria-hidden className="h-3 w-3" />
                         {lesson.startsAt
                           ? `${formatDayLabel(lesson.startsAt)} · ${formatTimeLabel(lesson.startsAt)}`
                           : 'Ao vivo'}
                       </span>
                     ) : (
-                      <span className="hidden shrink-0 items-center gap-1 text-xs text-stone-400 sm:inline-flex">
+                      <span className="hidden shrink-0 items-center gap-1 text-xs text-stone-400 dark:text-stone-500 sm:inline-flex">
                         {lesson.kind === 'READING' ? (
                           <BookOpen aria-hidden className="h-4 w-4 text-amber-500" />
                         ) : lesson.videoUrl ? (
@@ -641,14 +641,14 @@ function OverviewContent({
                     )}
                     <Lock
                       aria-label="Aula bloqueada — inscreva-se para acessar"
-                      className="h-3.5 w-3.5 shrink-0 text-stone-300"
+                      className="h-3.5 w-3.5 shrink-0 text-stone-300 dark:text-stone-600"
                     />
                   </li>
                 ))}
               </ol>
             )}
             {lessons.length === 0 && (
-              <p className="py-4 text-sm text-stone-400">Nenhuma aula publicada ainda.</p>
+              <p className="py-4 text-sm text-stone-400 dark:text-stone-500">Nenhuma aula publicada ainda.</p>
             )}
           </section>
 
@@ -664,19 +664,19 @@ function OverviewContent({
           {/* Mentor */}
           <section
             aria-label="Mentor do curso"
-            className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6"
+            className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 sm:p-6"
           >
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <Avatar name={course.mentor.name} src={course.mentor.avatarUrl} size="lg" />
               <div className="min-w-0 flex-1">
-                <p className="font-bold text-stone-900">{course.mentor.name}</p>
-                <p className="line-clamp-1 text-sm text-stone-500">{course.mentor.headline}</p>
+                <p className="font-bold text-stone-900 dark:text-stone-50">{course.mentor.name}</p>
+                <p className="line-clamp-1 text-sm text-stone-500 dark:text-stone-400">{course.mentor.headline}</p>
                 <div className="mt-1.5 flex items-center gap-1.5">
                   <Stars rating={course.mentor.rating} size={13} />
-                  <span className="text-xs font-semibold text-stone-700">
+                  <span className="text-xs font-semibold text-stone-700 dark:text-stone-200">
                     {course.mentor.rating > 0 ? course.mentor.rating.toFixed(1) : 'Novo'}
                   </span>
-                  <span className="text-xs text-stone-400">
+                  <span className="text-xs text-stone-400 dark:text-stone-500">
                     ({course.mentor.reviewCount} {course.mentor.reviewCount === 1 ? 'avaliação' : 'avaliações'})
                   </span>
                 </div>
@@ -695,13 +695,13 @@ function OverviewContent({
 
         {/* ---------- SIDEBAR DE INSCRIÇÃO ---------- */}
         <div className="min-w-0 space-y-6 self-start lg:sticky lg:top-6">
-        <Card className="rounded-2xl border-stone-200 p-6 shadow-none">
+        <Card className="rounded-2xl border-stone-200 dark:border-stone-800 p-6 shadow-none">
           {enrolled ? (
             <>
-              <p className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-emerald-800">
+              <p className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-emerald-800 dark:text-emerald-300">
                 <Check aria-hidden className="h-5 w-5" /> Você já está inscrito
               </p>
-              <p className="mt-1 text-sm text-stone-500">
+              <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
                 Todo o conteúdo, perguntas e anotações estão liberados na sua sala de aula.
               </p>
               <Button
@@ -718,12 +718,12 @@ function OverviewContent({
               <p
                 className={cn(
                   'text-3xl font-extrabold tracking-tight',
-                  course.price === 0 ? 'text-emerald-700' : 'text-stone-900'
+                  course.price === 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-stone-900 dark:text-stone-50'
                 )}
               >
                 {course.price === 0 ? 'Grátis' : currencyBRL(course.price)}
               </p>
-              <p className="mt-1 text-sm text-stone-500">
+              <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
                 {course.price === 0
                   ? 'Acesso gratuito a todo o conteúdo.'
                   : 'Pagamento único, acesso ao conteúdo completo.'}
@@ -741,62 +741,62 @@ function OverviewContent({
                     : 'Inscrever-se no curso'}
               </Button>
           {enrolling ? (
-            <p className="mt-2 text-center text-xs text-stone-400">Processando inscrição…</p>
+            <p className="mt-2 text-center text-xs text-stone-400 dark:text-stone-500">Processando inscrição…</p>
           ) : !isLoggedIn ? (
-            <p className="mt-2 text-center text-xs text-stone-400">
+            <p className="mt-2 text-center text-xs text-stone-400 dark:text-stone-500">
               Entre com uma conta para se inscrever.{' '}
               <button
                 type="button"
                 onClick={onLogin}
-                className="font-semibold text-emerald-700 underline underline-offset-2 transition-colors hover:text-emerald-800"
+                className="font-semibold text-emerald-700 dark:text-emerald-300 underline underline-offset-2 transition-colors hover:text-emerald-800 dark:hover:text-emerald-200"
               >
                 Entrar
               </button>
             </p>
           ) : null}
 
-          <ul className="mt-5 space-y-2.5 border-t border-stone-100 pt-5 text-sm text-stone-600">
+          <ul className="mt-5 space-y-2.5 border-t border-stone-100 dark:border-stone-800 pt-5 text-sm text-stone-600 dark:text-stone-300">
             <li className="flex items-start gap-2">
-              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
               {course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'} (
               {formatTotalDuration(course.totalDurationMin)})
             </li>
             {course.liveCount > 0 ? (
               <li className="flex items-start gap-2">
-                <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                 {course.liveCount} aula{course.liveCount > 1 ? 's' : ''} ao vivo com o mentor
               </li>
             ) : null}
             {course.mentorshipCount > 0 ? (
               <li className="flex items-start gap-2">
-                <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                 {course.mentorshipCount} {course.mentorshipCount > 1 ? 'sessões' : 'sessão'} de mentoria 1:1 inclusa{course.mentorshipCount > 1 ? 's' : ''}
               </li>
             ) : null}
             <li className="flex items-start gap-2">
-              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
               Materiais e anexos para download
             </li>
             <li className="flex items-start gap-2">
-              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
               Perguntas respondidas pelo mentor
             </li>
           </ul>
 
           {course.mentorshipCount > 0 ? (
-            <div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
-              <p className="flex items-center gap-2 text-sm font-bold text-emerald-900">
-                <UserRound aria-hidden className="h-4 w-4 text-emerald-700" />
+            <div className="mt-5 rounded-2xl border border-emerald-100 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/50 p-4">
+              <p className="flex items-center gap-2 text-sm font-bold text-emerald-900 dark:text-emerald-200">
+                <UserRound aria-hidden className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
                 Mentorias 1:1 inclusas
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-emerald-800/80">
+              <p className="mt-1 text-xs leading-relaxed text-emerald-800/80 dark:text-emerald-300/80">
                 Este curso inclui {course.mentorshipCount} {course.mentorshipCount > 1 ? 'sessões' : 'sessão'} de
                 mentoria individual com {course.mentor.name.split(' ')[0]}. Agende após se inscrever.
               </p>
               <Button
                 variant="outline"
                 size="sm"
-                className="mt-3 w-full rounded-full border-emerald-200 bg-white font-semibold text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+                className="mt-3 w-full rounded-full border-emerald-200 dark:border-emerald-900 bg-white dark:bg-stone-900 font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 hover:text-emerald-800 dark:hover:text-emerald-200"
                 onClick={() => onViewMentor(course.mentor.id)}
               >
                 Ver disponibilidade do mentor
@@ -842,20 +842,20 @@ function ReviewFormCard({
   }
 
   return (
-    <Card className="rounded-2xl border-stone-200 p-6 shadow-none">
-      <p className="text-lg font-extrabold tracking-tight text-stone-900">Avaliar este curso</p>
+    <Card className="rounded-2xl border-stone-200 dark:border-stone-800 p-6 shadow-none">
+      <p className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">Avaliar este curso</p>
 
       {completed && !myReview ? (
-        <p className="mt-2 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs font-semibold leading-relaxed text-amber-800">
+        <p className="mt-2 flex items-start gap-2 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 px-3 py-2.5 text-xs font-semibold leading-relaxed text-amber-800 dark:text-amber-300">
           <Star aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />
           Você concluiu o curso! Deixe sua avaliação ⭐
         </p>
       ) : myReview ? (
-        <p className="mt-1 text-sm text-stone-500">
+        <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
           Sua avaliação está salva — você pode atualizá-la quando quiser.
         </p>
       ) : (
-        <p className="mt-1 text-sm text-stone-500">
+        <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
           Como foi sua experiência? Sua nota ajuda outros alunos.
         </p>
       )}
@@ -884,14 +884,14 @@ function ReviewFormCard({
                 aria-hidden
                 className={cn(
                   'h-6 w-6 transition-colors',
-                  active ? 'fill-amber-400 text-amber-400' : 'text-stone-300'
+                  active ? 'fill-amber-400 text-amber-400' : 'text-stone-300 dark:text-stone-600'
                 )}
               />
             </button>
           )
         })}
         {rating > 0 ? (
-          <span className="ml-2 text-sm font-bold tabular-nums text-stone-700">
+          <span className="ml-2 text-sm font-bold tabular-nums text-stone-700 dark:text-stone-200">
             {rating.toFixed(1).replace('.', ',')}
           </span>
         ) : null}
@@ -904,9 +904,9 @@ function ReviewFormCard({
         rows={4}
         placeholder="Conte como foi sua experiência (opcional)"
         aria-label="Comentário da avaliação (opcional)"
-        className="mt-3 min-h-24 resize-none rounded-2xl border-stone-200 bg-white text-sm focus-visible:ring-emerald-600/30"
+        className="mt-3 min-h-24 resize-none rounded-2xl border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-sm focus-visible:ring-emerald-600/30"
       />
-      <p className="mt-1 text-right text-[11px] tabular-nums text-stone-400">{comment.length}/800</p>
+      <p className="mt-1 text-right text-[11px] tabular-nums text-stone-400 dark:text-stone-500">{comment.length}/800</p>
 
       <Button
         onClick={submit}
@@ -949,25 +949,25 @@ function CourseReviewsSection({
   return (
     <section
       aria-labelledby="avaliacoes-title"
-      className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6"
+      className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 sm:p-6"
     >
-      <h2 id="avaliacoes-title" className="text-lg font-extrabold tracking-tight text-stone-900">
+      <h2 id="avaliacoes-title" className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
         Avaliações dos alunos
       </h2>
 
       {count === 0 ? (
-        <p className="mt-4 rounded-2xl border border-dashed border-stone-200 px-4 py-6 text-center text-sm text-stone-400">
+        <p className="mt-4 rounded-2xl border border-dashed border-stone-200 dark:border-stone-800 px-4 py-6 text-center text-sm text-stone-400 dark:text-stone-500">
           Este curso ainda não tem avaliações — seja o primeiro a avaliar!
         </p>
       ) : (
         <div className="mt-4 grid gap-6 sm:grid-cols-[220px_minmax(0,1fr)]">
           {/* Resumo: nota grande + distribuição por estrela */}
-          <div className="self-start rounded-2xl bg-stone-50/80 p-4">
-            <p className="text-4xl font-extrabold tracking-tight text-stone-900">
+          <div className="self-start rounded-2xl bg-stone-50/80 dark:bg-stone-950/50 p-4">
+            <p className="text-4xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
               {summary.rating.toFixed(1).replace('.', ',')}
             </p>
             <Stars rating={summary.rating} size={15} className="mt-1.5" />
-            <p className="mt-1 text-xs font-medium text-stone-500">
+            <p className="mt-1 text-xs font-medium text-stone-500 dark:text-stone-400">
               {count} {count === 1 ? 'avaliação' : 'avaliações'}
             </p>
             <div className="mt-4 space-y-1.5" role="group" aria-label="Distribuição das notas">
@@ -976,14 +976,14 @@ function CourseReviewsSection({
                 const pct = count > 0 ? Math.round((n / count) * 100) : 0
                 return (
                   <div key={star} className="flex items-center gap-1.5">
-                    <span className="w-3 shrink-0 text-right text-[11px] font-semibold tabular-nums text-stone-500">
+                    <span className="w-3 shrink-0 text-right text-[11px] font-semibold tabular-nums text-stone-500 dark:text-stone-400">
                       {star}
                     </span>
                     <Star aria-hidden className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
-                    <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-stone-100">
+                    <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
                       <div className="h-full rounded-full bg-amber-400" style={{ width: `${pct}%` }} />
                     </div>
-                    <span className="w-6 shrink-0 text-right text-[11px] tabular-nums text-stone-400">
+                    <span className="w-6 shrink-0 text-right text-[11px] tabular-nums text-stone-400 dark:text-stone-500">
                       {n}
                     </span>
                   </div>
@@ -995,28 +995,28 @@ function CourseReviewsSection({
           {/* Lista de avaliações */}
           <ul className="min-w-0 space-y-3">
             {reviews.map((review) => (
-              <li key={review.id} className="rounded-2xl border border-stone-200 p-4">
+              <li key={review.id} className="rounded-2xl border border-stone-200 dark:border-stone-800 p-4">
                 <div className="flex items-center gap-3">
                   <Avatar name={review.student.name} src={review.student.avatarUrl} size="sm" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-bold text-stone-900">
+                      <p className="truncate text-sm font-bold text-stone-900 dark:text-stone-50">
                         {review.student.name}
                       </p>
                       {review.student.id === currentUserId ? (
-                        <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                        <span className="shrink-0 rounded-full bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
                           Você
                         </span>
                       ) : null}
                     </div>
                     <Stars rating={review.rating} size={12} className="mt-0.5" />
                   </div>
-                  <span className="shrink-0 text-xs text-stone-400">
+                  <span className="shrink-0 text-xs text-stone-400 dark:text-stone-500">
                     {reviewDateLabel(review.createdAt)}
                   </span>
                 </div>
                 {review.comment ? (
-                  <p className="mt-2.5 text-sm leading-relaxed text-stone-700">{review.comment}</p>
+                  <p className="mt-2.5 text-sm leading-relaxed text-stone-700 dark:text-stone-200">{review.comment}</p>
                 ) : null}
               </li>
             ))}

@@ -1,0 +1,802 @@
+     1→'use client'
+     2→
+     3→import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+     4→import { motion, useInView } from 'framer-motion'
+     5→import {
+     6→  ArrowRight,
+     7→  BadgeCheck,
+     8→  BookOpen,
+     9→  CalendarCheck,
+    10→  CalendarClock,
+    11→  Check,
+    12→  CheckCircle2,
+    13→  Clock,
+    14→  GraduationCap,
+    15→  Hand,
+    16→  Library,
+    17→  Mic,
+    18→  MonitorPlay,
+    19→  PhoneOff,
+    20→  PlayCircle,
+    21→  Presentation,
+    22→  Quote,
+    23→  Route,
+    24→  Search,
+    25→  ShieldCheck,
+    26→  Sparkles,
+    27→  Star,
+    28→  Users,
+    29→  Video,
+    30→} from 'lucide-react'
+    31→import {
+    32→  Accordion,
+    33→  AccordionContent,
+    34→  AccordionItem,
+    35→  AccordionTrigger,
+    36→} from '@/components/ui/accordion'
+    37→import { Badge } from '@/components/ui/badge'
+    38→import { Button } from '@/components/ui/button'
+    39→import { Input } from '@/components/ui/input'
+    40→import { Progress } from '@/components/ui/progress'
+    41→import { Skeleton } from '@/components/ui/skeleton'
+    42→import { Avatar, Stars } from '@/components/platform/avatar'
+    43→import { api } from '@/lib/api'
+    44→import {
+    45→  CATEGORIES,
+    46→  LEVEL_LABELS,
+    47→  avatarGradient,
+    48→  currencyBRL,
+    49→  firstName,
+    50→  formatTotalDuration,
+    51→  initials,
+    52→} from '@/lib/helpers'
+    53→import { useAppStore } from '@/lib/store'
+    54→import type {
+    55→  CourseListItemDTO,
+    56→  EnrolledCourseDTO,
+    57→  MentorListItemDTO,
+    58→  TrackListItemDTO,
+    59→} from '@/lib/types'
+    60→import { cn } from '@/lib/utils'
+    61→
+    62→const STEPS = [
+    63→  {
+    64→    number: '01',
+    65→    title: 'Descubra',
+    66→    text: 'Explore especialistas por área, leia seus murais de conteúdo e veja avaliações reais de outros mentorados.',
+    67→    icon: Search,
+    68→  },
+    69→  {
+    70→    number: '02',
+    71→    title: 'Agende',
+    72→    text: 'Escolha um horário livre na agenda do mentor, descreva seu objetivo e envie sua solicitação.',
+    73→    icon: CalendarClock,
+    74→  },
+    75→  {
+    76→    number: '03',
+    77→    title: 'Conecte-se',
+    78→    text: 'A reunião acontece aqui mesmo, com vídeo integrado. Depois, avalie a sessão e acompanhe sua evolução.',
+    79→    icon: Video,
+    80→  },
+    81→]
+    82→
+    83→const TESTIMONIALS = [
+    84→  {
+    85→    quote:
+    86→      'Vinha tentando migrar para gestão de produtos há quase um ano, sem direção nenhuma. Em duas sessões, montamos um plano de 90 dias: o que estudar, o que construir e como me posicionar. Três meses depois, eu assinava meu contrato como PO.',
+    87→    author: 'Lucas Prado · dev em transição',
+    88→  },
+    89→  {
+    90→    quote:
+    91→      'Eu travava em toda reunião em inglês. Na primeira sessão, a Sofia identificou exatamente o que me bloqueava e montou um plano de prática focada. Hoje conduzo dailies com o time de Portugal sem medo.',
+    92→    author: 'Camila R. · analista de marketing',
+    93→  },
+    94→  {
+    95→    quote:
+    96→      'Seis anos no mesmo cargo e nenhuma ideia de como sair. A mentoria de carreira com a Marina me deu clareza: reposicionei meu currículo e LinkedIn, ensaiei entrevistas e recebi duas propostas no mês seguinte.',
+    97→    author: 'Diego M. · analista financeiro',
+    98→  },
+    99→]
+   100→
+   101→const FEATURES = [
+   102→  {
+   103→    icon: MonitorPlay,
+   104→    title: 'Sala de aula imersiva',
+   105→    text: 'Aulas em vídeo e leituras em tela cheia, com perguntas para o mentor e anotações salvas automaticamente.',
+   106→  },
+   107→  {
+   108→    icon: Library,
+   109→    title: 'Biblioteca de conhecimento',
+   110→    text: 'Artigos e livros dos mentores com leitor de PDF integrado e favoritos para ler depois.',
+   111→  },
+   112→  {
+   113→    icon: Route,
+   114→    title: 'Trilhas guiadas',
+   115→    text: 'Cursos e mentorias 1:1 combinados em jornadas com progresso acompanhado automaticamente.',
+   116→  },
+   117→  {
+   118→    icon: CalendarCheck,
+   119→    title: 'Agendamento simples',
+   120→    text: 'Você vê os horários livres da agenda do mentor e confirma sua sessão em poucos minutos.',
+   121→  },
+   122→  {
+   123→    icon: Star,
+   124→    title: 'Avaliações reais',
+   125→    text: 'Só quem participou da sessão avalia: notas e comentários que você pode confiar de verdade.',
+   126→  },
+   127→  {
+   128→    icon: ShieldCheck,
+   129→    title: 'Pagamento seguro',
+   130→    text: 'PIX e cartão processados pela plataforma, com recibo, histórico e garantia de 7 dias.',
+   131→  },
+   132→]
+   133→
+   134→const FAQS = [
+   135→  {
+   136→    q: 'Como funciona uma mentoria 1:1 na prática?',
+   137→    a: 'Você escolhe um mentor, descreve seu objetivo no momento do agendamento e se reúne com ele por vídeo aqui mesmo, dentro da plataforma. Cada sessão dura, em média, 60 minutos e fica registrada no seu histórico para consulta futura.',
+   138→  },
+   139→  {
+   140→    q: 'Preciso instalar algo para a reunião por vídeo?',
+   141→    a: 'Não. A sala de reunião abre direto no navegador, com áudio e vídeo integrados. Basta entrar na tela da sua sessão na hora marcada, com um fone e uma conexão razoável.',
+   142→  },
+   143→  {
+   144→    q: 'Como funcionam os pagamentos?',
+   145→    a: 'Você paga apenas pelo que contratar: sessões avulsas, cursos ou trilhas. Aceitamos PIX e cartão, com processamento seguro pela plataforma, recibo automático e garantia de 7 dias.',
+   146→  },
+   147→  {
+   148→    q: 'Recebo certificado ou comprovação de progresso?',
+   149→    a: 'Seu progresso fica registrado aula a aula em cada curso e trilha, com porcentagem concluída visível no seu painel. As sessões de mentoria também entram no histórico, junto das avaliações que você fez e recebeu.',
+   150→  },
+   151→  {
+   152→    q: 'Como me tornar um mentor na MentorHub?',
+   153→    a: 'Clique em "Quero ensinar" no fim desta página, complete seu perfil com áreas de atuação, agenda e valores e publique conteúdos no seu mural. Desde a primeira sessão você já recebe avaliações dos mentorados.',
+   154→  },
+   155→]
+   156→
+   157→const FINAL_REASSURANCES = [
+   158→  'Pagamento seguro via PIX ou cartão',
+   159→  'Reuniões de vídeo dentro da plataforma',
+   160→  'Avaliações apenas de sessões reais',
+   161→]
+   162→
+   163→export function LandingMenteeView() {
+   164→  const navigate = useAppStore((s) => s.navigate)
+   165→  const setExploreQuery = useAppStore((s) => s.setExploreQuery)
+   166→  const setExploreTab = useAppStore((s) => s.setExploreTab)
+   167→  const user = useAppStore((s) => s.user)
+   168→  const [mentors, setMentors] = useState<MentorListItemDTO[]>([])
+   169→  const [loading, setLoading] = useState(true)
+   170→  const [courses, setCourses] = useState<CourseListItemDTO[]>([])
+   171→  const [coursesLoading, setCoursesLoading] = useState(true)
+   172→  const [tracks, setTracks] = useState<TrackListItemDTO[]>([])
+   173→  const [tracksLoading, setTracksLoading] = useState(true)
+   174→  const [term, setTerm] = useState('')
+   175→
+   176→  // Fetch preguiçoso: cursos e trilhas só saem quando as seções se aproximam da viewport
+   177→  const coursesSectionRef = useRef<HTMLElement | null>(null)
+   178→  const coursesInView = useInView(coursesSectionRef, { once: true, margin: '600px' })
+   179→  const tracksSectionRef = useRef<HTMLElement | null>(null)
+   180→  const tracksInView = useInView(tracksSectionRef, { once: true, margin: '600px' })
+   181→
+   182→  useEffect(() => {
+   183→    let active = true
+   184→    api
+   185→      .listMentors({})
+   186→      .then((data) => {
+   187→        if (active) setMentors(data)
+   188→      })
+   189→      .catch(() => {
+   190→        if (active) setMentors([])
+   191→      })
+   192→      .finally(() => {
+   193→        if (active) setLoading(false)
+   194→      })
+   195→    return () => {
+   196→      active = false
+   197→    }
+   198→  }, [])
+   199→
+   200→  // Cursos para a seção "Cursos em destaque" (disparado quando a seção se aproxima)
+   201→  useEffect(() => {
+   202→    if (!coursesInView) return
+   203→    let active = true
+   204→    api
+   205→      .listCourses({})
+   206→      .then((data) => {
+   207→        if (active) setCourses(data)
+   208→      })
+   209→      .catch(() => {
+   210→        if (active) setCourses([])
+   211→      })
+   212→      .finally(() => {
+   213→        if (active) setCoursesLoading(false)
+   214→      })
+   215→    return () => {
+   216→      active = false
+   217→    }
+   218→  }, [coursesInView])
+   219→
+   220→  // Trilhas populares para a seção "Trilhas em destaque" (disparado quando a seção se aproxima)
+   221→  useEffect(() => {
+   222→    if (!tracksInView) return
+   223→    let active = true
+   224→    api
+   225→      .listTracks({ sort: 'popular' })
+   226→      .then((data) => {
+   227→        if (active) setTracks(data)
+   228→      })
+   229→      .catch(() => {
+   230→        if (active) setTracks([])
+   231→      })
+   232→      .finally(() => {
+   233→        if (active) setTracksLoading(false)
+   234→      })
+   235→    return () => {
+   236→      active = false
+   237→    }
+   238→  }, [tracksInView])
+   239→
+   240→  // "Continue aprendendo": inscrições do usuário logado (seção oculta para convidados)
+   241→  const userId = user?.id
+   242→  const [enrollments, setEnrollments] = useState<EnrolledCourseDTO[]>([])
+   243→  const [enrollmentsLoading, setEnrollmentsLoading] = useState(true)
+   244→
+   245→  useEffect(() => {
+   246→    // Convidado: a seção fica oculta (user == null) e o estado inicial não precisa mudar.
+   247→    if (!userId) return
+   248→    let active = true
+   249→    api
+   250→      .listMyEnrollments(userId)
+   251→      .then((data) => {
+   252→        if (active) setEnrollments(data)
+   253→      })
+   254→      .catch(() => {
+   255→        if (active) setEnrollments([])
+   256→      })
+   257→      .finally(() => {
+   258→        if (active) setEnrollmentsLoading(false)
+   259→      })
+   260→    return () => {
+   261→      active = false
+   262→    }
+   263→  }, [userId])
+   264→
+   265→  const stats = useMemo(
+   266→    () => ({
+   267→      sessions: mentors.reduce((acc, m) => acc + m.totalSessions, 0),
+   268→      reviews: mentors.reduce((acc, m) => acc + m.reviewCount, 0),
+   269→      contents: mentors.reduce((acc, m) => acc + m.contentsCount, 0),
+   270→    }),
+   271→    [mentors]
+   272→  )
+   273→
+   274→  const avgRating = useMemo(() => {
+   275→    const rated = mentors.filter((m) => m.rating > 0)
+   276→    if (rated.length === 0) return null
+   277→    return rated.reduce((acc, m) => acc + m.rating, 0) / rated.length
+   278→  }, [mentors])
+   279→
+   280→  // Soma de alunos matriculados em cursos (chega junto com o fetch preguiçoso de cursos)
+   281→  const totalStudents = useMemo(
+   282→    () => courses.reduce((acc, c) => acc + c.studentCount, 0),
+   283→    [courses]
+   284→  )
+   285→
+   286→  const featured = useMemo(
+   287→    () =>
+   288→      mentors
+   289→        .filter((m) => m.rating > 0)
+   290→        .sort((a, b) => b.rating - a.rating || b.reviewCount - a.reviewCount)
+   291→        .slice(0, 3),
+   292→    [mentors]
+   293→  )
+   294→
+   295→  // Top 3 cursos por alunos inscritos, desempate pela nota do mentor
+   296→  const topCourses = useMemo(
+   297→    () =>
+   298→      [...courses]
+   299→        .sort(
+   300→          (a, b) =>
+   301→            b.studentCount - a.studentCount || b.mentor.rating - a.mentor.rating
+   302→        )
+   303→        .slice(0, 3),
+   304→    [courses]
+   305→  )
+   306→
+   307→  // Top 3 trilhas (a API já devolve ordenada por popularidade)
+   308→  const topTracks = useMemo(() => tracks.slice(0, 3), [tracks])
+   309→
+   310→  // Até 3 inscrições para "Continue aprendendo" — prioridade: em andamento (0 < x < 100%),
+   311→  // depois não iniciadas (0%), concluídas por último; recência (enrolledAt desc) dentro do grupo
+   312→  const continueItems = useMemo(() => {
+   313→    const byRecency = (a: EnrolledCourseDTO, b: EnrolledCourseDTO) =>
+   314→      b.enrolledAt.localeCompare(a.enrolledAt) // ISO-8601: comparação lexicográfica segura
+   315→    const isDone = (e: EnrolledCourseDTO) =>
+   316→      e.course.lessonCount > 0 && e.completedLessonIds.length >= e.course.lessonCount
+   317→    const started = enrollments
+   318→      .filter((e) => !isDone(e) && e.completedLessonIds.length > 0)
+   319→      .sort(byRecency)
+   320→    const untouched = enrollments
+   321→      .filter((e) => e.completedLessonIds.length === 0)
+   322→      .sort(byRecency)
+   323→    const done = enrollments.filter(isDone).sort(byRecency)
+   324→    return [...started, ...untouched, ...done].slice(0, 3)
+   325→  }, [enrollments])
+   326→
+   327→  // Tiles do mock de vídeo: mentores reais + placeholders para fechar 4
+   328→  const previewMentors = mentors.slice(0, 4)
+   329→  const previewFillers = Array.from({ length: Math.max(0, 4 - previewMentors.length) })
+   330→
+   331→  // 4º número da faixa de stats: alunos (quando cursos já carregaram) ou conteúdos publicados
+   332→  const fourthStat =
+   333→    !coursesLoading && totalStudents > 0
+   334→      ? { value: `+${totalStudents}`, label: 'alunos aprendendo' }
+   335→      : { value: `+${stats.contents}`, label: 'conteúdos publicados' }
+   336→
+   337→  const handleSearch = (e: FormEvent<HTMLFormElement>) => {
+   338→    e.preventDefault()
+   339→    setExploreQuery(term.trim())
+   340→    navigate({ name: 'marketplace' })
+   341→  }
+   342→
+   343→  const handleVerCursos = () => {
+   344→    setExploreTab('courses')
+   345→    navigate({ name: 'marketplace' })
+   346→  }
+   347→
+   348→  const handleVerTrilhas = () => {
+   349→    setExploreTab('tracks')
+   350→    navigate({ name: 'marketplace' })
+   351→  }
+   352→
+   353→  const handleExploreArea = () => {
+   354→    setExploreTab('all')
+   355→    navigate({ name: 'marketplace' })
+   356→  }
+   357→
+   358→  return (
+   359→    <div className="flex flex-col bg-white">
+   360→      {/* ---------- HERO (split com preview do produto) ---------- */}
+   361→      <section aria-labelledby="hero-title" className="relative overflow-hidden">
+   362→        {/* Decoração de fundo: blobs suaves + padrão de pontos */}
+   363→        <div
+   364→          aria-hidden
+   365→          className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-emerald-100/80 blur-3xl"
+   366→        />
+   367→        <div
+   368→          aria-hidden
+   369→          className="absolute -right-24 top-40 h-80 w-80 rounded-full bg-emerald-50 blur-3xl"
+   370→        />
+   371→        <div
+   372→          aria-hidden
+   373→          className="absolute inset-0 opacity-60 [mask-image:radial-gradient(75%_60%_at_50%_0%,black,transparent)]"
+   374→          style={{
+   375→            backgroundImage:
+   376→              'radial-gradient(circle at 1px 1px, rgba(5, 150, 105, 0.12) 1px, transparent 0)',
+   377→            backgroundSize: '26px 26px',
+   378→          }}
+   379→        />
+   380→
+   381→        <div className="relative mx-auto max-w-6xl px-4 pb-16 pt-12 sm:pt-16 lg:pb-24">
+   382→          <div className="grid grid-cols-1 items-center gap-14 lg:grid-cols-2 lg:gap-12">
+   383→            {/* Coluna esquerda: mensagem + busca + prova social */}
+   384→            <motion.div
+   385→              initial={{ opacity: 0, y: 16 }}
+   386→              animate={{ opacity: 1, y: 0 }}
+   387→              transition={{ duration: 0.5 }}
+   388→              className="min-w-0"
+   389→            >
+   390→              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-800">
+   391→                <Sparkles aria-hidden className="h-3.5 w-3.5 text-emerald-700" />
+   392→                Mentorias 1:1 ao vivo, direto na plataforma
+   393→              </span>
+   394→
+   395→              <h1
+   396→                id="hero-title"
+   397→                className="mt-5 text-4xl font-extrabold leading-[1.08] tracking-tight text-stone-900 sm:text-5xl xl:text-6xl"
+   398→              >
+   399→                {user ? (
+   400→                  <>
+   401→                    Olá, <span className="text-emerald-700">{firstName(user.name)}</span>! Pronto
+   402→                    para{' '}
+   403→                    <span className="underline decoration-emerald-400/60 decoration-[0.12em] underline-offset-[0.16em]">
+   404→                      continuar aprendendo
+   405→                    </span>
+   406→                    ?
+   407→                  </>
+   408→                ) : (
+   409→                  <>
+   410→                    Aprenda com quem{' '}
+   411→                    <span className="text-emerald-700 underline decoration-emerald-400/60 decoration-[0.12em] underline-offset-[0.16em]">
+   412→                      vive o que ensina
+   413→                    </span>
+   414→                  </>
+   415→                )}
+   416→              </h1>
+   417→
+   418→              <p className="mt-5 max-w-xl text-base leading-relaxed text-stone-600 sm:text-lg">
+   419→                Encontre especialistas que viveram o caminho que você quer trilhar. Agende em
+   420→                minutos e encontre-se por vídeo dentro da própria plataforma.
+   421→              </p>
+   422→
+   423→              <form
+   424→                role="search"
+   425→                onSubmit={handleSearch}
+   426→                className="mt-8 flex max-w-xl flex-col gap-2.5 sm:flex-row"
+   427→              >
+   428→                <div className="relative flex-1">
+   429→                  <Search
+   430→                    aria-hidden
+   431→                    className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400"
+   432→                  />
+   433→                  <Input
+   434→                    value={term}
+   435→                    onChange={(e) => setTerm(e.target.value)}
+   436→                    placeholder="Qual habilidade você quer dominar?"
+   437→                    aria-label="Buscar mentores por área ou especialidade"
+   438→                    className="h-13 rounded-full border-stone-200 bg-white pl-11 pr-4 text-stone-900 shadow-sm placeholder:text-stone-400 focus-visible:border-emerald-300 focus-visible:ring-emerald-100"
+   439→                  />
+   440→                </div>
+   441→                <Button
+   442→                  type="submit"
+   443→                  className="h-13 shrink-0 rounded-full px-7 font-bold shadow-sm shadow-emerald-700/20"
+   444→                >
+   445→                  Explorar mentores
+   446→                </Button>
+   447→              </form>
+   448→
+   449→              {/* Prova social: avatares + nota média + avaliações reais */}
+   450→              {loading ? (
+   451→                <div className="mt-7 flex items-center gap-3">
+   452→                  <div className="flex -space-x-2.5">
+   453→                    {Array.from({ length: 5 }).map((_, i) => (
+   454→                      <Skeleton key={i} className="h-8 w-8 rounded-full" />
+   455→                    ))}
+   456→                  </div>
+   457→                  <Skeleton className="h-4 w-44" />
+   458→                </div>
+   459→              ) : mentors.length > 0 ? (
+   460→                <div className="mt-7 flex flex-wrap items-center gap-x-4 gap-y-3">
+   461→                  <div className="flex -space-x-2.5">
+   462→                    {mentors.slice(0, 5).map((m) => (
+   463→                      <Avatar key={m.id} name={m.name} src={m.avatarUrl} size="sm" />
+   464→                    ))}
+   465→                  </div>
+   466→                  <div className="min-w-0">
+   467→                    <div className="flex items-center gap-1.5">
+   468→                      <Stars rating={avgRating ?? 5} size={14} />
+   469→                      <span className="text-sm font-bold text-stone-800">
+   470→                        {avgRating ? avgRating.toFixed(1).replace('.', ',') : '—'}
+   471→                      </span>
+   472→                      <span className="text-xs text-stone-500">de média</span>
+   473→                    </div>
+   474→                    <p className="text-xs text-stone-500">
+   475→                      +{mentors.length} mentores especialistas · {stats.reviews} avaliações reais
+   476→                    </p>
+   477→                  </div>
+   478→                </div>
+   479→              ) : null}
+   480→
+   481→              <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2">
+   482→                {['Reunião por vídeo integrada', 'Biblioteca com artigos e livros', 'Agendamento em minutos'].map(
+   483→                  (item) => (
+   484→                    <li key={item} className="inline-flex items-center gap-1.5 text-sm text-stone-600">
+   485→                      <Check aria-hidden className="h-4 w-4 text-emerald-600" />
+   486→                      {item}
+   487→                    </li>
+   488→                  )
+   489→                )}
+   490→              </ul>
+   491→            </motion.div>
+   492→
+   493→            {/* Coluna direita: composição de produto (decorativa) */}
+   494→            <motion.div
+   495→              aria-hidden
+   496→              initial={{ opacity: 0, y: 16 }}
+   497→              animate={{ opacity: 1, y: 0 }}
+   498→              transition={{ duration: 0.5, delay: 0.15 }}
+   499→              className="relative mt-2 min-w-0 lg:mt-0"
+   500→            >
+   501→              {/* Glow esmeralda atrás da composição */}
+   502→              <div className="absolute -inset-x-6 -top-6 bottom-8 rounded-[3rem] bg-gradient-to-br from-emerald-200/70 via-emerald-100/40 to-transparent blur-2xl" />
+   503→
+   504→              {/* Tile principal: chamada de vídeo */}
+   505→              <motion.div
+   506→                animate={{ y: [0, -6, 0] }}
+   507→                transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
+   508→                className="relative"
+   509→              >
+   510→                <div className="overflow-hidden rounded-3xl bg-stone-950 shadow-2xl shadow-stone-900/25 ring-1 ring-stone-900/10">
+   511→                  <div className="flex items-center justify-between px-5 pb-3 pt-4">
+   512→                    <div className="flex items-center gap-2">
+   513→                      <span className="relative flex h-2.5 w-2.5">
+   514→                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
+   515→                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
+   516→                      </span>
+   517→                      <span className="text-xs font-semibold text-white/85">Sessão ao vivo</span>
+   518→                      <span className="text-xs text-white/40">· 24:31</span>
+   519→                    </div>
+   520→                    <div className="flex items-center gap-1.5">
+   521→                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white/80">
+   522→                        <Mic className="h-3.5 w-3.5" />
+   523→                      </span>
+   524→                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white/80">
+   525→                        <Video className="h-3.5 w-3.5" />
+   526→                      </span>
+   527→                    </div>
+   528→                  </div>
+   529→
+   530→                  <div className="grid grid-cols-2 gap-2 px-3">
+   531→                    {previewMentors.map((m, i) => (
+   532→                      <div
+   533→                        key={m.id}
+   534→                        className={cn(
+   535→                          'relative aspect-[4/3] overflow-hidden rounded-xl',
+   536→                          i === 0 && 'ring-2 ring-emerald-400/80'
+   537→                        )}
+   538→                      >
+   539→                        <div className="absolute inset-0" style={avatarGradient(m.name)} />
+   540→                        <div className="absolute inset-0 flex items-center justify-center">
+   541→                          <Avatar name={m.name} src={m.avatarUrl} size="lg" className="h-12 w-12 shadow-lg" />
+   542→                        </div>
+   543→                        <span className="absolute bottom-1.5 left-1.5 rounded-md bg-black/45 px-1.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+   544→                          {firstName(m.name)}
+   545→                        </span>
+   546→                        <span className="absolute bottom-2 right-2 text-white/70">
+   547→                          <Mic className="h-3 w-3" />
+   548→                        </span>
+   549→                      </div>
+   550→                    ))}
+   551→                    {previewFillers.map((_, i) => (
+   552→                      <div
+   553→                        key={`preview-placeholder-${i}`}
+   554→                        className={cn(
+   555→                          'relative aspect-[4/3] overflow-hidden rounded-xl bg-white/[0.06]',
+   556→                          loading && 'animate-pulse'
+   557→                        )}
+   558→                      >
+   559→                        <div className="absolute inset-0 flex items-center justify-center">
+   560→                          <GraduationCap className="h-7 w-7 text-white/25" />
+   561→                        </div>
+   562→                        <span className="absolute bottom-2 left-2 h-3 w-14 rounded-full bg-white/15" />
+   563→                      </div>
+   564→                    ))}
+   565→                  </div>
+   566→
+   567→                  <div className="flex items-center justify-center gap-2.5 border-t border-white/10 px-5 py-3.5">
+   568→                    {[Mic, Video, Hand].map((Icon, i) => (
+   569→                      <span
+   570→                        key={i}
+   571→                        className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white"
+   572→                      >
+   573→                        <Icon className="h-4 w-4" />
+   574→                      </span>
+   575→                    ))}
+   576→                    <span className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg shadow-rose-500/30">
+   577→                      <PhoneOff className="h-4 w-4" />
+   578→                    </span>
+   579→                  </div>
+   580→                </div>
+   581→              </motion.div>
+   582→
+   583→              {/* Card flutuante: progresso de curso */}
+   584→              <motion.div
+   585→                animate={{ y: [0, -8, 0] }}
+   586→                transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
+   587→                className="absolute -bottom-8 -left-2 hidden w-52 lg:block xl:-left-10 xl:w-56"
+   588→              >
+   589→                <div className="rounded-2xl border border-stone-200/80 bg-white/95 p-3.5 shadow-xl shadow-stone-900/10 backdrop-blur">
+   590→                  <div className="flex items-center gap-3">
+   591→                    <div
+   592→                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+   593→                      style={avatarGradient('Fundamentos de Gestão de Produto')}
+   594→                    >
+   595→                      <PlayCircle className="h-5 w-5 text-white/90" />
+   596→                    </div>
+   597→                    <div className="min-w-0">
+   598→                      <p className="truncate text-xs font-bold text-stone-900">
+   599→                        Fundamentos de Gestão de Produto
+   600→                      </p>
+   601→                      <p className="text-[11px] text-stone-500">Aula 4 de 7 · 12min</p>
+   602→                    </div>
+   603→                  </div>
+   604→                  <Progress value={57} className="mt-3 h-1.5" />
+   605→                  <p className="mt-1.5 text-[11px] font-semibold text-emerald-700">57% concluído</p>
+   606→                </div>
+   607→              </motion.div>
+   608→
+   609→              {/* Card flutuante: avaliação */}
+   610→              <motion.div
+   611→                animate={{ y: [0, -8, 0] }}
+   612→                transition={{ duration: 6.5, repeat: Infinity, ease: 'easeInOut', delay: 1.4 }}
+   613→                className="absolute -right-2 -top-6 hidden w-44 lg:block xl:-right-8 xl:w-48"
+   614→              >
+   615→                <div className="rounded-2xl border border-stone-200/80 bg-white/95 p-3.5 shadow-xl shadow-stone-900/10 backdrop-blur">
+   616→                  <Stars rating={5} size={13} />
+   617→                  <p className="mt-1.5 text-[11px] leading-snug text-stone-600">
+   618→                    A melhor mentoria que já fiz. Recomendo demais!
+   619→                  </p>
+   620→                  <div className="mt-2 flex items-center gap-1.5">
+   621→                    <span
+   622→                      className="flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-extrabold text-white"
+   623→                      style={avatarGradient('Ana Paula')}
+   624→                    >
+   625→                      {initials('Ana Paula')}
+   626→                    </span>
+   627→                    <span className="text-[10px] font-semibold text-stone-500">
+   628→                      Ana Paula · mentorada
+   629→                    </span>
+   630→                  </div>
+   631→                </div>
+   632→              </motion.div>
+   633→            </motion.div>
+   634→          </div>
+   635→        </div>
+   636→      </section>
+   637→
+   638→      {/* ---------- CONTINUE APRENDENDO (apenas logado com inscrições; silencioso enquanto carrega) ---------- */}
+   639→      {user && !enrollmentsLoading && continueItems.length > 0 && (
+   640→        <section
+   641→          aria-labelledby="continue-title"
+   642→          className="border-y border-stone-200/70 bg-stone-50/50 py-8 sm:py-10"
+   643→        >
+   644→          <div className="mx-auto max-w-6xl px-4">
+   645→            <h2
+   646→              id="continue-title"
+   647→              className="text-sm font-extrabold uppercase tracking-widest text-stone-500"
+   648→            >
+   649→              Continue aprendendo
+   650→            </h2>
+   651→            <p className="mt-1 text-xs text-stone-400 sm:text-sm">
+   652→              Retome seus cursos exatamente onde parou.
+   653→            </p>
+   654→
+   655→            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   656→              {continueItems.map((enrollment) => (
+   657→                <ContinueCourseCard key={enrollment.courseId} enrollment={enrollment} />
+   658→              ))}
+   659→
+   660→              {/* CTA final discreto: vitrine de cursos */}
+   661→              <button
+   662→                type="button"
+   663→                onClick={handleVerCursos}
+   664→                className="group flex h-full min-h-40 min-w-0 flex-col items-start justify-center gap-1.5 rounded-2xl border border-dashed border-stone-300 p-4 text-left transition hover:border-emerald-400 hover:bg-emerald-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+   665→              >
+   666→                <span
+   667→                  aria-hidden
+   668→                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-stone-500 transition group-hover:bg-emerald-100 group-hover:text-emerald-700"
+   669→                >
+   670→                  <Library className="h-4 w-4" />
+   671→                </span>
+   672→                <span className="mt-1.5 inline-flex items-center gap-1.5 text-sm font-bold text-stone-700 transition group-hover:text-emerald-800">
+   673→                  Explorar mais cursos
+   674→                  <ArrowRight
+   675→                    aria-hidden
+   676→                    className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+   677→                  />
+   678→                </span>
+   679→                <span className="text-xs text-stone-400">
+   680→                  Veja o catálogo completo na vitrine de cursos.
+   681→                </span>
+   682→              </button>
+   683→            </div>
+   684→          </div>
+   685→        </section>
+   686→      )}
+   687→
+   688→      {/* ---------- EXPLORE POR ÁREA (chips de categorias) ---------- */}
+   689→      <section
+   690→        aria-labelledby="areas-title"
+   691→        className="border-y border-stone-200/70 bg-stone-50/60 py-8 sm:py-10"
+   692→      >
+   693→        <div className="mx-auto max-w-6xl px-4">
+   694→          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-8">
+   695→            <h2
+   696→              id="areas-title"
+   697→              className="shrink-0 text-sm font-extrabold uppercase tracking-widest text-stone-500"
+   698→            >
+   699→              Explore por área
+   700→            </h2>
+   701→            <ul className="flex flex-wrap gap-2">
+   702→              {CATEGORIES.map((cat) => (
+   703→                <li key={cat}>
+   704→                  <button
+   705→                    type="button"
+   706→                    onClick={handleExploreArea}
+   707→                    className="inline-flex min-h-11 items-center rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-stone-700 transition hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+   708→                  >
+   709→                    {cat}
+   710→                  </button>
+   711→                </li>
+   712→              ))}
+   713→            </ul>
+   714→          </div>
+   715→        </div>
+   716→      </section>
+   717→
+   718→      {/* ---------- STATS (faixa dark emerald-950) ---------- */}
+   719→      <section aria-label="Números da plataforma" className="mx-auto w-full max-w-6xl px-4 py-10 sm:py-12">
+   720→        <motion.div
+   721→          initial={{ opacity: 0, y: 16 }}
+   722→          whileInView={{ opacity: 1, y: 0 }}
+   723→          viewport={{ once: true, margin: '-60px' }}
+   724→          transition={{ duration: 0.5 }}
+   725→          className="relative overflow-hidden rounded-3xl bg-emerald-950 px-6 py-10 sm:px-12 sm:py-12"
+   726→        >
+   727→          <div
+   728→            aria-hidden
+   729→            className="absolute -left-20 -top-24 h-64 w-64 rounded-full bg-emerald-600/25 blur-3xl"
+   730→          />
+   731→          <div
+   732→            aria-hidden
+   733→            className="absolute -bottom-28 -right-16 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl"
+   734→          />
+   735→
+   736→          <dl className="relative grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-4">
+   737→            <div className="flex flex-col">
+   738→              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
+   739→                mentores especialistas
+   740→              </dt>
+   741→              {loading ? (
+   742→                <dd className="order-1">
+   743→                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
+   744→                </dd>
+   745→              ) : (
+   746→                <dd className="order-1 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+   747→                  +{mentors.length}
+   748→                </dd>
+   749→              )}
+   750→            </div>
+   751→            <div className="flex flex-col">
+   752→              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
+   753→                sessões realizadas
+   754→              </dt>
+   755→              {loading ? (
+   756→                <dd className="order-1">
+   757→                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
+   758→                </dd>
+   759→              ) : (
+   760→                <dd className="order-1 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+   761→                  +{stats.sessions}
+   762→                </dd>
+   763→              )}
+   764→            </div>
+   765→            <div className="flex flex-col">
+   766→              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
+   767→                avaliações reais
+   768→              </dt>
+   769→              {loading ? (
+   770→                <dd className="order-1">
+   771→                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
+   772→                </dd>
+   773→              ) : (
+   774→                <dd className="order-1 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+   775→                  +{stats.reviews}
+   776→                </dd>
+   777→              )}
+   778→            </div>
+   779→            <div className="flex flex-col">
+   780→              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
+   781→                {fourthStat.label}
+   782→              </dt>
+   783→              {loading ? (
+   784→                <dd className="order-1">
+   785→                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
+   786→                </dd>
+   787→              ) : (
+   788→                <dd className="order-1 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+   789→                  {fourthStat.value}
+   790→                </dd>
+   791→              )}
+   792→            </div>
+   793→          </dl>
+   794→        </motion.div>
+   795→      </section>
+   796→
+   797→      {/* ---------- COMO FUNCIONA ---------- */}
+   798→      <motion.section
+   799→        aria-labelledby="como-funciona-title"
+   800→        initial={{ opacity: 0, y: 16 }}
+
+[showing lines 1-800 of 1602; use offset=801 with limit to continue reading]
