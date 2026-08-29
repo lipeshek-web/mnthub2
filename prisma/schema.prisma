@@ -219,6 +219,7 @@ model Lesson {
   questions LessonQuestion[]
   notes     LessonNote[]
   quizzes   Quiz[]
+  aiSummary AiLessonSummary?
 }
 
 model Enrollment {
@@ -302,6 +303,17 @@ model LessonNote {
   updatedAt DateTime @updatedAt
 
   @@unique([lessonId, userId])
+}
+
+/// Resumo IA da aula — gerado 1x no servidor e cacheado para todos os alunos
+model AiLessonSummary {
+  id        String   @id @default(cuid())
+  lessonId  String   @unique
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  summary   String   @default("")
+  keyPoints String   @default("[]") // JSON array de strings (tópicos-chave)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ==================== TRILHAS ====================

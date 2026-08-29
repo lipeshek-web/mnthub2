@@ -594,3 +594,30 @@ export interface TrackingStatsDTO {
   byCourse: { courseId: string; title: string; purchases: number; revenue: number }[]
   daily: { date: string; pageviews: number; purchases: number }[] // últimos 14 dias
 }
+
+// ==================== IA (tutor, resumos, recomendações) ====================
+
+/** Resumo IA da aula — gerado 1x no servidor e cacheado p/ todos os alunos */
+export interface AiLessonSummaryDTO {
+  summary: string
+  keyPoints: string[]
+  cached: boolean // true = já existia (gerado antes)
+}
+
+/** Mensagem da conversa com o Tutor IA (histórico mantido no cliente) */
+export interface AiTutorChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+/** Curso recomendado pela IA + motivo curto personalizado */
+export interface RecommendationDTO {
+  course: CourseListItemDTO
+  reason: string
+}
+
+export interface RecommendationsDTO {
+  items: RecommendationDTO[]
+  /** true quando veio da IA personalizada; false = fallback popular */
+  generated: boolean
+}

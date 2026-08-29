@@ -1,4 +1,6 @@
 import type {
+  AiLessonSummaryDTO,
+  AiTutorChatMessage,
   AvailabilitySlotInput,
   BookingDTO,
   CertificateDTO,
@@ -24,6 +26,7 @@ import type {
   ThreadsResponseDTO,
   QuizAttemptResultDTO,
   QuizDTO,
+  RecommendationsDTO,
   XpStatsDTO,
   MentorDetailDTO,
   MentorListItemDTO,
@@ -506,4 +509,28 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ userId }),
     }),
+
+  // IA: resumo da aula (gerado 1x no servidor e cacheado)
+  lessonAiSummary: (lessonId: string, userId: string) =>
+    request<AiLessonSummaryDTO>(`/api/lessons/${lessonId}/ai-summary`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    }),
+
+  // IA: tutor do curso (responde com base no conteúdo do curso/aula)
+  aiTutor: (data: {
+    courseId: string
+    lessonId?: string
+    userId: string
+    message: string
+    history: AiTutorChatMessage[]
+  }) =>
+    request<{ reply: string }>('/api/ai/tutor', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // IA: recomendações personalizadas ("Feito para você")
+  recommendations: (userId: string) =>
+    request<RecommendationsDTO>(`/api/ai/recommendations${qs({ userId })}`),
 }

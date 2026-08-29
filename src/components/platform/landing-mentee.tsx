@@ -55,6 +55,7 @@ import type {
   CourseListItemDTO,
   EnrolledCourseDTO,
   MentorListItemDTO,
+  RecommendationDTO,
   TrackListItemDTO,
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -323,6 +324,30 @@ export function LandingMenteeView() {
     const done = enrollments.filter(isDone).sort(byRecency)
     return [...started, ...untouched, ...done].slice(0, 3)
   }, [enrollments])
+
+  // "Feito para você": recomendações da IA (cruza histórico do aluno com o catálogo).
+  // Silencioso em erro/sem resultados — a landing nunca quebra por causa da IA.
+  const [recommendations, setRecommendations] = useState<RecommendationDTO[]>([])
+  const [recsGenerated, setRecsGenerated] = useState(false)
+
+  useEffect(() => {
+    // Convidado: seção oculta (render gated por user) — nada a buscar.
+    if (!userId) return
+    let active = true
+    api
+      .recommendations(userId)
+      .then((data) => {
+        if (!active) return
+        setRecommendations(data.items ?? [])
+        setRecsGenerated(Boolean(data.generated))
+      })
+      .catch(() => {
+        if (active) setRecommendations([])
+      })
+    return () => {
+      active = false
+    }
+  }, [userId])
 
   // Tiles do mock de vídeo: mentores reais + placeholders para fechar 4
   const previewMentors = mentors.slice(0, 4)
@@ -680,6 +705,47 @@ export function LandingMenteeView() {
                   Veja o catálogo completo na vitrine de cursos.
                 </span>
               </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ---------- FEITO PARA VOCÊ (recomendações IA, apenas logado) ---------- */}
+      {user && recommendations.length > 0 && (
+        <section
+          aria-labelledby="foryou-title"
+          className="py-8 sm:py-10"
+        >
+          <div className="mx-auto max-w-6xl px-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                aria-hidden
+                className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-700 text-white"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+              </span>
+              <h2
+                id="foryou-title"
+                className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400"
+              >
+                Feito para você
+              </h2>
+              {recsGenerated && (
+                <Badge className="rounded-full border-emerald-200 bg-emerald-50 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  IA personalizada
+                </Badge>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-stone-400 sm:text-sm dark:text-stone-500">
+              {recsGenerated
+                ? 'A IA escolheu estes cursos com base no que você está aprendendo.'
+                : 'Cursos em alta na comunidade.'}
+            </p>
+
+            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {recommendations.map((rec) => (
+                <RecommendationCard key={rec.course.id} rec={rec} />
+              ))}
             </div>
           </div>
         </section>
@@ -1532,7 +1598,6 @@ function FeaturedTrackCard({ track }: { track: TrackListItemDTO }) {
 }
 
 // ---------- Card de matrícula para "Continue aprendendo" ----------
-
 function ContinueCourseCard({ enrollment }: { enrollment: EnrolledCourseDTO }) {
   const navigate = useAppStore((s) => s.navigate)
   const { course, completedLessonIds } = enrollment
@@ -1593,6 +1658,77 @@ function ContinueCourseCard({ enrollment }: { enrollment: EnrolledCourseDTO }) {
             aria-label={`Continuar curso ${course.title}`}
           >
             {isDone ? 'Revisar' : 'Continuar'}
+          </Button>
+        </div>
+      </div>
+    </article>
+  )
+}
+
+// ---------- Card de recomendação para "Feito para você" ----------
+
+function RecommendationCard({ rec }: { rec: RecommendationDTO }) {
+  const navigate = useAppStore((s) => s.navigate)
+  const course = rec.course
+  const isFree = course.price <= 0
+
+  return (
+    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg hover:shadow-stone-900/5 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
+      {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
+      <div className="relative h-16 w-full shrink-0 bg-stone-100 dark:bg-stone-800">
+        {course.coverUrl ? (
+          <img
+            src={course.coverUrl}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover"
+            loading="lazy"
+            decoding="async"
+          />
+        ) : (
+          <div aria-hidden className="absolute inset-0" style={avatarGradient(course.title)}>
+            <Library className="pointer-events-none absolute -bottom-1 right-1.5 h-10 w-10 text-white/20" />
+          </div>
+        )}
+        <Badge className="absolute right-2 top-2 rounded-full border-white/40 bg-stone-950/55 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm dark:border-white/20">
+          {course.category}
+        </Badge>
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col p-4">
+        <h3 className="min-h-10 line-clamp-2 text-sm font-bold leading-snug text-stone-900 dark:text-stone-50">
+          {course.title}
+        </h3>
+        <p className="mt-1 truncate text-xs text-stone-500 dark:text-stone-400">
+          por {course.mentor.name}
+        </p>
+
+        {/* Motivo da recomendação (IA) */}
+        <p className="mt-3 flex items-start gap-1.5 rounded-xl bg-emerald-50/80 px-2.5 py-2 text-xs leading-snug text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+          <Sparkles aria-hidden className="mt-0.5 h-3 w-3 shrink-0" />
+          <span className="line-clamp-2">{rec.reason}</span>
+        </p>
+
+        <div className="mt-auto flex items-center justify-between gap-2 pt-3.5">
+          <span
+            className={cn(
+              'text-sm font-extrabold',
+              isFree
+                ? 'text-emerald-700 dark:text-emerald-300'
+                : 'text-stone-900 dark:text-stone-50'
+            )}
+          >
+            {isFree ? 'Gratuito' : currencyBRL(course.price)}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-10 rounded-full border-emerald-200 px-4 text-xs font-bold text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-900/30"
+            onClick={() => navigate({ name: 'course', courseId: course.id })}
+            aria-label={`Ver curso ${course.title}`}
+          >
+            Ver curso
+            <ArrowRight aria-hidden className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>

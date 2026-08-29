@@ -1192,3 +1192,34 @@ Stage Summary:
 - Plataforma agora tem os 3 pilares restantes: instalável como app (PWA com ícone próprio, manifest, SW dev-safe), modo escuro completo e consistente (toggle na navbar, ~1.800 classes dark: aditivas, marca emerald preservada, certificado/PDF permanecem claros por design), e chat direto aluno↔mentor (thread persistente, badges, notificações integradas ao sino, polling leve) — o ciclo de pré-venda fecha: ver perfil → conversar → agendar
 - Todos os 11 itens escolhidos pelo usuário (1,2,3,5,6,7,8,9,11,12,13) estão entregues e validados
 - Pendências conhecidas: contas descartáveis de teste no banco (inofensivas); SW só cacheia em produção (por design, p/ evitar stale no dev)
+
+---
+Task ID: A
+Agent: Z.ai Code (main)
+Task: Pacote A — features de IA: #1 Tutor IA por curso, #2 Resumos automáticos das aulas, #3 Recomendações inteligentes ("Feito para você")
+
+Work Log:
+- Schema: novo model AiLessonSummary (lessonId unique, summary, keyPoints JSON, cache de geração 1x p/ todos os alunos) + relação Lesson.aiSummary; bun run db:push + regeneração do client; restart do dev server
+- course-serialize.ts (novo): extrai courseBaseInclude()+serializeCourse() de /api/courses para reuso (mesmo padrão de tracks-serialize.ts); courses/route.ts refatorado p/ importar
+- API #2 POST /api/lessons/[lessonId]/ai-summary: valida sessão+matrícula (ou dono), devolve cache na hora, senão monta prompt (material da aula próprio ou da Biblioteca, 8k chars) → LLM responde JSON {summary, keyPoints[]} com parse tolerante (extractJson + fallback texto cru) → upsert no cache; normalizeKeyPoints (máx 6×160 chars)
+- API #1 POST /api/ai/tutor: valida sessão+matrícula/dono, mensagem ≤1000 chars, histórico ≤10 trocas (sanitizado); contexto = sumário do curso (temas→aulas, 5k) + aula atual (6k) + descrição; system prompt anti-alucinação (só conteúdo do curso, redireciona p/ aba Perguntas, texto puro sem markdown) + sanitização server-side de **/##/crase na resposta
+- API #3 GET /api/ai/recommendations: histórico do aluno (inscrições+progresso %) + catálogo (24 cursos, exclui próprios e matriculados) → LLM escolhe 4 com motivo curto; fast-path populares (sem IA) quando sem histórico; fallback popular se IA falhar; cache em memória por usuário (TTL 10 min)
+- types.ts: AiLessonSummaryDTO, AiTutorChatMessage, RecommendationDTO, RecommendationsDTO; api.ts: lessonAiSummary/aiTutor/recommendations
+- ai-lesson-summary.tsx (novo): aba "Resumo IA" no classroom — gera automático na 1ª abertura (skeleton com contexto), resumo + tópicos-chave em grid, copiar resumo, retry em erro, CTA login p/ convidado
+- ai-tutor.tsx (novo): botão flutuante "Tutor IA" no classroom + drawer de chat (overlay blur, painel 420px desktop / folha cheia mobile, spring), bolhas (emerald p/ aluno), typing indicator, 4 chips de sugestão, Enter envia/Shift+Enter quebra, aviso "a IA pode errar", prop raised p/ modo foco (bottom-[5.5rem] evita cobrir "Sair do modo foco")
+- classroom.tsx: aba "Resumo IA" (Sparkles) entre Material e Perguntas + <AiTutor> renderizado p/ hasAccess (matriculado ou dono)
+- landing-mentee.tsx: seção "Feito para você" (logado, silenciosa em erro) após Continue aprendendo — badge "IA personalizada" quando gerado, grid 1/2/4 colunas, RecommendationCard com capa, chip de categoria, motivo da IA em pill emerald, preço/Gratuito + CTA Ver curso
+
+Validation (bun lint 0/0; tsc limpo em src/; browser E2E 1440×900 + 390×844, light+dark):
+- Resumo IA: geração real em 2,5s (aula "O que faz um PM"), cache devolve cached:true instantâneo; aba renderiza resumo+4 tópicos e badge "salvo para todos os alunos" (tool-results/ai-summary-tab.png)
+- Tutor IA: pergunta real respondida com conteúdo do curso (descoberta, RICE, 5 perguntas), 2ª resposta sem markdown após sanitização; drawer abre/fecha, sugestões enviam, Enter funciona (ai-tutor-chat.png, ai-mobile-reply.png)
+- Modo foco: tutor "raised" sem overlap com "Sair do modo foco" (overlap:false medido via eval)
+- Recomendações: Ana viu 3 cursos com motivos personalizados ("Continua jornada em tecnologia com Design Systems", "Combina com Product Manager e marketing") + badge IA PERSONALIZADA; guest não vê a seção; fallback popular coberto por código
+- Mobile 390: scrollW=clientW em home e drawer do tutor; chips/composer sem overflow
+- Dark: "Feito para você" e Resumo IA legíveis e consistentes (ai-mobile-foryou-dark.png)
+- Endpoints 200; dev.log sem erros; server não derrubado durante validação
+
+Stage Summary:
+- Plataforma ganhou a camada de IA nos 3 pontos de maior valor: aluno nunca fica travado (Tutor IA com base no conteúdo real do curso), revisão rápida por aula (Resumo IA cacheado — custo de LLM pago 1x por aula) e descoberta personalizada (Feito para você com fallback popular à prova de falhas)
+- Acessos e limites validados no servidor (matrícula/dono, 1000 chars/msg, 10 msgs de histórico, cache anti-abuso)
+- Custos de IA contidos: resumo gerado 1x por aula (persistido), recomendações em cache de 10 min por usuário, tutor sem persistência (histórico no cliente)

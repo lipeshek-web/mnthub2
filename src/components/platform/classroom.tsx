@@ -30,12 +30,15 @@ import {
   PlayCircle,
   Radio,
   Send,
+  Sparkles,
   Trash2,
   Users,
   XCircle,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { toast } from 'sonner'
+import { AiTutor } from '@/components/platform/ai-tutor'
+import { LessonAiSummary } from '@/components/platform/ai-lesson-summary'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -579,6 +582,10 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                       <FileText aria-hidden className="h-4 w-4" />
                       <span className="hidden sm:inline">Material</span>
                     </TabsTrigger>
+                    <TabsTrigger value="aisummary" className="rounded-full">
+                      <Sparkles aria-hidden className="h-4 w-4" />
+                      <span className="hidden sm:inline">Resumo IA</span>
+                    </TabsTrigger>
                     <TabsTrigger value="qa" className="rounded-full">
                       <MessageCircle aria-hidden className="h-4 w-4" />
                       Perguntas
@@ -646,6 +653,16 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                         </p>
                       </div>
                     )}
+                  </TabsContent>
+
+                  <TabsContent value="aisummary" className="mt-4">
+                    <LessonAiSummary
+                      key={currentLesson.id}
+                      lessonId={currentLesson.id}
+                      lessonTitle={currentLesson.title}
+                      user={user}
+                      onLogin={() => navigate({ name: 'auth', mode: 'login' })}
+                    />
                   </TabsContent>
 
                   <TabsContent value="qa" className="mt-4">
@@ -826,6 +843,20 @@ export function ClassroomView({ courseId }: { courseId: string }) {
           />
         </DialogContent>
       </Dialog>
+
+      {/* ---------- TUTOR IA: chat flutuante com base no conteúdo do curso ---------- */}
+      {course && hasAccess && (
+        <AiTutor
+          courseId={course.id}
+          courseTitle={course.title}
+          mentorName={course.mentor.name}
+          currentLessonId={currentLesson?.id ?? null}
+          currentLessonTitle={currentLesson?.title ?? null}
+          user={user}
+          onLogin={() => navigate({ name: 'auth', mode: 'login' })}
+          raised={focusMode}
+        />
+      )}
     </div>
   )
 }
