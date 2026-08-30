@@ -2,11 +2,13 @@
 
 Versão do app de alunos adaptada para rodar direto no **[Expo Snack](https://snack.expo.dev)** — sem instalar nada no computador. Mesmo visual, mesmas telas e mesma API (`/api/v1` com JWT Bearer) da versão completa em `mobile-app/`.
 
-> **Por que uma pasta separada?** O Snack **não suporta `expo-router`** (rotas por arquivos). Esta edição troca as rotas por **React Navigation** (`@react-navigation/bottom-tabs` + `native-stack`) e centraliza tudo num único `App.js`, que é a entrada que o Snack espera. Como o Snack não tem `.env`, a URL do servidor já vem configurada no código (`https://mentorhub.space-z.ai`) e pode ser trocada no campo “Servidor da API” do login.
+> **Por que uma pasta separada?** O Snack **não suporta `expo-router`** (rotas por arquivos). Esta edição troca as rotas por **React Navigation** (`@react-navigation/bottom-tabs` + `@react-navigation/stack`, a stack JS) e centraliza tudo num único `App.js`, que é a entrada que o Snack espera. Como o Snack não tem `.env`, a URL do servidor já vem configurada no código (`https://mentorhub.space-z.ai`) e pode ser trocada no campo “Servidor da API” do login.
 
 ## 🚀 Como colocar no Snack (1 minuto)
 
-**Opção A — ZIP pronto:** baixe `mentorhub-mobile-snack.zip` (disponível em `https://mentorhub.space-z.ai/mentorhub-mobile-snack.zip`), extraia e arraste `App.js` + pasta `src` para o editor do Snack (substitua o `App.js` de exemplo).
+**Opção A — ZIP pronto:** baixe **`https://mentorhub.space-z.ai/mentorhub-mobile-snack-v2.zip`** (nome novo de propósito: se o navegador tinha guardado o ZIP antigo em cache, o `-v2` garante o download atualizado), extraia e arraste `App.js` + pasta `src` para o editor do Snack — **apagando antes** o `App.js` e a `src/` antigos.
+
+**Opção A2 — só o App.js (mais rápido):** se a sua `src/` já está no Snack, basta trocar o `App.js`: abra **`https://mentorhub.space-z.ai/snack-App-js.txt`**, copie tudo (Ctrl+A → Ctrl+C) e cole por cima de todo o conteúdo do `App.js` no editor do Snack.
 
 **Opção B — copiar e colar:**
 
@@ -30,6 +32,14 @@ Versão do app de alunos adaptada para rodar direto no **[Expo Snack](https://sn
 `expo`, `react`, `react-native`, `@expo/vector-icons`, `expo-status-bar`, `react-native-screens`.
 
 > Se algo falhar com `Unable to resolve module 'module://…'`, é dependência que faltou no painel — confira a lista acima (o `@react-navigation/native-stack` em especial NÃO existe no runtime do Snack; o projeto usa o `@react-navigation/stack`).
+
+## 🩺 Se o erro `@react-navigation/native-stack` continuar aparecendo
+
+Isso significa que **o Snack ainda está rodando o `App.js` antigo** (o que importava native-stack). O código novo não tem esse import. Checklist:
+
+1. Abra o `App.js` no editor do Snack: a linha ~27 tem que ser `import { createStackNavigator } from "@react-navigation/stack";`. Se estiver `createNativeStackNavigator` / `native-stack`, é código velho — cole o conteúdo de **`https://mentorhub.space-z.ai/snack-App-js.txt`** por cima.
+2. No painel **Dependencies**, remova `@react-navigation/native-stack` (se estiver lá) e confirme que existem `@react-navigation/stack`, `react-native-gesture-handler` e `@react-native-masked-view/masked-view`.
+3. Salve e recarregue o preview (⟳ / Ctrl+R). Se o erro persistir, recarregue a página do Snack por completo.
 
 ## 🔗 Servidor MentorHub (já configurado)
 
@@ -62,7 +72,7 @@ O app é **só para alunos** (a API v1 exige JWT via `/api/v1/auth/login`):
 
 ```
 mobile-app-snack/
-├── App.tsx                  # entrada única: gate de sessão + navegação (tabs + stack)
+├── App.js                   # entrada única: gate de sessão + navegação (tabs + stack)
 ├── README.md
 └── src/
     ├── theme.ts             # identidade visual (dark stone + esmeralda)

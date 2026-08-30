@@ -1803,3 +1803,19 @@ Work Log:
 
 Stage Summary:
 - Snack edition agora usa só dependências que resolvem no runtime do Snack; usuário deve adicionar as 9 dependências do README (remover native-stack se tiver adicionado)
+
+---
+Task ID: W-17
+Agent: Z.ai Code (main)
+Task: Snack ainda dava erro native-stack — usuário relatou "parece que não atualizou o zip"
+
+Work Log:
+- Diagnóstico: ZIP no servidor JÁ estava corrigido (extraído e verificado: App.js linha 27 = createStackNavigator de @react-navigation/stack; zero imports de native-stack; W-16 commit 26b346e). Erro em App.js:25 = Snack rodando o App.js antigo (cache do navegador no download do ZIP e/ou arquivos velhos no editor do Snack)
+- Cache-proof: novo artefato public/mentorhub-mobile-snack-v2.zip (nome novo = navegador não pode servir o antigo do cache); zip antigo também regenerado com o README novo
+- Novo atalho: public/snack-App-js.txt (App.js em texto puro) — usuário abre https://mentorhub.space-z.ai/snack-App-js.txt, copia tudo e cola por cima do App.js no Snack (não precisa nem baixar zip)
+- README: Opção A aponta para o v2; nova Opção A2 (colar o App.js.txt); seção "🩺 Se o erro @react-navigation/native-stack continuar" (checklist: conferir linha 27 do App.js, remover native-stack do painel Dependencies, recarregar preview); intro corrigida (stack JS) e estrutura com App.js
+- Validação: 3 artefatos HTTP 200 em localhost:3000; esbuild OK (App.js jsx, LoginScreen.tsx, api.ts); zip v2 conferido (0 native-stack)
+
+Stage Summary:
+- Links finais: https://mentorhub.space-z.ai/mentorhub-mobile-snack-v2.zip · https://mentorhub.space-z.ai/snack-App-js.txt
+- Causa raiz não era o código: era estado velho no Snack/cache; checklist no README cobre recorrência
