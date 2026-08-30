@@ -176,6 +176,14 @@ export function LandingMenteeView() {
   const [tracks, setTracks] = useState<TrackListItemDTO[]>([])
   const [tracksLoading, setTracksLoading] = useState(true)
   const [term, setTerm] = useState('')
+  const heroSearchRef = useRef<HTMLInputElement>(null)
+
+  // Atalho "/" do header: na home a busca do hero é a ativa — foca aqui
+  useEffect(() => {
+    const onFocusSearch = () => heroSearchRef.current?.focus()
+    window.addEventListener('mentorhub:focus-search', onFocusSearch)
+    return () => window.removeEventListener('mentorhub:focus-search', onFocusSearch)
+  }, [])
 
   // Fetch preguiçoso: cursos e trilhas só saem quando as seções se aproximam da viewport
   const coursesSectionRef = useRef<HTMLElement | null>(null)
@@ -459,6 +467,7 @@ export function LandingMenteeView() {
                     className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400 dark:text-stone-500"
                   />
                   <Input
+                    ref={heroSearchRef}
                     value={term}
                     onChange={(e) => setTerm(e.target.value)}
                     placeholder="Qual habilidade você quer dominar?"

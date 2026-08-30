@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { MENTOR_FONT_IDS } from '@/lib/fonts'
-import { slugify } from '@/lib/helpers'
+import { normalizeText, slugify } from '@/lib/helpers'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +24,7 @@ function parseArray(s: string | null | undefined): string[] {
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams
-    const search = (sp.get('search') || '').trim().toLowerCase()
+    const search = normalizeText((sp.get('search') || '').trim())
     const category = (sp.get('category') || '').trim()
     const sort = sp.get('sort') || 'relevance'
 
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
 
     if (search) {
       items = items.filter((m) =>
-        [m.name, m.headline, ...m.categories].join(' ').toLowerCase().includes(search)
+        normalizeText([m.name, m.headline, ...m.categories].join(' ')).includes(search)
       )
     }
     if (category) {

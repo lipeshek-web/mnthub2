@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { courseBaseInclude, serializeCourse } from '@/lib/course-serialize'
+import { normalizeText } from '@/lib/helpers'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,7 +12,7 @@ const LEVELS = ['INICIANTE', 'INTERMEDIARIO', 'AVANCADO']
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams
-    const search = (sp.get('search') || '').trim().toLowerCase()
+    const search = normalizeText((sp.get('search') || '').trim())
     const category = (sp.get('category') || '').trim()
     const sort = sp.get('sort') || 'relevance'
     const mentorId = (sp.get('mentorId') || '').trim()
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
 
     if (search) {
       items = items.filter((c) =>
-        [c.title, c.description, c.mentor.name, c.category].join(' ').toLowerCase().includes(search)
+        normalizeText([c.title, c.description, c.mentor.name, c.category].join(' ')).includes(search)
       )
     }
     if (category) {

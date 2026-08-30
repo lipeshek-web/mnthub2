@@ -22,7 +22,6 @@ import {
   Trophy,
   Users,
   Video,
-  Wallet,
   X,
   Zap,
   type LucideIcon,
@@ -59,13 +58,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { Avatar } from '@/components/platform/avatar'
 import { api } from '@/lib/api'
 import {
-  STATUS_META,
   LEVEL_LABELS,
   addMinutesToTime,
   levelFromXp,
   avatarGradient,
   currencyBRL,
-  formatDayLabelLong,
+  formatDayLabel,
   formatTimeLabel,
   formatTotalDuration,
   nowNaive,
@@ -135,19 +133,18 @@ function PendingRequestRow({
   onReject: (booking: BookingDTO) => void
 }) {
   const [rejectOpen, setRejectOpen] = useState(false)
-  const relative = relativeDayLabel(b.startsAt)
+  const when = relativeDayLabel(b.startsAt) ?? formatDayLabel(b.startsAt)
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-amber-200 dark:border-amber-900 bg-white dark:bg-stone-900 p-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-start gap-3">
         <Avatar name={b.mentee.name} size="md" />
         <div className="min-w-0">
-          <p className="font-semibold leading-tight">{b.mentee.name}</p>
+          <p className="truncate font-semibold leading-tight">{b.mentee.name}</p>
           <p className="truncate text-sm text-muted-foreground">{b.topic}</p>
           <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
-            {relative ? `${relative} · ` : ''}
-            {formatDayLabelLong(b.startsAt)} · {formatTimeLabel(b.startsAt)} →{' '}
-            {addMinutesToTime(b.startsAt, b.durationMin)} · {b.durationMin} min · {currencyBRL(b.price)}
+            {when} · {formatTimeLabel(b.startsAt)}–{addMinutesToTime(b.startsAt, b.durationMin)} ·{' '}
+            {b.durationMin} min · {currencyBRL(b.price)}
           </p>
         </div>
       </div>
@@ -211,7 +208,7 @@ function BookingCard({
 }) {
   const isMentorSide = b.mentor.userId === userId
   const otherName = isMentorSide ? b.mentee.name : b.mentor.name
-  const relative = relativeDayLabel(b.startsAt)
+  const when = relativeDayLabel(b.startsAt) ?? formatDayLabel(b.startsAt)
   // #8: "Google Calendar" só para sessões futuras aguardando confirmação/confirmadas
   const isUpcomingEvent =
     (b.status === 'PENDING' || b.status === 'CONFIRMED') && b.startsAt >= nowNaive()
@@ -228,7 +225,8 @@ function BookingCard({
     })
     return `https://calendar.google.com/calendar/render?${params.toString()}`
   })()
-  const statusMeta = STATUS_META[b.status] ?? {
+  // Rótulos curtos para o selo do card (versão leve dos labels de STATUS_META)
+  const statusMeta = SHORT_STATUS[b.status] ?? {
     label: b.status,
     className: 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-800',
   }
@@ -281,106 +279,114 @@ function BookingCard({
     }
   }
 
+  const hasActions =
+    (isMentorSide && (b.status === 'PENDING' || b.status === 'CONFIRMED')) ||
+    canJoin ||
+    (!isMentorSide && (b.status === 'PENDING' || b.status === 'CONFIRMED')) ||
+    canReview
+
   return (
-    <Card className="gap-4 py-6">
-      <CardContent className="flex flex-col gap-4 px-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-3">
-            <Avatar name={otherName} size="lg" />
+    <Card className="overflow-hidden p-0">
+      <div className="flex flex-col gap-3 p-4 sm:px-5 sm:py-4">
+        {/* Cabeçalho: pessoa + tópico · selo de status */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar name={otherName} size="md" />
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="font-semibold leading-tight">{otherName}</p>
-                <Badge
-                  className={
+              <div className="flex items-center gap-2">
+                <p className="truncate font-semibold leading-tight">{otherName}</p>
+                <span
+                  className={cn(
+                    'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
                     isMentorSide
-                      ? 'border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300'
-                      : 'border-stone-200 dark:border-stone-800 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
-                  }
+                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                      : 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'
+                  )}
                 >
-                  {isMentorSide ? 'Como mentor' : 'Como aluno'}
-                </Badge>
+                  {isMentorSide ? 'Mentor' : 'Aluno'}
+                </span>
               </div>
-              {!isMentorSide && b.mentor.headline ? (
-                <p className="mt-0.5 text-sm text-muted-foreground">{b.mentor.headline}</p>
-              ) : null}
-              <p className="mt-1.5 font-medium">{b.topic}</p>
-              {b.notes ? <p className="mt-1 text-sm text-muted-foreground">{b.notes}</p> : null}
+              <p className="mt-0.5 truncate text-sm text-stone-500 dark:text-stone-400">{b.topic}</p>
             </div>
           </div>
-          <Badge variant="outline" className={statusMeta.className}>
+          <Badge variant="outline" className={cn('shrink-0', statusMeta.className)}>
             {statusMeta.label}
           </Badge>
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <CalendarDays className="size-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
-            {relative ? `${relative} · ` : ''}
-            {formatDayLabelLong(b.startsAt)} · {formatTimeLabel(b.startsAt)} →{' '}
-            {addMinutesToTime(b.startsAt, b.durationMin)}
+        {/* Meta em uma linha: quando · duração · valor · calendário */}
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-stone-500 dark:text-stone-400">
+          <span className="inline-flex items-center gap-1.5 font-medium text-stone-700 dark:text-stone-200">
+            <CalendarDays className="size-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden />
+            {when} · {formatTimeLabel(b.startsAt)}–{addMinutesToTime(b.startsAt, b.durationMin)}
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <Clock className="size-4" aria-hidden /> {b.durationMin} min
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <Wallet className="size-4" aria-hidden /> {currencyBRL(b.price)}
-          </span>
+          <span aria-hidden className="text-stone-300 dark:text-stone-600">·</span>
+          <span>{b.durationMin} min</span>
+          <span aria-hidden className="text-stone-300 dark:text-stone-600">·</span>
+          <span className="font-semibold text-stone-700 dark:text-stone-200">{currencyBRL(b.price)}</span>
           {isUpcomingEvent ? (
             <a
               href={gcalUrl}
               target="_blank"
               rel="noopener noreferrer"
               aria-label={`Adicionar "${b.topic}" ao Google Calendar`}
-              className="inline-flex items-center gap-1.5 rounded px-1 py-1 -my-1 text-sm font-medium text-emerald-700 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-emerald-600 dark:text-emerald-400"
+              title="Adicionar ao Google Calendar"
+              className="ml-auto inline-flex size-7 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-emerald-50 hover:text-emerald-700 focus-visible:outline-2 focus-visible:outline-emerald-600 dark:text-stone-500 dark:hover:bg-emerald-950/50 dark:hover:text-emerald-300"
             >
-              <ExternalLink className="size-3.5" aria-hidden /> Google Calendar
+              <ExternalLink className="size-3.5" aria-hidden />
             </a>
           ) : null}
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {isMentorSide && b.status === 'PENDING' ? (
-            <>
-              <Button size="sm" disabled={busy} onClick={() => onConfirm(b)}>
-                <Check className="size-4" aria-hidden /> Confirmar
+        {b.notes ? (
+          <p className="line-clamp-1 text-xs text-stone-400 dark:text-stone-500">{b.notes}</p>
+        ) : null}
+
+        {hasActions ? (
+          <div className="flex flex-wrap gap-2 border-t border-stone-100 pt-3 dark:border-stone-800">
+            {isMentorSide && b.status === 'PENDING' ? (
+              <>
+                <Button size="sm" disabled={busy} onClick={() => onConfirm(b)}>
+                  <Check className="size-4" aria-hidden /> Confirmar
+                </Button>
+                <Button size="sm" variant="outline" disabled={busy} onClick={() => setDialogAction('reject')}>
+                  <X className="size-4" aria-hidden /> Recusar
+                </Button>
+              </>
+            ) : null}
+
+            {isMentorSide && b.status === 'CONFIRMED' ? (
+              <Button size="sm" variant="outline" disabled={busy} onClick={() => setDialogAction('complete')}>
+                <CheckCheck className="size-4" aria-hidden /> Concluir
               </Button>
-              <Button size="sm" variant="outline" disabled={busy} onClick={() => setDialogAction('reject')}>
-                <X className="size-4" aria-hidden /> Recusar
+            ) : null}
+
+            {canJoin ? (
+              <Button size="sm" onClick={() => onJoin(b)}>
+                <Video className="size-4" aria-hidden /> Entrar na sala
               </Button>
-            </>
-          ) : null}
+            ) : null}
 
-          {isMentorSide && b.status === 'CONFIRMED' ? (
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => setDialogAction('complete')}>
-              <CheckCheck className="size-4" aria-hidden /> Marcar como concluída
-            </Button>
-          ) : null}
+            {!isMentorSide && (b.status === 'PENDING' || b.status === 'CONFIRMED') ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-700 dark:hover:text-rose-400"
+                disabled={busy}
+                onClick={() => setDialogAction('cancel')}
+              >
+                Cancelar sessão
+              </Button>
+            ) : null}
 
-          {canJoin ? (
-            <Button size="sm" onClick={() => onJoin(b)}>
-              <Video className="size-4" aria-hidden /> Entrar na sala
-            </Button>
-          ) : null}
-
-          {!isMentorSide && (b.status === 'PENDING' || b.status === 'CONFIRMED') ? (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-700 dark:hover:text-rose-400"
-              disabled={busy}
-              onClick={() => setDialogAction('cancel')}
-            >
-              Cancelar sessão
-            </Button>
-          ) : null}
-
-          {canReview ? (
-            <Button size="sm" variant="outline" onClick={() => setReviewOpen(true)}>
-              <Star className="size-4 fill-amber-400 text-amber-400" aria-hidden /> Avaliar sessão
-            </Button>
-          ) : null}
-        </div>
-      </CardContent>
+            {canReview ? (
+              <Button size="sm" variant="outline" onClick={() => setReviewOpen(true)}>
+                <Star className="size-4 fill-amber-400 text-amber-400" aria-hidden /> Avaliar
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
 
       {/* Confirmações: recusar / concluir / cancelar */}
       <AlertDialog
@@ -474,6 +480,26 @@ function BookingCard({
       </Dialog>
     </Card>
   )
+}
+
+/** Rótulos curtos de status para os cards (versão compacta de STATUS_META) */
+const SHORT_STATUS: Record<string, { label: string; className: string }> = {
+  PENDING: {
+    label: 'Pendente',
+    className: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900',
+  },
+  CONFIRMED: {
+    label: 'Confirmada',
+    className: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900',
+  },
+  COMPLETED: {
+    label: 'Concluída',
+    className: 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-800',
+  },
+  CANCELLED: {
+    label: 'Cancelada',
+    className: 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 border-rose-200 dark:border-rose-900',
+  },
 }
 
 // ---------- Card de gamificação (Sua jornada de aprendizado) ----------
@@ -823,18 +849,15 @@ export default function DashboardView() {
 
       {pendingRequests.length > 0 ? (
         <Card className="border-amber-300 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/50">
-          <CardContent className="flex flex-col gap-4 px-6">
+          <CardContent className="flex flex-col gap-3 px-4 py-4 sm:px-5">
             <div className="flex items-center gap-2">
-              <Inbox className="size-5 text-amber-600 dark:text-amber-400" aria-hidden />
-              <h2 className="font-semibold text-amber-900 dark:text-amber-300">Solicitações recebidas</h2>
+              <Inbox className="size-4.5 text-amber-600 dark:text-amber-400" aria-hidden />
+              <h2 className="text-sm font-semibold text-amber-900 dark:text-amber-300">Solicitações recebidas</h2>
               <Badge className="border-amber-200 dark:border-amber-900 bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300">
                 {pendingRequests.length}
               </Badge>
             </div>
-            <p className="text-sm text-amber-800/90 dark:text-amber-300/90">
-              Alunos aguardando sua confirmação. Responda para reservar o horário na sua agenda.
-            </p>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2.5">
               {pendingRequests.map((b) => (
                 <PendingRequestRow
                   key={b.id}

@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar } from '@/components/platform/avatar'
 import { api } from '@/lib/api'
-import { avatarGradient, currencyBRL } from '@/lib/helpers'
+import { avatarGradient, currencyBRL, normalizeText } from '@/lib/helpers'
 import { useAppStore } from '@/lib/store'
 import type { BundleDTO } from '@/lib/types'
 
@@ -155,13 +155,13 @@ export function MarketplaceBundles({ search }: { search: string }) {
   }, [])
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = normalizeText(search.trim())
     if (!q) return bundles
     return bundles.filter(
       (b) =>
-        b.title.toLowerCase().includes(q) ||
-        b.mentor.name.toLowerCase().includes(q) ||
-        b.courses.some((c) => c.title.toLowerCase().includes(q))
+        normalizeText(b.title).includes(q) ||
+        normalizeText(b.mentor.name).includes(q) ||
+        b.courses.some((c) => normalizeText(c.title).includes(q))
     )
   }, [bundles, search])
 

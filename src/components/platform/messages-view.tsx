@@ -10,6 +10,7 @@ import {
   UserRound,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { normalizeText } from '@/lib/helpers'
 import type { MessageDTO, ThreadDTO } from '@/lib/types'
 import { useAppStore } from '@/lib/store'
 import { Avatar } from '@/components/platform/avatar'
@@ -170,9 +171,9 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
   }
 
   const filteredThreads = useMemo(() => {
-    const q = filter.trim().toLowerCase()
+    const q = normalizeText(filter.trim())
     if (!q) return threads
-    return threads.filter((t) => t.peer.name.toLowerCase().includes(q))
+    return threads.filter((t) => normalizeText(t.peer.name).includes(q))
   }, [threads, filter])
 
   if (!user) return null
