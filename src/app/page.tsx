@@ -114,6 +114,12 @@ function docTitleFor(viewName: string): string {
   return titles[viewName] ?? 'MentorHub — Plataforma de Mentorias 1:1'
 }
 
+/**
+ * #7 Lembretes automáticos: guard de módulo — executa 1x por sessão do navegador
+ * para cada userId (não repete em remounts/HMR). Falha sempre silenciosa.
+ */
+let remindersRunFor: string | null = null
+
 /** Toaster também é carregado sob demanda (sonner entra no bundle só quando usado) */
 const LazyToaster = dynamic(
   () => import('@/components/ui/sonner').then((m) => m.Toaster),
@@ -186,6 +192,15 @@ export default function Home() {
       })
       .catch(() => {})
   }, [])
+
+  // #7 Lembretes automáticos: após carga/login bem-sucedido do usuário, dispara
+  // api.runReminders 1x por sessão de navegador (guard de módulo). Nunca bloqueia a UI.
+  useEffect(() => {
+    const uid = user?.id
+    if (!uid || remindersRunFor === uid) return
+    remindersRunFor = uid
+    api.runReminders(uid).catch(() => {})
+  }, [user?.id])
 
   // Volta ao topo ao trocar de view (a rolagem vive no container <main>,
   // isolado do header — o conteúdo nunca passa por baixo dele).
@@ -268,6 +283,7 @@ export default function Home() {
                   courseId={view.courseId}
                   trackId={view.trackId}
                   bundleId={view.bundleId}
+                  membershipId={view.membershipId}
                 />
               )}
               {view.name === 'certificate' && <CertificateView code={view.code} />}

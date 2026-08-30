@@ -1,0 +1,602 @@
+     1→   601→                    <span className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg shadow-rose-500/30">
+     2→   602→                      <PhoneOff className="h-4 w-4" />
+     3→   603→                    </span>
+     4→   604→                  </div>
+     5→   605→                </div>
+     6→   606→              </motion.div>
+     7→   607→
+     8→   608→              {/* Card flutuante: progresso de curso */}
+     9→   609→              <motion.div
+    10→   610→                animate={{ y: [0, -8, 0] }}
+    11→   611→                transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
+    12→   612→                className="absolute -bottom-8 -left-2 hidden w-52 lg:block xl:-left-10 xl:w-56"
+    13→   613→              >
+    14→   614→                <div className="rounded-2xl border border-stone-200/80 bg-white/95 p-3.5 shadow-xl shadow-stone-900/10 backdrop-blur dark:border-stone-800 dark:bg-stone-900/95">
+    15→   615→                  <div className="flex items-center gap-3">
+    16→   616→                    <div
+    17→   617→                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+    18→   618→                      style={avatarGradient('Fundamentos de Gestão de Produto')}
+    19→   619→                    >
+    20→   620→                      <PlayCircle className="h-5 w-5 text-white/90" />
+    21→   621→                    </div>
+    22→   622→                    <div className="min-w-0">
+    23→   623→                      <p className="truncate text-xs font-bold text-stone-900 dark:text-stone-50">
+    24→   624→                        Fundamentos de Gestão de Produto
+    25→   625→                      </p>
+    26→   626→                      <p className="text-[11px] text-stone-500 dark:text-stone-400">Aula 4 de 7 · 12min</p>
+    27→   627→                    </div>
+    28→   628→                  </div>
+    29→   629→                  <Progress value={57} className="mt-3 h-1.5" />
+    30→   630→                  <p className="mt-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">57% concluído</p>
+    31→   631→                </div>
+    32→   632→              </motion.div>
+    33→   633→
+    34→   634→              {/* Card flutuante: avaliação */}
+    35→   635→              <motion.div
+    36→   636→                animate={{ y: [0, -8, 0] }}
+    37→   637→                transition={{ duration: 6.5, repeat: Infinity, ease: 'easeInOut', delay: 1.4 }}
+    38→   638→                className="absolute -right-2 -top-6 hidden w-44 lg:block xl:-right-8 xl:w-48"
+    39→   639→              >
+    40→   640→                <div className="rounded-2xl border border-stone-200/80 bg-white/95 p-3.5 shadow-xl shadow-stone-900/10 backdrop-blur dark:border-stone-800 dark:bg-stone-900/95">
+    41→   641→                  <Stars rating={5} size={13} />
+    42→   642→                  <p className="mt-1.5 text-[11px] leading-snug text-stone-600 dark:text-stone-300">
+    43→   643→                    A melhor mentoria que já fiz. Recomendo demais!
+    44→   644→                  </p>
+    45→   645→                  <div className="mt-2 flex items-center gap-1.5">
+    46→   646→                    <span
+    47→   647→                      className="flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-extrabold text-white"
+    48→   648→                      style={avatarGradient('Ana Paula')}
+    49→   649→                    >
+    50→   650→                      {initials('Ana Paula')}
+    51→   651→                    </span>
+    52→   652→                    <span className="text-[10px] font-semibold text-stone-500 dark:text-stone-400">
+    53→   653→                      Ana Paula · mentorada
+    54→   654→                    </span>
+    55→   655→                  </div>
+    56→   656→                </div>
+    57→   657→              </motion.div>
+    58→   658→            </motion.div>
+    59→   659→          </div>
+    60→   660→        </div>
+    61→   661→      </section>
+    62→   662→
+    63→   663→      {/* ---------- CONTINUE APRENDENDO (apenas logado com inscrições; silencioso enquanto carrega) ---------- */}
+    64→   664→      {user && !enrollmentsLoading && continueItems.length > 0 && (
+    65→   665→        <section
+    66→   666→          aria-labelledby="continue-title"
+    67→   667→          className="border-y border-stone-200/70 bg-stone-50/50 py-8 sm:py-10 dark:border-stone-800 dark:bg-stone-900/60"
+    68→   668→        >
+    69→   669→          <div className="mx-auto max-w-6xl px-4">
+    70→   670→            <h2
+    71→   671→              id="continue-title"
+    72→   672→              className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400"
+    73→   673→            >
+    74→   674→              Continue aprendendo
+    75→   675→            </h2>
+    76→   676→            <p className="mt-1 text-xs text-stone-400 sm:text-sm dark:text-stone-500">
+    77→   677→              Retome seus cursos exatamente onde parou.
+    78→   678→            </p>
+    79→   679→
+    80→   680→            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    81→   681→              {continueItems.map((enrollment) => (
+    82→   682→                <ContinueCourseCard key={enrollment.courseId} enrollment={enrollment} />
+    83→   683→              ))}
+    84→   684→
+    85→   685→              {/* CTA final discreto: vitrine de cursos */}
+    86→   686→              <button
+    87→   687→                type="button"
+    88→   688→                onClick={handleVerCursos}
+    89→   689→                className="group flex h-full min-h-40 min-w-0 flex-col items-start justify-center gap-1.5 rounded-2xl border border-dashed border-stone-300 p-4 text-left transition hover:border-emerald-400 hover:bg-emerald-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-stone-700 dark:hover:border-emerald-500 dark:hover:bg-emerald-900/30"
+    90→   690→              >
+    91→   691→                <span
+    92→   692→                  aria-hidden
+    93→   693→                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-stone-500 transition group-hover:bg-emerald-100 group-hover:text-emerald-700 dark:bg-stone-800 dark:text-stone-400 dark:group-hover:bg-emerald-950/50 dark:group-hover:text-emerald-300"
+    94→   694→                >
+    95→   695→                  <Library className="h-4 w-4" />
+    96→   696→                </span>
+    97→   697→                <span className="mt-1.5 inline-flex items-center gap-1.5 text-sm font-bold text-stone-700 transition group-hover:text-emerald-800 dark:text-stone-200 dark:group-hover:text-emerald-300">
+    98→   698→                  Explorar mais cursos
+    99→   699→                  <ArrowRight
+   100→   700→                    aria-hidden
+   101→   701→                    className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+   102→   702→                  />
+   103→   703→                </span>
+   104→   704→                <span className="text-xs text-stone-400 dark:text-stone-500">
+   105→   705→                  Veja o catálogo completo na vitrine de cursos.
+   106→   706→                </span>
+   107→   707→              </button>
+   108→   708→            </div>
+   109→   709→          </div>
+   110→   710→        </section>
+   111→   711→      )}
+   112→   712→
+   113→   713→      {/* ---------- FEITO PARA VOCÊ (recomendações IA, apenas logado) ---------- */}
+   114→   714→      {user && recommendations.length > 0 && (
+   115→   715→        <section
+   116→   716→          aria-labelledby="foryou-title"
+   117→   717→          className="py-8 sm:py-10"
+   118→   718→        >
+   119→   719→          <div className="mx-auto max-w-6xl px-4">
+   120→   720→            <div className="flex flex-wrap items-center gap-2">
+   121→   721→              <span
+   122→   722→                aria-hidden
+   123→   723→                className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-700 text-white"
+   124→   724→              >
+   125→   725→                <Sparkles className="h-3.5 w-3.5" />
+   126→   726→              </span>
+   127→   727→              <h2
+   128→   728→                id="foryou-title"
+   129→   729→                className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400"
+   130→   730→              >
+   131→   731→                Feito para você
+   132→   732→              </h2>
+   133→   733→              {recsGenerated && (
+   134→   734→                <Badge className="rounded-full border-emerald-200 bg-emerald-50 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+   135→   735→                  IA personalizada
+   136→   736→                </Badge>
+   137→   737→              )}
+   138→   738→            </div>
+   139→   739→            <p className="mt-1 text-xs text-stone-400 sm:text-sm dark:text-stone-500">
+   140→   740→              {recsGenerated
+   141→   741→                ? 'A IA escolheu estes cursos com base no que você está aprendendo.'
+   142→   742→                : 'Cursos em alta na comunidade.'}
+   143→   743→            </p>
+   144→   744→
+   145→   745→            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+   146→   746→              {recommendations.map((rec) => (
+   147→   747→                <RecommendationCard key={rec.course.id} rec={rec} />
+   148→   748→              ))}
+   149→   749→            </div>
+   150→   750→          </div>
+   151→   751→        </section>
+   152→   752→      )}
+   153→   753→
+   154→   754→      {/* ---------- EXPLORE POR ÁREA (chips de categorias) ---------- */}
+   155→   755→      <section
+   156→   756→        aria-labelledby="areas-title"
+   157→   757→        className="border-y border-stone-200/70 bg-stone-50/60 py-8 sm:py-10 dark:border-stone-800 dark:bg-stone-900/60"
+   158→   758→      >
+   159→   759→        <div className="mx-auto max-w-6xl px-4">
+   160→   760→          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-8">
+   161→   761→            <h2
+   162→   762→              id="areas-title"
+   163→   763→              className="shrink-0 text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400"
+   164→   764→            >
+   165→   765→              Explore por área
+   166→   766→            </h2>
+   167→   767→            <ul className="flex flex-wrap gap-2">
+   168→   768→              {CATEGORIES.map((cat) => (
+   169→   769→                <li key={cat}>
+   170→   770→                  <button
+   171→   771→                    type="button"
+   172→   772→                    onClick={handleExploreArea}
+   173→   773→                    className="inline-flex min-h-11 items-center rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-stone-700 transition hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-emerald-500 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300"
+   174→   774→                  >
+   175→   775→                    {cat}
+   176→   776→                  </button>
+   177→   777→                </li>
+   178→   778→              ))}
+   179→   779→            </ul>
+   180→   780→          </div>
+   181→   781→        </div>
+   182→   782→      </section>
+   183→   783→
+   184→   784→      {/* ---------- STATS (faixa dark emerald-950) ---------- */}
+   185→   785→      <section aria-label="Números da plataforma" className="mx-auto w-full max-w-6xl px-4 py-10 sm:py-12">
+   186→   786→        <motion.div
+   187→   787→          initial={{ opacity: 0, y: 16 }}
+   188→   788→          whileInView={{ opacity: 1, y: 0 }}
+   189→   789→          viewport={{ once: true, margin: '-60px' }}
+   190→   790→          transition={{ duration: 0.5 }}
+   191→   791→          className="relative overflow-hidden rounded-3xl bg-emerald-950 px-6 py-10 sm:px-12 sm:py-12"
+   192→   792→        >
+   193→   793→          <div
+   194→   794→            aria-hidden
+   195→   795→            className="absolute -left-20 -top-24 h-64 w-64 rounded-full bg-emerald-600/25 blur-3xl"
+   196→   796→          />
+   197→   797→          <div
+   198→   798→            aria-hidden
+   199→   799→            className="absolute -bottom-28 -right-16 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl"
+   200→   800→          />
+   201→   801→
+   202→   802→          <dl className="relative grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-4">
+   203→   803→            <div className="flex flex-col">
+   204→   804→              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
+   205→   805→                mentores especialistas
+   206→   806→              </dt>
+   207→   807→              {loading ? (
+   208→   808→                <dd className="order-1">
+   209→   809→                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
+   210→   810→                </dd>
+   211→   811→              ) : (
+   212→   812→                <dd className="order-1 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+   213→   813→                  +{mentors.length}
+   214→   814→                </dd>
+   215→   815→              )}
+   216→   816→            </div>
+   217→   817→            <div className="flex flex-col">
+   218→   818→              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
+   219→   819→                sessões realizadas
+   220→   820→              </dt>
+   221→   821→              {loading ? (
+   222→   822→                <dd className="order-1">
+   223→   823→                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
+   224→   824→                </dd>
+   225→   825→              ) : (
+   226→   826→                <dd className="order-1 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+   227→   827→                  +{stats.sessions}
+   228→   828→                </dd>
+   229→   829→              )}
+   230→   830→            </div>
+   231→   831→            <div className="flex flex-col">
+   232→   832→              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
+   233→   833→                avaliações reais
+   234→   834→              </dt>
+   235→   835→              {loading ? (
+   236→   836→                <dd className="order-1">
+   237→   837→                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
+   238→   838→                </dd>
+   239→   839→              ) : (
+   240→   840→                <dd className="order-1 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+   241→   841→                  +{stats.reviews}
+   242→   842→                </dd>
+   243→   843→              )}
+   244→   844→            </div>
+   245→   845→            <div className="flex flex-col">
+   246→   846→              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
+   247→   847→                {fourthStat.label}
+   248→   848→              </dt>
+   249→   849→              {loading ? (
+   250→   850→                <dd className="order-1">
+   251→   851→                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
+   252→   852→                </dd>
+   253→   853→              ) : (
+   254→   854→                <dd className="order-1 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+   255→   855→                  {fourthStat.value}
+   256→   856→                </dd>
+   257→   857→              )}
+   258→   858→            </div>
+   259→   859→          </dl>
+   260→   860→        </motion.div>
+   261→   861→      </section>
+   262→   862→
+   263→   863→      {/* ---------- COMO FUNCIONA ---------- */}
+   264→   864→      <motion.section
+   265→   865→        aria-labelledby="como-funciona-title"
+   266→   866→        initial={{ opacity: 0, y: 16 }}
+   267→   867→        whileInView={{ opacity: 1, y: 0 }}
+   268→   868→        viewport={{ once: true, margin: '-80px' }}
+   269→   869→        transition={{ duration: 0.5 }}
+   270→   870→        className="mx-auto w-full max-w-6xl px-4 py-14 sm:py-20"
+   271→   871→      >
+   272→   872→        <div className="max-w-2xl">
+   273→   873→          <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+   274→   874→            Como funciona
+   275→   875→          </p>
+   276→   876→          <h2
+   277→   877→            id="como-funciona-title"
+   278→   878→            className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
+   279→   879→          >
+   280→   880→            Três passos até a sua primeira sessão
+   281→   881→          </h2>
+   282→   882→        </div>
+   283→   883→
+   284→   884→        <div className="relative mt-12 grid grid-cols-1 gap-10 sm:grid-cols-3 sm:gap-6">
+   285→   885→          {/* Linha tracejada conectando os círculos no desktop */}
+   286→   886→          <div
+   287→   887→            aria-hidden
+   288→   888→            className="absolute left-[16%] right-[16%] top-8 hidden border-t-2 border-dashed border-emerald-200 sm:block dark:border-emerald-900"
+   289→   889→          />
+   290→   890→          {STEPS.map((step, i) => (
+   291→   891→            <motion.div
+   292→   892→              key={step.number}
+   293→   893→              initial={{ opacity: 0, y: 16 }}
+   294→   894→              whileInView={{ opacity: 1, y: 0 }}
+   295→   895→              viewport={{ once: true, margin: '-60px' }}
+   296→   896→              transition={{ duration: 0.4, delay: i * 0.1 }}
+   297→   897→              className="relative flex flex-col items-center"
+   298→   898→            >
+   299→   899→              <div className="relative z-10 flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-sm font-extrabold tracking-wide text-white shadow-lg shadow-emerald-700/25 ring-4 ring-emerald-100 dark:ring-emerald-900/40">
+   300→   900→                {step.number}
+   301→   901→              </div>
+   302→   902→              <div className="mt-5 flex w-full min-w-0 flex-1 flex-col items-center rounded-2xl border border-stone-200 bg-white px-5 pb-6 pt-5 text-center transition hover:border-emerald-300 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
+   303→   903→                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+   304→   904→                  <step.icon aria-hidden className="h-5 w-5" />
+   305→   905→                </span>
+   306→   906→                <h3 className="mt-3 font-extrabold text-stone-900 dark:text-stone-50">{step.title}</h3>
+   307→   907→                <p className="mt-1.5 text-sm leading-relaxed text-stone-600 dark:text-stone-300">{step.text}</p>
+   308→   908→              </div>
+   309→   909→            </motion.div>
+   310→   910→          ))}
+   311→   911→        </div>
+   312→   912→      </motion.section>
+   313→   913→
+   314→   914→      {/* ---------- FEATURES GRID ---------- */}
+   315→   915→      <motion.section
+   316→   916→        aria-labelledby="features-title"
+   317→   917→        initial={{ opacity: 0, y: 16 }}
+   318→   918→        whileInView={{ opacity: 1, y: 0 }}
+   319→   919→        viewport={{ once: true, margin: '-80px' }}
+   320→   920→        transition={{ duration: 0.5 }}
+   321→   921→        className="mx-auto w-full max-w-6xl px-4 py-14 sm:py-20"
+   322→   922→      >
+   323→   923→        <div className="max-w-2xl">
+   324→   924→          <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+   325→   925→            Plataforma completa
+   326→   926→          </p>
+   327→   927→          <h2
+   328→   928→            id="features-title"
+   329→   929→            className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
+   330→   930→          >
+   331→   931→            Tudo em uma única plataforma
+   332→   932→          </h2>
+   333→   933→          <p className="mt-2 text-sm text-stone-500 sm:text-base dark:text-stone-400">
+   334→   934→            Da descoberta ao certificado — sem sair daqui.
+   335→   935→          </p>
+   336→   936→        </div>
+   337→   937→
+   338→   938→        <ul className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   339→   939→          {FEATURES.map((feature, i) => (
+   340→   940→            <motion.li
+   341→   941→              key={feature.title}
+   342→   942→              initial={{ opacity: 0, y: 16 }}
+   343→   943→              whileInView={{ opacity: 1, y: 0 }}
+   344→   944→              viewport={{ once: true, margin: '-40px' }}
+   345→   945→              transition={{ duration: 0.4, delay: (i % 3) * 0.07 }}
+   346→   946→              className="min-w-0"
+   347→   947→            >
+   348→   948→              <div className="group flex h-full flex-col rounded-2xl border border-stone-200 bg-white p-6 transition hover:border-emerald-300 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
+   349→   949→                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:group-hover:bg-emerald-900/30">
+   350→   950→                  <feature.icon aria-hidden className="h-5 w-5" />
+   351→   951→                </span>
+   352→   952→                <h3 className="mt-4 font-bold text-stone-900 dark:text-stone-50">{feature.title}</h3>
+   353→   953→                <p className="mt-1.5 text-sm leading-relaxed text-stone-600 dark:text-stone-300">{feature.text}</p>
+   354→   954→              </div>
+   355→   955→            </motion.li>
+   356→   956→          ))}
+   357→   957→        </ul>
+   358→   958→      </motion.section>
+   359→   959→
+   360→   960→      {/* ---------- MENTORES EM DESTAQUE ---------- */}
+   361→   961→      <motion.section
+   362→   962→        aria-labelledby="destaque-title"
+   363→   963→        initial={{ opacity: 0, y: 16 }}
+   364→   964→        whileInView={{ opacity: 1, y: 0 }}
+   365→   965→        viewport={{ once: true, margin: '-80px' }}
+   366→   966→        transition={{ duration: 0.5 }}
+   367→   967→        className="mx-auto w-full max-w-6xl px-4 pb-14 sm:pb-20"
+   368→   968→      >
+   369→   969→        <div className="flex flex-wrap items-end justify-between gap-3">
+   370→   970→          <div className="min-w-0">
+   371→   971→            <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+   372→   972→              Aprenda ao vivo
+   373→   973→            </p>
+   374→   974→            <h2
+   375→   975→              id="destaque-title"
+   376→   976→              className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
+   377→   977→            >
+   378→   978→              Mentores em destaque
+   379→   979→            </h2>
+   380→   980→            <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
+   381→   981→              Os mais bem avaliados pela comunidade de mentorados.
+   382→   982→            </p>
+   383→   983→          </div>
+   384→   984→          <Button
+   385→   985→            variant="link"
+   386→   986→            onClick={() => navigate({ name: 'marketplace' })}
+   387→   987→            className="gap-1 px-0 font-semibold text-emerald-700 dark:text-emerald-300"
+   388→   988→          >
+   389→   989→            Ver todos
+   390→   990→            <ArrowRight aria-hidden className="h-4 w-4" />
+   391→   991→          </Button>
+   392→   992→        </div>
+   393→   993→
+   394→   994→        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+   395→   995→          {loading
+   396→   996→            ? Array.from({ length: 3 }).map((_, i) => (
+   397→   997→                <div
+   398→   998→                  key={i}
+   399→   999→                  aria-hidden
+   400→  1000→                  className="overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800"
+   401→  1001→                >
+   402→  1002→                  <Skeleton className="h-14 w-full rounded-none" />
+   403→  1003→                  <div className="p-5">
+   404→  1004→                    <Skeleton className="-mt-9 h-16 w-16 rounded-full ring-4 ring-white dark:ring-stone-950" />
+   405→  1005→                    <Skeleton className="mt-4 h-4 w-2/3" />
+   406→  1006→                    <Skeleton className="mt-2 h-3 w-1/2" />
+   407→  1007→                    <Skeleton className="mt-4 h-3 w-full" />
+   408→  1008→                    <Skeleton className="mt-2 h-3 w-4/5" />
+   409→  1009→                    <div className="mt-4 flex gap-2">
+   410→  1010→                      <Skeleton className="h-5 w-20 rounded-full" />
+   411→  1011→                      <Skeleton className="h-5 w-16 rounded-full" />
+   412→  1012→                    </div>
+   413→  1013→                    <Skeleton className="mt-6 h-11 w-full rounded-full" />
+   414→  1014→                  </div>
+   415→  1015→                </div>
+   416→  1016→              ))
+   417→  1017→            : featured.map((m) => <FeaturedMentorCard key={m.id} mentor={m} />)}
+   418→  1018→
+   419→  1019→          {!loading && featured.length === 0 && (
+   420→  1020→            <p className="rounded-2xl border border-dashed border-stone-200 p-10 text-center text-sm text-stone-500 sm:col-span-2 lg:col-span-3 dark:border-stone-800 dark:text-stone-400">
+   421→  1021→              Nenhum mentor avaliado por aqui ainda — explore a lista completa.
+   422→  1022→            </p>
+   423→  1023→          )}
+   424→  1024→        </div>
+   425→  1025→      </motion.section>
+   426→  1026→
+   427→  1027→      {/* ---------- CURSOS EM DESTAQUE ---------- */}
+   428→  1028→      {(coursesLoading || topCourses.length > 0) && (
+   429→  1029→        <motion.section
+   430→  1030→          ref={coursesSectionRef}
+   431→  1031→          aria-labelledby="cursos-destaque-title"
+   432→  1032→          initial={{ opacity: 0, y: 16 }}
+   433→  1033→          whileInView={{ opacity: 1, y: 0 }}
+   434→  1034→          viewport={{ once: true, margin: '-80px' }}
+   435→  1035→          transition={{ duration: 0.5 }}
+   436→  1036→          className="mx-auto w-full max-w-6xl px-4 pb-14 sm:pb-20"
+   437→  1037→        >
+   438→  1038→          <div className="flex flex-wrap items-end justify-between gap-3">
+   439→  1039→            <div className="min-w-0">
+   440→  1040→              <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+   441→  1041→                No seu ritmo
+   442→  1042→              </p>
+   443→  1043→              <h2
+   444→  1044→                id="cursos-destaque-title"
+   445→  1045→                className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
+   446→  1046→              >
+   447→  1047→                Cursos em destaque
+   448→  1048→              </h2>
+   449→  1049→              <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
+   450→  1050→                Aprenda no seu ritmo com aulas gravadas e materiais dos nossos mentores.
+   451→  1051→              </p>
+   452→  1052→            </div>
+   453→  1053→            <Button
+   454→  1054→              variant="link"
+   455→  1055→              onClick={handleVerCursos}
+   456→  1056→              className="gap-1 px-0 font-semibold text-emerald-700 dark:text-emerald-300"
+   457→  1057→            >
+   458→  1058→              Ver todos os cursos
+   459→  1059→              <ArrowRight aria-hidden className="h-4 w-4" />
+   460→  1060→            </Button>
+   461→  1061→          </div>
+   462→  1062→
+   463→  1063→          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+   464→  1064→            {coursesLoading
+   465→  1065→              ? Array.from({ length: 3 }).map((_, i) => (
+   466→  1066→                  <div
+   467→  1067→                    key={i}
+   468→  1068→                    aria-hidden
+   469→  1069→                    className="overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800"
+   470→  1070→                  >
+   471→  1071→                    <Skeleton className="h-36 w-full rounded-none" />
+   472→  1072→                    <div className="space-y-2.5 p-5">
+   473→  1073→                      <div className="flex gap-1.5">
+   474→  1074→                        <Skeleton className="h-5 w-20 rounded-full" />
+   475→  1075→                        <Skeleton className="h-5 w-16 rounded-full" />
+   476→  1076→                      </div>
+   477→  1077→                      <Skeleton className="h-4 w-3/4" />
+   478→  1078→                      <Skeleton className="h-3 w-1/3" />
+   479→  1079→                      <Skeleton className="h-3 w-1/2" />
+   480→  1080→                      <Skeleton className="mt-3 h-11 w-full rounded-full" />
+   481→  1081→                    </div>
+   482→  1082→                  </div>
+   483→  1083→                ))
+   484→  1084→              : topCourses.map((c) => <FeaturedCourseCard key={c.id} course={c} />)}
+   485→  1085→          </div>
+   486→  1086→        </motion.section>
+   487→  1087→      )}
+   488→  1088→
+   489→  1089→      {/* ---------- TRILHAS EM DESTAQUE ---------- */}
+   490→  1090→      {(tracksLoading || topTracks.length > 0) && (
+   491→  1091→        <motion.section
+   492→  1092→          ref={tracksSectionRef}
+   493→  1093→          aria-labelledby="trilhas-destaque-title"
+   494→  1094→          initial={{ opacity: 0, y: 16 }}
+   495→  1095→          whileInView={{ opacity: 1, y: 0 }}
+   496→  1096→          viewport={{ once: true, margin: '-80px' }}
+   497→  1097→          transition={{ duration: 0.5 }}
+   498→  1098→          className="mx-auto w-full max-w-6xl px-4 pb-14 sm:pb-20"
+   499→  1099→        >
+   500→  1100→          <div className="flex flex-wrap items-end justify-between gap-3">
+   501→  1101→            <div className="min-w-0">
+   502→  1102→              <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+   503→  1103→                Jornadas guiadas
+   504→  1104→              </p>
+   505→  1105→              <h2
+   506→  1106→                id="trilhas-destaque-title"
+   507→  1107→                className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
+   508→  1108→              >
+   509→  1109→                Trilhas em destaque
+   510→  1110→              </h2>
+   511→  1111→              <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
+   512→  1112→                Jornadas guiadas que combinam cursos e mentorias 1:1 dos nossos mentores.
+   513→  1113→              </p>
+   514→  1114→            </div>
+   515→  1115→            <Button
+   516→  1116→              variant="link"
+   517→  1117→              onClick={handleVerTrilhas}
+   518→  1118→              className="gap-1 px-0 font-semibold text-emerald-700 dark:text-emerald-300"
+   519→  1119→            >
+   520→  1120→              Ver todas as trilhas
+   521→  1121→              <ArrowRight aria-hidden className="h-4 w-4" />
+   522→  1122→            </Button>
+   523→  1123→          </div>
+   524→  1124→
+   525→  1125→          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+   526→  1126→            {tracksLoading
+   527→  1127→              ? Array.from({ length: 3 }).map((_, i) => (
+   528→  1128→                  <div
+   529→  1129→                    key={i}
+   530→  1130→                    aria-hidden
+   531→  1131→                    className="overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800"
+   532→  1132→                  >
+   533→  1133→                    <Skeleton className="h-36 w-full rounded-none" />
+   534→  1134→                    <div className="space-y-2.5 p-5">
+   535→  1135→                      <div className="flex gap-1.5">
+   536→  1136→                        <Skeleton className="h-5 w-16 rounded-full" />
+   537→  1137→                        <Skeleton className="h-5 w-20 rounded-full" />
+   538→  1138→                      </div>
+   539→  1139→                      <Skeleton className="h-4 w-3/4" />
+   540→  1140→                      <Skeleton className="h-3 w-1/2" />
+   541→  1141→                      <Skeleton className="h-3 w-1/3" />
+   542→  1142→                      <Skeleton className="mt-3 h-11 w-full rounded-full" />
+   543→  1143→                    </div>
+   544→  1144→                  </div>
+   545→  1145→                ))
+   546→  1146→              : topTracks.map((t) => <FeaturedTrackCard key={t.id} track={t} />)}
+   547→  1147→          </div>
+   548→  1148→        </motion.section>
+   549→  1149→      )}
+   550→  1150→
+   551→  1151→      {/* ---------- DEPOIMENTOS ---------- */}
+   552→  1152→      <motion.section
+   553→  1153→        aria-labelledby="depoimentos-title"
+   554→  1154→        initial={{ opacity: 0, y: 16 }}
+   555→  1155→        whileInView={{ opacity: 1, y: 0 }}
+   556→  1156→        viewport={{ once: true, margin: '-80px' }}
+   557→  1157→        transition={{ duration: 0.5 }}
+   558→  1158→        className="border-y border-stone-200/70 bg-stone-50/60 dark:border-stone-800 dark:bg-stone-900/60"
+   559→  1159→      >
+   560→  1160→        <div className="mx-auto max-w-6xl px-4 py-14 sm:py-20">
+   561→  1161→          <div className="max-w-2xl">
+   562→  1162→            <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+   563→  1163→              Depoimentos
+   564→  1164→            </p>
+   565→  1165→            <h2
+   566→  1166→              id="depoimentos-title"
+   567→  1167→              className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
+   568→  1168→            >
+   569→  1169→              Depoimentos de mentorados
+   570→  1170→            </h2>
+   571→  1171→            <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
+   572→  1172→              Histórias reais de quem já deu o próximo passo.
+   573→  1173→            </p>
+   574→  1174→          </div>
+   575→  1175→
+   576→  1176→          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+   577→  1177→            {TESTIMONIALS.map((t) => {
+   578→  1178→              const [namePart, rolePart] = t.author.split(' · ')
+   579→  1179→              return (
+   580→  1180→                <figure
+   581→  1181→                  key={t.author}
+   582→  1182→                  className="flex h-full min-w-0 flex-col rounded-2xl border border-stone-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-stone-800 dark:bg-stone-900"
+   583→  1183→                >
+   584→  1184→                  <Stars rating={5} size={14} />
+   585→  1185→                  <blockquote className="mt-3 flex-1 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
+   586→  1186→                    {t.quote}
+   587→  1187→                  </blockquote>
+   588→  1188→                  <figcaption className="mt-5 flex items-center gap-2.5 border-t border-stone-100 pt-4 dark:border-stone-800">
+   589→  1189→                    <span
+   590→  1190→                      aria-hidden
+   591→  1191→                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold text-white"
+   592→  1192→                      style={avatarGradient(t.author)}
+   593→  1193→                    >
+   594→  1194→                      {initials(namePart ?? t.author)}
+   595→  1195→                    </span>
+   596→  1196→                    <span className="min-w-0">
+   597→  1197→                      <span className="block truncate text-sm font-bold text-stone-800 dark:text-stone-200">
+   598→  1198→                        {namePart?.trim() ?? t.author}
+   599→  1199→                      </span>
+   600→  1200→                      {rolePart && (
+   601→
+   602→[showing lines 601-1200 of 1738; use offset=1201 with limit to continue reading]

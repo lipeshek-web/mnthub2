@@ -684,3 +684,69 @@ export interface ReferralsDTO {
   pendingCount: number
   referrals: ReferralEntryDTO[]
 }
+
+// ==================== ASSINATURA DO MENTOR (membership) ====================
+
+/** Assinante do plano (visão do painel do mentor) */
+export interface MembershipSubscriberDTO {
+  id: string
+  name: string
+  avatarUrl?: string | null
+  status: 'ACTIVE' | 'CANCELLED' | string
+  startedAt: string
+  renewsAt: string
+}
+
+export interface MembershipDTO {
+  id: string
+  title: string
+  description: string
+  /** Mensalidade em R$ */
+  price: number
+  /** Dia da semana da sessão em grupo mensal (0=Dom..6=Sáb) */
+  groupSessionDay: number
+  /** Hora naive da sessão em grupo ("HH:mm") */
+  groupSessionTime: string
+  isPublished: boolean
+  createdAt: string
+  mentor: {
+    id: string
+    userId: string
+    name: string
+    headline: string
+    avatarUrl?: string | null
+  }
+  /** Cursos publicados incluídos no plano */
+  coursesCount: number
+  /** Assinantes ativos (painel do mentor) */
+  subscriberCount?: number
+  /** Estado do usuário na requisição (view pública; null = não assinante) */
+  myStatus?: 'ACTIVE' | 'CANCELLED' | null
+  /** Fim do ciclo pago (quando assinante) */
+  renewsAt?: string | null
+  /** Lista de assinantes (apenas no painel do mentor) */
+  subscribers?: MembershipSubscriberDTO[]
+}
+
+// ==================== META SEMANAL DE ESTUDOS ====================
+
+export interface WeeklyGoalDTO {
+  targetLessons: number
+  /** Aulas concluídas na semana atual (segunda = início) */
+  completedLessons: number
+  goalAchieved: boolean
+  /** "YYYY-MM-DD" da segunda-feira da semana atual */
+  weekStart: string
+  /** Concluídas nas últimas 4 semanas (mais antiga primeiro) */
+  history: number[]
+  /** true = meta definida pelo usuário; false = padrão (3 aulas) */
+  isCustom: boolean
+}
+
+// ==================== LEMBRETES AUTOMÁTICOS ====================
+
+export interface ReminderRunDTO {
+  created: number
+  /** Kinds criados nesta execução (dedupe no servidor) */
+  kinds: string[]
+}

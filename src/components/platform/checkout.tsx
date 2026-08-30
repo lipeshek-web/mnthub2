@@ -37,6 +37,7 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, Stars } from '@/components/platform/avatar'
 import { api } from '@/lib/api'
+import { groupSessionLabel } from '@/lib/membership-serialize'
 import { LEVEL_LABELS, avatarGradient, currencyBRL } from '@/lib/helpers'
 import { getAttribution, loadTrackingScripts, trackEvent } from '@/lib/tracking'
 import { useAppStore } from '@/lib/store'
@@ -46,6 +47,7 @@ import type {
   CheckoutResultDTO,
   CouponValidationDTO,
   CourseDetailDTO,
+  MembershipDTO,
   TrackDetailDTO,
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -63,7 +65,7 @@ const formatBRL = (value: number) =>
 
 /** Resumo normalizado do item em checkout (curso, trilha ou pacote) */
 interface ItemSummary {
-  kind: 'course' | 'track' | 'bundle'
+  kind: 'course' | 'track' | 'bundle' | 'membership'
   id: string
   title: string
   coverUrl: string | null
@@ -87,9 +89,21 @@ interface ItemSummary {
     discountPercent: number
     enrolledCount: number
   }
+  /** Presente apenas em assinaturas: benefícios do plano */
+  membershipStats?: { coursesCount: number; sessionLabel: string }
 }
 
-export function CheckoutView({ courseId, trackId, bundleId }: { courseId?: string; trackId?: string; bundleId?: string }) {
+export function CheckoutView({
+  courseId,
+  trackId,
+  bundleId,
+  membershipId,
+}: {
+  courseId?: string
+  trackId?: string
+  bundleId?: string
+  membershipId?: string
+}) {
   const navigate = useAppStore((s) => s.navigate)
   const setExploreTab = useAppStore((s) => s.setExploreTab)
   const user = useAppStore((s) => s.user)
@@ -97,6 +111,9 @@ export function CheckoutView({ courseId, trackId, bundleId }: { courseId?: strin
   const [course, setCourse] = useState<CourseDetailDTO | null>(null)
   const [track, setTrack] = useState<TrackDetailDTO | null>(null)
   const [bundle, setBundle] = useState<BundleDetailDTO | null>(null)
+  const membershipTuple = useState<MembershipDTO | null>(null)
+  const membership = membershipTuple[0]
+  const setMembership = membershipTuple[1]
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -123,11 +140,28 @@ export function CheckoutView({ courseId, trackId, bundleId }: { courseId?: strin
     setLoading(true)
     setError(null)
     try {
-      if (bundleId) {
+      if (membershipId) {
+        const { membership: m } = await api.getMembership(membershipId, user?.id)
+        setMembership(m)
+        setBundle(null)
+        setCourse(null)
+        setTrack(null)
+
+        if (!trackedRef.current) {
+          trackedRef.current = true
+          loadTrackingScripts()
+          trackEvent('begin_checkout', {
+            mentorId: m.mentor.id,
+            value: m.price,
+            contentName: m.title,
+          })
+        }
+      } else if (bundleId) {
         const { bundle: b } = await api.getBundle(bundleId, user?.id)
         setBundle(b)
         setCourse(null)
         setTrack(null)
+        setMembership(null)
 
         if (!trackedRef.current) {
           trackedRef.current = true
@@ -142,6 +176,7 @@ export function CheckoutView({ courseId, trackId, bundleId }: { courseId?: strin
         const d = await api.getTrack(trackId, user?.id)
         setTrack(d)
         setCourse(null)
+        setMembership(null)
 
         // Pixels da plataforma recebem as conversões deste checkout
         if (!trackedRef.current) {
@@ -158,6 +193,7 @@ export function CheckoutView({ courseId, trackId, bundleId }: { courseId?: strin
         setCourse(d)
         setTrack(null)
         setBundle(null)
+        setMembership(null)
 
         // Pixels do mentor recebem as conversões deste checkout
         if (!trackedRef.current) {
@@ -181,7 +217,7 @@ export function CheckoutView({ courseId, trackId, bundleId }: { courseId?: strin
     } finally {
       setLoading(false)
     }
-  }, [bundleId, courseId, trackId, user?.id])
+  }, [bundleId, courseId, trackId, membershipId, user?.id])
 
   useEffect(() => {
     void fetchSummary()
@@ -209,7 +245,7 @@ export function CheckoutView({ courseId, trackId, bundleId }: { courseId?: strin
     setCouponError(null)
     setCouponLoading(false)
     setUseCredits(false)
-  }, [bundleId, courseId, trackId])
+  }, [bundleId, courseId, trackId, membershipId])
 
   /* ---------- Ações ---------- */
 
@@ -229,6 +265,7 @@ export function CheckoutView({ courseId, trackId, bundleId }: { courseId?: strin
         courseId: item.kind === 'course' ? item.id : undefined,
         trackId: item.kind === 'track' ? item.id : undefined,
         bundleId: item.kind === 'bundle' ? item.id : undefined,
+        membershipId: item.kind === 'membership' ? item.id : undefined,
       })
       setCouponApplied(result)
       setCouponInput('')
@@ -289,6 +326,7 @@ export function CheckoutView({ courseId, trackId, bundleId }: { courseId?: strin
         courseId: item.kind === 'course' ? item.id : undefined,
         trackId: item.kind === 'track' ? item.id : undefined,
         bundleId: item.kind === 'bundle' ? item.id : undefined,
+        membershipId: item.kind === 'membership' ? item.id : undefined,
         paymentMethod,
         couponCode: couponApplied?.code || undefined,
         useCredits,
@@ -336,7 +374,7 @@ export function CheckoutView({ courseId, trackId, bundleId }: { courseId?: strin
   }
 
   /* ---------- Erro ---------- */
-  if (error || (!course && !track && !bundle)) {
+  if (error || (!course && !track && !bundle && !membership)) {
     return (
       <div className="mx-auto w-full max-w-3xl px-4 py-16">
         <Card className="mx-auto max-w-md border-dashed">
@@ -357,8 +395,33 @@ export function CheckoutView({ courseId, trackId, bundleId }: { courseId?: strin
     )
   }
 
-  /* ---------- Resumo normalizado (curso, trilha ou pacote) ---------- */
-  const item: ItemSummary | null = bundle
+  /* ---------- Resumo normalizado (curso, trilha, pacote ou assinatura) ---------- */
+  const item: ItemSummary | null = membership
+    ? {
+        kind: 'membership',
+        id: membership.id,
+        title: membership.title,
+        coverUrl: null,
+        category: 'Assinatura',
+        level: '',
+        price: membership.price,
+        mentor: {
+          id: membership.mentor.id,
+          name: membership.mentor.name,
+          rating: 0,
+          reviewCount: 0,
+          avatarUrl: membership.mentor.avatarUrl,
+        },
+        isEnrolled: membership.myStatus === 'ACTIVE',
+        membershipStats: {
+          coursesCount: membership.coursesCount,
+          sessionLabel: groupSessionLabel(
+            membership.groupSessionDay,
+            membership.groupSessionTime
+          ),
+        },
+      }
+    : bundle
     ? {
         kind: 'bundle',
         id: bundle.id,
@@ -431,6 +494,7 @@ export function CheckoutView({ courseId, trackId, bundleId }: { courseId?: strin
 
   const isTrack = item.kind === 'track'
   const isBundle = item.kind === 'bundle'
+  const isMembership = item.kind === 'membership'
 
   // Descontos combinados: cupom + créditos de indicação
   const couponDiscount = couponApplied?.discount ?? 0
@@ -495,6 +559,26 @@ export function CheckoutView({ courseId, trackId, bundleId }: { courseId?: strin
                   Explorar mais pacotes
                 </Button>
               </>
+            ) : isMembership ? (
+              <>
+                <p className="mt-1 text-xs leading-relaxed text-stone-400 dark:text-stone-500">
+                  Todos os {item.membershipStats?.coursesCount ?? 0} cursos de {item.mentor.name} já
+                  estão na sua conta, mais a sessão em grupo mensal.
+                </p>
+                <Button
+                  onClick={() => navigate({ name: 'dashboard' })}
+                  className="mt-4 h-12 w-full rounded-full font-bold"
+                >
+                  Ir para meus cursos
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate({ name: 'mentor', mentorId: item.mentor.id })}
+                  className="w-full rounded-full"
+                >
+                  Ver perfil do mentor
+                </Button>
+              </>
             ) : isTrack ? (
               <>
                 <Button
@@ -549,14 +633,16 @@ export function CheckoutView({ courseId, trackId, bundleId }: { courseId?: strin
                 setExploreTab('bundles')
                 navigate({ name: 'marketplace' })
               })()
-            : isTrack
-              ? navigate({ name: 'track', trackId: item.id })
-              : navigate({ name: 'course', courseId: item.id })
+            : isMembership
+              ? navigate({ name: 'mentor', mentorId: item.mentor.id })
+              : isTrack
+                ? navigate({ name: 'track', trackId: item.id })
+                : navigate({ name: 'course', courseId: item.id })
         }
         className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-50"
       >
         <ArrowLeft aria-hidden className="h-4 w-4" />
-        {isBundle ? 'Voltar aos pacotes' : isTrack ? 'Voltar à trilha' : 'Voltar ao curso'}
+        {isBundle ? 'Voltar aos pacotes' : isMembership ? 'Voltar ao perfil' : isTrack ? 'Voltar à trilha' : 'Voltar ao curso'}
       </Button>
       <h1 className="mt-1 text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50 sm:text-2xl">
         Checkout
@@ -593,26 +679,38 @@ export function CheckoutView({ courseId, trackId, bundleId }: { courseId?: strin
             <p className="font-bold text-stone-900 dark:text-stone-50">
               {isBundle
                 ? 'Você já tem acesso a todos os cursos deste pacote'
-                : isTrack
-                  ? 'Você já tem acesso a esta trilha'
-                  : 'Você já tem acesso a este curso'}
+                : isMembership
+                  ? 'Você já tem esta assinatura ativa'
+                  : isTrack
+                    ? 'Você já tem acesso a esta trilha'
+                    : 'Você já tem acesso a este curso'}
             </p>
             <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
               {isBundle
                 ? `Sua conta já inclui os ${item.bundleStats?.courses.length ?? 0} cursos do pacote “${item.title}” — bons estudos!`
-                : `Sua matrícula em “${item.title}” já está ativa — bons estudos!`}
+                : isMembership
+                  ? `Sua assinatura “${item.title}” já está ativa — todos os cursos de ${item.mentor.name} liberados.`
+                  : `Sua matrícula em “${item.title}” já está ativa — bons estudos!`}
             </p>
             <Button
               onClick={() =>
                 isBundle
                   ? navigate({ name: 'dashboard' })
-                  : isTrack
-                    ? navigate({ name: 'track', trackId: item.id })
-                    : navigate({ name: 'course', courseId: item.id })
+                  : isMembership
+                    ? navigate({ name: 'dashboard' })
+                    : isTrack
+                      ? navigate({ name: 'track', trackId: item.id })
+                      : navigate({ name: 'course', courseId: item.id })
               }
               className="mt-1 h-11 rounded-full px-6 font-bold"
             >
-              {isBundle ? 'Ir para meus cursos' : isTrack ? 'Acessar a trilha' : 'Ir para o curso'}
+              {isBundle
+                ? 'Ir para meus cursos'
+                : isMembership
+                  ? 'Ir para meus cursos'
+                  : isTrack
+                    ? 'Acessar a trilha'
+                    : 'Ir para o curso'}
             </Button>
           </CardContent>
         </Card>
@@ -658,6 +756,8 @@ export function CheckoutView({ courseId, trackId, bundleId }: { courseId?: strin
               >
                 {isBundle ? (
                   <Layers className="h-8 w-8 text-white/20" />
+                ) : isMembership ? (
+                  <CreditCard className="h-8 w-8 text-white/20" />
                 ) : isTrack ? (
                   <Route className="h-8 w-8 text-white/20" />
                 ) : (
@@ -678,6 +778,15 @@ export function CheckoutView({ courseId, trackId, bundleId }: { courseId?: strin
                         Economize {item.bundleStats.discountPercent}%
                       </Badge>
                     )}
+                  </>
+                ) : isMembership ? (
+                  <>
+                    <Badge className="rounded-full border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50">
+                      <CreditCard aria-hidden className="h-3 w-3" /> Assinatura
+                    </Badge>
+                    <Badge className="rounded-full bg-amber-400 text-stone-950 hover:bg-amber-400">
+                      Tudo incluído por {formatBRL(item.price)}/mês
+                    </Badge>
                   </>
                 ) : (
                   <>
@@ -730,6 +839,23 @@ export function CheckoutView({ courseId, trackId, bundleId }: { courseId?: strin
                     <span className="text-stone-500 dark:text-stone-400 line-through">
                       {formatBRL(item.bundleStats.coursesTotal)}
                     </span>
+                  </li>
+                </ul>
+              )}
+
+              {isMembership && item.membershipStats && (
+                <ul className="mt-2.5 space-y-1.5">
+                  <li className="flex items-center gap-1.5 text-sm text-stone-600 dark:text-stone-400">
+                    <BookOpen aria-hidden className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    Todos os {item.membershipStats.coursesCount} cursos publicados de {item.mentor.name}
+                  </li>
+                  <li className="flex items-center gap-1.5 text-sm text-stone-600 dark:text-stone-400">
+                    <Users aria-hidden className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    Sessão em grupo mensal · {item.membershipStats.sessionLabel}
+                  </li>
+                  <li className="flex items-center gap-1.5 text-sm text-stone-600 dark:text-stone-400">
+                    <ShieldCheck aria-hidden className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    Cursos novos inclusos enquanto a assinatura estiver ativa
                   </li>
                 </ul>
               )}

@@ -7,6 +7,7 @@ import {
   CalendarCheck2,
   CalendarOff,
   Clock3,
+  CreditCard,
   FileText,
   Globe,
   Globe2,
@@ -21,6 +22,7 @@ import {
   PlayCircle,
   Presentation,
   Route,
+  Sparkles,
   Star,
   UserRound,
   Video,
@@ -66,7 +68,7 @@ import {
   type SocialKind,
 } from '@/lib/helpers'
 import { useAppStore } from '@/lib/store'
-import type { CourseListItemDTO, MentorDetailDTO } from '@/lib/types'
+import type { CourseListItemDTO, MentorDetailDTO, MembershipDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -296,6 +298,11 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                   </CardContent>
                 </Card>
               )}
+              <MembershipCard
+                mentorId={mentor.id}
+                fontHeading={mentor.fontHeading}
+                fontBody={mentor.fontBody}
+              />
               <div className="grid gap-4 sm:grid-cols-3">
                 {[
                   { icon: Video, title: 'Reunião integrada', text: 'Sessão por vídeo aqui na própria plataforma.' },
@@ -827,6 +834,146 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </Card>
+  )
+}
+
+/* ==================== CARD "ASSINATURA DO MENTOR" (aba Sobre) ==================== */
+
+/** Plano mensal publicado do mentor: todos os cursos + sessão em grupo. Esconde se não houver. */
+function MembershipCard({
+  mentorId,
+  fontHeading,
+  fontBody,
+}: {
+  mentorId: string
+  fontHeading?: string | null
+  fontBody?: string | null
+}) {
+  const navigate = useAppStore((s) => s.navigate)
+  const user = useAppStore((s) => s.user)
+  const membershipTuple = useState<MembershipDTO | null>(null)
+  const membership = membershipTuple[0]
+  const setMembership = membershipTuple[1]
+  const [confirming, setConfirming] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    api
+      .listMemberships({ mentorId, userId: user?.id ?? undefined })
+      .then((res) => {
+        const m = res.memberships.find((x) => x.isPublished)
+        if (active) setMembership(m ?? null)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [mentorId, user?.id, setMembership])
+
+  if (!membership) return null
+
+  const sessionLabel = `${['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][
+    ((membership.groupSessionDay % 7) + 7) % 7
+  ]} às ${membership.groupSessionTime}`
+
+  const cancel = async () => {
+    if (!user || !membership) return
+    try {
+      await api.cancelMembership({ userId: user.id, membershipId: membership.id })
+      toast.success('Assinatura cancelada — o acesso segue até o fim do ciclo pago.')
+      setConfirming(false)
+      const res = await api.listMemberships({
+        mentorId,
+        userId: user.id ?? undefined,
+      })
+      setMembership(res.memberships.find((x) => x.isPublished) ?? null)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao cancelar.')
+    }
+  }
+
+  return (
+    <Card className="rounded-2xl border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/40">
+      <CardContent className="grid gap-3 p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Badge className="rounded-full border border-emerald-200 dark:border-emerald-900 bg-white dark:bg-stone-900 text-emerald-700 dark:text-emerald-300 hover:bg-white dark:hover:bg-stone-900">
+            <CreditCard aria-hidden className="h-3 w-3" /> Assinatura
+          </Badge>
+          <p className="text-lg font-extrabold text-emerald-700 dark:text-emerald-300">
+            {currencyBRL(membership.price)}
+            <span className="text-sm font-semibold text-emerald-700/70 dark:text-emerald-300/70">/mês</span>
+          </p>
+        </div>
+
+        <div>
+          <p className="text-base font-bold text-stone-900 dark:text-stone-50" style={headingFontStyle(fontHeading)}>
+            {membership.title}
+          </p>
+          {membership.description && (
+            <p
+              className="mt-1 text-sm leading-relaxed text-stone-600 dark:text-stone-300"
+              style={bodyFontStyle(fontBody)}
+            >
+              {membership.description}
+            </p>
+          )}
+        </div>
+
+        <ul className="grid gap-1.5 text-sm text-stone-600 dark:text-stone-300">
+          <li className="flex items-center gap-1.5">
+            <BookOpenCheck aria-hidden className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
+            Todos os {membership.coursesCount} cursos publicados (e os próximos)
+          </li>
+          <li className="flex items-center gap-1.5">
+            <CalendarCheck2 aria-hidden className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
+            Sessão em grupo mensal · {sessionLabel}
+          </li>
+          <li className="flex items-center gap-1.5">
+            <Sparkles aria-hidden className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
+            Cancele quando quiser — acesso até o fim do ciclo pago
+          </li>
+        </ul>
+
+        {membership.myStatus === 'ACTIVE' ? (
+          confirming ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => void cancel()}
+                className="h-10 rounded-full px-4 font-bold"
+              >
+                Confirmar cancelamento
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setConfirming(false)} className="h-10 rounded-full px-4">
+                Voltar
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="rounded-full bg-emerald-700 text-white hover:bg-emerald-700">
+                Assinatura ativa{membership.renewsAt ? ` até ${new Date(membership.renewsAt).toLocaleDateString('pt-BR')}` : ''}
+              </Badge>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirming(true)}
+                className="h-10 rounded-full px-4 text-stone-500 hover:text-stone-700 dark:text-stone-400"
+              >
+                Cancelar assinatura
+              </Button>
+            </div>
+          )
+        ) : (
+          <Button
+            onClick={() => navigate({ name: 'checkout', membershipId: membership.id })}
+            className="h-11 w-full rounded-full bg-emerald-700 font-bold hover:bg-emerald-800 sm:w-auto sm:px-8"
+          >
+            {membership.myStatus === 'CANCELLED' ? 'Reativar assinatura' : 'Assinar agora'}
+          </Button>
+        )}
+      </CardContent>
     </Card>
   )
 }

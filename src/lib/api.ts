@@ -23,6 +23,9 @@ import type {
   LessonNoteDTO,
   LessonQuestionDTO,
   MessageDTO,
+  MembershipDTO,
+  ReminderRunDTO,
+  WeeklyGoalDTO,
   MessagesResponseDTO,
   NotificationsResponseDTO,
   ReferralsDTO,
@@ -522,7 +525,7 @@ export const api = {
     }),
   deleteCoupon: (id: string, userId: string) =>
     request<{ ok: boolean }>(`/api/coupons${qs({ userId, id })}`, { method: 'DELETE' }),
-  validateCoupon: (data: { code: string; courseId?: string; trackId?: string; bundleId?: string }) =>
+  validateCoupon: (data: { code: string; courseId?: string; trackId?: string; bundleId?: string; membershipId?: string }) =>
     request<CouponValidationDTO>('/api/coupons/validate', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -561,4 +564,40 @@ export const api = {
   // IA: recomendações personalizadas ("Feito para você")
   recommendations: (userId: string) =>
     request<RecommendationsDTO>(`/api/ai/recommendations${qs({ userId })}`),
+
+  // Assinatura do mentor (membership)
+  listMemberships: (params: { mentorUserId?: string; mentorId?: string; userId?: string }) =>
+    request<{ memberships: MembershipDTO[] }>(`/api/memberships${qs(params)}`),
+  getMembership: (id: string, userId?: string) =>
+    request<{ membership: MembershipDTO }>(`/api/memberships/${id}${qs({ userId })}`),
+  saveMembership: (data: {
+    userId: string
+    id?: string
+    title: string
+    description?: string
+    price: number
+    groupSessionDay?: number
+    groupSessionTime?: string
+    isPublished?: boolean
+  }) => request<{ id: string }>('/api/memberships', { method: 'POST', body: JSON.stringify(data) }),
+  deleteMembership: (id: string, userId: string) =>
+    request<{ ok: boolean }>(`/api/memberships/${id}${qs({ userId })}`, { method: 'DELETE' }),
+  cancelMembership: (data: { userId: string; membershipId: string }) =>
+    request<{ ok: boolean }>('/api/memberships/cancel', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Meta semanal de estudos (progresso calculado no servidor)
+  getWeeklyGoal: (userId: string) =>
+    request<WeeklyGoalDTO>(`/api/goals/weekly${qs({ userId })}`),
+  updateWeeklyGoal: (data: { userId: string; targetLessons: number }) =>
+    request<WeeklyGoalDTO>('/api/goals/weekly', { method: 'PUT', body: JSON.stringify(data) }),
+
+  // Lembretes automáticos (idempotente — seguro chamar a cada boot)
+  runReminders: (userId: string) =>
+    request<ReminderRunDTO>('/api/reminders/run', {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    }),
 }

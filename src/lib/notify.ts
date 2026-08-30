@@ -20,6 +20,13 @@ export async function notify(input: {
     | 'referral_joined'
     | 'referral_rewarded'
     | 'bundle_new'
+    | 'membership_new'
+    | 'membership_subscribed'
+    | 'session_reminder'
+    | 'streak_risk'
+    | 'inactive_reminder'
+    | 'welcome'
+    | 'goal_achieved'
   title: string
   body?: string | null
   linkView?: 'dashboard' | 'course' | 'onboarding' | 'messages' | 'referrals' | null

@@ -9,6 +9,8 @@ import {
   CheckCircle2,
   Clock,
   Compass,
+  Download,
+  ExternalLink,
   Flame,
   History,
   Inbox,
@@ -210,6 +212,22 @@ function BookingCard({
   const isMentorSide = b.mentor.userId === userId
   const otherName = isMentorSide ? b.mentee.name : b.mentor.name
   const relative = relativeDayLabel(b.startsAt)
+  // #8: "Google Calendar" só para sessões futuras aguardando confirmação/confirmadas
+  const isUpcomingEvent =
+    (b.status === 'PENDING' || b.status === 'CONFIRMED') && b.startsAt >= nowNaive()
+  const gcalUrl = (() => {
+    const start = new Date(b.startsAt) // naive → Date local
+    const end = new Date(start.getTime() + b.durationMin * 60_000)
+    const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: `Mentoria: ${b.topic}`,
+      dates: `${fmt(start)}/${fmt(end)}`,
+      details: `Sessão de mentoria no MentorHub com ${otherName}.`,
+      location: b.meetingRoom,
+    })
+    return `https://calendar.google.com/calendar/render?${params.toString()}`
+  })()
   const statusMeta = STATUS_META[b.status] ?? {
     label: b.status,
     className: 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-800',
@@ -307,6 +325,17 @@ function BookingCard({
           <span className="inline-flex items-center gap-1.5">
             <Wallet className="size-4" aria-hidden /> {currencyBRL(b.price)}
           </span>
+          {isUpcomingEvent ? (
+            <a
+              href={gcalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Adicionar "${b.topic}" ao Google Calendar`}
+              className="inline-flex items-center gap-1.5 rounded px-1 py-1 -my-1 text-sm font-medium text-emerald-700 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-emerald-600 dark:text-emerald-400"
+            >
+              <ExternalLink className="size-3.5" aria-hidden /> Google Calendar
+            </a>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -768,13 +797,26 @@ export default function DashboardView() {
             Acompanhe solicitações recebidas, próximas sessões e seu histórico de mentorias.
           </p>
         </div>
-        <Button
-          variant="outline"
-          className="shrink-0 self-start sm:self-auto"
-          onClick={() => navigate({ name: 'marketplace' })}
-        >
-          <Compass className="size-4" aria-hidden /> Explorar mentores
-        </Button>
+        <div className="flex shrink-0 flex-wrap items-center gap-2 self-start sm:self-auto">
+          {/* #8: exporta sessões + aulas ao vivo em .ics (toque ≥44px no mobile) */}
+          <Button asChild variant="outline" className="h-11 px-3 sm:h-9">
+            <a
+              href={`/api/calendar/export?userId=${user.id}`}
+              download="mentorhub.ics"
+              aria-label="Baixar sessões e aulas ao vivo em arquivo .ics para importar no seu calendário"
+            >
+              <Download className="size-4" aria-hidden />
+              <span className="hidden sm:inline">Exportar .ics</span>
+            </a>
+          </Button>
+          <Button
+            variant="outline"
+            className="h-11 px-3 sm:h-9"
+            onClick={() => navigate({ name: 'marketplace' })}
+          >
+            <Compass className="size-4" aria-hidden /> Explorar mentores
+          </Button>
+        </div>
       </header>
 
       <XpJourneyCard stats={xpStats} failed={xpFailed} />

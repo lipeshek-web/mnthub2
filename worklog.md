@@ -1257,3 +1257,96 @@ Stage Summary:
 - Todos os valores são calculados no servidor (créditos, descontos, recompensa) — cliente só reflete
 - Demo enriquecida: Carlos com 2º curso ("Testes e Qualidade de Código") + pacote "Formação Arquiteto de Software" + indicação real (Lia Teste)
 - Pendência conhecida: clique sintético do Playwright precisa da sequência completa de eventos em tabs/dialogs Radix (limitação de teste, não do produto)
+---
+Task ID: C-b
+Agent: Z.ai Code (backend-integration)
+Task: #7 Lembretes automáticos (POST /api/reminders/run) + #8 Exportar calendário (.ics + Google Calendar)
+
+Work Log:
+- Criado src/app/api/reminders/run/route.ts (POST, force-dynamic): 4 regras na mesma chamada, cada uma isolada em try/catch — welcome (0 notificações E 0 matrículas), session_reminder (bookings PENDING/CONFIRMED como mentee OU mentor via MentorProfile com startsAt na janela [agora, agora+24h], parseNaive → Date local, nome do outro lado via mentee.name/mentor.user.name), streak_risk (studyStreak>0 E lastStudyDate==ontem, refId streak:YYYY-MM-DD), inactive_reminder (≥1 matrícula E max(último XpEvent, última matrícula, lastStudyDate) há >7 dias, refId inactive:YYYY-MM-DD). Dedupe universal: db.notification.findFirst({userId, kind, refId}) antes de criar; títulos/bodies/linkView 'dashboard' conforme spec; 400 sem userId, 404 usuário inexistente; kinds não existiam no union fechado de notify() → cast controlado via Parameters<typeof notify>[0]['kind'] (lib/notify.ts intocado, Notification.kind é String no banco)
+- Criado src/app/api/calendar/export/route.ts (GET, force-dynamic): .ics montado manualmente (BEGIN:VCALENDAR/VERSION 2.0/PRODID -//MentorHub//PT-BR/CALSCALE/X-WR-CALNAME MentorHub) — eventos de bookings PENDING/CONFIRMED (SUMMARY "Mentoria: <topic>", LOCATION meetingRoom, DESCRIPTION "Sessão com <outro> — status: X") e aulas LIVE das matrículas (SUMMARY "Aula (ao vivo): <title>", LOCATION meetingUrl, DESCRIPTION course.title); UID mh-<id>-booking|live@mentorhub; DTSTAMP UTC YYYYMMDDTHHMMSSZ; DTSTART/DTEND floating local (sem Z/TZID) derivado do naive, DTEND = start+durationMin; escape RFC5545 de \ ; , e quebras; ordenado por data, limite 300; Content-Type text/calendar; charset=utf-8 + attachment filename="mentorhub.ics"; 400/404 JSON
+- page.tsx: gatilho único de lembretes — guard de módulo let remindersRunFor (1x por userId por sessão do navegador) + useEffect [user?.id] chamando api.runReminders(uid).catch(() => {}) após carga/login; nada mais tocado
+- dashboard.tsx: no header "Minhas sessões" adicionado botão "Exportar .ics" (Button asChild variant outline → <a href="/api/calendar/export?userId=..." download>, ícone Download, h-11 sm:h-9 p/ toque 44px, label hidden sm:inline + aria-label) ao lado de "Explorar mentores"; no BookingCard link discreto "Google Calendar" (ExternalLink, text-emerald-700, target _blank, aria-label) na linha de metadados, renderizado só p/ PENDING/CONFIRMED futuros, URL render?action=TEMPLATE&text&dates=UTCstart/UTCend&details&location (new Date(naive) → toISOString limpo)
+
+Validation:
+- curl reminders/run Lucas (mentee, booking CONFIRMED hoje 14:00): 1ª {"created":1,"kinds":["session_reminder"]} → 2ª {"created":0,"kinds":[]} (dedupe ✓); Ana (mentora do mesmo booking + streak 2/lastStudyDate ontem): 1ª {"created":2,"kinds":["session_reminder","streak_risk"]} → 2ª {"created":0,"kinds":[]}; notificações no banco com título/body/refId corretos ("Sessão amanhã: ... ⏰", "30/08 às 14:00 com Ana Souza. Prepare suas dúvidas!", streak:2026-08-30); 400/404 corretos
+- curl export Ana: headers text/calendar; charset=utf-8 + attachment filename="mentorhub.ics", 6 VEVENTs ordenados (2 aulas LIVE + 4 bookings mentee/mentor), DTSTAMP UTC com Z, DTSTART floating; Lucas: 2 VEVENTs; escape validado com booking de teste "Teste, vírgula; p-v \ backslash" → SUMMARY "Teste\, vírgula\; p-v \\ backslash" e DTEND +90min; janela 24h revalidada movendo o booking p/ hoje 09:00 → created 1; booking/notificação de teste REMOVIDOS depois (banco restaurado)
+- bun run lint 0/0; bunx tsc: só erro pré-existente em skills/stock-analysis-skill (fora de src/); GET / → 200; dev.log sem erros das novas rotas
+- Anti-corrupção "[m": verificador python (chr(91)+'m') nos 4 arquivos — routes/page 100% limpos; dashboard tem ocorrências APENAS nas linhas pré-existentes do HEAD (destructuring "const [mentorProfile..." linha 605 e "const [myTracks..." linha 607, falsos positivos); git diff prova que nenhuma linha ADICIONADA contém a sequência
+
+Stage Summary:
+- Ciclo de retenção completo: lembretes idempotentes rodando no boot de cada sessão (welcome, sessão em 24h dos dois lados da mesa, ofensiva em risco, inatividade 7d — todos deduped por refId e diários quando aplicável) + calendário exportável (.ics floating local compatível com Google/Apple/Outlook e atalho "Google Calendar" por sessão futura), fechando o laço agenda↔calendário externo
+- Nenhum arquivo compartilhado (types/api/notify) foi editado — integração 100% aditiva; demo com Ana/Lucas/booking CONFIRMED de hoje já exerce as 2 features sem seed extra
+
+---
+Task ID: C-a
+Agent: Z.ai Code (backend-integration)
+Task: #9 Metas semanais (API /api/goals/weekly + widget "Meta semanal" na home do aluno)
+
+Work Log:
+- Lido worklog.md (padrões: cast de kind p/ notify fechado feito pelo C-b, verificador anti-corrupção de colchete+m, stone+emerald, seções da landing) e contratos ANTES de codar: types.ts (WeeklyGoalDTO), api.ts (getWeeklyGoal/updateWeeklyGoal), notify.ts, xp.ts (XP LESSON = 1 evento XpEvent kind=LESSON por aula concluída), schema (WeeklyGoal userId @unique), helpers (addDays/dateKey)
+- Criado src/app/api/goals/weekly/route.ts (GET+PUT, force-dynamic): função compartilhada weeklyGoalDto (DRY) — monday = segunda 00:00 local ((getDay+6)%7), weekStart = dateKey "YYYY-MM-DD"; history = 4 contagens XpEvent kind=LESSON em janelas semanais fechadas (3 passadas + atual, mais antiga primeiro, limite superior exclusivo); completedLessons = semana atual; meta = weeklyGoal.findUnique (ausente → targetLessons 3 e isCustom false); goalAchieved = completed >= target; notificação idempotente 'goal_achieved': findFirst por userId+kind+refId=weekStart antes do notify (título "Meta semanal batida! 🎉", body "Você concluiu X aulas nesta semana. Parabéns!", linkView dashboard) — kind novo fora do union fechado de notify(): cast controlado via Parameters typeof notify, lib/notify intocado (mesmo padrão do C-b)
+- GET: 400 sem userId, 404 usuário inexistente; PUT: body com userId+targetLessons, valida inteiro 1..35 (400) e usuário (404), upsert em weeklyGoal, devolve o DTO recomputado; DTO respondido direto, sem embrulho
+- landing-mentee.tsx (único arquivo de frontend): imports Target/Trophy + WeeklyGoalDTO; render condicional ao usuário logado imediatamente após a seção "Continue aprendendo" (antes de "Feito para você"); componente WeeklyGoalCard no fim do arquivo — fetch no mount (padrão active + catch silencioso do arquivo), skeleton (header+barra+4 chips redondos), erro → return null; card rounded-2xl border p-5 sm:p-6 dentro de section py-8/py-10 com mx-auto max-w-6xl px-4 (mesmo container das seções vizinhas); header ícone Target + "Meta semanal" + subtítulo "X de Y aulas nesta semana"; Progress (ui/progress) h-2.5 + rótulo "% da meta"; goalAchieved → Badge emerald "Meta batida! 🎉" com Trophy + mensagem de parabéns; editor com chips 2·3·5·7 (h-11 w-11 rounded-full = 44px de toque, ativo bg-emerald-700 text-white, aria-pressed + aria-label, disabled enquanto salva) chamando api.updateWeeklyGoal com update otimista simples (aplica na hora, reconcilia com a resposta, rollback silencioso); variantes dark: em todos os tokens
+- Dev server: 1º GET real devolveu 500 "Cannot read properties of undefined (reading 'findUnique')" em db.weeklyGoal — o client Prisma EM MEMÓRIA do server (iniciado 23:59 de ontem) era anterior à regeneração em disco (01:28, postinstall do bun install do init); restart necessário e feito pelo caminho oficial (script init → dev.sh: bun install + db:push idempotentes → next dev saudável na porta 3000, health check 200)
+
+Validation (lint + tsc + curls reais + anti-corrupção):
+- GET Ana Souza (6 XpEvent LESSON nesta semana): {"targetLessons":3,"completedLessons":6,"goalAchieved":true,"weekStart":"2026-08-24","history":[0,0,0,6],"isCustom":false} → PUT targetLessons 5: mesmo DTO com targetLessons 5 e isCustom true → GET de novo: isCustom true (persistido); weekStart 2026-08-24 = segunda da semana corrente (hoje é dom 30/08/2026)
+- Notificação criada exatamente 1x após 3 respostas consecutivas com goalAchieved true (count 1; refId 2026-08-24, linkView dashboard) — idempotência ✓; PUT inválidos (0, 36, 2.5, "abc") e sem userId → 400 com mensagem; GET sem userId → 400; userId inexistente → 404
+- bun run lint: 0 erros / 0 warnings (exit 0); bunx tsc --noEmit: nenhum erro em src/ (apenas o pré-existente de skills/stock-analysis-skill, fora do projeto)
+- Verificador anti-corrupção (probe chr(91)+'m'): route.ts 100% limpo; landing-mentee.tsx tem 5 ocorrências APENAS em linhas pré-existentes do HEAD (useState/useMemo dependentes de mentors e a classe utilitária mask-image do Tailwind) — git diff -U0 + probe prova que nenhuma linha ADICIONADA contém a sequência
+- GET / → 200 e o chunk compilado contém "Meta semanal" (src_components_platform_landing-mentee_tsx_*.js) — widget presente no bundle client; dev.log sem erros das novas rotas
+
+Stage Summary:
+- Aluno agora tem meta semanal de estudos com progresso calculado no servidor a partir do ledger de XP (à prova de farm), histórico de 4 semanas no DTO, meta customizável (chips 2·3·5·7; API aceita 1..35) e celebração com notificação in-app idempotente 1x por semana — fecha o loop de retenção junto de ofensiva/XP/lembretes
+- Widget discreto: skeleton → card, some silenciosamente em erro, mobile-first com toque ≥44px, dark mode completo, aria-pressed/aria-label nos chips; nenhum arquivo compartilhado (types/api/notify) foi editado — integração 100% aditiva
+- Estado real deixado no banco p/ demo: Ana Souza com meta 5 (isCustom true) e notificação "Meta semanal batida! 🎉" da semana 2026-08-24
+---
+Task ID: C-6
+Agent: Z.ai Code (main)
+Task: #6 Assinatura do mentor (membership mensal: todos os cursos + sessão em grupo)
+
+Work Log:
+- Schema: models MentorMembership (mentorId @unique — 1 plano por mentor, price, groupSessionDay/Time, isPublished), MembershipSubscription (ACTIVE|CANCELLED, renewsAt=+30d, cancelledAt, @@unique membership/user) + Order.membershipId + relações User/MentorProfile; db:push + regen client + restart
+- notify.ts: +kinds membership_new/membership_subscribed/session_reminder/streak_risk/inactive_reminder/welcome/goal_achieved (pré-add p/ todos os agentes)
+- APIs: GET/POST /api/memberships (painel c/ assinantes | público | userId → myStatus/renewsAt + RE-SYNC de matrículas dos planos ACTIVE — cursos futuros entram sozinhos), GET/DELETE /api/memberships/[id], POST /api/memberships/cancel (mantém acesso até renewsAt)
+- Checkout: branch MEMBERSHIP no /api/checkout (409 se ACTIVE, upsert reativação, matrícula em todos os cursos publicados, cupom+créditos, tracking purchase, notificações duplas, rewardPendingReferral); /api/coupons/validate aceita membershipId
+- UI: checkout.tsx com kind 'membership' (badge CreditCard "Tudo incluído por R$X/mês", lista de benefícios, sucesso c/ CTA perfil, guard de assinante); store/page.tsx com membershipId; painel ganhou aba "Assinatura" (membership-manager.tsx: KPIs assinantes/MRR/cursos, form c/ dia+hora da sessão, prévia emerald, lista de assinantes, excluir c/ confirmação); course-view MembershipCallout p/ visitantes; mentor-profile MembershipCard na aba Sobre (preço/benefícios/Assinar agora | Ativa até dd/mm + cancelar | Reativar)
+- Corrupção "[m" do canal contornada: padrão `const xTuple = useState(...)` + verificação python chr(91) após cada write
+
+Validation (lint 0/0, tsc 0 em src/, browser E2E desktop+mobile light):
+- API: create → GET painel (subscriberCount, subscribers c/ Ana) ; checkout Ana → 409 na 2ª, subscription ACTIVE renewsAt+30d, matrículas 1→2, order 39.90 PAID, notificações membership_new (Carlos) + membership_subscribed (Ana); cancel → CANCELLED; re-checkout → ACTIVE (reativação)
+- UI E2E: aba Assinatura no painel c/ KPIs+form preenchido+prévia+assinantes ("Ana Souza desde 30/08 · renova 29/09"); perfil público c/ card de assinatura (benefícios, "Assinar agora" | Ana vê "Assinatura ativa"+cancelar); callouts do curso p/ guest (pacote + assinatura) → guard login → checkout completo (badge, benefícios, PIX, "Pagamento confirmado!") → Aluno Cupom Teste ACTIVE c/ 2 matrículas; home da Ana passou a listar os 2 cursos do Carlos (sync)
+- Bug encontrado e corrigido: gate do card de erro do checkout não conhecia membership (`!course && !track && !bundle` → +`&& !membership`) — fetch ok mas card "Item não encontrado."
+- Mobile 390 sem overflow (390=390); dark ok; dev.log sem erros
+
+Stage Summary:
+- Receita recorrente end-to-end: mentor cria 1 plano mensal → aluno assina (cupom/créditos funcionam) → acesso imediato a todos os cursos publicados + sessão em grupo mensal + cursos futuros entram via re-sync; cancelamento mantém ciclo pago; tudo validado no servidor
+---
+Task ID: C-a
+Agent: full-stack-developer (subagente)
+Task: #9 Metas semanais de estudo
+
+Work Log:
+- src/app/api/goals/weekly/route.ts: GET (weekStart=segunda local, completedLessons via XpEvent kind=LESSON, history 4 semanas, meta default 3, notificação goal_achieved idempotente por refId=weekStart) + PUT (target 1..35, upsert) com DTO compartilhado
+- landing-mentee.tsx: widget "Meta semanal" após "Continue aprendendo" (só logado) — barra Progress, badge "Meta batida! 🎉" (Trophy), chips 2·3·5·7 (44px, otimista c/ rollback), skeleton, dark completo
+
+Validation: GET/PUT reais (Ana 6/6 → achieved, PUT 5 → isCustom true persistido; 400/409 cobertos); notificação criada 1x em 3 chamadas; lint 0/0; tsc limpo; server reiniciado via script oficial (client Prisma antigo em memória)
+
+Stage Summary:
+- Aluno define alvo semanal de aulas; progresso real calculado no servidor (XP ledger à prova de farm); celebração + notificação quando bate
+---
+Task ID: C-b
+Agent: full-stack-developer (subagente)
+Task: #7 Lembretes automáticos + #8 Exportar calendário
+
+Work Log:
+- src/app/api/reminders/run/route.ts: POST idempotente c/ 4 regras isoladas (welcome se 0 notifs+0 matrículas; session_reminder p/ bookings CONFIRMED/PENDING em ≤24h (mentee e mentor); streak_risk se estudou ontem e não hoje; inactive_reminder >7 dias) — dedupe universal via (userId, kind, refId)
+- src/app/api/calendar/export/route.ts: GET .ics (text/calendar; attachment) c/ bookings + aulas LIVE das matrículas, DTSTART/DTEND floating local, escape RFC5545, ordenado
+- page.tsx: runReminders 1x por sessão no bootstrap (guard de módulo, falha silenciosa)
+- dashboard.tsx: botão "Exportar .ics" (44px toque) no header de sessões + link "Google Calendar" por sessão futura (datas UTC)
+
+Validation: run 2x → created 1→0 (dedupe ✓ p/ Lucas e Ana); .ics c/ 6 VEVENTs, escape de vírgula/ponto-e-vírgula/backslash validado; lint 0/0; tsc limpo; anti-corrupção OK
+
+Stage Summary:
+- Retenção automática: lembretes de sessão/ofensiva/inatividade/boas-vindas chegam no sino sem cron externo (idempotentes) e a agenda inteira exportável p/ Google/Apple Calendar

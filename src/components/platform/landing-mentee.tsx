@@ -25,6 +25,8 @@ import {
   ShieldCheck,
   Sparkles,
   Star,
+  Target,
+  Trophy,
   Users,
   Video,
 } from 'lucide-react'
@@ -57,6 +59,7 @@ import type {
   MentorListItemDTO,
   RecommendationDTO,
   TrackListItemDTO,
+  WeeklyGoalDTO,
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -709,6 +712,9 @@ export function LandingMenteeView() {
           </div>
         </section>
       )}
+
+      {/* ---------- META SEMANAL (gamificação, apenas logado) ---------- */}
+      {user && <WeeklyGoalCard userId={user.id} />}
 
       {/* ---------- FEITO PARA VOCÊ (recomendações IA, apenas logado) ---------- */}
       {user && recommendations.length > 0 && (
@@ -1733,5 +1739,171 @@ function RecommendationCard({ rec }: { rec: RecommendationDTO }) {
         </div>
       </div>
     </article>
+  )
+}
+
+// ---------- Card "Meta semanal" (gamificação do aprendizado, apenas logado) ----------
+
+const GOAL_CHIPS: number[] = [2, 3, 5, 7]
+
+function WeeklyGoalCard({ userId }: { userId: string }) {
+  const [goal, setGoal] = useState<WeeklyGoalDTO | null>(null)
+  const [failed, setFailed] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    api
+      .getWeeklyGoal(userId)
+      .then((data) => {
+        if (active) setGoal(data)
+      })
+      .catch(() => {
+        if (active) setFailed(true) // erro: card some silenciosamente
+      })
+    return () => {
+      active = false
+    }
+  }, [userId])
+
+  if (failed) return null
+
+  // Atualização otimista: chip aplica na hora e reconcilia com o servidor
+  const applyTarget = (nextTarget: number) => {
+    if (!goal || saving || goal.targetLessons === nextTarget) return
+    const previous = goal
+    setSaving(true)
+    setGoal({
+      ...goal,
+      targetLessons: nextTarget,
+      goalAchieved: goal.completedLessons >= nextTarget,
+    })
+    api
+      .updateWeeklyGoal({ userId, targetLessons: nextTarget })
+      .then((data) => {
+        setGoal(data)
+        setSaving(false)
+      })
+      .catch(() => {
+        setGoal(previous) // rollback silencioso
+        setSaving(false)
+      })
+  }
+
+  // Loading: skeleton no lugar do card
+  if (!goal) {
+    return (
+      <section aria-label="Meta semanal de estudos" className="py-8 sm:py-10">
+        <div className="mx-auto max-w-6xl px-4">
+          <div
+            aria-hidden
+            className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6 dark:border-stone-800 dark:bg-stone-900"
+          >
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-11 w-11 rounded-xl" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-36" />
+                <Skeleton className="h-3 w-52" />
+              </div>
+            </div>
+            <Skeleton className="mt-5 h-2.5 w-full rounded-full" />
+            <div className="mt-6 flex gap-2">
+              <Skeleton className="h-11 w-11 rounded-full" />
+              <Skeleton className="h-11 w-11 rounded-full" />
+              <Skeleton className="h-11 w-11 rounded-full" />
+              <Skeleton className="h-11 w-11 rounded-full" />
+            </div>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  const completed = goal.completedLessons
+  const target = goal.targetLessons
+  const pct = Math.min(100, Math.round((completed / Math.max(target, 1)) * 100))
+
+  return (
+    <section aria-label="Meta semanal de estudos" className="py-8 sm:py-10">
+      <div className="mx-auto max-w-6xl px-4">
+        <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6 dark:border-stone-800 dark:bg-stone-900">
+          {/* Cabeçalho: ícone + título + subtítulo + badge de meta batida */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <span
+                aria-hidden
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+              >
+                <Target className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <h3 className="font-extrabold text-stone-900 dark:text-stone-50">Meta semanal</h3>
+                <p className="text-sm text-stone-500 dark:text-stone-400">
+                  {completed} de {target} {target === 1 ? 'aula' : 'aulas'} nesta semana
+                </p>
+              </div>
+            </div>
+            {goal.goalAchieved && (
+              <Badge className="rounded-full border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300">
+                <Trophy aria-hidden className="h-3.5 w-3.5" />
+                Meta batida! 🎉
+              </Badge>
+            )}
+          </div>
+
+          {/* Progresso da semana */}
+          <div className="mt-4">
+            <Progress
+              value={pct}
+              className="h-2.5"
+              aria-label={`${pct}% da meta semanal concluída`}
+            />
+            <div className="mt-1.5 flex items-center justify-between gap-3 text-xs">
+              <span className="shrink-0 text-stone-400 dark:text-stone-500">{pct}% da meta</span>
+              {goal.goalAchieved && (
+                <span className="text-right font-semibold text-emerald-700 dark:text-emerald-300">
+                  Parabéns! Foram {completed}{' '}
+                  {completed === 1 ? 'aula concluída' : 'aulas concluídas'} nesta semana. 🎉
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Editor: chips 2 · 3 · 5 · 7 (toque ≥44px, ativo emerald sólido) */}
+          <div className="mt-5 border-t border-stone-100 pt-4 dark:border-stone-800">
+            <p className="text-[11px] font-extrabold uppercase tracking-widest text-stone-400 dark:text-stone-500">
+              Aulas por semana
+            </p>
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              {GOAL_CHIPS.map((chipTarget) => {
+                const isActive = chipTarget === goal.targetLessons
+                return (
+                  <button
+                    key={chipTarget}
+                    type="button"
+                    disabled={saving}
+                    onClick={() => applyTarget(chipTarget)}
+                    aria-pressed={isActive}
+                    aria-label={`Definir meta de ${chipTarget} ${chipTarget === 1 ? 'aula' : 'aulas'} por semana`}
+                    className={cn(
+                      'flex h-11 w-11 items-center justify-center rounded-full border text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40',
+                      isActive
+                        ? 'border-emerald-700 bg-emerald-700 text-white shadow-sm shadow-emerald-700/25 dark:border-emerald-500 dark:bg-emerald-600'
+                        : 'border-stone-200 bg-white text-stone-700 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-800 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-emerald-500 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300',
+                      saving && 'cursor-wait opacity-70'
+                    )}
+                  >
+                    {chipTarget}
+                  </button>
+                )
+              })}
+              <span className="ml-1 text-xs text-stone-400 dark:text-stone-500">
+                Cada aula concluída conta para a sua ofensiva e para o XP.
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   )
 }

@@ -4,8 +4,8 @@ import { db } from '@/lib/db'
 export const dynamic = 'force-dynamic'
 
 /**
- * POST /api/coupons/validate — valida um cupom para curso, trilha OU pacote (antes do checkout).
- * body: { code, courseId? , trackId?, bundleId? }
+ * POST /api/coupons/validate — valida um cupom para curso, trilha, pacote OU assinatura (antes do checkout).
+ * body: { code, courseId? , trackId?, bundleId?, membershipId? }
  * → { ok, code, label, discount, finalPrice }
  */
 export async function POST(req: NextRequest) {
@@ -15,8 +15,9 @@ export async function POST(req: NextRequest) {
     const courseId = String(body?.courseId ?? '').trim()
     const trackId = String(body?.trackId ?? '').trim()
     const bundleId = String(body?.bundleId ?? '').trim()
+    const membershipId = String(body?.membershipId ?? '').trim()
 
-    if (!rawCode || [courseId, trackId, bundleId].filter(Boolean).length !== 1) {
+    if (!rawCode || [courseId, trackId, bundleId, membershipId].filter(Boolean).length !== 1) {
       return NextResponse.json({ error: 'Informe o cupom e o item do checkout.' }, { status: 400 })
     }
 
@@ -30,8 +31,11 @@ export async function POST(req: NextRequest) {
     const bundle = bundleId
       ? await db.bundle.findUnique({ where: { id: bundleId }, select: { id: true, title: true, price: true, mentorId: true } })
       : null
+    const membership = membershipId
+      ? await db.mentorMembership.findUnique({ where: { id: membershipId }, select: { id: true, title: true, price: true, mentorId: true } })
+      : null
 
-    const item = course ?? track ?? bundle
+    const item = course ?? track ?? bundle ?? membership
     if (!item) return NextResponse.json({ error: 'Item não encontrado.' }, { status: 404 })
     if (item.price <= 0) {
       return NextResponse.json({ error: 'Este item é gratuito — cupom não é necessário.' }, { status: 400 })

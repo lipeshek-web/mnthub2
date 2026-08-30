@@ -81,11 +81,12 @@ export async function POST(req: NextRequest) {
     const courseId = String(body?.courseId ?? '')
     const trackId = String(body?.trackId ?? '')
     const bundleId = String(body?.bundleId ?? '')
+    const membershipId = String(body?.membershipId ?? '')
     const useCredits = body?.useCredits === true
     const paymentMethod = body?.paymentMethod === 'CREDIT_CARD' ? 'CREDIT_CARD' : 'PIX'
     const couponCode = String(body?.couponCode ?? '').trim()
 
-    const kindCount = [courseId, trackId, bundleId].filter(Boolean).length
+    const kindCount = [courseId, trackId, bundleId, membershipId].filter(Boolean).length
     if (!userId || kindCount !== 1) {
       return NextResponse.json({ error: 'Dados incompletos para o checkout.' }, { status: 400 })
     }
@@ -133,6 +134,140 @@ export async function POST(req: NextRequest) {
     async function spendCredits(creditsUsed: number, newCreditCents: number) {
       if (creditsUsed <= 0) return
       await db.user.update({ where: { id: userId }, data: { creditCents: newCreditCents } })
+    }
+
+    // ---------- CHECKOUT DE ASSINATURA (MEMBERSHIP) ----------
+    if (membershipId) {
+      const membership = await db.mentorMembership.findUnique({
+        where: { id: membershipId },
+        include: { mentor: { include: { user: true } } },
+      })
+      const user = await db.user.findUnique({ where: { id: userId } })
+      if (!user) return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 })
+      if (!membership || !membership.isPublished) {
+        return NextResponse.json({ error: 'Assinatura não encontrada.' }, { status: 404 })
+      }
+
+      const existingSub = await db.membershipSubscription.findUnique({
+        where: { membershipId_userId: { membershipId, userId } },
+      })
+      if (existingSub && existingSub.status === 'ACTIVE') {
+        return NextResponse.json(
+          { error: 'Você já tem esta assinatura ativa.' },
+          { status: 409 }
+        )
+      }
+
+      const { error: couponError, coupon, discount } = await resolveCoupon(
+        couponCode,
+        membership.mentorId,
+        membership.price
+      )
+      if (couponError) return NextResponse.json({ error: couponError }, { status: 400 })
+
+      const credits = await applyCredits(membership.price, discount)
+      const finalAmount = credits.amount
+
+      const renewsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      const [order] = await db.$transaction([
+        db.order.create({
+          data: {
+            membershipId,
+            studentId: userId,
+            mentorId: membership.mentorId,
+            amount: finalAmount,
+            paymentMethod,
+            status: 'PAID',
+            couponCode: coupon ? coupon.code : null,
+            discount,
+            creditsUsed: credits.creditsUsed,
+            ...attributionFields,
+          },
+        }),
+        db.trackingEvent.create({
+          data: {
+            name: 'purchase',
+            mentorId: membership.mentorId,
+            userId,
+            valueCents: Math.round(finalAmount * 100),
+            utmSource: attributionFields.utmSource,
+            utmMedium: attributionFields.utmMedium,
+            utmCampaign: attributionFields.utmCampaign,
+            utmContent: attributionFields.utmContent,
+            utmTerm: attributionFields.utmTerm,
+            gclid: attributionFields.gclid,
+            fbclid: attributionFields.fbclid,
+            channel,
+            path: s(body?.path, 300),
+          },
+        }),
+        // (Re)ativa a assinatura — reativação de cancelado também passa aqui
+        db.membershipSubscription.upsert({
+          where: { membershipId_userId: { membershipId, userId } },
+          create: {
+            membershipId,
+            userId,
+            mentorId: membership.mentorId,
+            status: 'ACTIVE',
+            renewsAt,
+          },
+          update: {
+            status: 'ACTIVE',
+            startedAt: new Date(),
+            renewsAt,
+            cancelledAt: null,
+          },
+        }),
+      ])
+
+      // Matricula em TODOS os cursos publicados do mentor (acesso imediato)
+      const courses = await db.course.findMany({
+        where: { mentorId: membership.mentorId, isPublished: true },
+        select: { id: true },
+      })
+      for (const c of courses) {
+        await db.enrollment.upsert({
+          where: { courseId_studentId: { courseId: c.id, studentId: userId } },
+          create: { courseId: c.id, studentId: userId, completedLessonIds: '[]' },
+          update: {},
+        })
+      }
+
+      await spendCredits(credits.creditsUsed, credits.newCreditCents)
+
+      if (coupon) {
+        await db.coupon.update({ where: { id: coupon.id }, data: { uses: { increment: 1 } } })
+      }
+      await notify({
+        userId: membership.mentor.userId,
+        kind: 'membership_new',
+        title: `Nova assinatura: "${membership.title}" 💳`,
+        body: `${user.name} assinou o plano mensal (R$ ${membership.price.toFixed(2).replace('.', ',')}/mês).`,
+        linkView: 'onboarding',
+        refId: membership.id,
+      })
+      await notify({
+        userId,
+        kind: 'membership_subscribed',
+        title: 'Assinatura ativada! 🎉',
+        body: `Todos os cursos de ${membership.mentor.user.name} foram liberados, mais a sessão em grupo mensal.`,
+        linkView: 'dashboard',
+        refId: membership.id,
+      })
+      await rewardPendingReferral(userId, user.name)
+
+      return NextResponse.json({
+        order: {
+          id: order.id,
+          itemKind: 'MEMBERSHIP',
+          itemTitle: membership.title,
+          amount: order.amount,
+          paymentMethod: order.paymentMethod,
+          status: order.status,
+          createdAt: order.createdAt.toISOString(),
+        },
+        alreadyEnrolled: false,
+      })
     }
 
     // ---------- CHECKOUT DE PACOTE (BUNDLE) ----------

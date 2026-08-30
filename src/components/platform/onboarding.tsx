@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Clock,
   Copy,
+  CreditCard,
   Eye,
   EyeOff,
   ExternalLink,
@@ -104,6 +105,7 @@ import { Avatar, Stars } from '@/components/platform/avatar'
 import { LibraryManager } from './library-manager'
 import { TracksManager } from './tracks-manager'
 import { BundlesManager } from './bundles-manager'
+import { MembershipManager } from './membership-manager'
 import { api } from '@/lib/api'
 import {
   MENTOR_FONT_CATEGORIES,
@@ -3715,6 +3717,7 @@ const PANEL_TABS = [
   { id: 'biblioteca', label: 'Biblioteca', icon: Library },
   { id: 'trilhas', label: 'Trilhas', icon: Route },
   { id: 'pacotes', label: 'Pacotes', icon: Layers },
+  { id: 'assinatura', label: 'Assinatura', icon: CreditCard },
   { id: 'divulgacao', label: 'Divulgação', icon: Megaphone },
   { id: 'cupons', label: 'Cupons', icon: Ticket },
   { id: 'financeiro', label: 'Financeiro', icon: Wallet },
@@ -4763,6 +4766,10 @@ export default function OnboardingView() {
 
             <TabsContent value="pacotes" className="min-w-0 mt-4 sm:mt-6">
               <BundlesManager userId={user.id} />
+            </TabsContent>
+
+            <TabsContent value="assinatura" className="min-w-0 mt-4 sm:mt-6">
+              <MembershipManager userId={user.id} />
             </TabsContent>
 
             <TabsContent value="divulgacao" className="min-w-0 mt-4 sm:mt-6">
