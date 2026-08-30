@@ -1769,3 +1769,22 @@ Work Log:
 Stage Summary:
 - Estado atual gravado e nomeado: commit b54baf6 = tag checkpoint-w13; qualquer mudança futura pode ser revertida com um comando
 - Histórico de marcos: 5395609 (W-11 perf) → auto-commits → b54baf6 (W-13 completo)
+
+---
+Task ID: W-15
+Agent: Z.ai Code (main)
+Task: Snack edition "jogar e funcionar" — App.js + URL de produção + ZIP
+
+Work Log:
+- Usuário informou a URL de produção (https://mentorhub.space-z.ai) e pediu: entrada App.js (padrão do Snack) + zip pronto
+- Teste da API na produção: POST /api/v1/auth/login → 200; GET /api/v1/library → 200 (lista pública por design; detalhe/rotas de aluno exigem Bearer)
+- mobile-app-snack/src/lib/api.ts: DEFAULT_SERVER_URL = "https://mentorhub.space-z.ai" (com comentário ✅); placeholder do campo Servidor da API no LoginScreen atualizado
+- App.tsx convertido → App.js em JavaScript puro (removidos tipos NavigationTheme/anotações) — entrada padrão do Snack; JSX em .js é padrão RN/Metro
+- README reescrito: Opção A (zip) / Opção B (copiar), servidor já configurado, estrutura com App.js
+- ZIP gerado em public/mentorhub-mobile-snack.zip (64KB, 35 arquivos: App.js, README.md, src/ completo) — servido com HTTP 200 (verificado via curl localhost:3000)
+- Sintaxe revalidada com esbuild (App.js com loader jsx; api.ts; LoginScreen.tsx)
+- Commit do checkpoint
+
+Stage Summary:
+- Fluxo do usuário: baixa https://mentorhub.space-z.ai/mentorhub-mobile-snack.zip → extrai → arrasta App.js + src no snack.expo.dev (SDK 54) → adiciona 7 dependências → login ana@demo.com/demo123 funciona sem tocar em nada
+- URL de produção embutida em DEFAULT_SERVER_URL; campo Servidor da API continua como override em runtime
