@@ -1733,3 +1733,23 @@ Stage Summary:
 - App Expo completo em mobile-app/ pronto para: npm install → .env com EXPO_PUBLIC_API_URL → npx expo start no Expo Go (Android/iPhone); binários de loja via eas build; alunos consomem livros (PDF/artigo), cursos (vídeo/texto/ao vivo com progresso e XP) e mentorias (agendar/cancelar) pelo celular
 - Contas com 2FA ativo não entram no app v1 (usar site) — comportamento documentado no login da API
 - DB intocado: nenhuma migração de schema foi necessária (API lógica sobre o modelo existente); único registro de teste criado (booking) foi cancelado na sequência
+
+---
+Task ID: W-13
+Agent: Z.ai Code (main)
+Task: Edição do app Expo compatível com Expo Snack (mobile-app-snack/)
+
+Work Log:
+- Resposta à pergunta do usuário ("posso colocar no expo snack?"): a pasta mobile-app/ NÃO roda direto no Snack porque ele não suporta expo-router (entrada é App.tsx único, navegação via React Navigation)
+- Criada mobile-app-snack/ (34 arquivos, ~3.400 linhas preservadas): src/ (components, lib, theme) copiado 1:1; 9 telas convertidas app/* → src/screens/ com nomes novos (LoginScreen, HomeScreen, LivrosScreen, CursosScreen, MentoriasScreen, PerfilScreen, LivroScreen, CursoScreen, MentorScreen)
+- Conversões mecanicas: useRouter/useLocalSearchParams/Stack.Screen/Redirect → useNavigation/useRoute/goBack/navigate + gate de auth; paths ../../src/ → ../
+- App.tsx novo: SafeAreaProvider → AuthProvider → gate (splash/login/NavigationContainer) → BottomTabs (Início, Livros, Cursos, Mentorias, Perfil) + NativeStack (Livro, Curso, Mentor), tema de navegação derivado de theme.ts
+- lib/api.ts adaptado: EXPO_PUBLIC_API_URL → DEFAULT_SERVER_URL + setServerUrl/getServerUrl/siteUrl() persistidos em SecureStore (chave mentorhub.server.url); request() garante ensureStorageLoaded(); mensagem de erro de rede menciona o campo do login
+- LoginScreen ganhou campo "Servidor da API" (necessário porque Snack não tem .env); 2 useRouter órfãos removidos de sub-componentes do MentorScreen
+- tsconfig.json e eslint.config.mjs: mobile-app-snack excluído (não afeta build do site)
+- Verificação: esbuild parse 34/34 arquivos OK; grep 0 resíduos de expo-router/router/Stack.Screen/SITE_URL; bun run lint limpo; dev server saudável
+- README.md com passo a passo do Snack (SDK 54, dependências a adicionar, URL pública do servidor, contas demo, limites e caminho EAS para produção)
+
+Stage Summary:
+- mobile-app-snack/ é colável direto no snack.expo.dev (React Navigation em vez de expo-router + campo Servidor da API em vez de .env)
+- mobile-app/ permanece a versão de produção (expo-router + EAS build); nenhuma mudança no site/Next.js além de excludes de tooling
