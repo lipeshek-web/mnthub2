@@ -1753,3 +1753,19 @@ Work Log:
 Stage Summary:
 - mobile-app-snack/ é colável direto no snack.expo.dev (React Navigation em vez de expo-router + campo Servidor da API em vez de .env)
 - mobile-app/ permanece a versão de produção (expo-router + EAS build); nenhuma mudança no site/Next.js além de excludes de tooling
+
+---
+Task ID: W-14
+Agent: Z.ai Code (main)
+Task: Checkpoint de segurança no git (proteção contra perdas/rollbacks)
+
+Work Log:
+- Inventário: 721 arquivos rastreados; ambiente já faz auto-commits (UUIDs); último auto-commit 77dd356 já continha o mobile-app-snack completo; só pendia db/custom.db (mudanças de uso normal pós-W-13)
+- Commit consolidado b54baf6 "checkpoint W-13: API REST v1 (JWT) + app Expo alunos (mobile-app) + edição Expo Snack (mobile-app-snack) — site estável"
+- Tag anotada checkpoint-w13 criada com instruções de rollback embutidas (git checkout checkpoint-w13 -- . para arquivos; git reset --hard checkpoint-w13 para voltar tudo, incluindo db/custom.db)
+- Working tree limpo (0 pendências) após o commit
+- Sem remote configurado: snapshots são locais (uma pasta .git). Backup externo exigiria remote (GitHub etc.)
+
+Stage Summary:
+- Estado atual gravado e nomeado: commit b54baf6 = tag checkpoint-w13; qualquer mudança futura pode ser revertida com um comando
+- Histórico de marcos: 5395609 (W-11 perf) → auto-commits → b54baf6 (W-13 completo)
