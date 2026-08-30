@@ -1,20 +1,40 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
+  Bell,
+  BellOff,
+  CalendarCheck,
+  CalendarClock,
   CalendarDays,
+  CalendarX,
+  CheckCircle2,
   Compass,
+  Gift,
   GraduationCap,
   LayoutDashboard,
+  ListVideo,
   LogIn,
   LogOut,
+  MessageCircle,
+  MessageSquareQuote,
+  Moon,
   PlusCircle,
   Search,
+  ShieldCheck,
+  ShoppingBag,
+  Star,
+  Sun,
+  UserPlus,
   UserRoundPlus,
   X,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTheme } from 'next-themes'
+import { api } from '@/lib/api'
+import type { NotificationDTO } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/platform/avatar'
@@ -30,25 +50,393 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
+// ==================== Sino de notificações in-app ====================
+
+type NotificationChip = { icon: LucideIcon; chipClass: string }
+
+/** Chip de ícone por tipo de notificação (paleta stone/emerald + acentos por kind) */
+const NOTIFICATION_KINDS: Record<string, NotificationChip> = {
+  booking_new: { icon: CalendarClock, chipClass: 'bg-amber-100 text-amber-600' },
+  booking_confirmed: { icon: CalendarCheck, chipClass: 'bg-emerald-100 text-emerald-700' },
+  booking_cancelled: { icon: CalendarX, chipClass: 'bg-rose-100 text-rose-600' },
+  booking_completed: { icon: CheckCircle2, chipClass: 'bg-emerald-100 text-emerald-700' },
+  review_new: { icon: Star, chipClass: 'bg-amber-100 text-amber-600' },
+  lesson_new: { icon: ListVideo, chipClass: 'bg-violet-100 text-violet-600' },
+  enrollment_new: { icon: UserPlus, chipClass: 'bg-emerald-100 text-emerald-700' },
+  course_review_new: { icon: MessageSquareQuote, chipClass: 'bg-violet-100 text-violet-600' },
+  purchase_new: { icon: ShoppingBag, chipClass: 'bg-emerald-100 text-emerald-700' },
+  message_new: { icon: MessageCircle, chipClass: 'bg-teal-100 text-teal-700' },
+}
+const DEFAULT_KIND: NotificationChip = { icon: Bell, chipClass: 'bg-stone-100 text-stone-500' }
+
+/** Tempo relativo compacto: "agora", "há 5 min", "há 2 h", "há 3 d" (data p/ antigos) */
+function relativeTime(iso: string) {
+  const diffMin = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60_000))
+  if (diffMin < 1) return 'agora'
+  if (diffMin < 60) return `há ${diffMin} min`
+  const hours = Math.floor(diffMin / 60)
+  if (hours < 24) return `há ${hours} h`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `há ${days} d`
+  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+}
+
+// ==================== Mensagens diretas (chat) ====================
+
+/** Ícone de mensagens com badge de não lidas (polling leve a cada 45s) */
+function MessagesButton() {
+  const user = useAppStore((s) => s.user)
+  const navigate = useAppStore((s) => s.navigate)
+  const [unread, setUnread] = useState(0)
+  const aliveRef = useRef(true)
+
+  useEffect(() => {
+    const userId = user?.id
+    if (!userId) return
+    aliveRef.current = true
+    let alive = true
+    const load = () =>
+      api
+        .unreadMessages(userId)
+        .then((r) => {
+          if (alive) setUnread(r.count)
+        })
+        .catch(() => {
+          /* silencioso */
+        })
+    load()
+    const timer = setInterval(load, 45_000)
+    return () => {
+      alive = false
+      aliveRef.current = false
+      clearInterval(timer)
+    }
+  }, [user?.id])
+
+  if (!user) return null
+
+  return (
+    <button
+      type="button"
+      onClick={() => navigate({ name: 'messages' })}
+      aria-label={
+        unread > 0 ? `Mensagens, ${unread} não lida${unread === 1 ? '' : 's'}` : 'Mensagens'
+      }
+      title="Mensagens"
+      className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
+    >
+      <MessageCircle className="h-4.5 w-4.5" />
+      {unread > 0 && (
+        <span
+          aria-live="polite"
+          className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold leading-none text-white"
+        >
+          {unread > 99 ? '99+' : unread}
+        </span>
+      )}
+    </button>
+  )
+}
+
+// ==================== Alternador de tema (claro/escuro) ====================
+
+function ThemeToggle() {
+  const { resolvedTheme, setTheme } = useTheme()
+  // next-themes só sabe o tema no cliente — evita mismatch de hidratação
+  // (useSyncExternalStore em vez de setState em effect: sem render cascata)
+  const emptySubscribe = useCallback(() => () => {}, [])
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  )
+
+  const isDark = mounted && resolvedTheme === 'dark'
+  return (
+    <button
+      type="button"
+      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+      aria-label={isDark ? 'Mudar para o tema claro' : 'Mudar para o tema escuro'}
+      title={isDark ? 'Tema claro' : 'Tema escuro'}
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
+    >
+      {mounted ? (
+        isDark ? (
+          <Sun className="h-4.5 w-4.5" />
+        ) : (
+          <Moon className="h-4.5 w-4.5" />
+        )
+      ) : (
+        <span className="h-4.5 w-4.5" aria-hidden />
+      )}
+    </button>
+  )
+}
+
+function NotificationsBell() {
+  const user = useAppStore((s) => s.user)
+  const navigate = useAppStore((s) => s.navigate)
+
+  const [open, setOpen] = useState(false)
+  const [items, setItems] = useState<NotificationDTO[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  // Guard `alive` + contador de requisição: evita setState de respostas
+  // obsoletas (unmount, troca de usuário ou fetch sobreposto)
+  const aliveRef = useRef(true)
+  const reqIdRef = useRef(0)
+
+  const loadNotifications = useCallback(async (userId: string) => {
+    const reqId = ++reqIdRef.current
+    try {
+      const res = await api.listNotifications(userId)
+      if (!aliveRef.current || reqId !== reqIdRef.current) return
+      setItems(res.items)
+      setUnreadCount(res.unreadCount)
+    } catch {
+      // Erro silencioso: badge apenas não aparece (sem toast)
+    }
+  }, [])
+
+  const userId = user?.id
+  useEffect(() => {
+    if (!userId) return
+    aliveRef.current = true
+    let alive = true
+    // Fetch inicial (setState em callback assíncrono) com guard anti-race:
+    // descartado se o componente desmontar ou se um fetch mais novo existir
+    const reqId = ++reqIdRef.current
+    api
+      .listNotifications(userId)
+      .then((res) => {
+        if (!alive || reqId !== reqIdRef.current) return
+        setItems(res.items)
+        setUnreadCount(res.unreadCount)
+      })
+      .catch(() => {
+        // Erro silencioso: badge apenas não aparece
+      })
+    // Polling a cada 60s enquanto logado
+    const timer = setInterval(() => {
+      loadNotifications(userId)
+    }, 60_000)
+    return () => {
+      alive = false
+      aliveRef.current = false
+      clearInterval(timer)
+    }
+  }, [userId, loadNotifications])
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next)
+    if (next && userId) loadNotifications(userId) // refetch ao abrir o dropdown
+  }
+
+  const handleItemClick = (item: NotificationDTO) => {
+    // Marca como lida de forma otimista (badge/zumbido atualizam na hora)
+    if (!item.read) {
+      setItems((prev) => prev.map((n) => (n.id === item.id ? { ...n, read: true } : n)))
+      setUnreadCount((count) => Math.max(0, count - 1))
+      if (userId) api.markNotificationsRead(userId, [item.id]).catch(() => {})
+    }
+    // Navega conforme o destino sugerido pela notificação
+    if (item.linkView === 'dashboard') navigate({ name: 'dashboard' })
+    else if (item.linkView === 'course' && item.refId) navigate({ name: 'course', courseId: item.refId })
+    else if (item.linkView === 'onboarding') navigate({ name: 'onboarding' })
+    else if (item.linkView === 'messages') navigate({ name: 'messages', peerId: item.refId ?? undefined })
+    else if (item.linkView === 'referrals') navigate({ name: 'referrals' })
+    setOpen(false)
+  }
+
+  const handleMarkAll = () => {
+    if (!userId || unreadCount === 0) return
+    const prevItems = items
+    setItems((prev) => prev.map((n) => ({ ...n, read: true })))
+    setUnreadCount(0)
+    api.markNotificationsRead(userId).catch(() => {
+      // Falhou: restaura o estado anterior
+      setItems(prevItems)
+      setUnreadCount(prevItems.filter((n) => !n.read).length)
+    })
+  }
+
+  if (!user) return null
+
+  return (
+    <DropdownMenu open={open} onOpenChange={handleOpenChange}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={
+            unreadCount > 0
+              ? `Notificações, ${unreadCount} não lida${unreadCount === 1 ? '' : 's'}`
+              : 'Notificações'
+          }
+          title="Notificações"
+          className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+        >
+          <Bell className="h-4.5 w-4.5" />
+          {unreadCount > 0 && (
+            <span
+              aria-live="polite"
+              className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white"
+            >
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+        </button>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent align="end" sideOffset={8} className="w-88 overflow-hidden p-0 sm:w-96">
+        {/* Cabeçalho do painel */}
+        <div className="flex items-center justify-between gap-2 border-b border-stone-100 px-4 py-2.5 dark:border-stone-800">
+          <DropdownMenuLabel className="p-0 font-semibold text-stone-900 dark:text-stone-100">
+            Notificações
+          </DropdownMenuLabel>
+          <button
+            type="button"
+            onClick={handleMarkAll}
+            disabled={unreadCount === 0}
+            className="rounded text-xs font-semibold text-emerald-700 transition-colors hover:text-emerald-900 disabled:pointer-events-none disabled:text-stone-300 dark:text-emerald-400 dark:hover:text-emerald-300 dark:disabled:text-stone-600"
+          >
+            Marcar todas como lidas
+          </button>
+        </div>
+
+        {items.length === 0 ? (
+          /* Empty state */
+          <div className="flex flex-col items-center gap-2 px-6 py-8 text-center">
+            <BellOff className="h-8 w-8 text-stone-300 dark:text-stone-600" aria-hidden />
+            <p className="text-sm text-stone-500 dark:text-stone-400">Você está em dia! Nenhuma notificação.</p>
+          </div>
+        ) : (
+          <div
+            role="list"
+            aria-label="Lista de notificações"
+            className="max-h-[380px] overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-200 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent"
+          >
+            {items.map((item) => {
+              const chip = NOTIFICATION_KINDS[item.kind] ?? DEFAULT_KIND
+              const Icon = chip.icon
+              return (
+                <div key={item.id} role="listitem">
+                  <button
+                    type="button"
+                    onClick={() => handleItemClick(item)}
+                    className={cn(
+                      'relative flex w-full items-start gap-3 px-4 py-3 text-left transition-colors focus-visible:outline-none',
+                      item.read
+                        ? 'hover:bg-stone-50 focus-visible:bg-stone-50 dark:hover:bg-stone-800/60 dark:focus-visible:bg-stone-800/60'
+                        : 'bg-emerald-50/50 hover:bg-emerald-50 focus-visible:bg-emerald-50 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/30 dark:focus-visible:bg-emerald-900/30'
+                    )}
+                  >
+                    {!item.read && (
+                      <span
+                        aria-hidden
+                        className="absolute left-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-emerald-500"
+                      />
+                    )}
+                    <span
+                      className={cn(
+                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+                        chip.chipClass
+                      )}
+                    >
+                      <Icon className="h-4 w-4" aria-hidden />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-baseline justify-between gap-2">
+                        <span
+                          className={cn(
+                            'truncate text-sm font-semibold',
+                            item.read ? 'text-stone-500' : 'text-stone-900'
+                          )}
+                        >
+                          {item.title}
+                        </span>
+                        <span className="shrink-0 text-[11px] text-stone-400 dark:text-stone-500">
+                          {relativeTime(item.createdAt)}
+                        </span>
+                      </span>
+                      {item.body && (
+                        <span className="mt-0.5 block text-xs leading-snug text-stone-500 line-clamp-2 dark:text-stone-400">
+                          {item.body}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 export function Navbar() {
   const { user, view, setUser, navigate } = useAppStore()
 
-  // ---------- Busca global do header ----------
+  // ---------- Busca global do header (a busca principal, sempre visível) ----------
   const [query, setQuery] = useState('')
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const desktopSearchRef = useRef<HTMLInputElement>(null)
   const mobileSearchRef = useRef<HTMLInputElement>(null)
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // O texto do campo acompanha o termo ativo em qualquer tela (ex.: busca feita
+  // em outra aba/session) — a busca é uma só, centralizada no header.
+  const externalQuery = useAppStore((s) => s.exploreQuery)
+
+  useEffect(() => {
+    setQuery(externalQuery)
+  }, [externalQuery])
+
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    }
+  }, [])
+
+  /** Aplica o termo na store e leva o usuário ao Explorar (modo resultados) */
+  const applySearch = (value: string) => {
+    const q = value.trim()
+    const state = useAppStore.getState()
+    state.setExploreQuery(q)
+    if (q && state.view.name !== 'marketplace') {
+      state.setExploreTab('all')
+      state.navigate({ name: 'marketplace' })
+    }
+  }
+
+  /** Digitação ao vivo: navega e filtra com debounce — o corpo vira só resultados */
+  const onSearchInput = (value: string) => {
+    setQuery(value)
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    const trimmed = value.trim()
+    if (!trimmed) {
+      useAppStore.getState().setExploreQuery('')
+      if (useAppStore.getState().view.name === 'marketplace') setMobileSearchOpen(false)
+      return
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      const wasOnMarketplace = useAppStore.getState().view.name === 'marketplace'
+      applySearch(value)
+      if (!wasOnMarketplace) setMobileSearchOpen(false)
+    }, 250)
+  }
 
   const submitSearch = (value: string) => {
     const q = value.trim()
     if (!q) return
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
     useAppStore.getState().setExploreQuery(q)
     useAppStore.getState().setExploreTab('all')
     navigate({ name: 'marketplace' })
     setMobileSearchOpen(false)
   }
 
-  // Atalho "/" foca a busca do header (sensação de app nativo)
+  // Atalho "/" foca a busca principal do header (sensação de app nativo)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null
@@ -62,6 +450,7 @@ export function Navbar() {
           desktopSearchRef.current?.focus()
         } else {
           setMobileSearchOpen(true)
+          setTimeout(() => mobileSearchRef.current?.focus(), 60)
         }
       }
     }
@@ -71,7 +460,6 @@ export function Navbar() {
 
   const searchField = (isMobile: boolean) => {
     const value = query
-    const setValue = (v: string) => setQuery(v)
     return (
       <form
         role="search"
@@ -89,27 +477,29 @@ export function Navbar() {
           ref={isMobile ? mobileSearchRef : desktopSearchRef}
           type="search"
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => onSearchInput(e.target.value)}
           placeholder="Buscar mentores, cursos, trilhas e leituras..."
           aria-label="Buscar na plataforma"
           className={cn(
             'h-9 w-full rounded-full border border-transparent bg-stone-100 pl-10 pr-9 text-sm text-stone-900 outline-none transition-all placeholder:text-stone-400',
             'focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100',
+            'dark:bg-stone-800/70 dark:text-stone-100 dark:placeholder:text-stone-500',
+            'dark:focus:border-emerald-700 dark:focus:bg-stone-900 dark:focus:ring-emerald-900/40',
             '[&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden'
           )}
         />
         {value ? (
           <button
             type="button"
-            onClick={() => setValue('')}
+            onClick={() => onSearchInput('')}
             aria-label="Limpar busca"
-            className="absolute right-2.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-200 hover:text-stone-700"
+            className="absolute right-2.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-200 hover:text-stone-700 dark:hover:bg-stone-700 dark:hover:text-stone-200"
           >
             <X className="h-3.5 w-3.5" />
           </button>
         ) : (
           !isMobile && (
-            <kbd className="pointer-events-none absolute right-3 top-1/2 hidden h-5 -translate-y-1/2 items-center rounded border border-stone-200 bg-white px-1 font-mono text-[10px] font-medium text-stone-400 md:inline-flex">
+            <kbd className="pointer-events-none absolute right-3 top-1/2 hidden h-5 -translate-y-1/2 items-center rounded border border-stone-200 bg-white px-1 font-mono text-[10px] font-medium text-stone-400 md:inline-flex dark:border-stone-700 dark:bg-stone-900">
               /
             </kbd>
           )
@@ -129,7 +519,7 @@ export function Navbar() {
         title={label}
         className={cn(
           'relative flex h-9 items-center gap-2 rounded-full px-3.5 text-sm font-medium transition-colors',
-          active ? 'text-emerald-800' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900'
+          active ? 'text-emerald-800 dark:text-emerald-300' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800/70 dark:hover:text-stone-100'
         )}
       >
         {active && (
@@ -137,7 +527,7 @@ export function Navbar() {
             layoutId="navbar-nav-pill"
             aria-hidden
             transition={{ type: 'spring', bounce: 0.25, duration: 0.5 }}
-            className="absolute inset-0 -z-10 rounded-full bg-emerald-50"
+            className="absolute inset-0 -z-10 rounded-full bg-emerald-50 dark:bg-emerald-900/30"
           />
         )}
         {icon}
@@ -155,8 +545,8 @@ export function Navbar() {
   return (
     /* Estático no topo do shell (fora do container de rolagem): o corpo da
        página rola no <main> e NUNCA passa por baixo do header. */
-    <header className="shrink-0 border-b border-stone-200/70 bg-white">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4">
+    <header className="shrink-0 border-b border-stone-200/70 bg-white dark:border-stone-800 dark:bg-stone-950">
+      <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-4 sm:px-6">
         <button
           className="flex items-center gap-2.5"
           onClick={() => navigate({ name: 'home' })}
@@ -165,23 +555,29 @@ export function Navbar() {
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-700 text-white transition-transform duration-200 hover:scale-[1.02]">
             <GraduationCap className="h-4.5 w-4.5" />
           </span>
-          <span className="text-base font-extrabold tracking-tight text-stone-900">
-            Mentor<span className="text-emerald-700">Hub</span>
+          <span className="text-base font-semibold tracking-tight text-stone-900 dark:text-stone-50">
+            Mentor<span className="text-emerald-700 dark:text-emerald-400">Hub</span>
           </span>
         </button>
 
         <nav aria-label="Navegação principal" className="ml-4 hidden items-center gap-1 sm:flex">
           {navItem({ name: 'marketplace' }, 'Explorar', <Compass className="h-4 w-4" />)}
-          {navItem({ name: 'dashboard' }, 'Minhas sessões', <CalendarDays className="h-4 w-4" />)}
+          {/* "Minhas mentorias" só faz sentido para quem está logado — some para visitantes */}
+          {user && navItem({ name: 'dashboard' }, 'Minhas mentorias', <CalendarDays className="h-4 w-4" />)}
         </nav>
 
-        {/* Busca global (desktop): envia para o Explorar com o termo aplicado */}
+        {/* Busca principal (desktop): sempre visível, centralizada no header */}
         <div className="mx-auto hidden w-full max-w-xs md:block lg:max-w-sm">
           {searchField(false)}
         </div>
 
         <div className={cn('flex items-center gap-2', 'md:ml-0 ml-auto')}>
-          {/* Busca (mobile): ícone que expande uma linha de busca abaixo */}
+          {/* Tema claro/escuro (todos) + mensagens e sino (apenas logado) */}
+          <ThemeToggle />
+          {user && <MessagesButton />}
+          {user && <NotificationsBell />}
+
+          {/* Busca (mobile): ícone que expande a linha de busca abaixo do header */}
           <button
             onClick={() => {
               setMobileSearchOpen((open) => !open)
@@ -189,7 +585,7 @@ export function Navbar() {
             }}
             aria-expanded={mobileSearchOpen}
             aria-label={mobileSearchOpen ? 'Fechar busca' : 'Abrir busca'}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 md:hidden"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 md:hidden dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
           >
             {mobileSearchOpen ? <X className="h-4.5 w-4.5" /> : <Search className="h-4.5 w-4.5" />}
           </button>
@@ -198,11 +594,11 @@ export function Navbar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="flex items-center gap-2.5 rounded-full border border-stone-200 bg-white py-1 pl-1 pr-3 transition-colors hover:border-emerald-300 hover:bg-emerald-50"
+                  className="flex items-center gap-2.5 rounded-full border border-stone-200 bg-white py-1 pl-1 pr-3 transition-colors hover:border-emerald-300 hover:bg-emerald-50 dark:border-stone-700/80 dark:bg-stone-900 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/50"
                   aria-label="Menu do usuário"
                 >
                   <Avatar name={user.name} src={user.avatarUrl} size="sm" className="ring-transparent" />
-                  <span className="hidden max-w-28 truncate text-sm font-semibold text-stone-700 sm:inline">
+                  <span className="hidden max-w-28 truncate text-sm font-semibold text-stone-700 sm:inline dark:text-stone-200">
                     {firstName(user.name)}
                   </span>
                 </button>
@@ -228,10 +624,16 @@ export function Navbar() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate({ name: 'dashboard' })}>
-                  <CalendarDays className="h-4 w-4" /> Minhas sessões
+                  <CalendarDays className="h-4 w-4" /> Minhas mentorias
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate({ name: 'messages' })}>
+                  <MessageCircle className="h-4 w-4" /> Mensagens
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate({ name: 'marketplace' })}>
                   <Compass className="h-4 w-4" /> Explorar
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate({ name: 'referrals' })}>
+                  <Gift className="h-4 w-4" /> Indicar amigos
                 </DropdownMenuItem>
                 {user.isMentor ? (
                   <DropdownMenuItem onClick={() => navigate({ name: 'onboarding' })}>
@@ -240,6 +642,11 @@ export function Navbar() {
                 ) : (
                   <DropdownMenuItem onClick={() => navigate({ name: 'onboarding' })}>
                     <PlusCircle className="h-4 w-4" /> Criar perfil de mentor
+                  </DropdownMenuItem>
+                )}
+                {user.role === 'ADMIN' && (
+                  <DropdownMenuItem onClick={() => navigate({ name: 'admin' })}>
+                    <ShieldCheck className="h-4 w-4" /> Administração
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
@@ -293,7 +700,7 @@ export function Navbar() {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="overflow-hidden border-t border-stone-100 bg-white md:hidden"
+            className="overflow-hidden border-t border-stone-100 bg-white md:hidden dark:border-stone-800 dark:bg-stone-950"
           >
             <div className="px-4 py-2.5">{searchField(true)}</div>
           </motion.div>

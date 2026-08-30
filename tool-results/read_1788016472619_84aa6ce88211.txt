@@ -1,0 +1,698 @@
+     1→'use client'
+     2→
+     3→// Checkout de curso OU trilha pago — pagamento DEMONSTRATIVO (nenhuma cobrança real).
+     4→// Fluxo: resumo do pedido → forma de pagamento (PIX/Cartão) → confirmação,
+     5→// com funil de rastreamento (begin_checkout na montagem, purchase no sucesso).
+     6→// A loja navega { name: 'checkout', courseId } ou { name: 'checkout', trackId }.
+     7→
+     8→import { useCallback, useEffect, useRef, useState } from 'react'
+     9→import {
+    10→  AlertCircle,
+    11→  ArrowLeft,
+    12→  BookOpen,
+    13→  CheckCircle2,
+    14→  CreditCard,
+    15→  Info,
+    16→  Library,
+    17→  Loader2,
+    18→  Lock,
+    19→  LogIn,
+    20→  QrCode,
+    21→  Route,
+    22→  ShieldCheck,
+    23→  Users,
+    24→} from 'lucide-react'
+    25→import { toast } from 'sonner'
+    26→import { Badge } from '@/components/ui/badge'
+    27→import { Button } from '@/components/ui/button'
+    28→import { Card, CardContent } from '@/components/ui/card'
+    29→import { Input } from '@/components/ui/input'
+    30→import { Label } from '@/components/ui/label'
+    31→import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+    32→import { Separator } from '@/components/ui/separator'
+    33→import { Skeleton } from '@/components/ui/skeleton'
+    34→import { Avatar, Stars } from '@/components/platform/avatar'
+    35→import { api } from '@/lib/api'
+    36→import { LEVEL_LABELS, avatarGradient, currencyBRL } from '@/lib/helpers'
+    37→import { getAttribution, loadTrackingScripts, trackEvent } from '@/lib/tracking'
+    38→import { useAppStore } from '@/lib/store'
+    39→import type { CheckoutResultDTO, CourseDetailDTO, TrackDetailDTO } from '@/lib/types'
+    40→import { cn } from '@/lib/utils'
+    41→
+    42→type PaymentMethodValue = 'PIX' | 'CREDIT_CARD'
+    43→
+    44→const METHOD_LABEL: Record<string, string> = {
+    45→  PIX: 'PIX',
+    46→  CREDIT_CARD: 'Cartão de crédito',
+    47→}
+    48→
+    49→/** Resumo normalizado do item em checkout (curso ou trilha) */
+    50→interface ItemSummary {
+    51→  kind: 'course' | 'track'
+    52→  id: string
+    53→  title: string
+    54→  coverUrl: string | null
+    55→  category: string
+    56→  level: string
+    57→  price: number
+    58→  mentor: {
+    59→    id: string
+    60→    name: string
+    61→    rating: number
+    62→    reviewCount: number
+    63→    avatarUrl?: string | null
+    64→  }
+    65→  isEnrolled: boolean
+    66→  /** Presente apenas em trilhas: composição da jornada */
+    67→  trackStats?: { courseCount: number; mentorshipSessions: number }
+    68→}
+    69→
+    70→export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId?: string }) {
+    71→  const navigate = useAppStore((s) => s.navigate)
+    72→  const setExploreTab = useAppStore((s) => s.setExploreTab)
+    73→  const user = useAppStore((s) => s.user)
+    74→
+    75→  const [course, setCourse] = useState<CourseDetailDTO | null>(null)
+    76→  const [track, setTrack] = useState<TrackDetailDTO | null>(null)
+    77→  const [loading, setLoading] = useState(true)
+    78→  const [error, setError] = useState<string | null>(null)
+    79→
+    80→  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodValue>('PIX')
+    81→  const [paying, setPaying] = useState(false)
+    82→  const [freeEnrolling, setFreeEnrolling] = useState(false)
+    83→  const [order, setOrder] = useState<CheckoutResultDTO | null>(null)
+    84→
+    85→  // Guarda: begin_checkout apenas na primeira montagem bem-sucedida
+    86→  // (evita duplicidade em re-render/StrictMode)
+    87→  const trackedRef = useRef(false)
+    88→
+    89→  const fetchSummary = useCallback(async () => {
+    90→    setLoading(true)
+    91→    setError(null)
+    92→    try {
+    93→      if (trackId) {
+    94→        const d = await api.getTrack(trackId, user?.id)
+    95→        setTrack(d)
+    96→        setCourse(null)
+    97→
+    98→        // Pixels da plataforma recebem as conversões deste checkout
+    99→        if (!trackedRef.current) {
+   100→          trackedRef.current = true
+   101→          loadTrackingScripts()
+   102→          trackEvent('begin_checkout', {
+   103→            mentorId: d.mentor.id,
+   104→            value: d.price,
+   105→            contentName: d.title,
+   106→          })
+   107→        }
+   108→      } else if (courseId) {
+   109→        const d = await api.getCourse(courseId, user?.id)
+   110→        setCourse(d)
+   111→        setTrack(null)
+   112→
+   113→        // Pixels do mentor recebem as conversões deste checkout
+   114→        if (!trackedRef.current) {
+   115→          trackedRef.current = true
+   116→          loadTrackingScripts({
+   117→            mentorGaId: d.mentor.tracking?.gaMeasurementId,
+   118→            mentorPixelId: d.mentor.tracking?.metaPixelId,
+   119→          })
+   120→          trackEvent('begin_checkout', {
+   121→            mentorId: d.mentor.id,
+   122→            courseId: d.id,
+   123→            value: d.price,
+   124→            contentName: d.title,
+   125→          })
+   126→        }
+   127→      } else {
+   128→        setError('Item não encontrado.')
+   129→      }
+   130→    } catch (err) {
+   131→      setError(err instanceof Error ? err.message : 'Não foi possível carregar o checkout.')
+   132→    } finally {
+   133→      setLoading(false)
+   134→    }
+   135→  }, [courseId, trackId, user?.id])
+   136→
+   137→  useEffect(() => {
+   138→    void fetchSummary()
+   139→  }, [fetchSummary])
+   140→
+   141→  /* ---------- Ações ---------- */
+   142→
+   143→  const doEnrollFree = async () => {
+   144→    if (!user || !item) return
+   145→    setFreeEnrolling(true)
+   146→    try {
+   147→      if (item.kind === 'track') {
+   148→        await api.enrollTrack(item.id, user.id)
+   149→        toast.success('Inscrição realizada! Boa jornada 🎉')
+   150→        navigate({ name: 'track', trackId: item.id })
+   151→      } else {
+   152→        const res = await api.enrollCourse(item.id, user.id)
+   153→        toast.success(
+   154→          res.alreadyEnrolled
+   155→            ? 'Você já estava inscrito neste curso.'
+   156→            : 'Inscrição realizada! Boa jornada 🎉'
+   157→        )
+   158→        navigate({ name: 'course', courseId: item.id })
+   159→      }
+   160→    } catch (err) {
+   161→      toast.error(err instanceof Error ? err.message : 'Erro ao realizar inscrição.')
+   162→    } finally {
+   163→      setFreeEnrolling(false)
+   164→    }
+   165→  }
+   166→
+   167→  const doPay = async () => {
+   168→    if (!user || !item || paying) return
+   169→    setPaying(true)
+   170→    try {
+   171→      // A atribuição (utm/gclid/fbclid/canal/landing) viaja no mesmo corpo —
+   172→      // o servidor lê body.attribution para o pedido e o evento purchase.
+   173→      const payload = {
+   174→        userId: user.id,
+   175→        courseId: item.kind === 'course' ? item.id : undefined,
+   176→        trackId: item.kind === 'track' ? item.id : undefined,
+   177→        paymentMethod,
+   178→        attribution: getAttribution(),
+   179→      }
+   180→      const result = await api.checkout(payload)
+   181→
+   182→      trackEvent('purchase', {
+   183→        mentorId: item.mentor.id,
+   184→        courseId: item.kind === 'course' ? item.id : null,
+   185→        value: item.price,
+   186→        transactionId: result.order.id,
+   187→        contentName: item.title,
+   188→      })
+   189→      toast.success('Pagamento aprovado! 🎉')
+   190→      setOrder(result)
+   191→    } catch (err) {
+   192→      const message = err instanceof Error ? err.message : 'Não foi possível concluir o pagamento.'
+   193→      toast.error(message)
+   194→      // Matrícula já existia (409): recarrega para exibir o estado "já inscrito"
+   195→      if (message.includes('já tem acesso')) void fetchSummary()
+   196→    } finally {
+   197→      setPaying(false)
+   198→    }
+   199→  }
+   200→
+   201→  /* ---------- Skeleton ---------- */
+   202→  if (loading) {
+   203→    return (
+   204→      <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-8" aria-busy="true">
+   205→        <Skeleton className="h-9 w-28 rounded-full" />
+   206→        <Skeleton className="mt-4 h-64 w-full rounded-2xl" />
+   207→        <Skeleton className="mt-6 h-24 w-full rounded-2xl" />
+   208→        <Skeleton className="mt-6 h-12 w-full rounded-full" />
+   209→        <p className="sr-only">Carregando checkout…</p>
+   210→      </div>
+   211→    )
+   212→  }
+   213→
+   214→  /* ---------- Erro ---------- */
+   215→  if (error || (!course && !track)) {
+   216→    return (
+   217→      <div className="mx-auto w-full max-w-3xl px-4 py-16">
+   218→        <Card className="mx-auto max-w-md border-dashed">
+   219→          <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
+   220→            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50">
+   221→              <AlertCircle aria-hidden className="h-7 w-7 text-rose-500" />
+   222→            </span>
+   223→            <p className="font-bold text-stone-900">Não foi possível carregar o checkout</p>
+   224→            <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+   225→              {error ?? 'Item não encontrado.'}
+   226→            </p>
+   227→            <Button variant="outline" className="rounded-full" onClick={() => void fetchSummary()}>
+   228→              Tentar novamente
+   229→            </Button>
+   230→          </CardContent>
+   231→        </Card>
+   232→      </div>
+   233→    )
+   234→  }
+   235→
+   236→  /* ---------- Resumo normalizado (curso ou trilha) ---------- */
+   237→  const item: ItemSummary | null = track
+   238→    ? {
+   239→        kind: 'track',
+   240→        id: track.id,
+   241→        title: track.title,
+   242→        coverUrl: track.coverUrl ?? null,
+   243→        category: track.category,
+   244→        level: track.level,
+   245→        price: track.price,
+   246→        mentor: {
+   247→          id: track.mentor.id,
+   248→          name: track.mentor.name,
+   249→          rating: track.mentor.rating,
+   250→          reviewCount: track.mentor.reviewCount,
+   251→          avatarUrl: track.mentor.avatarUrl,
+   252→        },
+   253→        isEnrolled: track.myEnrollment !== null,
+   254→        trackStats: {
+   255→          courseCount: track.courseCount,
+   256→          mentorshipSessions: track.mentorshipSessions,
+   257→        },
+   258→      }
+   259→    : course
+   260→      ? {
+   261→          kind: 'course',
+   262→          id: course.id,
+   263→          title: course.title,
+   264→          coverUrl: course.coverUrl ?? null,
+   265→          category: course.category,
+   266→          level: course.level,
+   267→          price: course.price,
+   268→          mentor: {
+   269→            id: course.mentor.id,
+   270→            name: course.mentor.name,
+   271→            rating: course.mentor.rating,
+   272→            reviewCount: course.mentor.reviewCount,
+   273→            avatarUrl: course.mentor.avatarUrl,
+   274→          },
+   275→          isEnrolled: course.enrollment !== null,
+   276→        }
+   277→      : null
+   278→
+   279→  if (!item) return null
+   280→
+   281→  const isTrack = item.kind === 'track'
+   282→
+   283→  /* ---------- Tela de SUCESSO (substitui o formulário) ---------- */
+   284→  if (order) {
+   285→    return (
+   286→      <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:py-14">
+   287→        <Card className="mx-auto max-w-md rounded-2xl">
+   288→          <CardContent className="flex flex-col items-center gap-1.5 p-8 text-center">
+   289→            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
+   290→              <CheckCircle2 aria-hidden className="h-9 w-9 text-emerald-600" />
+   291→            </span>
+   292→            <h1 className="mt-2 text-xl font-extrabold tracking-tight text-stone-900 sm:text-2xl">
+   293→              Pagamento confirmado!
+   294→            </h1>
+   295→            <p className="text-sm leading-relaxed text-stone-500">
+   296→              Você já tem acesso a{' '}
+   297→              <span className="font-semibold text-stone-700">“{order.order.itemTitle}”</span>
+   298→            </p>
+   299→
+   300→            <dl className="mt-5 w-full space-y-2 rounded-xl border border-stone-200 bg-stone-50/60 p-4 text-left text-sm">
+   301→              <div className="flex items-center justify-between gap-3">
+   302→                <dt className="text-stone-500">Pedido</dt>
+   303→                <dd className="font-bold text-stone-800">#{order.order.id.slice(0, 8).toUpperCase()}</dd>
+   304→              </div>
+   305→              <div className="flex items-center justify-between gap-3">
+   306→                <dt className="text-stone-500">Método</dt>
+   307→                <dd className="font-bold text-stone-800">
+   308→                  {METHOD_LABEL[order.order.paymentMethod] ?? order.order.paymentMethod}
+   309→                </dd>
+   310→              </div>
+   311→              <div className="flex items-center justify-between gap-3">
+   312→                <dt className="text-stone-500">Total</dt>
+   313→                <dd className="font-extrabold text-emerald-700">{currencyBRL(order.order.amount)}</dd>
+   314→              </div>
+   315→            </dl>
+   316→
+   317→            {isTrack ? (
+   318→              <>
+   319→                <Button
+   320→                  onClick={() => navigate({ name: 'track', trackId: item.id })}
+   321→                  className="mt-6 h-12 w-full rounded-full font-bold"
+   322→                >
+   323→                  Acessar a trilha
+   324→                </Button>
+   325→                <Button
+   326→                  variant="outline"
+   327→                  onClick={() => {
+   328→                    setExploreTab('tracks')
+   329→                    navigate({ name: 'marketplace' })
+   330→                  }}
+   331→                  className="w-full rounded-full"
+   332→                >
+   333→                  Explorar mais trilhas
+   334→                </Button>
+   335→              </>
+   336→            ) : (
+   337→              <>
+   338→                <Button
+   339→                  onClick={() => navigate({ name: 'course', courseId: item.id })}
+   340→                  className="mt-6 h-12 w-full rounded-full font-bold"
+   341→                >
+   342→                  Acessar o curso
+   343→                </Button>
+   344→                <Button
+   345→                  variant="outline"
+   346→                  onClick={() => navigate({ name: 'marketplace' })}
+   347→                  className="w-full rounded-full"
+   348→                >
+   349→                  Explorar mais cursos
+   350→                </Button>
+   351→              </>
+   352→            )}
+   353→          </CardContent>
+   354→        </Card>
+   355→      </div>
+   356→    )
+   357→  }
+   358→
+   359→  /* ---------- Checkout ---------- */
+   360→
+   361→  return (
+   362→    <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-8">
+   363→      <Button
+   364→        variant="ghost"
+   365→        onClick={() =>
+   366→          isTrack
+   367→            ? navigate({ name: 'track', trackId: item.id })
+   368→            : navigate({ name: 'course', courseId: item.id })
+   369→        }
+   370→        className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 hover:text-stone-900"
+   371→      >
+   372→        <ArrowLeft aria-hidden className="h-4 w-4" />
+   373→        {isTrack ? 'Voltar à trilha' : 'Voltar ao curso'}
+   374→      </Button>
+   375→      <h1 className="mt-1 text-xl font-extrabold tracking-tight text-stone-900 sm:text-2xl">
+   376→        Checkout
+   377→      </h1>
+   378→
+   379→      {/* Sem login: pedir para entrar */}
+   380→      {!user && (
+   381→        <Card className="mt-5 border-dashed">
+   382→          <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
+   383→            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
+   384→              <LogIn aria-hidden className="h-7 w-7 text-emerald-700" />
+   385→            </span>
+   386→            <p className="font-bold text-stone-900">Entre para concluir a compra</p>
+   387→            <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+   388→              Entre com uma conta para concluir a compra de “{item.title}”.
+   389→            </p>
+   390→            <Button
+   391→              className="mt-1 h-11 rounded-full px-8 font-bold"
+   392→              onClick={() => navigate({ name: 'auth', mode: 'login' })}
+   393→            >
+   394→              Entrar ou criar conta
+   395→            </Button>
+   396→          </CardContent>
+   397→        </Card>
+   398→      )}
+   399→
+   400→      {/* Já inscrito: acesso liberado */}
+   401→      {user && item.isEnrolled && (
+   402→        <Card className="mt-5 rounded-2xl border-emerald-200 bg-emerald-50/40">
+   403→          <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
+   404→            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
+   405→              <CheckCircle2 aria-hidden className="h-7 w-7 text-emerald-700" />
+   406→            </span>
+   407→            <p className="font-bold text-stone-900">
+   408→              {isTrack ? 'Você já tem acesso a esta trilha' : 'Você já tem acesso a este curso'}
+   409→            </p>
+   410→            <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+   411→              Sua matrícula em “{item.title}” já está ativa — bons estudos!
+   412→            </p>
+   413→            <Button
+   414→              onClick={() =>
+   415→                isTrack
+   416→                  ? navigate({ name: 'track', trackId: item.id })
+   417→                  : navigate({ name: 'course', courseId: item.id })
+   418→              }
+   419→              className="mt-1 h-11 rounded-full px-6 font-bold"
+   420→            >
+   421→              {isTrack ? 'Acessar a trilha' : 'Ir para o curso'}
+   422→            </Button>
+   423→          </CardContent>
+   424→        </Card>
+   425→      )}
+   426→
+   427→      {/* Item gratuito: matrícula direta (defensivo — trilhas gratuitas normalmente
+   428→          são inscritas direto na tela da trilha, sem passar pelo checkout) */}
+   429→      {user && !item.isEnrolled && item.price === 0 && (
+   430→        <div className="mt-5 flex flex-col items-center gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-8 text-center">
+   431→          <p className="font-bold text-stone-900">
+   432→            {isTrack ? 'Esta trilha é gratuita' : 'Este curso é gratuito'}
+   433→          </p>
+   434→          <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+   435→            Não é preciso pagar nada: matricule-se e comece a aprender agora mesmo.
+   436→          </p>
+   437→          <Button
+   438→            onClick={() => void doEnrollFree()}
+   439→            disabled={freeEnrolling}
+   440→            className="mt-1 h-11 w-full rounded-full px-8 font-bold sm:w-auto"
+   441→          >
+   442→            {freeEnrolling && <Loader2 aria-hidden className="h-4 w-4 animate-spin" />}
+   443→            Inscrever-se
+   444→          </Button>
+   445→        </div>
+   446→      )}
+   447→
+   448→      {/* Fluxo de pagamento (item pago + logado + não inscrito) */}
+   449→      {user && !item.isEnrolled && item.price > 0 && (
+   450→        <>
+   451→          {/* ---- RESUMO DO PEDIDO ---- */}
+   452→          <Card className="mt-5 gap-0 overflow-hidden rounded-2xl py-0">
+   453→            {item.coverUrl ? (
+   454→              <img
+   455→                src={item.coverUrl}
+   456→                alt={`Capa ${isTrack ? 'da trilha' : 'do curso'} ${item.title}`}
+   457→                className="h-28 w-full object-cover"
+   458→              />
+   459→            ) : (
+   460→              <div
+   461→                aria-hidden
+   462→                className="flex h-28 w-full items-center justify-center"
+   463→                style={avatarGradient(item.title)}
+   464→              >
+   465→                {isTrack ? (
+   466→                  <Route className="h-8 w-8 text-white/20" />
+   467→                ) : (
+   468→                  <Library className="h-8 w-8 text-white/20" />
+   469→                )}
+   470→              </div>
+   471→            )}
+   472→
+   473→            <div className="p-5 sm:p-6">
+   474→              <div className="flex flex-wrap items-center gap-1.5">
+   475→                <Badge className="rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+   476→                  {item.category}
+   477→                </Badge>
+   478→                <Badge variant="outline" className="rounded-full border-stone-300 text-stone-600">
+   479→                  {LEVEL_LABELS[item.level] ?? item.level}
+   480→                </Badge>
+   481→              </div>
+   482→
+   483→              <h2 className="mt-2.5 text-lg font-extrabold leading-snug text-stone-900">
+   484→                {item.title}
+   485→              </h2>
+   486→
+   487→              {isTrack && item.trackStats && (
+   488→                <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-stone-500">
+   489→                  <span className="inline-flex items-center gap-1.5">
+   490→                    <BookOpen aria-hidden className="h-4 w-4 text-stone-400" />
+   491→                    Trilha com {item.trackStats.courseCount}{' '}
+   492→                    {item.trackStats.courseCount === 1 ? 'curso' : 'cursos'}
+   493→                  </span>
+   494→                  <span className="inline-flex items-center gap-1.5">
+   495→                    <Users aria-hidden className="h-4 w-4 text-stone-400" />e{' '}
+   496→                    {item.trackStats.mentorshipSessions}{' '}
+   497→                    {item.trackStats.mentorshipSessions === 1 ? 'mentoria' : 'mentorias'} 1:1
+   498→                  </span>
+   499→                </p>
+   500→              )}
+   501→
+   502→              <div className="mt-3 flex items-center gap-3">
+   503→                <Avatar name={item.mentor.name} src={item.mentor.avatarUrl} size="sm" />
+   504→                <div>
+   505→                  <p className="text-sm font-bold text-stone-800">{item.mentor.name}</p>
+   506→                  {item.mentor.rating > 0 && (
+   507→                    <div className="mt-0.5 flex items-center gap-1.5">
+   508→                      <Stars rating={item.mentor.rating} size={12} />
+   509→                      <span className="text-xs text-stone-400">
+   510→                        ({item.mentor.reviewCount}{' '}
+   511→                        {item.mentor.reviewCount === 1 ? 'avaliação' : 'avaliações'})
+   512→                      </span>
+   513→                    </div>
+   514→                  )}
+   515→                </div>
+   516→              </div>
+   517→
+   518→              <Separator className="my-4" />
+   519→
+   520→              <div className="flex items-center justify-between gap-3">
+   521→                <span className="text-sm font-medium text-stone-500">Total</span>
+   522→                <span className="text-2xl font-extrabold tracking-tight text-stone-900">
+   523→                  {currencyBRL(item.price)}
+   524→                </span>
+   525→              </div>
+   526→              <p className="mt-2 text-xs text-stone-400">
+   527→                Pagamento processado pela plataforma · demonstração
+   528→              </p>
+   529→            </div>
+   530→          </Card>
+   531→
+   532→          {/* ---- AVISO DEMO ---- */}
+   533→          <div
+   534→            role="note"
+   535→            className="mt-5 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-800"
+   536→          >
+   537→            <Info aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+   538→            <span>
+   539→              Ambiente de demonstração — nenhuma cobrança real será feita. A matrícula é liberada
+   540→              na hora.
+   541→            </span>
+   542→          </div>
+   543→
+   544→          {/* ---- FORMA DE PAGAMENTO ---- */}
+   545→          <section aria-labelledby="lp-pagamento-title" className="mt-6">
+   546→            <h2
+   547→              id="lp-pagamento-title"
+   548→              className="text-sm font-extrabold uppercase tracking-wider text-stone-500"
+   549→            >
+   550→              Forma de pagamento
+   551→            </h2>
+   552→
+   553→            <RadioGroup
+   554→              value={paymentMethod}
+   555→              onValueChange={(v) => setPaymentMethod(v as PaymentMethodValue)}
+   556→              aria-labelledby="lp-pagamento-title"
+   557→              className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2"
+   558→            >
+   559→              <Label
+   560→                htmlFor="pay-pix"
+   561→                className={cn(
+   562→                  'cursor-pointer rounded-2xl border p-4 transition-colors',
+   563→                  paymentMethod === 'PIX'
+   564→                    ? 'border-emerald-500 bg-emerald-50/60 ring-1 ring-emerald-500'
+   565→                    : 'border-stone-200 bg-white hover:border-stone-300'
+   566→                )}
+   567→              >
+   568→                <RadioGroupItem value="PIX" id="pay-pix" className="mt-0.5" />
+   569→                <QrCode aria-hidden className="h-5 w-5 shrink-0 text-emerald-700" />
+   570→                <span className="flex-1">
+   571→                  <span className="block text-sm font-bold text-stone-900">PIX</span>
+   572→                  <span className="block text-xs text-stone-500">Aprovação imediata</span>
+   573→                </span>
+   574→              </Label>
+   575→
+   576→              <Label
+   577→                htmlFor="pay-card"
+   578→                className={cn(
+   579→                  'cursor-pointer rounded-2xl border p-4 transition-colors',
+   580→                  paymentMethod === 'CREDIT_CARD'
+   581→                    ? 'border-emerald-500 bg-emerald-50/60 ring-1 ring-emerald-500'
+   582→                    : 'border-stone-200 bg-white hover:border-stone-300'
+   583→                )}
+   584→              >
+   585→                <RadioGroupItem value="CREDIT_CARD" id="pay-card" className="mt-0.5" />
+   586→                <CreditCard aria-hidden className="h-5 w-5 shrink-0 text-emerald-700" />
+   587→                <span className="flex-1">
+   588→                  <span className="block text-sm font-bold text-stone-900">Cartão de crédito</span>
+   589→                  <span className="block text-xs text-stone-500">Em até 12x — simulação</span>
+   590→                </span>
+   591→              </Label>
+   592→            </RadioGroup>
+   593→
+   594→            {/* PIX: QR Code ilustrativo */}
+   595→            {paymentMethod === 'PIX' && (
+   596→              <div className="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 bg-stone-50/60 p-6 text-center">
+   597→                <QrCode aria-hidden className="h-24 w-24 text-stone-300" strokeWidth={1.25} />
+   598→                <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+   599→                  O QR Code aparece aqui em produção — pagamentos reais via gateway (Stripe/Mercado
+   600→                  Pago).
+   601→                </p>
+   602→              </div>
+   603→            )}
+   604→
+   605→            {/* Cartão: formulário apenas visual (demo) */}
+   606→            {paymentMethod === 'CREDIT_CARD' && (
+   607→              <div className="mt-4 rounded-2xl border border-stone-200 bg-white p-4 sm:p-5">
+   608→                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+   609→                  <div className="sm:col-span-2">
+   610→                    <Label htmlFor="cc-number" className="text-xs font-semibold text-stone-600">
+   611→                      Número do cartão
+   612→                    </Label>
+   613→                    <Input
+   614→                      id="cc-number"
+   615→                      inputMode="numeric"
+   616→                      autoComplete="cc-number"
+   617→                      placeholder="•••• •••• •••• 4242"
+   618→                      className="mt-1.5 h-10 rounded-xl"
+   619→                    />
+   620→                  </div>
+   621→                  <div className="sm:col-span-2">
+   622→                    <Label htmlFor="cc-name" className="text-xs font-semibold text-stone-600">
+   623→                      Nome no cartão
+   624→                    </Label>
+   625→                    <Input
+   626→                      id="cc-name"
+   627→                      autoComplete="cc-name"
+   628→                      placeholder="Como impresso no cartão"
+   629→                      className="mt-1.5 h-10 rounded-xl"
+   630→                    />
+   631→                  </div>
+   632→                  <div>
+   633→                    <Label htmlFor="cc-exp" className="text-xs font-semibold text-stone-600">
+   634→                      Validade
+   635→                    </Label>
+   636→                    <Input
+   637→                      id="cc-exp"
+   638→                      inputMode="numeric"
+   639→                      autoComplete="cc-exp"
+   640→                      placeholder="MM/AA"
+   641→                      className="mt-1.5 h-10 rounded-xl"
+   642→                    />
+   643→                  </div>
+   644→                  <div>
+   645→                    <Label htmlFor="cc-cvv" className="text-xs font-semibold text-stone-600">
+   646→                      CVV
+   647→                    </Label>
+   648→                    <Input
+   649→                      id="cc-cvv"
+   650→                      inputMode="numeric"
+   651→                      autoComplete="cc-csc"
+   652→                      placeholder="•••"
+   653→                      className="mt-1.5 h-10 rounded-xl"
+   654→                    />
+   655→                  </div>
+   656→                </div>
+   657→                <p className="mt-3 flex items-start gap-1.5 text-xs leading-relaxed text-amber-700">
+   658→                  <Info aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+   659→                  Ambiente de demonstração — não insira dados reais.
+   660→                </p>
+   661→              </div>
+   662→            )}
+   663→          </section>
+   664→
+   665→          {/* ---- BOTÃO PAGAR ---- */}
+   666→          <Button
+   667→            onClick={() => void doPay()}
+   668→            disabled={paying}
+   669→            className="mt-6 h-13 w-full rounded-full text-base font-extrabold"
+   670→          >
+   671→            {paying ? (
+   672→              <>
+   673→                <Loader2 aria-hidden className="h-5 w-5 animate-spin" /> Pagando…
+   674→              </>
+   675→            ) : (
+   676→              <>
+   677→                <Lock aria-hidden className="h-4 w-4" /> Pagar {currencyBRL(item.price)}
+   678→              </>
+   679→            )}
+   680→          </Button>
+   681→
+   682→          {/* ---- SEGURANÇA ---- */}
+   683→          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-stone-400">
+   684→            <span className="inline-flex items-center gap-1.5">
+   685→              <ShieldCheck aria-hidden className="h-4 w-4 text-emerald-600" />
+   686→              Compra protegida · 7 dias de garantia
+   687→            </span>
+   688→            <span className="inline-flex items-center gap-1.5">
+   689→              <Lock aria-hidden className="h-4 w-4" />
+   690→              SSL
+   691→            </span>
+   692→          </div>
+   693→        </>
+   694→      )}
+   695→    </div>
+   696→  )
+   697→}
+   698→

@@ -1,0 +1,859 @@
+     1→'use client'
+     2→
+     3→// Checkout de curso OU trilha pago — pagamento DEMONSTRATIVO (nenhuma cobrança real).
+     4→// Fluxo: resumo do pedido → forma de pagamento (PIX/Cartão) → confirmação,
+     5→// com funil de rastreamento (begin_checkout na montagem, purchase no sucesso).
+     6→// A loja navega { name: 'checkout', courseId } ou { name: 'checkout', trackId }.
+     7→
+     8→import { useCallback, useEffect, useRef, useState } from 'react'
+     9→import {
+    10→  AlertCircle,
+    11→  ArrowLeft,
+    12→  BookOpen,
+    13→  CheckCircle2,
+    14→  CreditCard,
+    15→  Info,
+    16→  Library,
+    17→  Loader2,
+    18→  Lock,
+    19→  LogIn,
+    20→  QrCode,
+    21→  Route,
+    22→  ShieldCheck,
+    23→  Tag,
+    24→  Users,
+    25→  X,
+    26→} from 'lucide-react'
+    27→import { toast } from 'sonner'
+    28→import { Badge } from '@/components/ui/badge'
+    29→import { Button } from '@/components/ui/button'
+    30→import { Card, CardContent } from '@/components/ui/card'
+    31→import { Input } from '@/components/ui/input'
+    32→import { Label } from '@/components/ui/label'
+    33→import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+    34→import { Separator } from '@/components/ui/separator'
+    35→import { Skeleton } from '@/components/ui/skeleton'
+    36→import { Avatar, Stars } from '@/components/platform/avatar'
+    37→import { api } from '@/lib/api'
+    38→import { LEVEL_LABELS, avatarGradient, currencyBRL } from '@/lib/helpers'
+    39→import { getAttribution, loadTrackingScripts, trackEvent } from '@/lib/tracking'
+    40→import { useAppStore } from '@/lib/store'
+    41→import type {
+    42→  CheckoutResultDTO,
+    43→  CouponValidationDTO,
+    44→  CourseDetailDTO,
+    45→  TrackDetailDTO,
+    46→} from '@/lib/types'
+    47→import { cn } from '@/lib/utils'
+    48→
+    49→type PaymentMethodValue = 'PIX' | 'CREDIT_CARD'
+    50→
+    51→const METHOD_LABEL: Record<string, string> = {
+    52→  PIX: 'PIX',
+    53→  CREDIT_CARD: 'Cartão de crédito',
+    54→}
+    55→
+    56→/** Moeda com 2 casas fixas (descontos costumam ter centavos: R$ 170,10) */
+    57→const formatBRL = (value: number) =>
+    58→  value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })
+    59→
+    60→/** Resumo normalizado do item em checkout (curso ou trilha) */
+    61→interface ItemSummary {
+    62→  kind: 'course' | 'track'
+    63→  id: string
+    64→  title: string
+    65→  coverUrl: string | null
+    66→  category: string
+    67→  level: string
+    68→  price: number
+    69→  mentor: {
+    70→    id: string
+    71→    name: string
+    72→    rating: number
+    73→    reviewCount: number
+    74→    avatarUrl?: string | null
+    75→  }
+    76→  isEnrolled: boolean
+    77→  /** Presente apenas em trilhas: composição da jornada */
+    78→  trackStats?: { courseCount: number; mentorshipSessions: number }
+    79→}
+    80→
+    81→export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId?: string }) {
+    82→  const navigate = useAppStore((s) => s.navigate)
+    83→  const setExploreTab = useAppStore((s) => s.setExploreTab)
+    84→  const user = useAppStore((s) => s.user)
+    85→
+    86→  const [course, setCourse] = useState<CourseDetailDTO | null>(null)
+    87→  const [track, setTrack] = useState<TrackDetailDTO | null>(null)
+    88→  const [loading, setLoading] = useState(true)
+    89→  const [error, setError] = useState<string | null>(null)
+    90→
+    91→  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodValue>('PIX')
+    92→  const [paying, setPaying] = useState(false)
+    93→  const [freeEnrolling, setFreeEnrolling] = useState(false)
+    94→  const [order, setOrder] = useState<CheckoutResultDTO | null>(null)
+    95→
+    96→  // Cupom de desconto (apenas itens pagos)
+    97→  const [couponInput, setCouponInput] = useState('')
+    98→  const [couponApplied, setCouponApplied] = useState<CouponValidationDTO | null>(null)
+    99→  const [couponLoading, setCouponLoading] = useState(false)
+   100→  const [couponError, setCouponError] = useState<string | null>(null)
+   101→
+   102→  // Guarda: begin_checkout apenas na primeira montagem bem-sucedida
+   103→  // (evita duplicidade em re-render/StrictMode)
+   104→  const trackedRef = useRef(false)
+   105→
+   106→  const fetchSummary = useCallback(async () => {
+   107→    setLoading(true)
+   108→    setError(null)
+   109→    try {
+   110→      if (trackId) {
+   111→        const d = await api.getTrack(trackId, user?.id)
+   112→        setTrack(d)
+   113→        setCourse(null)
+   114→
+   115→        // Pixels da plataforma recebem as conversões deste checkout
+   116→        if (!trackedRef.current) {
+   117→          trackedRef.current = true
+   118→          loadTrackingScripts()
+   119→          trackEvent('begin_checkout', {
+   120→            mentorId: d.mentor.id,
+   121→            value: d.price,
+   122→            contentName: d.title,
+   123→          })
+   124→        }
+   125→      } else if (courseId) {
+   126→        const d = await api.getCourse(courseId, user?.id)
+   127→        setCourse(d)
+   128→        setTrack(null)
+   129→
+   130→        // Pixels do mentor recebem as conversões deste checkout
+   131→        if (!trackedRef.current) {
+   132→          trackedRef.current = true
+   133→          loadTrackingScripts({
+   134→            mentorGaId: d.mentor.tracking?.gaMeasurementId,
+   135→            mentorPixelId: d.mentor.tracking?.metaPixelId,
+   136→          })
+   137→          trackEvent('begin_checkout', {
+   138→            mentorId: d.mentor.id,
+   139→            courseId: d.id,
+   140→            value: d.price,
+   141→            contentName: d.title,
+   142→          })
+   143→        }
+   144→      } else {
+   145→        setError('Item não encontrado.')
+   146→      }
+   147→    } catch (err) {
+   148→      setError(err instanceof Error ? err.message : 'Não foi possível carregar o checkout.')
+   149→    } finally {
+   150→      setLoading(false)
+   151→    }
+   152→  }, [courseId, trackId, user?.id])
+   153→
+   154→  useEffect(() => {
+   155→    void fetchSummary()
+   156→  }, [fetchSummary])
+   157→
+   158→  // Trocou o item do checkout: volta o cupom ao estado inicial
+   159→  useEffect(() => {
+   160→    setCouponInput('')
+   161→    setCouponApplied(null)
+   162→    setCouponError(null)
+   163→    setCouponLoading(false)
+   164→  }, [courseId, trackId])
+   165→
+   166→  /* ---------- Ações ---------- */
+   167→
+   168→  const applyCoupon = async () => {
+   169→    if (!item || couponLoading) return
+   170→    const code = couponInput.trim().toUpperCase()
+   171→    if (!code) {
+   172→      setCouponApplied(null)
+   173→      setCouponError('Digite um cupom para aplicar.')
+   174→      return
+   175→    }
+   176→    setCouponLoading(true)
+   177→    setCouponError(null)
+   178→    try {
+   179→      const result = await api.validateCoupon({
+   180→        code,
+   181→        courseId: item.kind === 'course' ? item.id : undefined,
+   182→        trackId: item.kind === 'track' ? item.id : undefined,
+   183→      })
+   184→      setCouponApplied(result)
+   185→      setCouponInput('')
+   186→    } catch (err) {
+   187→      setCouponApplied(null)
+   188→      setCouponError(err instanceof Error ? err.message : 'Não foi possível validar o cupom.')
+   189→    } finally {
+   190→      setCouponLoading(false)
+   191→    }
+   192→  }
+   193→
+   194→  const removeCoupon = () => {
+   195→    setCouponApplied(null)
+   196→    setCouponInput('')
+   197→    setCouponError(null)
+   198→  }
+   199→
+   200→  const doEnrollFree = async () => {
+   201→    if (!user || !item) return
+   202→    setFreeEnrolling(true)
+   203→    try {
+   204→      if (item.kind === 'track') {
+   205→        await api.enrollTrack(item.id, user.id)
+   206→        toast.success('Inscrição realizada! Boa jornada 🎉')
+   207→        navigate({ name: 'track', trackId: item.id })
+   208→      } else {
+   209→        const res = await api.enrollCourse(item.id, user.id)
+   210→        toast.success(
+   211→          res.alreadyEnrolled
+   212→            ? 'Você já estava inscrito neste curso.'
+   213→            : 'Inscrição realizada! Boa jornada 🎉'
+   214→        )
+   215→        navigate({ name: 'course', courseId: item.id })
+   216→      }
+   217→    } catch (err) {
+   218→      toast.error(err instanceof Error ? err.message : 'Erro ao realizar inscrição.')
+   219→    } finally {
+   220→      setFreeEnrolling(false)
+   221→    }
+   222→  }
+   223→
+   224→  const doPay = async () => {
+   225→    if (!user || !item || paying) return
+   226→    setPaying(true)
+   227→    try {
+   228→      // A atribuição (utm/gclid/fbclid/canal/landing) viaja no mesmo corpo —
+   229→      // o servidor lê body.attribution para o pedido e o evento purchase.
+   230→      const payload = {
+   231→        userId: user.id,
+   232→        courseId: item.kind === 'course' ? item.id : undefined,
+   233→        trackId: item.kind === 'track' ? item.id : undefined,
+   234→        paymentMethod,
+   235→        couponCode: couponApplied?.code || undefined,
+   236→        attribution: getAttribution(),
+   237→      }
+   238→      const result = await api.checkout(payload)
+   239→
+   240→      trackEvent('purchase', {
+   241→        mentorId: item.mentor.id,
+   242→        courseId: item.kind === 'course' ? item.id : null,
+   243→        value: item.price,
+   244→        transactionId: result.order.id,
+   245→        contentName: item.title,
+   246→      })
+   247→      toast.success('Pagamento aprovado! 🎉')
+   248→      setOrder(result)
+   249→    } catch (err) {
+   250→      const message = err instanceof Error ? err.message : 'Não foi possível concluir o pagamento.'
+   251→      toast.error(message)
+   252→      // Cupom pode ter esgotado/expirado entre a validação e o pagamento:
+   253→      // mostra o erro no fluxo normal e volta o cupom ao estado inicial.
+   254→      if (/cupom/i.test(message)) {
+   255→        setCouponApplied(null)
+   256→        setCouponInput('')
+   257→        setCouponError(message)
+   258→      }
+   259→      // Matrícula já existia (409): recarrega para exibir o estado "já inscrito"
+   260→      if (message.includes('já tem acesso')) void fetchSummary()
+   261→    } finally {
+   262→      setPaying(false)
+   263→    }
+   264→  }
+   265→
+   266→  /* ---------- Skeleton ---------- */
+   267→  if (loading) {
+   268→    return (
+   269→      <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-8" aria-busy="true">
+   270→        <Skeleton className="h-9 w-28 rounded-full" />
+   271→        <Skeleton className="mt-4 h-64 w-full rounded-2xl" />
+   272→        <Skeleton className="mt-6 h-24 w-full rounded-2xl" />
+   273→        <Skeleton className="mt-6 h-12 w-full rounded-full" />
+   274→        <p className="sr-only">Carregando checkout…</p>
+   275→      </div>
+   276→    )
+   277→  }
+   278→
+   279→  /* ---------- Erro ---------- */
+   280→  if (error || (!course && !track)) {
+   281→    return (
+   282→      <div className="mx-auto w-full max-w-3xl px-4 py-16">
+   283→        <Card className="mx-auto max-w-md border-dashed">
+   284→          <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
+   285→            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50">
+   286→              <AlertCircle aria-hidden className="h-7 w-7 text-rose-500" />
+   287→            </span>
+   288→            <p className="font-bold text-stone-900">Não foi possível carregar o checkout</p>
+   289→            <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+   290→              {error ?? 'Item não encontrado.'}
+   291→            </p>
+   292→            <Button variant="outline" className="rounded-full" onClick={() => void fetchSummary()}>
+   293→              Tentar novamente
+   294→            </Button>
+   295→          </CardContent>
+   296→        </Card>
+   297→      </div>
+   298→    )
+   299→  }
+   300→
+   301→  /* ---------- Resumo normalizado (curso ou trilha) ---------- */
+   302→  const item: ItemSummary | null = track
+   303→    ? {
+   304→        kind: 'track',
+   305→        id: track.id,
+   306→        title: track.title,
+   307→        coverUrl: track.coverUrl ?? null,
+   308→        category: track.category,
+   309→        level: track.level,
+   310→        price: track.price,
+   311→        mentor: {
+   312→          id: track.mentor.id,
+   313→          name: track.mentor.name,
+   314→          rating: track.mentor.rating,
+   315→          reviewCount: track.mentor.reviewCount,
+   316→          avatarUrl: track.mentor.avatarUrl,
+   317→        },
+   318→        isEnrolled: track.myEnrollment !== null,
+   319→        trackStats: {
+   320→          courseCount: track.courseCount,
+   321→          mentorshipSessions: track.mentorshipSessions,
+   322→        },
+   323→      }
+   324→    : course
+   325→      ? {
+   326→          kind: 'course',
+   327→          id: course.id,
+   328→          title: course.title,
+   329→          coverUrl: course.coverUrl ?? null,
+   330→          category: course.category,
+   331→          level: course.level,
+   332→          price: course.price,
+   333→          mentor: {
+   334→            id: course.mentor.id,
+   335→            name: course.mentor.name,
+   336→            rating: course.mentor.rating,
+   337→            reviewCount: course.mentor.reviewCount,
+   338→            avatarUrl: course.mentor.avatarUrl,
+   339→          },
+   340→          isEnrolled: course.enrollment !== null,
+   341→        }
+   342→      : null
+   343→
+   344→  if (!item) return null
+   345→
+   346→  const isTrack = item.kind === 'track'
+   347→
+   348→  /* ---------- Tela de SUCESSO (substitui o formulário) ---------- */
+   349→  if (order) {
+   350→    return (
+   351→      <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:py-14">
+   352→        <Card className="mx-auto max-w-md rounded-2xl">
+   353→          <CardContent className="flex flex-col items-center gap-1.5 p-8 text-center">
+   354→            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
+   355→              <CheckCircle2 aria-hidden className="h-9 w-9 text-emerald-600" />
+   356→            </span>
+   357→            <h1 className="mt-2 text-xl font-extrabold tracking-tight text-stone-900 sm:text-2xl">
+   358→              Pagamento confirmado!
+   359→            </h1>
+   360→            <p className="text-sm leading-relaxed text-stone-500">
+   361→              Você já tem acesso a{' '}
+   362→              <span className="font-semibold text-stone-700">“{order.order.itemTitle}”</span>
+   363→            </p>
+   364→
+   365→            <dl className="mt-5 w-full space-y-2 rounded-xl border border-stone-200 bg-stone-50/60 p-4 text-left text-sm">
+   366→              <div className="flex items-center justify-between gap-3">
+   367→                <dt className="text-stone-500">Pedido</dt>
+   368→                <dd className="font-bold text-stone-800">#{order.order.id.slice(0, 8).toUpperCase()}</dd>
+   369→              </div>
+   370→              <div className="flex items-center justify-between gap-3">
+   371→                <dt className="text-stone-500">Método</dt>
+   372→                <dd className="font-bold text-stone-800">
+   373→                  {METHOD_LABEL[order.order.paymentMethod] ?? order.order.paymentMethod}
+   374→                </dd>
+   375→              </div>
+   376→              <div className="flex items-center justify-between gap-3">
+   377→                <dt className="text-stone-500">Total</dt>
+   378→                <dd className="font-extrabold text-emerald-700">{formatBRL(order.order.amount)}</dd>
+   379→              </div>
+   380→            </dl>
+   381→
+   382→            {isTrack ? (
+   383→              <>
+   384→                <Button
+   385→                  onClick={() => navigate({ name: 'track', trackId: item.id })}
+   386→                  className="mt-6 h-12 w-full rounded-full font-bold"
+   387→                >
+   388→                  Acessar a trilha
+   389→                </Button>
+   390→                <Button
+   391→                  variant="outline"
+   392→                  onClick={() => {
+   393→                    setExploreTab('tracks')
+   394→                    navigate({ name: 'marketplace' })
+   395→                  }}
+   396→                  className="w-full rounded-full"
+   397→                >
+   398→                  Explorar mais trilhas
+   399→                </Button>
+   400→              </>
+   401→            ) : (
+   402→              <>
+   403→                <Button
+   404→                  onClick={() => navigate({ name: 'course', courseId: item.id })}
+   405→                  className="mt-6 h-12 w-full rounded-full font-bold"
+   406→                >
+   407→                  Acessar o curso
+   408→                </Button>
+   409→                <Button
+   410→                  variant="outline"
+   411→                  onClick={() => navigate({ name: 'marketplace' })}
+   412→                  className="w-full rounded-full"
+   413→                >
+   414→                  Explorar mais cursos
+   415→                </Button>
+   416→              </>
+   417→            )}
+   418→          </CardContent>
+   419→        </Card>
+   420→      </div>
+   421→    )
+   422→  }
+   423→
+   424→  /* ---------- Checkout ---------- */
+   425→
+   426→  return (
+   427→    <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-8">
+   428→      <Button
+   429→        variant="ghost"
+   430→        onClick={() =>
+   431→          isTrack
+   432→            ? navigate({ name: 'track', trackId: item.id })
+   433→            : navigate({ name: 'course', courseId: item.id })
+   434→        }
+   435→        className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 hover:text-stone-900"
+   436→      >
+   437→        <ArrowLeft aria-hidden className="h-4 w-4" />
+   438→        {isTrack ? 'Voltar à trilha' : 'Voltar ao curso'}
+   439→      </Button>
+   440→      <h1 className="mt-1 text-xl font-extrabold tracking-tight text-stone-900 sm:text-2xl">
+   441→        Checkout
+   442→      </h1>
+   443→
+   444→      {/* Sem login: pedir para entrar */}
+   445→      {!user && (
+   446→        <Card className="mt-5 border-dashed">
+   447→          <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
+   448→            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
+   449→              <LogIn aria-hidden className="h-7 w-7 text-emerald-700" />
+   450→            </span>
+   451→            <p className="font-bold text-stone-900">Entre para concluir a compra</p>
+   452→            <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+   453→              Entre com uma conta para concluir a compra de “{item.title}”.
+   454→            </p>
+   455→            <Button
+   456→              className="mt-1 h-11 rounded-full px-8 font-bold"
+   457→              onClick={() => navigate({ name: 'auth', mode: 'login' })}
+   458→            >
+   459→              Entrar ou criar conta
+   460→            </Button>
+   461→          </CardContent>
+   462→        </Card>
+   463→      )}
+   464→
+   465→      {/* Já inscrito: acesso liberado */}
+   466→      {user && item.isEnrolled && (
+   467→        <Card className="mt-5 rounded-2xl border-emerald-200 bg-emerald-50/40">
+   468→          <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
+   469→            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
+   470→              <CheckCircle2 aria-hidden className="h-7 w-7 text-emerald-700" />
+   471→            </span>
+   472→            <p className="font-bold text-stone-900">
+   473→              {isTrack ? 'Você já tem acesso a esta trilha' : 'Você já tem acesso a este curso'}
+   474→            </p>
+   475→            <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+   476→              Sua matrícula em “{item.title}” já está ativa — bons estudos!
+   477→            </p>
+   478→            <Button
+   479→              onClick={() =>
+   480→                isTrack
+   481→                  ? navigate({ name: 'track', trackId: item.id })
+   482→                  : navigate({ name: 'course', courseId: item.id })
+   483→              }
+   484→              className="mt-1 h-11 rounded-full px-6 font-bold"
+   485→            >
+   486→              {isTrack ? 'Acessar a trilha' : 'Ir para o curso'}
+   487→            </Button>
+   488→          </CardContent>
+   489→        </Card>
+   490→      )}
+   491→
+   492→      {/* Item gratuito: matrícula direta (defensivo — trilhas gratuitas normalmente
+   493→          são inscritas direto na tela da trilha, sem passar pelo checkout) */}
+   494→      {user && !item.isEnrolled && item.price === 0 && (
+   495→        <div className="mt-5 flex flex-col items-center gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-8 text-center">
+   496→          <p className="font-bold text-stone-900">
+   497→            {isTrack ? 'Esta trilha é gratuita' : 'Este curso é gratuito'}
+   498→          </p>
+   499→          <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+   500→            Não é preciso pagar nada: matricule-se e comece a aprender agora mesmo.
+   501→          </p>
+   502→          <Button
+   503→            onClick={() => void doEnrollFree()}
+   504→            disabled={freeEnrolling}
+   505→            className="mt-1 h-11 w-full rounded-full px-8 font-bold sm:w-auto"
+   506→          >
+   507→            {freeEnrolling && <Loader2 aria-hidden className="h-4 w-4 animate-spin" />}
+   508→            Inscrever-se
+   509→          </Button>
+   510→        </div>
+   511→      )}
+   512→
+   513→      {/* Fluxo de pagamento (item pago + logado + não inscrito) */}
+   514→      {user && !item.isEnrolled && item.price > 0 && (
+   515→        <>
+   516→          {/* ---- RESUMO DO PEDIDO ---- */}
+   517→          <Card className="mt-5 gap-0 overflow-hidden rounded-2xl py-0">
+   518→            {item.coverUrl ? (
+   519→              <img
+   520→                src={item.coverUrl}
+   521→                alt={`Capa ${isTrack ? 'da trilha' : 'do curso'} ${item.title}`}
+   522→                className="h-28 w-full object-cover"
+   523→              />
+   524→            ) : (
+   525→              <div
+   526→                aria-hidden
+   527→                className="flex h-28 w-full items-center justify-center"
+   528→                style={avatarGradient(item.title)}
+   529→              >
+   530→                {isTrack ? (
+   531→                  <Route className="h-8 w-8 text-white/20" />
+   532→                ) : (
+   533→                  <Library className="h-8 w-8 text-white/20" />
+   534→                )}
+   535→              </div>
+   536→            )}
+   537→
+   538→            <div className="p-5 sm:p-6">
+   539→              <div className="flex flex-wrap items-center gap-1.5">
+   540→                <Badge className="rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+   541→                  {item.category}
+   542→                </Badge>
+   543→                <Badge variant="outline" className="rounded-full border-stone-300 text-stone-600">
+   544→                  {LEVEL_LABELS[item.level] ?? item.level}
+   545→                </Badge>
+   546→              </div>
+   547→
+   548→              <h2 className="mt-2.5 text-lg font-extrabold leading-snug text-stone-900">
+   549→                {item.title}
+   550→              </h2>
+   551→
+   552→              {isTrack && item.trackStats && (
+   553→                <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-stone-500">
+   554→                  <span className="inline-flex items-center gap-1.5">
+   555→                    <BookOpen aria-hidden className="h-4 w-4 text-stone-400" />
+   556→                    Trilha com {item.trackStats.courseCount}{' '}
+   557→                    {item.trackStats.courseCount === 1 ? 'curso' : 'cursos'}
+   558→                  </span>
+   559→                  <span className="inline-flex items-center gap-1.5">
+   560→                    <Users aria-hidden className="h-4 w-4 text-stone-400" />e{' '}
+   561→                    {item.trackStats.mentorshipSessions}{' '}
+   562→                    {item.trackStats.mentorshipSessions === 1 ? 'mentoria' : 'mentorias'} 1:1
+   563→                  </span>
+   564→                </p>
+   565→              )}
+   566→
+   567→              <div className="mt-3 flex items-center gap-3">
+   568→                <Avatar name={item.mentor.name} src={item.mentor.avatarUrl} size="sm" />
+   569→                <div>
+   570→                  <p className="text-sm font-bold text-stone-800">{item.mentor.name}</p>
+   571→                  {item.mentor.rating > 0 && (
+   572→                    <div className="mt-0.5 flex items-center gap-1.5">
+   573→                      <Stars rating={item.mentor.rating} size={12} />
+   574→                      <span className="text-xs text-stone-400">
+   575→                        ({item.mentor.reviewCount}{' '}
+   576→                        {item.mentor.reviewCount === 1 ? 'avaliação' : 'avaliações'})
+   577→                      </span>
+   578→                    </div>
+   579→                  )}
+   580→                </div>
+   581→              </div>
+   582→
+   583→              <Separator className="my-4" />
+   584→
+   585→              <div className="flex items-center justify-between gap-3">
+   586→                <span className="text-sm font-medium text-stone-500">Total</span>
+   587→                {couponApplied ? (
+   588→                  <span className="text-2xl font-extrabold tracking-tight text-emerald-700">
+   589→                    {formatBRL(couponApplied.finalPrice)}
+   590→                  </span>
+   591→                ) : (
+   592→                  <span className="text-2xl font-extrabold tracking-tight text-stone-900">
+   593→                    {currencyBRL(item.price)}
+   594→                  </span>
+   595→                )}
+   596→              </div>
+   597→              {couponApplied && (
+   598→                <div className="mt-1 flex items-center justify-between gap-3 text-sm">
+   599→                  <span className="text-emerald-700">Desconto ({couponApplied.code})</span>
+   600→                  <span className="font-bold text-emerald-700">
+   601→                    −{formatBRL(couponApplied.discount)}
+   602→                  </span>
+   603→                </div>
+   604→              )}
+   605→
+   606→              {/* ---- CUPOM DE DESCONTO (apenas itens pagos) ---- */}
+   607→              {couponApplied ? (
+   608→                <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+   609→                  <div className="flex items-center justify-between gap-2">
+   610→                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+   611→                      <span className="rounded-md border border-emerald-300 bg-white px-2 py-0.5 font-mono text-xs font-bold text-emerald-800">
+   612→                        {couponApplied.code}
+   613→                      </span>
+   614→                      <span className="truncate text-xs font-semibold text-emerald-800">
+   615→                        {couponApplied.label}
+   616→                      </span>
+   617→                    </div>
+   618→                    <Button
+   619→                      variant="ghost"
+   620→                      aria-label="Remover cupom"
+   621→                      onClick={removeCoupon}
+   622→                      className="h-11 w-11 shrink-0 rounded-xl text-stone-400 hover:bg-white hover:text-stone-700"
+   623→                    >
+   624→                      <X aria-hidden className="h-4 w-4" />
+   625→                    </Button>
+   626→                  </div>
+   627→                  <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+   628→                    <span className="text-sm text-stone-400 line-through">
+   629→                      {formatBRL(item.price)}
+   630→                    </span>
+   631→                    <span className="text-xs font-medium text-emerald-700">com desconto</span>
+   632→                    <span className="text-lg font-extrabold text-emerald-700">
+   633→                      {formatBRL(couponApplied.finalPrice)}
+   634→                    </span>
+   635→                  </div>
+   636→                </div>
+   637→              ) : (
+   638→                <form
+   639→                  onSubmit={(e) => {
+   640→                    e.preventDefault()
+   641→                    void applyCoupon()
+   642→                  }}
+   643→                  className="mt-3"
+   644→                >
+   645→                  <Label htmlFor="checkout-coupon" className="sr-only">
+   646→                    Cupom de desconto
+   647→                  </Label>
+   648→                  <div className="flex items-center gap-2">
+   649→                    <div className="relative min-w-0 flex-1">
+   650→                      <Tag
+   651→                        aria-hidden
+   652→                        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400"
+   653→                      />
+   654→                      <Input
+   655→                        id="checkout-coupon"
+   656→                        value={couponInput}
+   657→                        onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+   658→                        placeholder="Cupom de desconto"
+   659→                        autoComplete="off"
+   660→                        autoCapitalize="characters"
+   661→                        spellCheck={false}
+   662→                        className="h-11 rounded-xl pl-9 font-mono uppercase"
+   663→                      />
+   664→                    </div>
+   665→                    <Button
+   666→                      type="submit"
+   667→                      variant="outline"
+   668→                      disabled={couponLoading}
+   669→                      className="h-11 shrink-0 rounded-xl px-5 font-bold"
+   670→                    >
+   671→                      {couponLoading ? (
+   672→                        <>
+   673→                          <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> Verificando…
+   674→                        </>
+   675→                      ) : (
+   676→                        'Aplicar'
+   677→                      )}
+   678→                    </Button>
+   679→                  </div>
+   680→                  <p aria-live="polite" className="mt-1.5 min-h-4 text-xs text-rose-600">
+   681→                    {couponError}
+   682→                  </p>
+   683→                </form>
+   684→              )}
+   685→
+   686→              <p className="mt-2 text-xs text-stone-400">
+   687→                Pagamento processado pela plataforma · demonstração
+   688→              </p>
+   689→            </div>
+   690→          </Card>
+   691→
+   692→          {/* ---- AVISO DEMO ---- */}
+   693→          <div
+   694→            role="note"
+   695→            className="mt-5 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-800"
+   696→          >
+   697→            <Info aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+   698→            <span>
+   699→              Ambiente de demonstração — nenhuma cobrança real será feita. A matrícula é liberada
+   700→              na hora.
+   701→            </span>
+   702→          </div>
+   703→
+   704→          {/* ---- FORMA DE PAGAMENTO ---- */}
+   705→          <section aria-labelledby="lp-pagamento-title" className="mt-6">
+   706→            <h2
+   707→              id="lp-pagamento-title"
+   708→              className="text-sm font-extrabold uppercase tracking-wider text-stone-500"
+   709→            >
+   710→              Forma de pagamento
+   711→            </h2>
+   712→
+   713→            <RadioGroup
+   714→              value={paymentMethod}
+   715→              onValueChange={(v) => setPaymentMethod(v as PaymentMethodValue)}
+   716→              aria-labelledby="lp-pagamento-title"
+   717→              className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2"
+   718→            >
+   719→              <Label
+   720→                htmlFor="pay-pix"
+   721→                className={cn(
+   722→                  'cursor-pointer rounded-2xl border p-4 transition-colors',
+   723→                  paymentMethod === 'PIX'
+   724→                    ? 'border-emerald-500 bg-emerald-50/60 ring-1 ring-emerald-500'
+   725→                    : 'border-stone-200 bg-white hover:border-stone-300'
+   726→                )}
+   727→              >
+   728→                <RadioGroupItem value="PIX" id="pay-pix" className="mt-0.5" />
+   729→                <QrCode aria-hidden className="h-5 w-5 shrink-0 text-emerald-700" />
+   730→                <span className="flex-1">
+   731→                  <span className="block text-sm font-bold text-stone-900">PIX</span>
+   732→                  <span className="block text-xs text-stone-500">Aprovação imediata</span>
+   733→                </span>
+   734→              </Label>
+   735→
+   736→              <Label
+   737→                htmlFor="pay-card"
+   738→                className={cn(
+   739→                  'cursor-pointer rounded-2xl border p-4 transition-colors',
+   740→                  paymentMethod === 'CREDIT_CARD'
+   741→                    ? 'border-emerald-500 bg-emerald-50/60 ring-1 ring-emerald-500'
+   742→                    : 'border-stone-200 bg-white hover:border-stone-300'
+   743→                )}
+   744→              >
+   745→                <RadioGroupItem value="CREDIT_CARD" id="pay-card" className="mt-0.5" />
+   746→                <CreditCard aria-hidden className="h-5 w-5 shrink-0 text-emerald-700" />
+   747→                <span className="flex-1">
+   748→                  <span className="block text-sm font-bold text-stone-900">Cartão de crédito</span>
+   749→                  <span className="block text-xs text-stone-500">Em até 12x — simulação</span>
+   750→                </span>
+   751→              </Label>
+   752→            </RadioGroup>
+   753→
+   754→            {/* PIX: QR Code ilustrativo */}
+   755→            {paymentMethod === 'PIX' && (
+   756→              <div className="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 bg-stone-50/60 p-6 text-center">
+   757→                <QrCode aria-hidden className="h-24 w-24 text-stone-300" strokeWidth={1.25} />
+   758→                <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+   759→                  O QR Code aparece aqui em produção — pagamentos reais via gateway (Stripe/Mercado
+   760→                  Pago).
+   761→                </p>
+   762→              </div>
+   763→            )}
+   764→
+   765→            {/* Cartão: formulário apenas visual (demo) */}
+   766→            {paymentMethod === 'CREDIT_CARD' && (
+   767→              <div className="mt-4 rounded-2xl border border-stone-200 bg-white p-4 sm:p-5">
+   768→                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+   769→                  <div className="sm:col-span-2">
+   770→                    <Label htmlFor="cc-number" className="text-xs font-semibold text-stone-600">
+   771→                      Número do cartão
+   772→                    </Label>
+   773→                    <Input
+   774→                      id="cc-number"
+   775→                      inputMode="numeric"
+   776→                      autoComplete="cc-number"
+   777→                      placeholder="•••• •••• •••• 4242"
+   778→                      className="mt-1.5 h-10 rounded-xl"
+   779→                    />
+   780→                  </div>
+   781→                  <div className="sm:col-span-2">
+   782→                    <Label htmlFor="cc-name" className="text-xs font-semibold text-stone-600">
+   783→                      Nome no cartão
+   784→                    </Label>
+   785→                    <Input
+   786→                      id="cc-name"
+   787→                      autoComplete="cc-name"
+   788→                      placeholder="Como impresso no cartão"
+   789→                      className="mt-1.5 h-10 rounded-xl"
+   790→                    />
+   791→                  </div>
+   792→                  <div>
+   793→                    <Label htmlFor="cc-exp" className="text-xs font-semibold text-stone-600">
+   794→                      Validade
+   795→                    </Label>
+   796→                    <Input
+   797→                      id="cc-exp"
+   798→                      inputMode="numeric"
+   799→                      autoComplete="cc-exp"
+   800→                      placeholder="MM/AA"
+   801→                      className="mt-1.5 h-10 rounded-xl"
+   802→                    />
+   803→                  </div>
+   804→                  <div>
+   805→                    <Label htmlFor="cc-cvv" className="text-xs font-semibold text-stone-600">
+   806→                      CVV
+   807→                    </Label>
+   808→                    <Input
+   809→                      id="cc-cvv"
+   810→                      inputMode="numeric"
+   811→                      autoComplete="cc-csc"
+   812→                      placeholder="•••"
+   813→                      className="mt-1.5 h-10 rounded-xl"
+   814→                    />
+   815→                  </div>
+   816→                </div>
+   817→                <p className="mt-3 flex items-start gap-1.5 text-xs leading-relaxed text-amber-700">
+   818→                  <Info aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+   819→                  Ambiente de demonstração — não insira dados reais.
+   820→                </p>
+   821→              </div>
+   822→            )}
+   823→          </section>
+   824→
+   825→          {/* ---- BOTÃO PAGAR ---- */}
+   826→          <Button
+   827→            onClick={() => void doPay()}
+   828→            disabled={paying}
+   829→            className="mt-6 h-13 w-full rounded-full text-base font-extrabold"
+   830→          >
+   831→            {paying ? (
+   832→              <>
+   833→                <Loader2 aria-hidden className="h-5 w-5 animate-spin" /> Pagando…
+   834→              </>
+   835→            ) : (
+   836→              <>
+   837→                <Lock aria-hidden className="h-4 w-4" /> Pagar{' '}
+   838→                {couponApplied ? formatBRL(couponApplied.finalPrice) : currencyBRL(item.price)}
+   839→              </>
+   840→            )}
+   841→          </Button>
+   842→
+   843→          {/* ---- SEGURANÇA ---- */}
+   844→          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-stone-400">
+   845→            <span className="inline-flex items-center gap-1.5">
+   846→              <ShieldCheck aria-hidden className="h-4 w-4 text-emerald-600" />
+   847→              Compra protegida · 7 dias de garantia
+   848→            </span>
+   849→            <span className="inline-flex items-center gap-1.5">
+   850→              <Lock aria-hidden className="h-4 w-4" />
+   851→              SSL
+   852→            </span>
+   853→          </div>
+   854→        </>
+   855→      )}
+   856→    </div>
+   857→  )
+   858→}
+   859→

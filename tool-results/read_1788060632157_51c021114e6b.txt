@@ -1,0 +1,1106 @@
+     1→'use client'
+     2→
+     3→import { useCallback, useEffect, useState, type ReactNode } from 'react'
+     4→import {
+     5→  CalendarDays,
+     6→  CalendarOff,
+     7→  Check,
+     8→  CheckCheck,
+     9→  CheckCircle2,
+    10→  Clock,
+    11→  Compass,
+    12→  Download,
+    13→  ExternalLink,
+    14→  Flame,
+    15→  History,
+    16→  Inbox,
+    17→  Library,
+    18→  LogIn,
+    19→  PlayCircle,
+    20→  Route,
+    21→  Star,
+    22→  Trophy,
+    23→  Users,
+    24→  Video,
+    25→  Wallet,
+    26→  X,
+    27→  Zap,
+    28→  type LucideIcon,
+    29→} from 'lucide-react'
+    30→import { toast } from 'sonner'
+    31→
+    32→import {
+    33→  AlertDialog,
+    34→  AlertDialogAction,
+    35→  AlertDialogCancel,
+    36→  AlertDialogContent,
+    37→  AlertDialogDescription,
+    38→  AlertDialogFooter,
+    39→  AlertDialogHeader,
+    40→  AlertDialogTitle,
+    41→} from '@/components/ui/alert-dialog'
+    42→import { Badge } from '@/components/ui/badge'
+    43→import { Button } from '@/components/ui/button'
+    44→import { Card, CardContent } from '@/components/ui/card'
+    45→import {
+    46→  Dialog,
+    47→  DialogContent,
+    48→  DialogDescription,
+    49→  DialogFooter,
+    50→  DialogHeader,
+    51→  DialogTitle,
+    52→} from '@/components/ui/dialog'
+    53→import { Input } from '@/components/ui/input'
+    54→import { Label } from '@/components/ui/label'
+    55→import { Progress } from '@/components/ui/progress'
+    56→import { Skeleton } from '@/components/ui/skeleton'
+    57→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    58→import { Textarea } from '@/components/ui/textarea'
+    59→import { Avatar } from '@/components/platform/avatar'
+    60→import { api } from '@/lib/api'
+    61→import {
+    62→  STATUS_META,
+    63→  LEVEL_LABELS,
+    64→  addMinutesToTime,
+    65→  levelFromXp,
+    66→  avatarGradient,
+    67→  currencyBRL,
+    68→  formatDayLabelLong,
+    69→  formatTimeLabel,
+    70→  formatTotalDuration,
+    71→  nowNaive,
+    72→  relativeDayLabel,
+    73→} from '@/lib/helpers'
+    74→import { useAppStore } from '@/lib/store'
+    75→import type {
+    76→  BookingDTO,
+    77→  EnrolledCourseDTO,
+    78→  MentorDetailDTO,
+    79→  MyTrackDTO,
+    80→  XpStatsDTO,
+    81→} from '@/lib/types'
+    82→import { cn } from '@/lib/utils'
+    83→
+    84→type ConfirmKind = 'reject' | 'complete' | 'cancel'
+    85→
+    86→// ---------- Componentes auxiliares ----------
+    87→
+    88→function EmptyState({
+    89→  icon: Icon,
+    90→  title,
+    91→  text,
+    92→  children,
+    93→}: {
+    94→  icon: LucideIcon
+    95→  title: string
+    96→  text: string
+    97→  children?: ReactNode
+    98→}) {
+    99→  return (
+   100→    <Card className="p-6">
+   101→      <div className="flex flex-col items-center gap-2 py-8 text-center">
+   102→        <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500 ring-1 ring-stone-200 dark:ring-stone-800">
+   103→          <Icon className="size-6" aria-hidden />
+   104→        </div>
+   105→        <h3 className="mt-2 text-base font-semibold">{title}</h3>
+   106→        <p className="max-w-sm text-sm text-muted-foreground">{text}</p>
+   107→        {children ? <div className="mt-3">{children}</div> : null}
+   108→      </div>
+   109→    </Card>
+   110→  )
+   111→}
+   112→
+   113→function CountPill({ n, className }: { n: number; className?: string }) {
+   114→  return (
+   115→    <span
+   116→      className={cn(
+   117→        'ml-1 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold',
+   118→        className
+   119→      )}
+   120→    >
+   121→      {n}
+   122→    </span>
+   123→  )
+   124→}
+   125→
+   126→function PendingRequestRow({
+   127→  booking: b,
+   128→  busy,
+   129→  onConfirm,
+   130→  onReject,
+   131→}: {
+   132→  booking: BookingDTO
+   133→  busy: boolean
+   134→  onConfirm: (booking: BookingDTO) => void
+   135→  onReject: (booking: BookingDTO) => void
+   136→}) {
+   137→  const [rejectOpen, setRejectOpen] = useState(false)
+   138→  const relative = relativeDayLabel(b.startsAt)
+   139→
+   140→  return (
+   141→    <div className="flex flex-col gap-3 rounded-lg border border-amber-200 dark:border-amber-900 bg-white dark:bg-stone-900 p-4 sm:flex-row sm:items-center sm:justify-between">
+   142→      <div className="flex min-w-0 items-start gap-3">
+   143→        <Avatar name={b.mentee.name} size="md" />
+   144→        <div className="min-w-0">
+   145→          <p className="font-semibold leading-tight">{b.mentee.name}</p>
+   146→          <p className="truncate text-sm text-muted-foreground">{b.topic}</p>
+   147→          <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
+   148→            {relative ? `${relative} · ` : ''}
+   149→            {formatDayLabelLong(b.startsAt)} · {formatTimeLabel(b.startsAt)} →{' '}
+   150→            {addMinutesToTime(b.startsAt, b.durationMin)} · {b.durationMin} min · {currencyBRL(b.price)}
+   151→          </p>
+   152→        </div>
+   153→      </div>
+   154→      <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+   155→        <Button size="sm" disabled={busy} onClick={() => onConfirm(b)}>
+   156→          <Check className="size-4" aria-hidden /> Confirmar
+   157→        </Button>
+   158→        <Button size="sm" variant="outline" disabled={busy} onClick={() => setRejectOpen(true)}>
+   159→          <X className="size-4" aria-hidden /> Recusar
+   160→        </Button>
+   161→      </div>
+   162→
+   163→      <AlertDialog open={rejectOpen} onOpenChange={(open) => { if (!open) setRejectOpen(false) }}>
+   164→        <AlertDialogContent>
+   165→          <AlertDialogHeader>
+   166→            <AlertDialogTitle>Recusar solicitação?</AlertDialogTitle>
+   167→            <AlertDialogDescription>
+   168→              A solicitação de {b.mentee.name} sobre &quot;{b.topic}&quot; será cancelada e o horário será
+   169→              liberado na sua agenda.
+   170→            </AlertDialogDescription>
+   171→          </AlertDialogHeader>
+   172→          <AlertDialogFooter>
+   173→            <AlertDialogCancel>Voltar</AlertDialogCancel>
+   174→            <AlertDialogAction
+   175→              className="bg-rose-600 text-white hover:bg-rose-700"
+   176→              disabled={busy}
+   177→              onClick={() => {
+   178→                setRejectOpen(false)
+   179→                onReject(b)
+   180→              }}
+   181→            >
+   182→              Recusar
+   183→            </AlertDialogAction>
+   184→          </AlertDialogFooter>
+   185→        </AlertDialogContent>
+   186→      </AlertDialog>
+   187→    </div>
+   188→  )
+   189→}
+   190→
+   191→function BookingCard({
+   192→  booking: b,
+   193→  userId,
+   194→  busy,
+   195→  onConfirm,
+   196→  onReject,
+   197→  onComplete,
+   198→  onCancel,
+   199→  onJoin,
+   200→  onReview,
+   201→}: {
+   202→  booking: BookingDTO
+   203→  userId: string
+   204→  busy: boolean
+   205→  onConfirm: (booking: BookingDTO) => void
+   206→  onReject: (booking: BookingDTO) => void
+   207→  onComplete: (booking: BookingDTO) => void
+   208→  onCancel: (booking: BookingDTO) => void
+   209→  onJoin: (booking: BookingDTO) => void
+   210→  onReview: (booking: BookingDTO, rating: number, comment: string) => Promise<void>
+   211→}) {
+   212→  const isMentorSide = b.mentor.userId === userId
+   213→  const otherName = isMentorSide ? b.mentee.name : b.mentor.name
+   214→  const relative = relativeDayLabel(b.startsAt)
+   215→  // #8: "Google Calendar" só para sessões futuras aguardando confirmação/confirmadas
+   216→  const isUpcomingEvent =
+   217→    (b.status === 'PENDING' || b.status === 'CONFIRMED') && b.startsAt >= nowNaive()
+   218→  const gcalUrl = (() => {
+   219→    const start = new Date(b.startsAt) // naive → Date local
+   220→    const end = new Date(start.getTime() + b.durationMin * 60_000)
+   221→    const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+   222→    const params = new URLSearchParams({
+   223→      action: 'TEMPLATE',
+   224→      text: `Mentoria: ${b.topic}`,
+   225→      dates: `${fmt(start)}/${fmt(end)}`,
+   226→      details: `Sessão de mentoria no MentorHub com ${otherName}.`,
+   227→      location: b.meetingRoom,
+   228→    })
+   229→    return `https://calendar.google.com/calendar/render?${params.toString()}`
+   230→  })()
+   231→  const statusMeta = STATUS_META[b.status] ?? {
+   232→    label: b.status,
+   233→    className: 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-800',
+   234→  }
+   235→
+   236→  const [dialogAction, setDialogAction] = useState<ConfirmKind | null>(null)
+   237→  const [reviewOpen, setReviewOpen] = useState(false)
+   238→  const [rating, setRating] = useState(0)
+   239→  const [hoverRating, setHoverRating] = useState(0)
+   240→  const [comment, setComment] = useState('')
+   241→  const [submitting, setSubmitting] = useState(false)
+   242→
+   243→  const canJoin = b.status === 'CONFIRMED'
+   244→  const canReview = !isMentorSide && b.status === 'COMPLETED' && !b.reviewed
+   245→
+   246→  const dialogContent: Record<ConfirmKind, { title: string; description: string; actionLabel: string }> = {
+   247→    reject: {
+   248→      title: 'Recusar solicitação?',
+   249→      description: `A solicitação de ${b.mentee.name} sobre "${b.topic}" será cancelada e o horário será liberado na sua agenda.`,
+   250→      actionLabel: 'Recusar',
+   251→    },
+   252→    complete: {
+   253→      title: 'Marcar como concluída?',
+   254→      description: `Confirme que a sessão com ${b.mentee.name} aconteceu. Ela irá para o histórico e o aluno poderá avaliá-la.`,
+   255→      actionLabel: 'Concluir sessão',
+   256→    },
+   257→    cancel: {
+   258→      title: 'Cancelar sessão?',
+   259→      description: `Sua sessão com ${b.mentor.name} será cancelada e o horário será liberado para outras pessoas.`,
+   260→      actionLabel: 'Cancelar sessão',
+   261→    },
+   262→  }
+   263→  const currentDialog = dialogAction ? dialogContent[dialogAction] : null
+   264→
+   265→  const submitReview = async () => {
+   266→    if (rating < 1) {
+   267→      toast.error('Escolha uma nota de 1 a 5 estrelas antes de enviar.')
+   268→      return
+   269→    }
+   270→    setSubmitting(true)
+   271→    try {
+   272→      await onReview(b, rating, comment.trim())
+   273→      setReviewOpen(false)
+   274→      setRating(0)
+   275→      setHoverRating(0)
+   276→      setComment('')
+   277→    } catch (err) {
+   278→      toast.error(err instanceof Error ? err.message : 'Não foi possível enviar sua avaliação.')
+   279→    } finally {
+   280→      setSubmitting(false)
+   281→    }
+   282→  }
+   283→
+   284→  return (
+   285→    <Card className="gap-4 py-6">
+   286→      <CardContent className="flex flex-col gap-4 px-6">
+   287→        <div className="flex flex-wrap items-start justify-between gap-3">
+   288→          <div className="flex min-w-0 items-start gap-3">
+   289→            <Avatar name={otherName} size="lg" />
+   290→            <div className="min-w-0">
+   291→              <div className="flex flex-wrap items-center gap-2">
+   292→                <p className="font-semibold leading-tight">{otherName}</p>
+   293→                <Badge
+   294→                  className={
+   295→                    isMentorSide
+   296→                      ? 'border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300'
+   297→                      : 'border-stone-200 dark:border-stone-800 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
+   298→                  }
+   299→                >
+   300→                  {isMentorSide ? 'Como mentor' : 'Como aluno'}
+   301→                </Badge>
+   302→              </div>
+   303→              {!isMentorSide && b.mentor.headline ? (
+   304→                <p className="mt-0.5 text-sm text-muted-foreground">{b.mentor.headline}</p>
+   305→              ) : null}
+   306→              <p className="mt-1.5 font-medium">{b.topic}</p>
+   307→              {b.notes ? <p className="mt-1 text-sm text-muted-foreground">{b.notes}</p> : null}
+   308→            </div>
+   309→          </div>
+   310→          <Badge variant="outline" className={statusMeta.className}>
+   311→            {statusMeta.label}
+   312→          </Badge>
+   313→        </div>
+   314→
+   315→        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+   316→          <span className="inline-flex items-center gap-1.5">
+   317→            <CalendarDays className="size-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
+   318→            {relative ? `${relative} · ` : ''}
+   319→            {formatDayLabelLong(b.startsAt)} · {formatTimeLabel(b.startsAt)} →{' '}
+   320→            {addMinutesToTime(b.startsAt, b.durationMin)}
+   321→          </span>
+   322→          <span className="inline-flex items-center gap-1.5">
+   323→            <Clock className="size-4" aria-hidden /> {b.durationMin} min
+   324→          </span>
+   325→          <span className="inline-flex items-center gap-1.5">
+   326→            <Wallet className="size-4" aria-hidden /> {currencyBRL(b.price)}
+   327→          </span>
+   328→          {isUpcomingEvent ? (
+   329→            <a
+   330→              href={gcalUrl}
+   331→              target="_blank"
+   332→              rel="noopener noreferrer"
+   333→              aria-label={`Adicionar "${b.topic}" ao Google Calendar`}
+   334→              className="inline-flex items-center gap-1.5 rounded px-1 py-1 -my-1 text-sm font-medium text-emerald-700 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-emerald-600 dark:text-emerald-400"
+   335→            >
+   336→              <ExternalLink className="size-3.5" aria-hidden /> Google Calendar
+   337→            </a>
+   338→          ) : null}
+   339→        </div>
+   340→
+   341→        <div className="flex flex-wrap gap-2">
+   342→          {isMentorSide && b.status === 'PENDING' ? (
+   343→            <>
+   344→              <Button size="sm" disabled={busy} onClick={() => onConfirm(b)}>
+   345→                <Check className="size-4" aria-hidden /> Confirmar
+   346→              </Button>
+   347→              <Button size="sm" variant="outline" disabled={busy} onClick={() => setDialogAction('reject')}>
+   348→                <X className="size-4" aria-hidden /> Recusar
+   349→              </Button>
+   350→            </>
+   351→          ) : null}
+   352→
+   353→          {isMentorSide && b.status === 'CONFIRMED' ? (
+   354→            <Button size="sm" variant="outline" disabled={busy} onClick={() => setDialogAction('complete')}>
+   355→              <CheckCheck className="size-4" aria-hidden /> Marcar como concluída
+   356→            </Button>
+   357→          ) : null}
+   358→
+   359→          {canJoin ? (
+   360→            <Button size="sm" onClick={() => onJoin(b)}>
+   361→              <Video className="size-4" aria-hidden /> Entrar na sala
+   362→            </Button>
+   363→          ) : null}
+   364→
+   365→          {!isMentorSide && (b.status === 'PENDING' || b.status === 'CONFIRMED') ? (
+   366→            <Button
+   367→              size="sm"
+   368→              variant="ghost"
+   369→              className="text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-700 dark:hover:text-rose-400"
+   370→              disabled={busy}
+   371→              onClick={() => setDialogAction('cancel')}
+   372→            >
+   373→              Cancelar sessão
+   374→            </Button>
+   375→          ) : null}
+   376→
+   377→          {canReview ? (
+   378→            <Button size="sm" variant="outline" onClick={() => setReviewOpen(true)}>
+   379→              <Star className="size-4 fill-amber-400 text-amber-400" aria-hidden /> Avaliar sessão
+   380→            </Button>
+   381→          ) : null}
+   382→        </div>
+   383→      </CardContent>
+   384→
+   385→      {/* Confirmações: recusar / concluir / cancelar */}
+   386→      <AlertDialog
+   387→        open={dialogAction !== null}
+   388→        onOpenChange={(open) => {
+   389→          if (!open) setDialogAction(null)
+   390→        }}
+   391→      >
+   392→        <AlertDialogContent>
+   393→          <AlertDialogHeader>
+   394→            <AlertDialogTitle>{currentDialog?.title}</AlertDialogTitle>
+   395→            <AlertDialogDescription>{currentDialog?.description}</AlertDialogDescription>
+   396→          </AlertDialogHeader>
+   397→          <AlertDialogFooter>
+   398→            <AlertDialogCancel>Voltar</AlertDialogCancel>
+   399→            <AlertDialogAction
+   400→              className="bg-rose-600 text-white hover:bg-rose-700"
+   401→              disabled={busy}
+   402→              onClick={() => {
+   403→                const action = dialogAction
+   404→                setDialogAction(null)
+   405→                if (action === 'reject') onReject(b)
+   406→                else if (action === 'complete') onComplete(b)
+   407→                else if (action === 'cancel') onCancel(b)
+   408→              }}
+   409→            >
+   410→              {currentDialog?.actionLabel}
+   411→            </AlertDialogAction>
+   412→          </AlertDialogFooter>
+   413→        </AlertDialogContent>
+   414→      </AlertDialog>
+   415→
+   416→      {/* Avaliar sessão */}
+   417→      <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
+   418→        <DialogContent className="sm:max-w-md">
+   419→          <DialogHeader>
+   420→            <DialogTitle>Avaliar sessão</DialogTitle>
+   421→            <DialogDescription>
+   422→              Como foi sua mentoria com {b.mentor.name} sobre &quot;{b.topic}&quot;? Seu feedback ajuda outros
+   423→              alunos.
+   424→            </DialogDescription>
+   425→          </DialogHeader>
+   426→          <div className="flex flex-col gap-4">
+   427→            <div className="flex items-center justify-center gap-1" role="radiogroup" aria-label="Nota da avaliação">
+   428→              {[1, 2, 3, 4, 5].map((value) => {
+   429→                const active = (hoverRating || rating) >= value
+   430→                return (
+   431→                  <button
+   432→                    key={value}
+   433→                    type="button"
+   434→                    role="radio"
+   435→                    aria-checked={rating === value}
+   436→                    aria-label={`${value} ${value === 1 ? 'estrela' : 'estrelas'}`}
+   437→                    onClick={() => setRating(value)}
+   438→                    onMouseEnter={() => setHoverRating(value)}
+   439→                    onMouseLeave={() => setHoverRating(0)}
+   440→                    className="rounded-full p-1 transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-amber-500"
+   441→                  >
+   442→                    <Star
+   443→                      size={28}
+   444→                      className={cn(
+   445→                        'transition-colors',
+   446→                        active ? 'fill-amber-400 text-amber-400' : 'fill-stone-200 dark:fill-stone-800 text-stone-300 dark:text-stone-600'
+   447→                      )}
+   448→                      aria-hidden
+   449→                    />
+   450→                  </button>
+   451→                )
+   452→              })}
+   453→            </div>
+   454→            <div className="flex flex-col gap-2">
+   455→              <Label htmlFor={`review-comment-${b.id}`}>Como foi sua experiência?</Label>
+   456→              <Textarea
+   457→                id={`review-comment-${b.id}`}
+   458→                rows={4}
+   459→                value={comment}
+   460→                onChange={(event) => setComment(event.target.value)}
+   461→                placeholder="Conte o que funcionou bem e o que pode melhorar..."
+   462→              />
+   463→            </div>
+   464→          </div>
+   465→          <DialogFooter>
+   466→            <Button variant="ghost" onClick={() => setReviewOpen(false)} disabled={submitting}>
+   467→              Cancelar
+   468→            </Button>
+   469→            <Button onClick={() => void submitReview()} disabled={submitting}>
+   470→              {submitting ? 'Enviando...' : 'Enviar avaliação'}
+   471→            </Button>
+   472→          </DialogFooter>
+   473→        </DialogContent>
+   474→      </Dialog>
+   475→    </Card>
+   476→  )
+   477→}
+   478→
+   479→// ---------- Card de gamificação (Sua jornada de aprendizado) ----------
+   480→
+   481→function XpJourneyCard({ stats, failed }: { stats: XpStatsDTO | null; failed: boolean }) {
+   482→  // Falha silenciosa: em erro o card nem renderiza
+   483→  if (failed) return null
+   484→
+   485→  const lv = stats ? levelFromXp(stats.xp) : null
+   486→
+   487→  return (
+   488→    <div
+   489→      role="group"
+   490→      aria-label="Progresso de gamificação"
+   491→      className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 shadow-sm tabular-nums"
+   492→    >
+   493→      {/* Header */}
+   494→      <div className="flex items-center gap-3">
+   495→        <span
+   496→          aria-hidden
+   497→          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400"
+   498→        >
+   499→          <Flame className="size-5" />
+   500→        </span>
+   501→        <h2 className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+   502→          Sua jornada de aprendizado
+   503→        </h2>
+   504→      </div>
+   505→
+   506→      {/* KPIs: XP total · Ofensiva · Recorde */}
+   507→      {stats ? (
+   508→        <div className="mt-4 grid grid-cols-3 gap-3 sm:flex sm:gap-6">
+   509→          <div className="min-w-0 sm:flex-1">
+   510→            <div className="flex items-center gap-1.5">
+   511→              <Zap className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+   512→              <p className="text-xl font-extrabold text-stone-900 dark:text-stone-50 sm:text-2xl" aria-label={`${stats.xp} XP no total`}>
+   513→                {stats.xp}
+   514→              </p>
+   515→            </div>
+   516→            <p className="mt-0.5 truncate text-xs text-stone-400 dark:text-stone-500">XP total</p>
+   517→          </div>
+   518→
+   519→          <div className="min-w-0 sm:flex-1">
+   520→            <div className="flex items-center gap-1.5">
+   521→              <Flame
+   522→                className={cn('size-4 shrink-0', stats.streak > 0 ? 'text-orange-500' : 'text-stone-300 dark:text-stone-600')}
+   523→                aria-hidden
+   524→              />
+   525→              <p
+   526→                className="text-xl font-extrabold text-stone-900 dark:text-stone-50 sm:text-2xl"
+   527→                aria-label={`${stats.streak} ${stats.streak === 1 ? 'dia seguido' : 'dias seguidos'}`}
+   528→              >
+   529→                {stats.streak}
+   530→              </p>
+   531→            </div>
+   532→            <p className="mt-0.5 truncate text-xs text-stone-400 dark:text-stone-500">
+   533→              {stats.streak > 0 ? (stats.streak === 1 ? 'dia seguido' : 'dias seguidos') : 'estude hoje!'}
+   534→            </p>
+   535→          </div>
+   536→
+   537→          <div className="min-w-0 sm:flex-1">
+   538→            <div className="flex items-center gap-1.5">
+   539→              <Trophy className="size-4 shrink-0 text-amber-500" aria-hidden />
+   540→              <p
+   541→                className="text-xl font-extrabold text-stone-900 dark:text-stone-50 sm:text-2xl"
+   542→                aria-label={`recorde de ${stats.longestStreak} ${stats.longestStreak === 1 ? 'dia seguido' : 'dias seguidos'}`}
+   543→              >
+   544→                {stats.longestStreak}
+   545→              </p>
+   546→            </div>
+   547→            <p className="mt-0.5 truncate text-xs text-stone-400 dark:text-stone-500">recorde</p>
+   548→          </div>
+   549→        </div>
+   550→      ) : (
+   551→        <div className="mt-4 grid grid-cols-3 gap-3 sm:flex sm:gap-6">
+   552→          {[0, 1, 2].map((i) => (
+   553→            <div key={i} className="min-w-0 sm:flex-1">
+   554→              <Skeleton className="h-7 w-16 max-w-full" />
+   555→              <Skeleton className="mt-1.5 h-3 w-20 max-w-full" />
+   556→            </div>
+   557→          ))}
+   558→        </div>
+   559→      )}
+   560→
+   561→      {/* Nível atual e progresso até o próximo */}
+   562→      {lv ? (
+   563→        <div className="mt-5">
+   564→          <p className="text-sm font-bold text-stone-900 dark:text-stone-50">Nível atual: {lv.level.label}</p>
+   565→          {lv.next ? (
+   566→            <>
+   567→              <Progress
+   568→                value={lv.progressPct}
+   569→                aria-label={`${lv.progressPct}% do caminho para o nível ${lv.next.label}`}
+   570→                className="mt-2 h-2"
+   571→              />
+   572→              <p className="mt-1.5 text-xs text-stone-400 dark:text-stone-500">
+   573→                Faltam <span className="font-semibold text-stone-500 dark:text-stone-400">{lv.xpToNext}</span> XP para{' '}
+   574→                {lv.next.label}
+   575→              </p>
+   576→            </>
+   577→          ) : (
+   578→            <p className="mt-2 text-xs font-semibold text-amber-600 dark:text-amber-400">Nível máximo alcançado! 🏆</p>
+   579→          )}
+   580→        </div>
+   581→      ) : (
+   582→        <div className="mt-5">
+   583→          <Skeleton className="h-4 w-44 max-w-full" />
+   584→          <Skeleton className="mt-2.5 h-2 w-full" />
+   585→          <Skeleton className="mt-3 h-3 w-64 max-w-full" />
+   586→        </div>
+   587→      )}
+   588→
+   589→      {/* Micro-proof: como ganhar XP */}
+   590→      <p className="mt-3 border-t border-stone-100 dark:border-stone-800 pt-3 text-xs text-stone-400 dark:text-stone-500">
+   591→        +10 XP por aula concluída · +5 por quiz acertado · +50 por curso completo
+   592→      </p>
+   593→    </div>
+   594→  )
+   595→}
+   596→
+   597→// ---------- View principal ----------
+   598→
+   599→export default function DashboardView() {
+   600→  const user = useAppStore((state) => state.user)
+   601→  const navigate = useAppStore((state) => state.navigate)
+   602→  const userId = user?.id ?? null
+   603→
+   604→  const [bookings, setBookings] = useState<BookingDTO[] | null>(null)
+   605→  const [mentorProfile, setMentorProfile] = useState<MentorDetailDTO | null>(null)
+   606→  const [enrollments, setEnrollments] = useState<EnrolledCourseDTO[]>([])
+   607→  const [myTracks, setMyTracks] = useState<MyTrackDTO[]>([])
+   608→  const [xpStats, setXpStats] = useState<XpStatsDTO | null>(null)
+   609→  const [xpFailed, setXpFailed] = useState(false)
+   610→  const [loading, setLoading] = useState(true)
+   611→  const [actingId, setActingId] = useState<string | null>(null)
+   612→
+   613→  const refetch = useCallback(async () => {
+   614→    if (!userId) return
+   615→    try {
+   616→      const [bookingsRes, profileRes, enrollmentsRes, tracksRes] = await Promise.all([
+   617→        api.listBookings(userId),
+   618→        api
+   619→          .getMyMentorProfile(userId)
+   620→          .then((res) => res.profile)
+   621→          .catch(() => null),
+   622→        api.listMyEnrollments(userId).catch(() => []),
+   623→        api.listMyTracks(userId).catch(() => []),
+   624→      ])
+   625→      setBookings(bookingsRes)
+   626→      setMentorProfile(profileRes)
+   627→      setEnrollments(enrollmentsRes)
+   628→      setMyTracks(tracksRes)
+   629→    } catch (err) {
+   630→      toast.error(err instanceof Error ? err.message : 'Não foi possível carregar suas sessões.')
+   631→      setBookings((prev) => prev ?? [])
+   632→    } finally {
+   633→      setLoading(false)
+   634→    }
+   635→  }, [userId])
+   636→
+   637→  useEffect(() => {
+   638→    if (!userId) return
+   639→    setLoading(true)
+   640→    void refetch()
+   641→  }, [userId, refetch])
+   642→
+   643→  // Gamificação: XP, ofensiva e recorde (fetch no mount; falha silenciosa esconde o card)
+   644→  useEffect(() => {
+   645→    if (!userId) return
+   646→    let alive = true
+   647→    api
+   648→      .xpStats(userId)
+   649→      .then((res) => {
+   650→        if (alive) setXpStats(res)
+   651→      })
+   652→      .catch(() => {
+   653→        if (alive) setXpFailed(true)
+   654→      })
+   655→    return () => {
+   656→      alive = false
+   657→    }
+   658→  }, [userId])
+   659→
+   660→  const runAction = useCallback(
+   661→    async (booking: BookingDTO, action: 'confirm' | 'cancel' | 'complete', successMsg: string) => {
+   662→      if (!userId) return
+   663→      setActingId(booking.id)
+   664→      try {
+   665→        await api.updateBooking(booking.id, { userId, action })
+   666→        toast.success(successMsg)
+   667→        await refetch()
+   668→      } catch (err) {
+   669→        toast.error(err instanceof Error ? err.message : 'Não foi possível atualizar a sessão.')
+   670→      } finally {
+   671→        setActingId(null)
+   672→      }
+   673→    },
+   674→    [userId, refetch]
+   675→  )
+   676→
+   677→  const handleConfirm = useCallback(
+   678→    (booking: BookingDTO) => void runAction(booking, 'confirm', `Sessão com ${booking.mentee.name} confirmada!`),
+   679→    [runAction]
+   680→  )
+   681→  const handleReject = useCallback(
+   682→    (booking: BookingDTO) => void runAction(booking, 'cancel', 'Solicitação recusada.'),
+   683→    [runAction]
+   684→  )
+   685→  const handleComplete = useCallback(
+   686→    (booking: BookingDTO) =>
+   687→      void runAction(booking, 'complete', 'Sessão marcada como concluída! Ela foi para o histórico.'),
+   688→    [runAction]
+   689→  )
+   690→  const handleCancel = useCallback(
+   691→    (booking: BookingDTO) => void runAction(booking, 'cancel', 'Sessão cancelada. O horário foi liberado.'),
+   692→    [runAction]
+   693→  )
+   694→  const handleJoin = useCallback(
+   695→    (booking: BookingDTO) => navigate({ name: 'meeting', bookingId: booking.id }),
+   696→    [navigate]
+   697→  )
+   698→  const handleReview = useCallback(
+   699→    async (booking: BookingDTO, rating: number, comment: string) => {
+   700→      if (!userId) return
+   701→      await api.createReview({ bookingId: booking.id, userId, rating, comment })
+   702→      toast.success('Avaliação enviada. Obrigado pelo feedback!')
+   703→      await refetch()
+   704→    },
+   705→    [userId, refetch]
+   706→  )
+   707→
+   708→  // ---------- Guardas de render ----------
+   709→
+   710→  if (!user) {
+   711→    return (
+   712→      <div className="flex min-h-[70vh] items-center justify-center px-4 py-10">
+   713→        <Card className="w-full max-w-md p-6 text-center">
+   714→          <div className="flex flex-col items-center gap-3">
+   715→            <div className="flex size-12 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-200 dark:ring-emerald-900">
+   716→              <LogIn className="size-6" aria-hidden />
+   717→            </div>
+   718→            <h1 className="text-xl font-semibold">Você precisa entrar</h1>
+   719→            <p className="max-w-xs text-sm text-muted-foreground">
+   720→              Selecione um usuário no seletor do topo da página para ver e gerenciar suas sessões de mentoria.
+   721→            </p>
+   722→          </div>
+   723→        </Card>
+   724→      </div>
+   725→    )
+   726→  }
+   727→
+   728→  if (loading || bookings === null) {
+   729→    return (
+   730→      <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
+   731→        <div className="flex items-center justify-between gap-4">
+   732→          <div className="space-y-2">
+   733→            <Skeleton className="h-7 w-48" />
+   734→            <Skeleton className="h-4 w-72 max-w-full" />
+   735→          </div>
+   736→          <Skeleton className="h-9 w-40 rounded-md" />
+   737→        </div>
+   738→        <Skeleton className="mt-6 h-10 w-full max-w-sm rounded-lg" />
+   739→        <div className="mt-6 flex flex-col gap-4">
+   740→          {[0, 1, 2].map((i) => (
+   741→            <Card key={i} className="p-6">
+   742→              <div className="flex items-start gap-4">
+   743→                <Skeleton className="size-12 rounded-full" />
+   744→                <div className="flex-1 space-y-2">
+   745→                  <Skeleton className="h-4 w-40" />
+   746→                  <Skeleton className="h-3 w-56 max-w-full" />
+   747→                  <Skeleton className="h-3 w-72 max-w-full" />
+   748→                </div>
+   749→                <Skeleton className="h-6 w-28 rounded-md" />
+   750→              </div>
+   751→            </Card>
+   752→          ))}
+   753→        </div>
+   754→      </div>
+   755→    )
+   756→  }
+   757→
+   758→  // ---------- Derivações das abas ----------
+   759→
+   760→  const now = nowNaive()
+   761→  const bookingsList = bookings
+   762→
+   763→  const pendingRequests = mentorProfile
+   764→    ? bookingsList.filter((b) => b.mentor.userId === user.id && b.status === 'PENDING')
+   765→    : []
+   766→
+   767→  const upcoming = bookingsList
+   768→    .filter((b) => (b.status === 'PENDING' || b.status === 'CONFIRMED') && b.startsAt >= now)
+   769→    .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+   770→
+   771→  const toReview = bookingsList.filter(
+   772→    (b) => b.status === 'COMPLETED' && b.mentee.id === user.id && !b.reviewed
+   773→  )
+   774→
+   775→  const upcomingIds = new Set(upcoming.map((b) => b.id))
+   776→  const reviewIds = new Set(toReview.map((b) => b.id))
+   777→  const history = bookingsList
+   778→    .filter((b) => !upcomingIds.has(b.id) && !reviewIds.has(b.id))
+   779→    .sort((a, b) => b.startsAt.localeCompare(a.startsAt))
+   780→
+   781→  const cardProps = {
+   782→    userId: user.id,
+   783→    onConfirm: handleConfirm,
+   784→    onReject: handleReject,
+   785→    onComplete: handleComplete,
+   786→    onCancel: handleCancel,
+   787→    onJoin: handleJoin,
+   788→    onReview: handleReview,
+   789→  }
+   790→
+   791→  return (
+   792→    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
+   793→      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+   794→        <div>
+   795→          <h1 className="text-2xl font-bold tracking-tight">Minhas sessões</h1>
+   796→          <p className="mt-1 text-sm text-muted-foreground">
+   797→            Acompanhe solicitações recebidas, próximas sessões e seu histórico de mentorias.
+   798→          </p>
+   799→        </div>
+   800→        <div className="flex shrink-0 flex-wrap items-center gap-2 self-start sm:self-auto">
+   801→          {/* #8: exporta sessões + aulas ao vivo em .ics (toque ≥44px no mobile) */}
+   802→          <Button asChild variant="outline" className="h-11 px-3 sm:h-9">
+   803→            <a
+   804→              href={`/api/calendar/export?userId=${user.id}`}
+   805→              download="mentorhub.ics"
+   806→              aria-label="Baixar sessões e aulas ao vivo em arquivo .ics para importar no seu calendário"
+   807→            >
+   808→              <Download className="size-4" aria-hidden />
+   809→              <span className="hidden sm:inline">Exportar .ics</span>
+   810→            </a>
+   811→          </Button>
+   812→          <Button
+   813→            variant="outline"
+   814→            className="h-11 px-3 sm:h-9"
+   815→            onClick={() => navigate({ name: 'marketplace' })}
+   816→          >
+   817→            <Compass className="size-4" aria-hidden /> Explorar mentores
+   818→          </Button>
+   819→        </div>
+   820→      </header>
+   821→
+   822→      <XpJourneyCard stats={xpStats} failed={xpFailed} />
+   823→
+   824→      {pendingRequests.length > 0 ? (
+   825→        <Card className="border-amber-300 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/50">
+   826→          <CardContent className="flex flex-col gap-4 px-6">
+   827→            <div className="flex items-center gap-2">
+   828→              <Inbox className="size-5 text-amber-600 dark:text-amber-400" aria-hidden />
+   829→              <h2 className="font-semibold text-amber-900 dark:text-amber-300">Solicitações recebidas</h2>
+   830→              <Badge className="border-amber-200 dark:border-amber-900 bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300">
+   831→                {pendingRequests.length}
+   832→              </Badge>
+   833→            </div>
+   834→            <p className="text-sm text-amber-800/90 dark:text-amber-300/90">
+   835→              Alunos aguardando sua confirmação. Responda para reservar o horário na sua agenda.
+   836→            </p>
+   837→            <div className="flex flex-col gap-3">
+   838→              {pendingRequests.map((b) => (
+   839→                <PendingRequestRow
+   840→                  key={b.id}
+   841→                  booking={b}
+   842→                  busy={actingId === b.id}
+   843→                  onConfirm={handleConfirm}
+   844→                  onReject={handleReject}
+   845→                />
+   846→              ))}
+   847→            </div>
+   848→          </CardContent>
+   849→        </Card>
+   850→      ) : null}
+   851→
+   852→      <Tabs defaultValue="upcoming" className="gap-6">
+   853→        <TabsList className="h-auto w-full flex-wrap sm:w-auto">
+   854→          <TabsTrigger value="upcoming">
+   855→            Próximas
+   856→            <CountPill n={upcoming.length} className="bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300" />
+   857→          </TabsTrigger>
+   858→          <TabsTrigger value="courses">
+   859→            Meus cursos
+   860→            <CountPill n={enrollments.length} className="bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300" />
+   861→          </TabsTrigger>
+   862→          <TabsTrigger value="review">
+   863→            Para avaliar
+   864→            <CountPill n={toReview.length} className="bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300" />
+   865→          </TabsTrigger>
+   866→          <TabsTrigger value="history">
+   867→            Histórico
+   868→            <CountPill n={history.length} className="bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300" />
+   869→          </TabsTrigger>
+   870→        </TabsList>
+   871→
+   872→        <TabsContent value="upcoming" className="flex flex-col gap-4">
+   873→          {upcoming.length === 0 ? (
+   874→            <EmptyState
+   875→              icon={CalendarOff}
+   876→              title="Nenhuma sessão agendada"
+   877→              text="Quando você agendar uma mentoria ou receber solicitações de alunos, elas aparecerão aqui."
+   878→            >
+   879→              <Button onClick={() => navigate({ name: 'marketplace' })}>
+   880→                <Compass className="size-4" aria-hidden /> Explorar mentores
+   881→              </Button>
+   882→            </EmptyState>
+   883→          ) : (
+   884→            upcoming.map((b) => (
+   885→              <BookingCard key={b.id} booking={b} busy={actingId === b.id} {...cardProps} />
+   886→            ))
+   887→          )}
+   888→        </TabsContent>
+   889→
+   890→        <TabsContent value="courses" className="flex flex-col gap-4">
+   891→          {/* Minhas trilhas (no topo da aba) — oculto quando não há trilhas */}
+   892→          {myTracks.length > 0 && (
+   893→            <section aria-labelledby="minhas-trilhas-title" className="flex flex-col gap-3">
+   894→              <h2 id="minhas-trilhas-title" className="text-base font-semibold">
+   895→                Minhas trilhas
+   896→              </h2>
+   897→              {myTracks.map((t) => (
+   898→                <MyTrackCard
+   899→                  key={t.id}
+   900→                  track={t}
+   901→                  onOpenTrack={() => navigate({ name: 'track', trackId: t.id })}
+   902→                  onContinueCourse={(courseId) => navigate({ name: 'classroom', courseId })}
+   903→                />
+   904→              ))}
+   905→            </section>
+   906→          )}
+   907→
+   908→          {enrollments.length === 0 ? (
+   909→            <EmptyState
+   910→              icon={Library}
+   911→              title="Você ainda não se inscreveu em cursos"
+   912→              text="Cursos são aulas gravadas e materiais dos mentores, no seu ritmo. Explore o catálogo e comece hoje."
+   913→            >
+   914→              <Button
+   915→                onClick={() => {
+   916→                  useAppStore.getState().setExploreTab('courses')
+   917→                  navigate({ name: 'marketplace' })
+   918→                }}
+   919→              >
+   920→                <Library className="size-4" aria-hidden /> Explorar cursos
+   921→              </Button>
+   922→            </EmptyState>
+   923→          ) : (
+   924→            enrollments.map((enr) => (
+   925→              <EnrolledCourseCard
+   926→                key={enr.courseId}
+   927→                enrollment={enr}
+   928→                onOpen={() => navigate({ name: 'course', courseId: enr.courseId })}
+   929→              />
+   930→            ))
+   931→          )}
+   932→        </TabsContent>
+   933→
+   934→        <TabsContent value="review" className="flex flex-col gap-4">
+   935→          {toReview.length === 0 ? (
+   936→            <EmptyState
+   937→              icon={Star}
+   938→              title="Você não tem sessões para avaliar"
+   939→              text="Após concluir uma mentoria como aluno, você poderá avaliar a experiência com esta aba."
+   940→            />
+   941→          ) : (
+   942→            toReview.map((b) => <BookingCard key={b.id} booking={b} busy={actingId === b.id} {...cardProps} />)
+   943→          )}
+   944→        </TabsContent>
+   945→
+   946→        <TabsContent value="history" className="flex flex-col gap-4">
+   947→          {history.length === 0 ? (
+   948→            <EmptyState
+   949→              icon={History}
+   950→              title="Sem histórico ainda"
+   951→              text="Sessões concluídas e canceladas serão arquivadas aqui automaticamente."
+   952→            />
+   953→          ) : (
+   954→            history.map((b) => <BookingCard key={b.id} booking={b} busy={actingId === b.id} {...cardProps} />)
+   955→          )}
+   956→        </TabsContent>
+   957→      </Tabs>
+   958→    </div>
+   959→  )
+   960→}
+   961→
+   962→// ---------- Card de curso matriculado (aba Meus cursos) ----------
+   963→
+   964→function EnrolledCourseCard({
+   965→  enrollment,
+   966→  onOpen,
+   967→}: {
+   968→  enrollment: EnrolledCourseDTO
+   969→  onOpen: () => void
+   970→}) {
+   971→  const { course, completedLessonIds } = enrollment
+   972→  const total = Math.max(course.lessonCount, 1)
+   973→  const completed = completedLessonIds.length
+   974→  const pct = Math.round((completed / total) * 100)
+   975→  const isDone = completed >= course.lessonCount && course.lessonCount > 0
+   976→
+   977→  return (
+   978→    <Card className="overflow-hidden p-0">
+   979→      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
+   980→        {course.coverUrl ? (
+   981→          <img
+   982→            src={course.coverUrl}
+   983→            alt=""
+   984→            aria-hidden
+   985→            className="h-14 w-14 shrink-0 rounded-2xl object-cover"
+   986→          />
+   987→        ) : (
+   988→          <span
+   989→            aria-hidden
+   990→            style={avatarGradient(course.title)}
+   991→            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white"
+   992→          >
+   993→            <Library className="size-6" />
+   994→          </span>
+   995→        )}
+   996→
+   997→        <div className="min-w-0 flex-1">
+   998→          <div className="flex flex-wrap items-center gap-2">
+   999→            <p className="truncate font-bold text-stone-900 dark:text-stone-50">{course.title}</p>
+  1000→            {isDone && (
+  1001→              <Badge className="border-emerald-200 dark:border-emerald-900 bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300">
+  1002→                <CheckCircle2 className="size-3" aria-hidden /> Concluído
+  1003→              </Badge>
+  1004→            )}
+  1005→          </div>
+  1006→          <p className="mt-0.5 text-xs text-muted-foreground">
+  1007→            por {course.mentor.name} · {course.lessonCount} aulas ·{' '}
+  1008→            {formatTotalDuration(course.totalDurationMin)}
+  1009→          </p>
+  1010→          <div className="mt-2.5 flex items-center gap-3">
+  1011→            <Progress value={pct} aria-label={`${pct}% do curso concluído`} className="h-2 max-w-64 flex-1" />
+  1012→            <span className="shrink-0 text-xs font-semibold text-stone-500 dark:text-stone-400">
+  1013→              {completed}/{course.lessonCount} aulas
+  1014→            </span>
+  1015→          </div>
+  1016→        </div>
+  1017→
+  1018→        <Button onClick={onOpen} className="shrink-0 self-start rounded-full sm:self-auto">
+  1019→          <PlayCircle className="size-4" aria-hidden /> {isDone ? 'Revisar curso' : 'Continuar'}
+  1020→        </Button>
+  1021→      </div>
+  1022→    </Card>
+  1023→  )
+  1024→}
+  1025→
+  1026→// ---------- Card de trilha matriculada (bloco Minhas trilhas) ----------
+  1027→
+  1028→function MyTrackCard({
+  1029→  track,
+  1030→  onOpenTrack,
+  1031→  onContinueCourse,
+  1032→}: {
+  1033→  track: MyTrackDTO
+  1034→  onOpenTrack: () => void
+  1035→  onContinueCourse: (courseId: string) => void
+  1036→}) {
+  1037→  const isDone = track.percent >= 100
+  1038→  // Próximo curso incompleto da trilha (primeiro com aulas restantes)
+  1039→  const nextCourse = track.perCourse.find((c) => c.completed < c.total)
+  1040→
+  1041→  return (
+  1042→    <Card className="overflow-hidden p-0">
+  1043→      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
+  1044→        {track.coverUrl ? (
+  1045→          <img
+  1046→            src={track.coverUrl}
+  1047→            alt=""
+  1048→            aria-hidden
+  1049→            className="h-14 w-14 shrink-0 rounded-2xl object-cover"
+  1050→          />
+  1051→        ) : (
+  1052→          <span
+  1053→            aria-hidden
+  1054→            style={avatarGradient(track.title)}
+  1055→            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white"
+  1056→          >
+  1057→            <Route className="size-6" />
+  1058→          </span>
+  1059→        )}
+  1060→
+  1061→        <div className="min-w-0 flex-1">
+  1062→          <div className="flex flex-wrap items-center gap-2">
+  1063→            <p className="truncate font-bold text-stone-900 dark:text-stone-50">{track.title}</p>
+  1064→            <Badge className="border-teal-200 dark:border-teal-900 bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300">{track.category}</Badge>
+  1065→            {isDone && (
+  1066→              <Badge className="border-emerald-200 dark:border-emerald-900 bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300">
+  1067→                <CheckCircle2 className="size-3" aria-hidden /> Trilha concluída 🎉
+  1068→              </Badge>
+  1069→            )}
+  1070→          </div>
+  1071→          <p className="mt-0.5 text-xs text-muted-foreground">
+  1072→            por {track.mentor.name} · {track.courseCount}{' '}
+  1073→            {track.courseCount === 1 ? 'curso' : 'cursos'} ·{' '}
+  1074→            {formatTotalDuration(track.totalDurationMin)}
+  1075→          </p>
+  1076→          <div className="mt-2.5 flex items-center gap-3">
+  1077→            <Progress
+  1078→              value={track.percent}
+  1079→              aria-label={`${track.percent}% da trilha concluído`}
+  1080→              className="h-2 max-w-64 flex-1"
+  1081→            />
+  1082→            <span className="shrink-0 text-xs font-semibold text-stone-500 dark:text-stone-400">
+  1083→              {track.percent}% concluído
+  1084→            </span>
+  1085→          </div>
+  1086→        </div>
+  1087→
+  1088→        <div className="flex shrink-0 flex-wrap gap-2 self-start sm:self-auto">
+  1089→          <Button onClick={onOpenTrack} className="rounded-full">
+  1090→            <Route className="size-4" aria-hidden /> Abrir trilha
+  1091→          </Button>
+  1092→          {!isDone && nextCourse && (
+  1093→            <Button
+  1094→              variant="outline"
+  1095→              className="rounded-full"
+  1096→              onClick={() => onContinueCourse(nextCourse.courseId)}
+  1097→            >
+  1098→              <PlayCircle className="size-4" aria-hidden /> Continuar curso
+  1099→            </Button>
+  1100→          )}
+  1101→        </div>
+  1102→      </div>
+  1103→    </Card>
+  1104→  )
+  1105→}
+  1106→

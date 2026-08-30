@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { normalizeText } from '@/lib/helpers'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +13,7 @@ const LEVELS = ['INICIANTE', 'INTERMEDIARIO', 'AVANCADO']
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams
-    const search = (sp.get('search') || '').trim().toLowerCase()
+    const search = normalizeText((sp.get('search') || '').trim())
     const kind = (sp.get('kind') || '').trim().toUpperCase()
     const category = (sp.get('category') || '').trim()
     const sort = sp.get('sort') || 'recent'
@@ -67,7 +68,7 @@ export async function GET(req: NextRequest) {
     }))
 
     if (search) {
-      items = items.filter((i) => `${i.title} ${i.description}`.toLowerCase().includes(search))
+      items = items.filter((i) => normalizeText(`${i.title} ${i.description}`).includes(search))
     }
 
     switch (sort) {

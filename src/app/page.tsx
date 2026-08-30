@@ -4,6 +4,7 @@ import { useCallback, useEffect, useSyncExternalStore, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { GraduationCap } from 'lucide-react'
 import { Navbar } from '@/components/platform/navbar'
+import { PromoBar } from '@/components/platform/promo-bar'
 import { PlatformFooter } from '@/components/platform/footer'
 import { MarketplaceView } from '@/components/platform/marketplace'
 import { AuthView } from '@/components/platform/auth-view'
@@ -11,15 +12,16 @@ import { LandingMenteeView } from '@/components/platform/landing-mentee'
 import { useAppStore } from '@/lib/store'
 import { api } from '@/lib/api'
 import { captureAttributionFromUrl, cleanUrlParams, loadTrackingScripts, trackEvent } from '@/lib/tracking'
+import { captureRefCodeFromUrl } from '@/lib/referral'
 
 /** Fallback enxuto enquanto um view pesado é baixado sob demanda */
 function ViewLoading() {
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3" aria-busy="true">
-      <span className="flex h-12 w-12 animate-pulse items-center justify-center rounded-2xl bg-emerald-700/10 text-emerald-700">
+      <span className="flex h-12 w-12 animate-pulse items-center justify-center rounded-2xl bg-emerald-700/10 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
         <GraduationCap className="h-6 w-6" />
       </span>
-      <p className="text-sm font-medium text-stone-400">carregando…</p>
+      <p className="text-sm font-medium text-stone-400 dark:text-stone-500">carregando…</p>
     </div>
   )
 }
@@ -68,14 +70,61 @@ const CheckoutView = dynamic(
   () => import('@/components/platform/checkout').then((m) => m.CheckoutView),
   { ssr: false, loading: ViewLoading }
 )
+const CertificateView = dynamic(
+  () => import('@/components/platform/certificate-view').then((m) => m.CertificateView),
+  { ssr: false, loading: ViewLoading }
+)
+const MessagesView = dynamic(
+  () => import('@/components/platform/messages-view').then((m) => m.MessagesView),
+  { ssr: false, loading: ViewLoading }
+)
+const ReferralsView = dynamic(
+  () => import('@/components/platform/referrals-view').then((m) => m.ReferralsView),
+  { ssr: false, loading: ViewLoading }
+)
+const AdminPanel = dynamic(
+  () => import('@/components/platform/admin-panel').then((m) => m.AdminPanel),
+  { ssr: false, loading: ViewLoading }
+)
 const LandingMentor = dynamic(() => import('@/components/platform/landing-mentor'), {
   ssr: false,
   loading: ViewLoading,
 })
 
 /** Views que exigem sessão ativa — convidado é levado ao login/cadastro */
-const AUTH_REQUIRED: AppViewNames[] = ['dashboard', 'onboarding', 'checkout', 'meeting']
-type AppViewNames = 'dashboard' | 'onboarding' | 'checkout' | 'meeting'
+const AUTH_REQUIRED: AppViewNames[] = ['dashboard', 'onboarding', 'checkout', 'meeting', 'messages', 'referrals', 'admin']
+type AppViewNames = 'dashboard' | 'onboarding' | 'checkout' | 'meeting' | 'messages' | 'referrals' | 'admin'
+
+/** Título da aba por view — renderizado como <title> hoisted no shell */
+function docTitleFor(viewName: string): string {
+  const titles: Record<string, string> = {
+    home: 'MentorHub — Aprenda com quem vive o que ensina',
+    'for-mentors': 'MentorHub — Para mentores e criadores',
+    marketplace: 'Explorar — MentorHub',
+    mentor: 'Perfil do mentor — MentorHub',
+    course: 'Curso — MentorHub',
+    classroom: 'Sala de aula — MentorHub',
+    track: 'Trilha de aprendizado — MentorHub',
+    reader: 'Leitor — MentorHub',
+    dashboard: 'Minhas mentorias — MentorHub',
+    meeting: 'Sala de reunião — MentorHub',
+    onboarding: 'Painel do mentor — MentorHub',
+    'mentor-lp': 'MentorHub',
+    checkout: 'Checkout — MentorHub',
+    certificate: 'Certificado — MentorHub',
+    messages: 'Mensagens — MentorHub',
+    referrals: 'Indique e ganhe — MentorHub',
+    admin: 'Administração — MentorHub',
+    auth: 'Entrar — MentorHub',
+  }
+  return titles[viewName] ?? 'MentorHub — Plataforma de Mentorias 1:1'
+}
+
+/**
+ * #7 Lembretes automáticos: guard de módulo — executa 1x por sessão do navegador
+ * para cada userId (não repete em remounts/HMR). Falha sempre silenciosa.
+ */
+let remindersRunFor: string | null = null
 
 /** Toaster também é carregado sob demanda (sonner entra no bundle só quando usado) */
 const LazyToaster = dynamic(
@@ -112,9 +161,11 @@ export default function Home() {
     const sp = new URLSearchParams(window.location.search)
     const mentorSlug = sp.get('mentor')?.trim()
     const courseId = sp.get('course')?.trim()
+    const certCode = sp.get('cert')?.trim()
 
     // 1. Atribuição (last non-direct click, janela de 7 dias)
     captureAttributionFromUrl(mentorSlug)
+    captureRefCodeFromUrl()
 
     // 2. Pixels da plataforma (IDs via env) — pixels dos mentores são
     //    carregados dentro das telas correspondentes (LP, curso, checkout).
@@ -125,10 +176,12 @@ export default function Home() {
       navigate({ name: 'mentor-lp', slug: mentorSlug })
     } else if (courseId) {
       navigate({ name: 'course', courseId })
+    } else if (certCode) {
+      navigate({ name: 'certificate', code: certCode })
     }
     trackEvent('page_view')
 
-    // 4. Limpa utms da barra de endereço (preserva mentor/course p/ refresh)
+    // 4. Limpa utms da barra de endereço (preserva mentor/course/cert p/ refresh)
     cleanUrlParams()
   }, [])
 
@@ -146,6 +199,15 @@ export default function Home() {
       .catch(() => {})
   }, [])
 
+  // #7 Lembretes automáticos: após carga/login bem-sucedido do usuário, dispara
+  // api.runReminders 1x por sessão de navegador (guard de módulo). Nunca bloqueia a UI.
+  useEffect(() => {
+    const uid = user?.id
+    if (!uid || remindersRunFor === uid) return
+    remindersRunFor = uid
+    api.runReminders(uid).catch(() => {})
+  }, [user?.id])
+
   // Volta ao topo ao trocar de view (a rolagem vive no container <main>,
   // isolado do header — o conteúdo nunca passa por baixo dele).
   useEffect(() => {
@@ -155,20 +217,39 @@ export default function Home() {
   // Guard central: convidado não acessa views pessoais.
   const needsAuth = mounted && !user && AUTH_REQUIRED.includes(view.name as AppViewNames)
 
+  // Título da aba por view (SEO leve, histórico e abas compartilhadas).
+  // Reafirma por ~3s após cada troca: na carga inicial com navegação por URL
+  // (?course=/?cert=), a reconciliação de metadados do Next/React 19 reverte
+  // o document.title de forma assíncrona logo após o efeito.
+  useEffect(() => {
+    const want = docTitleFor(view.name)
+    const apply = () => {
+      if (document.title !== want) document.title = want
+    }
+    apply()
+    const iv = window.setInterval(apply, 500)
+    const stop = () => window.clearInterval(iv)
+    const t = window.setTimeout(stop, 3000)
+    return () => {
+      window.clearTimeout(t)
+      stop()
+    }
+  }, [view])
+
   // Sala de aula e leitor: overlay tela cheia (imersão) cobrindo header/footer.
   const immersive = view.name === 'classroom' || view.name === 'reader'
 
   if (!mounted) {
     // Evita mismatch de hidratação com o estado persistido (usuário/logado)
     return (
-      <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-white">
+      <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-white dark:bg-stone-950">
         <span className="flex h-14 w-14 animate-pulse items-center justify-center rounded-2xl bg-emerald-700 text-white">
           <GraduationCap className="h-7 w-7" />
         </span>
-        <p className="text-base font-extrabold tracking-tight text-stone-900">
-          Mentor<span className="text-emerald-700">Hub</span>
+        <p className="text-base font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+          Mentor<span className="text-emerald-700 dark:text-emerald-400">Hub</span>
         </p>
-        <p aria-hidden className="text-xs text-stone-400">
+        <p aria-hidden className="text-xs text-stone-400 dark:text-stone-500">
           preparando sua experiência...
         </p>
       </div>
@@ -178,7 +259,9 @@ export default function Home() {
   return (
     /* Shell tipo app: header e rodapé fora do fluxo de rolagem. O <main> é o
        ÚNICO container de rolagem — o corpo nunca entra por baixo do header. */
-    <div className="flex h-dvh flex-col overflow-hidden bg-white">
+    <div className="flex h-dvh flex-col overflow-hidden bg-white dark:bg-stone-950">
+      {!immersive && <PromoBar />}
+
       {!immersive && <Navbar />}
 
       <main
@@ -204,8 +287,17 @@ export default function Home() {
               {view.name === 'onboarding' && <OnboardingView />}
               {view.name === 'mentor-lp' && <MentorLpView slug={view.slug} />}
               {view.name === 'checkout' && (
-                <CheckoutView courseId={view.courseId} trackId={view.trackId} />
+                <CheckoutView
+                  courseId={view.courseId}
+                  trackId={view.trackId}
+                  bundleId={view.bundleId}
+                  membershipId={view.membershipId}
+                />
               )}
+              {view.name === 'certificate' && <CertificateView code={view.code} />}
+              {view.name === 'messages' && <MessagesView initialPeerId={view.peerId} />}
+              {view.name === 'referrals' && <ReferralsView />}
+              {view.name === 'admin' && user?.role === 'ADMIN' && <AdminPanel />}
             </>
           )}
 
@@ -216,12 +308,12 @@ export default function Home() {
 
       {/* Imersão: sala de aula e leitor em overlay tela cheia sobre tudo */}
       {view.name === 'classroom' && (
-        <div className="fixed inset-0 z-50 bg-stone-50">
+        <div className="fixed inset-0 z-50 bg-stone-50 dark:bg-stone-950">
           <ClassroomView courseId={view.courseId} />
         </div>
       )}
       {view.name === 'reader' && (
-        <div className="fixed inset-0 z-50 bg-stone-50">
+        <div className="fixed inset-0 z-50 bg-stone-50 dark:bg-stone-950">
           <ReaderView itemId={view.itemId} />
         </div>
       )}

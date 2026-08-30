@@ -1,0 +1,774 @@
+     1→'use client'
+     2→
+     3→import { useCallback, useEffect, useRef, useState } from 'react'
+     4→import {
+     5→  BookMarked,
+     6→  BookOpen,
+     7→  Eye,
+     8→  EyeOff,
+     9→  FileText,
+    10→  ImagePlus,
+    11→  Library,
+    12→  Pencil,
+    13→  Plus,
+    14→  Trash2,
+    15→  X,
+    16→} from 'lucide-react'
+    17→import { toast } from 'sonner'
+    18→
+    19→import {
+    20→  AlertDialog,
+    21→  AlertDialogAction,
+    22→  AlertDialogCancel,
+    23→  AlertDialogContent,
+    24→  AlertDialogDescription,
+    25→  AlertDialogFooter,
+    26→  AlertDialogHeader,
+    27→  AlertDialogTitle,
+    28→} from '@/components/ui/alert-dialog'
+    29→import { Badge } from '@/components/ui/badge'
+    30→import { Button } from '@/components/ui/button'
+    31→import {
+    32→  Card,
+    33→  CardAction,
+    34→  CardContent,
+    35→  CardDescription,
+    36→  CardHeader,
+    37→  CardTitle,
+    38→} from '@/components/ui/card'
+    39→import {
+    40→  Dialog,
+    41→  DialogContent,
+    42→  DialogDescription,
+    43→  DialogFooter,
+    44→  DialogHeader,
+    45→  DialogTitle,
+    46→} from '@/components/ui/dialog'
+    47→import { Input } from '@/components/ui/input'
+    48→import { Label } from '@/components/ui/label'
+    49→import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+    50→import {
+    51→  Select,
+    52→  SelectContent,
+    53→  SelectItem,
+    54→  SelectTrigger,
+    55→  SelectValue,
+    56→} from '@/components/ui/select'
+    57→import { Skeleton } from '@/components/ui/skeleton'
+    58→import { Textarea } from '@/components/ui/textarea'
+    59→import { api } from '@/lib/api'
+    60→import { CATEGORIES, LEVEL_LABELS, avatarGradient } from '@/lib/helpers'
+    61→import type { LibraryItemDTO } from '@/lib/types'
+    62→import { cn } from '@/lib/utils'
+    63→
+    64→const LEVELS = ['INICIANTE', 'INTERMEDIARIO', 'AVANCADO'] as const
+    65→const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+    66→
+    67→interface LibraryFormErrors {
+    68→  title?: string
+    69→  description?: string
+    70→  readingMin?: string
+    71→  content?: string
+    72→}
+    73→
+    74→/** Nome "legível" a partir da URL do PDF (fallback quando não veio do upload atual) */
+    75→function pdfNameFromUrl(url: string): string {
+    76→  try {
+    77→    const raw = url.split('/').pop()?.split('?')[0] ?? ''
+    78→    return decodeURIComponent(raw) || 'arquivo.pdf'
+    79→  } catch {
+    80→    return 'arquivo.pdf'
+    81→  }
+    82→}
+    83→
+    84→export function LibraryManager({
+    85→  userId,
+    86→  onChanged,
+    87→}: {
+    88→  userId: string
+    89→  onChanged?: () => void
+    90→}) {
+    91→  const [items, setItems] = useState<LibraryItemDTO[]>([])
+    92→  const [loading, setLoading] = useState(true)
+    93→  const [dialogOpen, setDialogOpen] = useState(false)
+    94→  const [editing, setEditing] = useState<LibraryItemDTO | null>(null)
+    95→  const [toDelete, setToDelete] = useState<LibraryItemDTO | null>(null)
+    96→  const [deleting, setDeleting] = useState(false)
+    97→  const [togglingId, setTogglingId] = useState<string | null>(null)
+    98→  const [saving, setSaving] = useState(false)
+    99→
+   100→  const [kind, setKind] = useState<'ARTICLE' | 'BOOK'>('ARTICLE')
+   101→  const [title, setTitle] = useState('')
+   102→  const [description, setDescription] = useState('')
+   103→  const [category, setCategory] = useState<string>('')
+   104→  const [level, setLevel] = useState<string>('INICIANTE')
+   105→  const [readingMin, setReadingMin] = useState('10')
+   106→  const [coverUrl, setCoverUrl] = useState<string | null>(null)
+   107→  const [uploadingCover, setUploadingCover] = useState(false)
+   108→  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
+   109→  const [pdfName, setPdfName] = useState('')
+   110→  const [uploadingPdf, setUploadingPdf] = useState(false)
+   111→  const [content, setContent] = useState('')
+   112→  const [formErrors, setFormErrors] = useState<LibraryFormErrors>({})
+   113→
+   114→  const fetchLocal = useCallback(async (): Promise<LibraryItemDTO[]> => {
+   115→    const list = await api.listLibrary({ authorUserId: userId })
+   116→    setItems(list)
+   117→    return list
+   118→  }, [userId])
+   119→
+   120→  useEffect(() => {
+   121→    let active = true
+   122→    fetchLocal()
+   123→      .catch((err: unknown) => {
+   124→        if (active) {
+   125→          toast.error(err instanceof Error ? err.message : 'Não foi possível carregar sua Biblioteca.')
+   126→        }
+   127→      })
+   128→      .finally(() => {
+   129→        if (active) setLoading(false)
+   130→      })
+   131→    return () => {
+   132→      active = false
+   133→    }
+   134→  }, [fetchLocal])
+   135→
+   136→  /** Recarrega a lista local e notifica o pai (contagens do perfil) */
+   137→  const refreshAll = useCallback(async () => {
+   138→    onChanged?.()
+   139→    await fetchLocal()
+   140→  }, [onChanged, fetchLocal])
+   141→
+   142→  const openCreate = () => {
+   143→    setEditing(null)
+   144→    setKind('ARTICLE')
+   145→    setTitle('')
+   146→    setDescription('')
+   147→    setCategory('')
+   148→    setLevel('INICIANTE')
+   149→    setReadingMin('10')
+   150→    setCoverUrl(null)
+   151→    setPdfUrl(null)
+   152→    setPdfName('')
+   153→    setContent('')
+   154→    setFormErrors({})
+   155→    setDialogOpen(true)
+   156→  }
+   157→
+   158→  const openEdit = (item: LibraryItemDTO) => {
+   159→    setEditing(item)
+   160→    setKind(item.kind === 'BOOK' ? 'BOOK' : 'ARTICLE')
+   161→    setTitle(item.title)
+   162→    setDescription(item.description)
+   163→    setCategory(item.category)
+   164→    setLevel(item.level)
+   165→    setReadingMin(String(item.readingMin))
+   166→    setCoverUrl(item.coverUrl ?? null)
+   167→    // pdfUrl/content não vêm no DTO de lista — busca o detalhe para preencher
+   168→    setPdfUrl(null)
+   169→    setPdfName('')
+   170→    setContent('')
+   171→    setFormErrors({})
+   172→    setDialogOpen(true)
+   173→
+   174→    api
+   175→      .getLibraryItem(item.id, userId)
+   176→      .then((detail) => {
+   177→        if (detail.pdfUrl) {
+   178→          setPdfUrl(detail.pdfUrl)
+   179→          setPdfName(pdfNameFromUrl(detail.pdfUrl))
+   180→        }
+   181→        if (detail.content) setContent(detail.content)
+   182→      })
+   183→      .catch(() => {
+   184→        /* mantém o formulário com os dados do resumo */
+   185→      })
+   186→  }
+   187→
+   188→  const handleCoverFile = async (file: File | null | undefined) => {
+   189→    if (!file || uploadingCover) return
+   190→    if (file.size > MAX_IMAGE_BYTES) {
+   191→      toast.error('A imagem deve ter no máximo 5MB.')
+   192→      return
+   193→    }
+   194→    setUploadingCover(true)
+   195→    try {
+   196→      const url = await api.uploadImage(file)
+   197→      setCoverUrl(url)
+   198→    } catch (err) {
+   199→      toast.error(err instanceof Error ? err.message : 'Não foi possível enviar a capa.')
+   200→    } finally {
+   201→      setUploadingCover(false)
+   202→    }
+   203→  }
+   204→
+   205→  const handlePdfFile = async (file: File | null | undefined) => {
+   206→    if (!file || uploadingPdf) return
+   207→    if (file.type !== 'application/pdf') {
+   208→      toast.error('Envie um arquivo em formato PDF.')
+   209→      return
+   210→    }
+   211→    setUploadingPdf(true)
+   212→    try {
+   213→      const uploaded = await api.uploadAttachment(file)
+   214→      setPdfUrl(uploaded.url)
+   215→      setPdfName(uploaded.name)
+   216→      setFormErrors((prev) => ({ ...prev, content: undefined }))
+   217→    } catch (err) {
+   218→      toast.error(err instanceof Error ? err.message : 'Não foi possível enviar o PDF.')
+   219→    } finally {
+   220→      setUploadingPdf(false)
+   221→    }
+   222→  }
+   223→
+   224→  const handleSubmit = async () => {
+   225→    const errs: LibraryFormErrors = {}
+   226→    if (title.trim().length < 3) {
+   227→      errs.title = 'O título precisa de ao menos 3 caracteres.'
+   228→    }
+   229→    if (description.trim().length < 20) {
+   230→      errs.description = 'Descreva o item com pelo menos 20 caracteres.'
+   231→    }
+   232→    const min = Math.round(Number(readingMin))
+   233→    if (!readingMin.trim() || Number.isNaN(min) || min < 1) {
+   234→      errs.readingMin = 'Informe o tempo de leitura (mínimo 1 minuto).'
+   235→    }
+   236→    // Livro exige PDF; artigo exige PDF OU texto
+   237→    if (kind === 'BOOK' && !pdfUrl) {
+   238→      errs.content = 'Para livros, envie o arquivo PDF.'
+   239→    } else if (kind === 'ARTICLE' && !pdfUrl && content.trim() === '') {
+   240→      errs.content = 'Envie um PDF ou escreva o texto do artigo.'
+   241→    }
+   242→    setFormErrors(errs)
+   243→    if (Object.values(errs).some(Boolean)) return
+   244→
+   245→    setSaving(true)
+   246→    try {
+   247→      const payload = {
+   248→        userId,
+   249→        kind,
+   250→        title: title.trim(),
+   251→        description: description.trim(),
+   252→        category: category || 'Tecnologia',
+   253→        level,
+   254→        coverUrl,
+   255→        pdfUrl,
+   256→        content: content.trim() ? content : null,
+   257→        readingMin: min,
+   258→      }
+   259→      if (editing) {
+   260→        await api.updateLibraryItem(editing.id, payload)
+   261→        toast.success('Item atualizado!')
+   262→      } else {
+   263→        await api.createLibraryItem(payload)
+   264→        toast.success('Item adicionado à Biblioteca! 📚')
+   265→      }
+   266→      setDialogOpen(false)
+   267→      await refreshAll()
+   268→    } catch (err) {
+   269→      toast.error(err instanceof Error ? err.message : 'Não foi possível salvar o item.')
+   270→    } finally {
+   271→      setSaving(false)
+   272→    }
+   273→  }
+   274→
+   275→  const togglePublish = async (item: LibraryItemDTO) => {
+   276→    setTogglingId(item.id)
+   277→    try {
+   278→      await api.updateLibraryItem(item.id, { userId, isPublished: !item.isPublished })
+   279→      toast.success(
+   280→        item.isPublished
+   281→          ? 'Item movido para rascunho.'
+   282→          : 'Item publicado! Ele já aparece no Explorar.'
+   283→      )
+   284→      await refreshAll()
+   285→    } catch (err) {
+   286→      toast.error(err instanceof Error ? err.message : 'Não foi possível atualizar o item.')
+   287→    } finally {
+   288→      setTogglingId(null)
+   289→    }
+   290→  }
+   291→
+   292→  const handleDelete = async () => {
+   293→    if (!toDelete) return
+   294→    setDeleting(true)
+   295→    try {
+   296→      await api.deleteLibraryItem(toDelete.id, userId)
+   297→      toast.success('Item excluído da Biblioteca.')
+   298→      setToDelete(null)
+   299→      await refreshAll()
+   300→    } catch (err) {
+   301→      toast.error(err instanceof Error ? err.message : 'Não foi possível excluir o item.')
+   302→    } finally {
+   303→      setDeleting(false)
+   304→    }
+   305→  }
+   306→
+   307→  const isBook = kind === 'BOOK'
+   308→  const contentLabel = isBook ? 'Texto do livro' : 'Texto do artigo'
+   309→
+   310→  return (
+   311→    <Card>
+   312→      <CardHeader>
+   313→        <CardTitle className="flex items-center gap-2 text-lg">
+   314→          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 ring-1 ring-amber-100">
+   315→            <Library className="size-4" aria-hidden />
+   316→          </span>
+   317→          Biblioteca
+   318→        </CardTitle>
+   319→        <CardDescription>
+   320→          Publique artigos e livros (PDF ou texto) como material de leitura — use-os em aulas de
+   321→          cursos ou ofereça à comunidade.
+   322→        </CardDescription>
+   323→        <CardAction>
+   324→          <Button size="sm" onClick={openCreate}>
+   325→            <Plus className="size-4" aria-hidden /> Novo item
+   326→          </Button>
+   327→        </CardAction>
+   328→      </CardHeader>
+   329→      <CardContent className="flex flex-col gap-4">
+   330→        {loading ? (
+   331→          <div className="space-y-3">
+   332→            <Skeleton className="h-24 rounded-lg" />
+   333→            <Skeleton className="h-24 rounded-lg" />
+   334→          </div>
+   335→        ) : items.length === 0 ? (
+   336→          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-stone-300 py-10 text-center">
+   337→            <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 ring-1 ring-stone-200">
+   338→              <Library className="size-6 text-stone-300" aria-hidden />
+   339→            </div>
+   340→            <h3 className="mt-2 text-base font-semibold">Nenhum item na sua Biblioteca ainda</h3>
+   341→            <p className="max-w-sm text-sm text-muted-foreground">
+   342→              Publique artigos e livros para engajar alunos e atrair novos estudantes.
+   343→            </p>
+   344→            <Button size="sm" className="mt-2" onClick={openCreate}>
+   345→              <Plus className="size-4" aria-hidden /> Criar primeiro item
+   346→            </Button>
+   347→          </div>
+   348→        ) : (
+   349→          <div className="max-h-96 space-y-3 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-stone-100 [&::-webkit-scrollbar]:w-1.5">
+   350→            {items.map((item) => (
+   351→              <div
+   352→                key={item.id}
+   353→                className="flex items-start justify-between gap-3 rounded-lg border border-stone-200 bg-white p-4"
+   354→              >
+   355→                {/* Thumb: capa ou gradiente determinístico + ícone do tipo */}
+   356→                {item.coverUrl ? (
+   357→                  <img
+   358→                    src={item.coverUrl}
+   359→                    alt=""
+   360→                    className="h-12 w-20 shrink-0 rounded-lg object-cover ring-1 ring-stone-200"
+   361→                  />
+   362→                ) : (
+   363→                  <span
+   364→                    aria-hidden
+   365→                    className="flex h-12 w-20 shrink-0 items-center justify-center rounded-lg"
+   366→                    style={avatarGradient(item.title)}
+   367→                  >
+   368→                    {item.kind === 'BOOK' ? (
+   369→                      <BookMarked className="h-5 w-5 text-white/40" />
+   370→                    ) : (
+   371→                      <BookOpen className="h-5 w-5 text-white/40" />
+   372→                    )}
+   373→                  </span>
+   374→                )}
+   375→                <div className="min-w-0 flex-1">
+   376→                  <div className="flex flex-wrap items-center gap-2">
+   377→                    <Badge
+   378→                      variant="outline"
+   379→                      className={cn(
+   380→                        item.kind === 'BOOK'
+   381→                          ? 'border-amber-200 bg-amber-50 text-amber-800'
+   382→                          : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+   383→                      )}
+   384→                    >
+   385→                      {item.kind === 'BOOK' ? 'Livro' : 'Artigo'}
+   386→                    </Badge>
+   387→                    <Badge variant="outline" className="border-stone-200 text-stone-600">
+   388→                      {item.category}
+   389→                    </Badge>
+   390→                    {item.isPublished ? (
+   391→                      <Badge className="bg-emerald-100 text-emerald-800">Publicado</Badge>
+   392→                    ) : (
+   393→                      <Badge variant="secondary" className="bg-stone-100 text-stone-600">
+   394→                        Rascunho
+   395→                      </Badge>
+   396→                    )}
+   397→                  </div>
+   398→                  <h4 className="mt-2 font-semibold leading-snug">{item.title}</h4>
+   399→                  <p className="mt-1 text-sm text-muted-foreground">
+   400→                    {item.readingMin} min · usado em {item.usageCount}{' '}
+   401→                    {item.usageCount === 1 ? 'aula' : 'aulas'}
+   402→                    {item.hasPdf ? ' · PDF' : ''}
+   403→                    {item.hasText ? ' · texto' : ''}
+   404→                  </p>
+   405→                </div>
+   406→                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+   407→                  <Button
+   408→                    variant="ghost"
+   409→                    size="icon"
+   410→                    aria-label={`Editar ${item.title}`}
+   411→                    onClick={() => openEdit(item)}
+   412→                  >
+   413→                    <Pencil className="size-4" aria-hidden />
+   414→                  </Button>
+   415→                  <Button
+   416→                    variant="ghost"
+   417→                    size="icon"
+   418→                    disabled={togglingId === item.id}
+   419→                    aria-label={
+   420→                      item.isPublished ? `Despublicar ${item.title}` : `Publicar ${item.title}`
+   421→                    }
+   422→                    onClick={() => void togglePublish(item)}
+   423→                  >
+   424→                    {item.isPublished ? (
+   425→                      <EyeOff className="size-4" aria-hidden />
+   426→                    ) : (
+   427→                      <Eye className="size-4" aria-hidden />
+   428→                    )}
+   429→                  </Button>
+   430→                  <Button
+   431→                    variant="ghost"
+   432→                    size="icon"
+   433→                    className="text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+   434→                    aria-label={`Excluir ${item.title}`}
+   435→                    onClick={() => setToDelete(item)}
+   436→                  >
+   437→                    <Trash2 className="size-4" aria-hidden />
+   438→                  </Button>
+   439→                </div>
+   440→              </div>
+   441→            ))}
+   442→          </div>
+   443→        )}
+   444→      </CardContent>
+   445→
+   446→      {/* Dialog: novo/editar item da Biblioteca */}
+   447→      <Dialog
+   448→        open={dialogOpen}
+   449→        onOpenChange={(open) => {
+   450→          setDialogOpen(open)
+   451→          if (open) setFormErrors({})
+   452→        }}
+   453→      >
+   454→        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+   455→          <DialogHeader>
+   456→            <DialogTitle>{editing ? 'Editar item' : 'Novo item da Biblioteca'}</DialogTitle>
+   457→            <DialogDescription>
+   458→              {isBook
+   459→                ? 'Livros ficam disponíveis para leitura e download em PDF.'
+   460→                : 'Artigos podem ser texto escrito, PDF ou ambos.'}
+   461→            </DialogDescription>
+   462→          </DialogHeader>
+   463→          <div className="flex flex-col gap-4">
+   464→            {/* Tipo: Artigo | Livro */}
+   465→            <div className="flex flex-col gap-2">
+   466→              <Label>Tipo de conteúdo</Label>
+   467→              <RadioGroup
+   468→                value={kind}
+   469→                onValueChange={(value) => setKind(value === 'BOOK' ? 'BOOK' : 'ARTICLE')}
+   470→                className="grid grid-cols-2 gap-3"
+   471→              >
+   472→                <Label
+   473→                  htmlFor="lib-kind-article"
+   474→                  className={cn(
+   475→                    'flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors',
+   476→                    kind === 'ARTICLE'
+   477→                      ? 'border-emerald-500 bg-emerald-50/60 ring-1 ring-emerald-200'
+   478→                      : 'border-stone-200 hover:border-stone-300'
+   479→                  )}
+   480→                >
+   481→                  <RadioGroupItem value="ARTICLE" id="lib-kind-article" className="mt-0.5" />
+   482→                  <span className="min-w-0">
+   483→                    <span className="flex items-center gap-1.5 text-sm font-semibold text-stone-900">
+   484→                      <BookOpen className="size-4 text-emerald-600" aria-hidden /> Artigo
+   485→                    </span>
+   486→                    <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+   487→                      Texto escrito, PDF ou ambos.
+   488→                    </span>
+   489→                  </span>
+   490→                </Label>
+   491→                <Label
+   492→                  htmlFor="lib-kind-book"
+   493→                  className={cn(
+   494→                    'flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors',
+   495→                    kind === 'BOOK'
+   496→                      ? 'border-amber-500 bg-amber-50/60 ring-1 ring-amber-200'
+   497→                      : 'border-stone-200 hover:border-stone-300'
+   498→                  )}
+   499→                >
+   500→                  <RadioGroupItem value="BOOK" id="lib-kind-book" className="mt-0.5" />
+   501→                  <span className="min-w-0">
+   502→                    <span className="flex items-center gap-1.5 text-sm font-semibold text-stone-900">
+   503→                      <BookMarked className="size-4 text-amber-600" aria-hidden /> Livro
+   504→                    </span>
+   505→                    <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+   506→                      PDF completo para leitura e download.
+   507→                    </span>
+   508→                  </span>
+   509→                </Label>
+   510→              </RadioGroup>
+   511→            </div>
+   512→
+   513→            <div className="flex flex-col gap-2">
+   514→              <Label htmlFor="lib-title">Título</Label>
+   515→              <Input
+   516→                id="lib-title"
+   517→                value={title}
+   518→                onChange={(event) => setTitle(event.target.value)}
+   519→                placeholder={
+   520→                  isBook
+   521→                    ? 'Ex.: O guia prático do produto digital'
+   522→                    : 'Ex.: Como validar sua ideia em 7 dias'
+   523→                }
+   524→                aria-invalid={Boolean(formErrors.title)}
+   525→              />
+   526→              {formErrors.title ? <p className="text-xs text-rose-600">{formErrors.title}</p> : null}
+   527→            </div>
+   528→            <div className="flex flex-col gap-2">
+   529→              <Label htmlFor="lib-description">Descrição</Label>
+   530→              <Textarea
+   531→                id="lib-description"
+   532→                rows={3}
+   533→                value={description}
+   534→                onChange={(event) => setDescription(event.target.value)}
+   535→                placeholder="Sobre o que é este conteúdo e por que vale a leitura..."
+   536→                aria-invalid={Boolean(formErrors.description)}
+   537→              />
+   538→              {formErrors.description ? (
+   539→                <p className="text-xs text-rose-600">{formErrors.description}</p>
+   540→              ) : null}
+   541→            </div>
+   542→            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+   543→              <div className="flex flex-col gap-2">
+   544→                <Label htmlFor="lib-category">Categoria</Label>
+   545→                <Select
+   546→                  value={category}
+   547→                  onValueChange={setCategory}
+   548→                >
+   549→                  <SelectTrigger id="lib-category" className="w-full">
+   550→                    <SelectValue placeholder="Selecione..." />
+   551→                  </SelectTrigger>
+   552→                  <SelectContent>
+   553→                    {CATEGORIES.map((c) => (
+   554→                      <SelectItem key={c} value={c}>
+   555→                        {c}
+   556→                      </SelectItem>
+   557→                    ))}
+   558→                  </SelectContent>
+   559→                </Select>
+   560→              </div>
+   561→              <div className="flex flex-col gap-2">
+   562→                <Label htmlFor="lib-level">Nível</Label>
+   563→                <Select value={level} onValueChange={setLevel}>
+   564→                  <SelectTrigger id="lib-level" className="w-full">
+   565→                    <SelectValue />
+   566→                  </SelectTrigger>
+   567→                  <SelectContent>
+   568→                    {LEVELS.map((l) => (
+   569→                      <SelectItem key={l} value={l}>
+   570→                        {LEVEL_LABELS[l] ?? l}
+   571→                      </SelectItem>
+   572→                    ))}
+   573→                  </SelectContent>
+   574→                </Select>
+   575→              </div>
+   576→            </div>
+   577→            <div className="flex flex-col gap-2">
+   578→              <Label htmlFor="lib-reading-min">Tempo de leitura (minutos)</Label>
+   579→              <Input
+   580→                id="lib-reading-min"
+   581→                type="number"
+   582→                min={1}
+   583→                step={1}
+   584→                value={readingMin}
+   585→                onChange={(event) => setReadingMin(event.target.value)}
+   586→                aria-invalid={Boolean(formErrors.readingMin)}
+   587→              />
+   588→              {formErrors.readingMin ? (
+   589→                <p className="text-xs text-rose-600">{formErrors.readingMin}</p>
+   590→              ) : null}
+   591→            </div>
+   592→
+   593→            {/* Capa (opcional) */}
+   594→            <div className="flex flex-col gap-2">
+   595→              <Label>Capa (opcional)</Label>
+   596→              {coverUrl ? (
+   597→                <div className="h-24 w-full overflow-hidden rounded-xl border border-stone-200 bg-stone-100">
+   598→                  <img src={coverUrl} alt="Capa do item" className="h-full w-full object-cover" />
+   599→                </div>
+   600→              ) : (
+   601→                <div className="flex h-24 w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-stone-300 bg-stone-50">
+   602→                  <ImagePlus className="size-5 text-stone-400" aria-hidden />
+   603→                  <p className="text-xs text-stone-500">Capa recomendada para o card no Explorar</p>
+   604→                </div>
+   605→              )}
+   606→              <div className="flex flex-wrap items-center gap-2">
+   607→                {uploadingCover ? (
+   608→                  <Button type="button" size="sm" variant="outline" disabled>
+   609→                    Enviando...
+   610→                  </Button>
+   611→                ) : (
+   612→                  <Button type="button" size="sm" variant="outline" asChild>
+   613→                    <Label htmlFor="lib-cover-upload" className="cursor-pointer">
+   614→                      Enviar capa
+   615→                    </Label>
+   616→                  </Button>
+   617→                )}
+   618→                {coverUrl ? (
+   619→                  <Button
+   620→                    type="button"
+   621→                    size="sm"
+   622→                    variant="ghost"
+   623→                    disabled={uploadingCover}
+   624→                    onClick={() => setCoverUrl(null)}
+   625→                  >
+   626→                    Remover
+   627→                  </Button>
+   628→                ) : null}
+   629→                <input
+   630→                  id="lib-cover-upload"
+   631→                  type="file"
+   632→                  accept="image/*"
+   633→                  className="hidden"
+   634→                  tabIndex={-1}
+   635→                  onChange={(event) => {
+   636→                    void handleCoverFile(event.target.files?.[0])
+   637→                    event.target.value = ''
+   638→                  }}
+   639→                />
+   640→              </div>
+   641→            </div>
+   642→
+   643→            {/* Conteúdo: PDF */}
+   644→            <div className="flex flex-col gap-2">
+   645→              <Label>{isBook ? 'Arquivo PDF do livro' : 'Arquivo PDF'}</Label>
+   646→              {pdfUrl ? (
+   647→                <div className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2">
+   648→                  <FileText className="size-4 shrink-0 text-rose-600" aria-hidden />
+   649→                  <span className="min-w-0 flex-1 truncate text-sm text-stone-700">
+   650→                    {pdfName || pdfNameFromUrl(pdfUrl)}
+   651→                  </span>
+   652→                  <Button
+   653→                    type="button"
+   654→                    variant="ghost"
+   655→                    size="icon"
+   656→                    className="size-8 text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+   657→                    aria-label="Remover PDF"
+   658→                    disabled={uploadingPdf}
+   659→                    onClick={() => {
+   660→                      setPdfUrl(null)
+   661→                      setPdfName('')
+   662→                    }}
+   663→                  >
+   664→                    <X className="size-4" aria-hidden />
+   665→                  </Button>
+   666→                </div>
+   667→              ) : (
+   668→                <div>
+   669→                  {uploadingPdf ? (
+   670→                    <Button type="button" size="sm" variant="outline" disabled>
+   671→                      Enviando...
+   672→                    </Button>
+   673→                  ) : (
+   674→                    <Button type="button" size="sm" variant="outline" asChild>
+   675→                      <Label htmlFor="lib-pdf-upload" className="cursor-pointer">
+   676→                        <FileText className="size-4" aria-hidden /> Enviar PDF
+   677→                      </Label>
+   678→                    </Button>
+   679→                  )}
+   680→                  <p className="mt-1.5 text-xs text-muted-foreground">
+   681→                    {isBook
+   682→                      ? 'Obrigatório para livros — os alunos leem no próprio navegador.'
+   683→                      : 'Opcional para artigos — pode combinar com o texto abaixo.'}
+   684→                  </p>
+   685→                </div>
+   686→              )}
+   687→              <input
+   688→                id="lib-pdf-upload"
+   689→                type="file"
+   690→                accept=".pdf"
+   691→                className="hidden"
+   692→                tabIndex={-1}
+   693→                onChange={(event) => {
+   694→                  void handlePdfFile(event.target.files?.[0])
+   695→                  event.target.value = ''
+   696→                }}
+   697→              />
+   698→            </div>
+   699→
+   700→            {/* Conteúdo: texto */}
+   701→            <div className="flex flex-col gap-2">
+   702→              <Label htmlFor="lib-content">{contentLabel}</Label>
+   703→              <Textarea
+   704→                id="lib-content"
+   705→                rows={8}
+   706→                value={content}
+   707→                onChange={(event) => {
+   708→                  setContent(event.target.value)
+   709→                  if (formErrors.content) {
+   710→                    setFormErrors((prev) => ({ ...prev, content: undefined }))
+   711→                  }
+   712→                }}
+   713→                placeholder={
+   714→                  isBook
+   715→                    ? 'Texto complementar ao PDF (opcional). Use linhas vazias para separar parágrafos, "## " para subtítulos e "- " para listas.'
+   716→                    : 'Escreva o texto do artigo aqui. Use linhas vazias para separar parágrafos, "## " para subtítulos e "- " para listas.'
+   717→                }
+   718→                aria-invalid={Boolean(formErrors.content)}
+   719→              />
+   720→              {formErrors.content ? (
+   721→                <p className="text-xs text-rose-600">{formErrors.content}</p>
+   722→              ) : (
+   723→                <p className="text-xs text-muted-foreground">
+   724→                  Pode enviar o PDF, escrever o texto ou ambos —{' '}
+   725→                  {isBook ? 'o PDF é obrigatório para livros.' : 'pelo menos um dos dois.'}
+   726→                </p>
+   727→              )}
+   728→            </div>
+   729→          </div>
+   730→          <DialogFooter>
+   731→            <Button variant="ghost" onClick={() => setDialogOpen(false)} disabled={saving}>
+   732→              Cancelar
+   733→            </Button>
+   734→            <Button onClick={() => void handleSubmit()} disabled={saving}>
+   735→              {saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Publicar item'}
+   736→            </Button>
+   737→          </DialogFooter>
+   738→        </DialogContent>
+   739→      </Dialog>
+   740→
+   741→      {/* AlertDialog: excluir item */}
+   742→      <AlertDialog
+   743→        open={toDelete !== null}
+   744→        onOpenChange={(open) => {
+   745→          if (!open) setToDelete(null)
+   746→        }}
+   747→      >
+   748→        <AlertDialogContent>
+   749→          <AlertDialogHeader>
+   750→            <AlertDialogTitle>Excluir &quot;{toDelete?.title}&quot;?</AlertDialogTitle>
+   751→            <AlertDialogDescription>
+   752→              Aulas de cursos que usam este item ficarão sem material de leitura. Esta ação não
+   753→              pode ser desfeita.
+   754→            </AlertDialogDescription>
+   755→          </AlertDialogHeader>
+   756→          <AlertDialogFooter>
+   757→            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+   758→            <AlertDialogAction
+   759→              className="bg-rose-600 text-white hover:bg-rose-700"
+   760→              disabled={deleting}
+   761→              onClick={(event) => {
+   762→                event.preventDefault()
+   763→                void handleDelete()
+   764→              }}
+   765→            >
+   766→              {deleting ? 'Excluindo...' : 'Excluir'}
+   767→            </AlertDialogAction>
+   768→          </AlertDialogFooter>
+   769→        </AlertDialogContent>
+   770→      </AlertDialog>
+   771→    </Card>
+   772→  )
+   773→}
+   774→

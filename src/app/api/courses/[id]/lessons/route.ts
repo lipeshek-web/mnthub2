@@ -131,6 +131,30 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       },
     })
 
+    // Notifica alunos inscritos sobre a nova aula (limite de segurança de 200)
+    try {
+      const enrolled = await db.enrollment.findMany({
+        where: { courseId: id },
+        select: { studentId: true },
+        take: 200,
+      })
+      const { notify } = await import('@/lib/notify')
+      await Promise.all(
+        enrolled.map((e) =>
+          notify({
+            userId: e.studentId,
+            kind: 'lesson_new',
+            title: `Nova aula em "${course.title}"`,
+            body: finalTitle,
+            linkView: 'course',
+            refId: course.id,
+          })
+        )
+      )
+    } catch (notifyErr) {
+      console.error(' Falha ao notificar alunos (aula criada mesmo assim)', notifyErr)
+    }
+
     return NextResponse.json({
       id: lesson.id,
       title: lesson.title,

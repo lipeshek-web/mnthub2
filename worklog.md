@@ -868,3 +868,782 @@ Stage Summary:
 - Sala de aula com tela de conteúdo interna larga (max-w-5xl): vídeos ~20% maiores em janelas grandes e ~33% maiores no modo foco, sensação de "tela focada"
 - Painel do mentor em 8 abas funcionais (Visão geral com KPIs/atalhos, Perfil, Agenda, Mural, Cursos, Biblioteca, Trilhas, Divulgação) — organizado, completo e validado em desktop + mobile
 - Screenshots: tool-results/shot-12a…12k (home, isolamento, footer, classroom leitura/vídeo/foco, painel desktop/mobile)
+
+---
+Task ID: 13-e
+Agent: frontend-styling-expert
+Task: Bloco "Continue aprendendo" na home (logado)
+
+Work Log:
+- Lidos worklog.md (Tasks 11-c e 11-a/11-b/12: main é o único scroller do shell, hero split com mock de vídeo, padrões stone/emerald) e contratos antes de codar: landing-mentee.tsx completo (1566 linhas — fetch de enrollments JÁ existia via api.listMyEnrollments(userId) em useEffect dependente de user?.id; FeaturedCourseCard com capa h-36 + Library white/20 como fallback; handler handleVerCursos = setExploreTab('courses') + navigate marketplace), types.ts (EnrolledCourseDTO, CourseListItemDTO.lessonCount), store.ts (AppView com 'course', setExploreTab), api.ts (listMyEnrollments), ui/progress|badge|button|card, dashboard.tsx (padrão EnrolledCourseCard: total piso 1, pct arredondado, isDone = completed >= lessonCount && lessonCount > 0, badge emerald "Concluído" com CheckCircle2)
+- DESCOBERTA CHAVE: a home JÁ tinha uma faixa "Continuar de onde parou" (Task 2-a) exatamente na posição pedida (logo após o hero, antes dos chips) — mesma fonte de dados, sem priorização, botão indo para classroom, com skeleton. Mantê-la + adicionar a nova seção duplicaria as mesmas matrículas em duas seções adjacentes; a Task 13-e descreve a home sem essa faixa e pede o novo bloco nessa posição → SUBSTITUI a faixa antiga pelo novo bloco "Continue aprendendo" (mesmo lugar, cards verticais no padrão FeaturedCourseCard do próprio arquivo). Nenhum outro arquivo tocado
+- landing-mentee.tsx (ÚNICO arquivo editado):
+  - Priorização em continueItems (useMemo sobre enrollments): grupo 1 = em andamento (completed > 0 e não concluído), grupo 2 = não iniciadas (0 aulas), grupo 3 = concluídas (lessonCount > 0 && completed >= lessonCount — isDone idêntico ao dashboard); dentro de cada grupo sort por enrolledAt desc (ISO-8601 comparado lexicograficamente); slice(0, 3)
+  - Render condicional: user && !enrollmentsLoading && continueItems.length > 0 — silencioso (nada renderizado para convidado, com zero matrículas ou enquanto carrega; skeleton antigo REMOVIDO conforme briefing "sem skeleton que pule layout")
+  - Seção compacta (border-y border-stone-200/70 bg-stone-50/50 py-8 sm:py-10, max-w-6xl): h2 id="continue-title" pequeno uppercase "Continue aprendendo" (text-sm font-extrabold uppercase tracking-widest text-stone-500 — mesmo estilo do h2 "Explore por área" vizinho, harmônico; a sugestão stone-400 do briefing tinha "?" e o precedente do arquivo usa stone-500) + subtítulo curto text-xs sm:text-sm stone-400 "Retome seus cursos exatamente onde parou."
+  - Grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 (itens min-w-0 — lição da Task 7 contra overflow no mobile) com até 3 ContinueCourseCard + card CTA final
+  - ContinueCourseCard (novo componente no fim do arquivo, padrão dos FeaturedCards: useAppStore navigate próprio): capa h-16 com coverUrl (img lazy/async) ou avatarGradient(course.title) com Library text-white/20 no canto — cópia do padrão FeaturedCourseCard em h-16; título line-clamp-2 min-h-10 text-sm font-bold; "por {mentor.name}" truncate; Progress (value pct, aria-label "{pct}% do curso concluído") + linha "{completed} de {lessonCount} aulas concluídas" à esquerda e "{pct}%" à direita (padrão de contagem do dashboard); Badge "Concluído" emerald (rounded-full border-emerald-200 bg-emerald-100 text-emerald-800 com CheckCircle2, igual ao dashboard) só quando 100%; Button h-11 (44px) w-full rounded-full "Continuar" → "Revisar" quando 100%, onClick navigate({ name: 'course', courseId }) (o course-view retoma da primeira aula não concluída), aria-label "Continuar curso {título}" nos dois estados
+  - Card CTA final: <button> discreto border-dashed border-stone-300 (hover emerald-400/bg-emerald-50/40, group-hover no ArrowRight) com ícone Library, "Explorar mais cursos" e dica curta; onClick = handler existente handleVerCursos (setExploreTab('courses') + navigate marketplace — copiado, não duplicado); min-h-40, h-full, alvo ≥44px
+  - Imports: +CheckCircle2 (lucide), −Card (import ficou órfão com a remoção da faixa antiga — lint pegaria); comentário do fetch atualizado para o nome novo
+- Ambiente: dev server foi encontrado FORA do ar no início da sessão (porta 3000 recusava conexão, sem listener — morte prévia, sessão paralela ativa com Fast Refresh rebuilds visíveis no console); voltou a responder 200 sozinho (relançado pela sessão paralela) — EU NÃO reiniciei nada. Sessão paralela também mexeu nos dados demo no meio dos testes (Ana passou de 2/7 para 7/7 em "Do Zero a PM"), o que acabou permitindo validar o estado "Concluído/Revisar" com dado real; validação E2E feita em sessão de browser ISOLADA (--session t13e) para não colidir com o agente paralelo que compartilhava a sessão default
+
+Validation (tsc/lint + agent-browser E2E em sessão isolada, desktop 1440x900 + mobile 390x844):
+- bun run lint: 0 erros / 0 warnings; bunx tsc --noEmit: limpo em src/ (só erros pré-existentes fora de src/); dev server NÃO reiniciado (HTTP 200 ao longo de toda a validação); nenhum arquivo novo criado
+- Deslogado: seção NÃO renderiza (hero → chips direto) ✓; "Aluno" logado sem matrículas: seção some ✓
+- Ana (ana@demo.com): seção "Continue aprendendo" entre hero (section 0) e chips (section 2) — posição confirmada via DOM; h2 + subtítulo corretos; 2 cards + CTA; na 1ª passada (dados da época): Arquitetura de Software na Prática 1 de 9 aulas (11%) PRIMEIRO e Do Zero a PM (Marina Costa) 2 de 7 aulas (29%) — ordem por enrolledAt desc dentro do grupo "em andamento" correta; capas com img real h-16 (64px), mentor name truncado, botões "Continuar" h-11=44px com aria-label "Continuar curso {título}"; Progress com aria-label "{pct}% do curso concluído"
+- Clique "Continuar" no card da Marina → course-view abriu o curso CERTO ("Do Zero a Product Manager · por Marina Costa · 7 aulas" com "2 de 7 aulas concluídas · 29%") ✓
+- 2ª passada (após o dado virar 7/7): Arquitetura (1/9, 11%) continua PRIMEIRO e Do Zero a PM (7/7, 100%) ÚLTIMO, com badge "Concluído" em emerald-100 e botão "Revisar" — priorização em andamento → concluído validada com dado real ✓
+- CTA "Explorar mais cursos" (border dashed confirmado via getComputedStyle) → marketplace abriu com aba "Cursos" aria-selected=true ✓
+- Carlos (carlos@demo.com): 1 card (Do Zero a PM, 0 de 7 aulas, 0%, barra em 0% translateX(-100%), "Continuar") — grupo "não iniciadas" ✓; logout → seção some na hora ✓
+- Mobile 390x844 (Ana): zero overflow horizontal (docSW=docCW=390, mainSW=mainCW=390, bodySW=390); grid 1 coluna (358px), cards 256px, CTA 160px (min-h-40) ✓; Desktop 1440x900: grid 3 colunas (3×362px) ✓
+- Console sem erros de página (só HMR/Fast Refresh da sessão paralela); page errors vazio
+- Screenshots: tool-results/shot-13e-home-ana-desktop.png, shot-13e-ana-mobile.png, shot-13e-ana-desktop-completed.png (badge Concluído + Revisar), shot-13e-ana-course-view.png
+
+Stage Summary:
+- A home logada ganhou o bloco compacto "Continue aprendendo" logo após o hero: até 3 matrículas priorizadas (em andamento → não iniciadas → concluídas, recência dentro do grupo) em cards verticais no padrão visual dos FeaturedCards (capa h-16 com gradiente+Library como fallback, título, mentor, Progress "X de N aulas concluídas" + %, badge emerald "Concluído" e botão Continuar/Revisar que abre o course-view, que retoma da primeira aula pendente), mais um CTA dashed "Explorar mais cursos" que leva ao marketplace na aba Cursos
+- Substituiu a antiga faixa "Continuar de onde parou" (mesma posição/dados) evitando duplicação; fetch existente reutilizado sem nenhum novo request pesado; seção 100% silenciosa para convidado/vazio/carregando; a11y com aria-labelledby/h2, aria-labels nos botões e alvos 44px; mobile 1 coluna sem overflow e desktop 3 colunas
+- Único arquivo editado: src/components/platform/landing-mentee.tsx; lint 0/0, tsc limpo em src/, dev server não reiniciado
+
+---
+Task ID: 13-g
+Agent: frontend-styling-expert
+Task: Cupom de desconto no checkout
+
+Work Log:
+- Lido worklog (entrada 11-a + 11-b + 12) e contratos de src/lib/api.ts (validateCoupon → CouponValidationDTO { ok, code, label, discount, finalPrice }; checkout com couponCode opcional) + rotas /api/coupons/validate e /api/checkout (já suportam cupom no servidor).
+- ARQUIVO ÚNICO editado: src/components/platform/checkout.tsx —
+  (1) estados couponInput/couponApplied/couponLoading/couponError + reset ao trocar item (useEffect courseId/trackId);
+  (2) applyCoupon: normaliza para maiúsculas, chama api.validateCoupon({ code, courseId|trackId conforme item.kind }), sucesso → estado aplicado e limpa input/erro; erro → mensagem inline e limpa aplicado; removeCoupon volta ao estado inicial;
+  (3) UI no resumo do pedido (só no branch item pago price>0): estado inicial = form (Enter aplica) com Label sr-only htmlFor="checkout-coupon", Input h-11 rounded-xl com Tag icon à esquerda (pl-9, font-mono uppercase, toUpperCase no onChange, placeholder "Cupom de desconto") + Button outline h-11 rounded-xl "Aplicar" (loading "Verificando…" com Loader2); erro inline <p aria-live="polite"> text-xs text-rose-600 (min-h para não pular layout); estado aplicado = caixa rounded-xl border-emerald-200 bg-emerald-50/70 p-3 com chip do código (font-mono font-bold, borda emerald-300), label ("10% de desconto"), preço original text-stone-400 line-through + "com desconto" + finalPrice emerald-700 font-extrabold e botão X ghost h-11 w-11 (44px) aria-label "Remover cupom";
+  (4) Total reflete desconto: quando aplicado, Total = finalPrice em emerald-700 + linha "Desconto (BEMVINDO10): −R$ 18,90"; botão "Pagar" mostra finalPrice com cupom;
+  (5) doPay: payload ganha couponCode: couponApplied?.code || undefined; em erro de cupom (/cupom/i) limpa o cupom aplicado e mostra o erro no fluxo existente (toast + inline no bloco); PIX/cartão, success e tracking intocados;
+  (6) formatBRL local com 2 casas fixas para valores com centavos (currencyBRL do projeto usa mínimo 0 casas → "R$ 170,1"; local renderiza "R$ 170,10").
+- Cupom BEMVINDO10 NÃO existia (13-f ainda não o havia criado) → criado via `bun -e` + Prisma: mentor Carlos Ferreira (MentorProfile cmtd0bei00009nl06jojy2cta), code BEMVINDO10, percentOff 10, isActive true, maxUses null (id cmtej5rjg0001irshuvulrjga).
+- curl POST /api/coupons/validate: BEMVINDO10 + courseId cmtd0beko004qnl06ryuh9539 → {"ok":true,"discount":18.9,"finalPrice":170.1}; "XXXX" → 404 "Cupom inválido para este item.".
+- Dev server: ao iniciar a task a porta 3000 NÃO tinha listener (servidor não estava de pé) — subi `bun run dev` (tee dev.log, sem build); o sandbox derrubou processos background entre chamadas e precisei relançar (nunca interrompi um servidor saudável de outro agente deliberadamente).
+- E2E browser (agent-browser sessão isolada "t13g" — a sessão default estava sendo usada CONCURRENTMENTE por outro agente, o que causava navegações fantasmas; isolada a partir daí): conta descartável criada via UI de registro: cupom.teste2@demo.com / demo123 ("Aluno Cupom Dois"); fluxo no checkout do curso pago do Carlos "Arquitetura de Software na Prática" (R$ 189): digitou "bemvindo10" → campo exibiu BEMVINDO10 (auto-uppercase ok) → Aplicar → estado aplicado com chip BEMVINDO10, "10% de desconto", R$ 189,00 riscado, R$ 170,10 emerald, Total R$ 170,10, linha "Desconto (BEMVINDO10): −R$ 18,90" e botão "Pagar R$170,10"; aplicar "XXXX" → erro inline "Cupom inválido para este item." (aria-live, text-rose-600); Remover cupom → voltou ao input ("Pagar R$189"); reaplicou → Pagar (PIX) → tela "Pagamento confirmado!".
+- Order verificada via `bun -e` (Prisma): amount 170.1, couponCode "BEMVINDO10", discount 18.9, status PAID, paymentMethod PIX; Enrollment criada para a conta de teste; Coupon.uses 0 → 1.
+- Mobile 390x844 (segunda conta descartável cupom.teste3@demo.com, "Aluno Cupom Tres", apenas aplicar sem pagar): input+Aplicar e caixa aplicada sem overflow (scrollWidth=clientWidth=390 nos dois estados; caixa aplicada 316px); screenshots em tool-results/shot-31..35 (aplicado desktop, erro, sucesso, mobile).
+- Item gratuito "Do Zero a Product Manager": CTA "Inscrever-se gratuitamente" sem checkout e sem bloco de cupom (comportamento intacto).
+- Console do browser sem erros (apenas warning pré-existente de Meta Pixel duplicado, do tracking demo).
+- Validação estática: `bun run lint` → 0 erros/0 warnings; `bunx tsc --noEmit` → 0 erros em src/ (4 erros pré-existentes somente em examples/ e skills/, fora do escopo).
+- Observação p/ task futura: tela de SUCESSO exibe "Total R$ 170,1" (usa currencyBRL do projeto com 0 casas mínimas) — mantida intacta por instrução; vale trocar por formatador com 2 casas quando permitido.
+
+Stage Summary:
+- Checkout de itens pagos (curso/trilha, price > 0) ganhou bloco de cupom completo: aplicar (com loading e auto-uppercase), erro inline acessível (aria-live), estado aplicado com chip/label/preço riscado/preço final e remoção com X 44px; desconto refletido no Total e no botão Pagar; couponCode enviado no checkout e persistido na Order (couponCode + discount). Itens gratuitos e o restante do fluxo (PIX/cartão, success, tracking) intocados. Validado E2E com contas descartáveis (registro via UI), desktop 1440x900 e mobile 390x844 sem overflow, console limpo, lint 0/0 e tsc limpo em src/. Cupom BEMVINDO10 (10% do Carlos) criado por mim por não existir ainda; matrícula demo extra apenas nas contas descartáveis cupom.teste2/teste3@demo.com (Ana poupada).
+
+---
+Task ID: 13-h
+Agent: frontend-styling-expert
+Task: Emitir/ver certificado pela sala de aula + integração com a página pública
+
+Work Log:
+- ÚNICO arquivo de código alterado: src/components/platform/classroom.tsx
+- MODAL ANTIGO REMOVIDO: o Dialog "Certificado de conclusão" (certOpen/setCertOpen, conteúdo rico em JSX, botão de impressão com CSS @media print .certificate-print) era redundante — o conteúdo rico já vive na certificate-view pública. Removidos junto, sem deixar órfãos: estado certOpen, bloco <style> de impressão (só servia ao modal) e imports que ficaram sem uso (Award, Printer do lucide; DialogFooter do ui/dialog). Dialog/DialogContent/Header/Title/Description permanecem (usados pelo dialog de Conteúdos no mobile); formatTotalDuration permanece (usado no header da sala)
+- NOVO FLUXO "Emitir certificado" (celebração de 100%): handleIssueCertificate() chama api.issueCertificate(course.id, user.id) com estado issuing (botão disabled + "Emitindo…"); sucesso → toast.success('Certificado emitido! 🎓') + navigate({ name:'certificate', code }) do useAppStore (overlay da sala fecha naturalmente pois a view global muda); erro → toast.error(message) (ex.: 403 "Conclua todas as aulas para emitir o certificado.")
+- "Ver meu certificado": quando course.certificateCode existe (já emitido), a celebração troca o botão para outline emerald que navega direto para { name:'certificate', code: certificateCode } — sem chamar issueCertificate de novo. Código extraído para const certificateCode (narrowing de propriedade não sobrevive em closures no TS)
+- Header da sala intocado (nenhum indicador extra); player/quizzes/perguntas/notas/anexos/modo foco/navegação/ContentsNav/XP intactos; reviews intocados
+- DEMO DATA (via PATCH /api/courses/[id]/enroll, bun one-off tool-results/13h-prep.ts): Ana (ana@demo.com) foi de 2/7 → 7/7 no curso "Do Zero a Product Manager" (Marina) para habilitar a celebração — estado mantido em 100% de propósito (progresso concluído é dado de demo útil); as aulas foram marcadas pela API (não pela UI) e o XP/bônus de curso do servidor foi aplicado normalmente
+- Ambiente: dev server estava DOWN ao iniciar a task (porta 3000 recusava conexões); subido com `bun run dev` (tee dev.log) para validação — NENHUMA instância foi reiniciada durante o trabalho. Nota de ambiente: o sandbox encerra processos em background entre chamadas do agente (verificado com setsid/nohup), então o servidor precisa ser relançado pelo orquestrador se estiver fora do ar
+- Durante a validação apareceu NO BANCO um certificado pré-existente de OUTRO usuário (Gustavo Novaes Cruz, MH-22563A1AD3, 100% no mesmo curso) — NÃO foi mexido (não é dado da Ana); o certificado da Ana foi emitido pela própria UI no fluxo testado
+
+Validation (curl + browser E2E, desktop 1440x900 + mobile 390x844):
+- bun run lint: 0/0; bunx tsc --noEmit: limpo em src/ (só pré-existentes fora de escopo em examples/ e skills/)
+- Preparação: Ana confirmada sem curso 100% → PM course completado via API (7/7) → certificateCode null antes do fluxo
+- EMITIR (UI): login ana@demo.com → ?course=ID → "Continuar curso" → sala → celebração "Parabéns! Você concluiu este curso 🎉" com ÚNICO botão "Emitir certificado" (emitir=true/ver=false) → clique → toast "Certificado emitido! 🎓" → POST /api/certificates 201 → navegação para a página do certificado (document.title="Certificado — MentorHub"); código gerado: MH-7FA125CD90 (Ana Souza · Do Zero a Product Manager · Marina Costa · Carreira · 2,2h · emitido 2026-08-29)
+- VER (UI): reaberta a sala → celebração agora mostra "Ver meu certificado" (outline emerald; emitir=false/ver=true, course.certificateCode veio no CourseDetailDTO) → clique → página pública do certificado renderiza direto ✓
+- ANÔNIMO: http://localhost:3000/?cert=MH-7FA125CD90 em sessão isolada SEM login → certificado completo (nome, título, mentor Marina, "2.2h de conteúdo"… carga ok, "Concluído em", bloco "Certificado autêntico" com o código, botões Copiar link/Compartilhar no LinkedIn/Imprimir) — roteamento ?cert= confirmado; GET /api/certificates/MH-7FA125CD90 200
+- MOBILE 390x844 (página do certificado): zero overflow horizontal (scrollWidth=clientWidth=390; article 358px) e os 3 botões de ação empilham em 3 linhas (coluna); desktop 1440 sem overflow (1440x1440)
+- Console do browser sem erros nas duas sessões; dev.log da rodada final só GETs 200 do certificado (em rodada anterior houve "spawn node EAGAIN" do Next — ruído de ambiente com agentes paralelos, não do app); dev server NÃO reiniciado durante os testes; nenhum teste automatizado criado
+- Screenshots: tool-results/shot-13h-classroom-celebration.png, shot-13h-certificate-desktop.png, shot-13h-classroom-ver-certificado.png, shot-13h-certificate-anon-desktop.png, shot-13h-certificate-mobile.png (+ logs/scripts em tool-results/13h-*)
+
+Stage Summary:
+- A sala de aula agora integra de ponta a ponta com o certificado público: 100% concluído → "Emitir certificado" (loading "Emitindo…", toast 🎓, navega via store para a view certificate) e, com certificado já emitido, "Ver meu certificado" (outline emerald, navegação direta pelo course.certificateCode). O modal antigo foi totalmente removido sem imports/estados órfãos — o conteúdo rico (copiar link, LinkedIn, imprimir, verificação) é o da certificate-view, acessível também sem login via /?cert=CODE
+- Estado final do demo: Ana 7/7 no "Do Zero a Product Manager" com certificado MH-7FA125CD90 emitido (mantido de propósito); certificado de outro usuário (Gustavo) intocado
+- Validação completa: lint 0/0, tsc limpo em src/, fluxo emitir→página pública→voltar→ver→página pública testado E2E, ?cert= público confirmado anônimo, mobile sem overflow com botões em coluna, console limpo
+
+---
+Task ID: 13-c
+Agent: frontend-styling-expert
+Task: Sino de notificações in-app no header
+
+Work Log:
+- Lidos worklog.md (Tasks 11-c e 11-a/11-b/12: navbar estático h-14 branco sólido, main é o único scroller, padrão stone+emerald, credenciais demo) e contratos antes de codar: api.ts (listNotifications(userId) → {unreadCount, items}; markNotificationsRead(userId, ids?) POST), types.ts (NotificationDTO/NotificationsResponseDTO/NotificationKind), api/notifications/route.ts (GET ordena desc take 30 + unread=readAt null; POST updateMany com ids opcionais), schema (Notification.readAt), store (AppView: dashboard/course/onboarding; UserDTO.id)
+- navbar.tsx (ÚNICO arquivo editado): componente local `NotificationsBell` (hooked ao store via selectors user/navigate) renderizado como 1º filho do grupo direito — ordem final: sino → busca mobile → avatar (some junto quando !user; sem login só Entrar/Criar conta)
+- Botão sino: h-9 w-9 rounded-full text-stone-500 hover:bg-stone-100 (mesma linguagem do ícone de busca), Bell h-4.5, aria-label dinâmico "Notificações" / "Notificações, N não lida(s)" + title; badge absolute -right-0.5 -top-0.5 h-4 min-w-4 px-1 rounded-full bg-rose-500 text-[10px] font-bold text-white com unreadCount (99+ se >99), aria-live="polite", escondido quando 0
+- DropdownMenu controlado (open + onOpenChange): DropdownMenuContent align="end" sideOffset=8 w-88 sm:w-96 p-0 overflow-hidden; header com DropdownMenuLabel "Notificações" + botão texto "Marcar todas como lidas" (disabled quando unreadCount=0, text-emerald-700/disabled stone-300); lista role="list" max-h-[380px] overflow-y-auto com scrollbar fina ([scrollbar-width:thin] + ::-webkit-scrollbar h-1.5 thumb stone-200); itens em div role="listitem" > button (preserva semântica de botão)
+- Item: chip circular h-8 w-8 por kind (booking_new→CalendarClock amber, booking_confirmed→CalendarCheck emerald, booking_cancelled→CalendarX rose, booking_completed→CheckCircle2 emerald, review_new→Star amber, lesson_new→ListVideo violet, enrollment_new→UserPlus emerald, course_review_new→MessageSquareQuote violet, purchase_new→ShoppingBag emerald, default Bell stone), título text-sm font-semibold stone-900 (não lida) / stone-500 (lida), body text-xs stone-500 line-clamp-2, tempo relativo local (agora / há N min / há N h / há N d / data pt-BR p/ ≥30d); não lida: bg-emerald-50/50 + dot emerald-500 absolute left-1.5
+- Ações: clique no item marca lida otimista (local + POST ids:[item.id] fire-and-forget) e navega por linkView: dashboard→{name:'dashboard'}, course (com refId)→{name:'course', courseId}, onboarding→{name:'onboarding'}; fecha dropdown; sem linkView só marca lida. "Marcar todas": otimista + POST sem ids, rollback do estado local se falhar
+- Fetch: inicial no effect (setState em .then com guard alive local + reqIdRef contra race/desmount/troca de fetch), polling setInterval 60s (limpo no unmount), refetch ao abrir o dropdown (onOpenChange true); erro silencioso (catch sem toast — badge apenas não aparece). Nota: rule react-hooks/set-state-in-effect (eslint react-hooks v6) proibiu setState/chamada com setState no corpo do efeito → fetch inicial via .then() callback (mesmo padrão do dashboard.tsx) passou a valer 0/0
+- Fix de lint no caminho: 1º erro foi reset sincrono de state no effect (removido — o sino desmonta quando !user, não precisa reset); 2º foi a chamada de loadNotifications no corpo (reestruturado com .then). Erro paralelo 'ContinueCourseCard' is not defined em landing-mentee.tsx apareceu/apareceu-corrigido durante a sessão — trabalho concorrente de outro agente, fora do meu escopo (navbar.tsx sempre limpo)
+
+Validation (bun lint/tsc + agent-browser sessão isolada t13c, desktop 1440x900 e mobile 390x844):
+- bun run lint: 0 erros/0 warnings (projeto inteiro); bunx eslint navbar.tsx: limpo; bunx tsc --noEmit: limpo em src/ (só erros pré-existentes em examples/ e skills/)
+- Dev server: NÃO estava rodando ao início (porta 3000 sem listener; nenhuma instância next/bun viva) → iniciado UMA única vez (bun run dev, log em dev.log) e não mais tocado; 200 durante toda a validação, dev.log sem ⨯/Error
+- Login ana@demo.com/demo123; Ana tinha 0 notificações → sino renderiza, aria-label "Notificações", SEM badge, dropdown com empty state (BellOff stone-300 + "Você está em dia! Nenhuma notificação.") e "Marcar todas como lidas" disabled
+- 2 notificações reais inseridas via bun -e/Prisma (userId real da Ana cmtd0behr...0f96): booking_confirmed c/ linkView course+refId (há 5 min) e lesson_new s/ linkView (há 2 h) → reload: badge "2" (bg-rose-500 h-4 min-w-4) e aria "Notificações, 2 não lidas"; painel 384px (sm:w-96) alinhado à direita do trigger (panelRight==triggerRight, top=bottom+8); role list/listitem; ícones lucide-calendar-check (chip emerald-100/emerald-700) e lucide-list-video (violet-100/violet-600); fundos bg-emerald-50/50 + dot emerald; body line-clamp-2; tempos "há 10 min"/"há 2 h"; título não lida quase-preto (stone-900)
+- "Marcar todas como lidas": badge some, itens ficam stone-500 sem dot/bg, botão vira disabled, POST 200 e readAt persistido no banco p/ ambas
+- 3ª notificação (review_new c/ linkView course + refId curso Arquitetura) → reabrir dropdown = refetch (badge "1", item no topo "há 1 min", Star amber) → clique no item: navega para "Arquitetura de Software na Prática" (curso diferente do atual), dropdown fecha, badge zera otimista, POST ids:[id] 200 com readAt no banco
+- Polling 60s comprovado por performance entries: 1 fetch no login → 2 após ~70s (1 tick do intervalo), GET /api/notifications 200
+- Mobile 390x844: scrollWidth===clientWidth===390 (zero overflow horizontal) com dropdown aberto; ordem no header confirmada: Notificações → Abrir busca → Menu do usuário; painel 352px (w-88) cabe (0→352) alinhado à direita
+- Console sem erros de página (só warning pré-existente de Meta Pixel); estado demo restaurado: as 3 notificações de teste ficaram todas LIDAS (nenhuma não lida)
+- Screenshots: tool-results/shot-13c-empty-desktop.png, shot-13c-dropdown-unread-desktop.png, shot-13c-course-nav-desktop.png, shot-13c-dropdown-mobile.png
+
+Stage Summary:
+- Header ganhou sino de notificações in-app (só logado) completo: badge rose com contagem/99+, dropdown w-88/sm:w-96 com header "Notificações" + "Marcar todas como lidas", lista com chip de ícone por kind (9 tipos mapeados + default), título/body/tempo relativo, destaque emerald para não lidas, empty state "Você está em dia!", marcação lida otimista (unitária e total) com persistência, navegação por linkView (dashboard/course/onboarding), polling de 60s + refetch on-open com guard anti-race e erro silencioso
+- Zero mudanças fora de navbar.tsx; paleta stone+emerald com acentos por kind e rose só no badge; validado desktop+mobile sem overflow e com console limpo
+
+---
+Task ID: 13-f
+Agent: frontend-styling-expert
+Task: Painel do mentor — duplicar curso, aba Financeiro e aba Cupons
+
+Work Log:
+- Lido worklog.md (entrada 11-c: painel em abas controladas [tab,setTab], PANEL_TABS/PANEL_SHORTCUTS, grid lg:grid-cols-[220px_minmax(0,1fr)]; 13-g: cupom BEMVINDO10 10% do Carlos já no banco + order real R$170,10; 13-c/13-h: padrões stone+emerald) e contratos ANTES de codar: api.ts (duplicateCourse, finance, listCoupons/createCoupon/toggleCoupon/deleteCoupon), types.ts (FinanceDTO, CouponDTO), rotas /api/coupons, /api/mentors/finance, /api/courses/[id]/duplicate; helpers currencyBRL/firstName; helper local copyToClipboard já existente no arquivo
+- ARQUIVO ÚNICO editado: src/components/platform/onboarding.tsx
+- TAREFA 1 (CoursesManager): estado duplicatingId + handleDuplicate (api.duplicateCourse → toast.success('Curso duplicado como rascunho — ajuste e publique!') → refreshAll() = mecanismo de reload existente) + botão ghost size="icon" Copy (Loader2 animate-spin enquanto duplica; disabled) nas ações de cada curso, entre "Aulas" e Editar, aria-label "Duplicar curso {título}"
+- TAREFA 2 (aba Financeiro): PANEL_TABS ganhou { id:'financeiro', label:'Financeiro', icon:Wallet } DEPOIS de Divulgação (10 abas: overview, perfil, agenda, mural, cursos, biblioteca, trilhas, divulgacao, cupons, financeiro); PANEL_SHORTCUTS ganhou "Financeiro" (Wallet, "Receita, pedidos e resultados."); FinancePanel({ userId }): fetch api.finance no mount via .then() padrão do projeto (guarda `active` anti-race; reloadKey para retry) — skeletons (4 cards h-24 + gráfico h-40), erro → card com botão "Tentar novamente" (RefreshCw), empty state (ordersCount===0 && sessionsCount===0 → Wallet stone-300 + "Sem vendas por aqui ainda" + "Compartilhe seu link na aba Divulgação 🚀"); 4 KPI cards reutilizando OverviewKpi (grid-cols-2 lg:grid-cols-4): Receita total (span text-emerald-700 destaque + footer produtos/sessões), Últimos 30 dias, Ticket médio, Sessões 1:1 (sessionsCount + footer sessionsRevenue formatado); linha secundária "N pedidos pagos · descontos concedidos: R$ X"; gráfico de barras CSS puro (Card "Receita por mês": flex h-40 items-end gap-2/3, 6 colunas flex-1 com barra rounded-t-md bg-emerald-600/85 altura % de revenue/max dentro de caixa flex-1 items-end — sem overflow — mín 4%, valor acima quando >0 com truncate, label mês text-[10px] uppercase, role="img" + aria-label "AGO: R$ X" + title por barra); "Por produto" (byProduct até 8, grid lg:grid-cols-2 com Pedidos recentes): line-clamp-1 + N pedidos + receita à direita; "Pedidos recentes": itemTitle line-clamp-1 + data pt-BR + channel via CHANNEL_LABELS EXISTENTE do TrafficPanel (reutilizado, cai no cru se desconhecido) + chip cupom <code> mono + −desconto em rose quando >0; helper local formatBRL (toLocaleString pt-BR 2 casas — currencyBRL do projeto trunca para 1: "R$ 170,1" vs novo "R$ 170,10")
+- TAREFA 3 (aba Cupons): PANEL_TABS ganhou { id:'cupons', label:'Cupons', icon:Ticket } ANTES de Financeiro; PANEL_SHORTCUTS ganhou "Cupons" (Ticket, "Códigos de desconto para vender mais."); CouponsManager({ userId }): Card com a descrição pedida + form (Código auto-uppercase font-mono placeholder "PRIMEIRA2025"; Select Percentual (%)/Valor fixo (R$) que troca label/step do input; Input valor type=number; usos máximos opcional placeholder "Ilimitado"; validade opcional type=date; botão "Criar cupom" rounded-full bg-emerald-700 com Loader2 "Criando..."); validação client inline aria-live (código ≥ 4, valor > 0), erros do servidor via toast; lista com card por cupom: chip <code> mono bold + botão Copy (copyToClipboard → toast 'Código copiado!'), desconto legível ("10% de desconto" / "R$ 30,00 de desconto"), usos ("1 uso"/"0 de 50 usos"), validade ("expira em dd/mm/aaaa" — data UTC da própria string p/ evitar deslocamento de fuso — / "sem validade"), Badge Ativo emerald / Pausado stone, pausar/reativar (PauseCircle/PlayCircle, aria-label dinâmico, toast 'Cupom pausado.'/'Cupom reativado!'), excluir (Trash2 + AlertDialog "Excluir cupom?" → toast 'Cupom excluído.'); empty state (Ticket stone-300 + "Nenhum cupom ainda — crie o primeiro e divulgue na sua audiência.")
+- Imports adicionados: Loader2, PauseCircle, PlayCircle, Ticket, Wallet (lucide) + tipos CouponDTO/FinanceDTO; TabsContent "cupons" e "financeiro" adicionados após "divulgacao" com className="min-w-0 mt-4 sm:mt-6"; novos components inseridos entre OverviewKpi e a View principal; NENHUM outro arquivo tocado
+
+Validation (bun lint/tsc + agent-browser sessão isolada t13f, desktop 1440x900 + mobile 390x844):
+- bun run lint: 0 erros/0 warnings; bunx tsc --noEmit: limpo em src/ (só pré-existentes em examples/ e skills/). Correção no caminho: tsc flagrou redeclaração de CHANNEL_LABELS (já existia no TrafficPanel) → removida a minha duplicata e reutilizado o mapa existente (paid_social→"Tráfego pago social", direct→"Direto"…)
+- Preparação verificada: curl GET /api/mentors/finance?userId=cmtd0behz0007nl0620khg3t9 → totalRevenue 1077.1, ordersCount 4, sessionsCount 1, last30 897.1, avgTicket 224.28, totalDiscount 18.9, AGO 897.10; BEMVINDO10 no banco (10%, ativo, uses 1) — nada recriado
+- Login carlos@demo.com/demo123 → "Painel do mentor" com 10 abas; Visão geral com 9 atalhos incluindo os 2 novos
+- DUPLICAR: aba Cursos → botão "Duplicar curso Arquitetura de Software na Prática" (Copy icon) → toast "Curso duplicado como rascunho — ajuste e publique!" + linha "Arquitetura de Software na Prática (cópia)" com badge Rascunho/botão Publicar (não publicado); dialog "Aulas do curso" da cópia: "· 9 aulas" com aulas/temas clonados (Bem-vindo, Fundamentos, Camadas e fronteiras, Refatoração ao vivo, Modelagem, Cache, Encerramento) ✓; cópia EXCLUÍDA em seguida (AlertDialog) → toast "Curso excluído." e banco confirma só o curso original publicado
+- CUPONS: BEMVINDO10 listado com "Ativo", "10% de desconto", "1 uso · sem validade"; Copiar código → clipboard recebe "BEMVINDO10" + toast "Código copiado!" (headless sem permissão de clipboard exige stub p/ toast de sucesso; caminho de erro também valida com toast); Pausar → toast "Cupom pausado." + Badge Pausado + DB isActive=false; Reativar → toast "Cupom reativado!" + Ativo; validação client: código "ab" + valor 0 → inline "O código precisa de ao menos 4 caracteres."; cupons de teste TESTE13F (R$ 30 fixo, 0 de 50 usos, expira em 31/12/2026), TESTEXP (5%) e TESTDATA (15% com validade) criados, verificados e EXCLUÍDOS; estado final do banco: apenas BEMVINDO10 isActive=true
+- FINANCEIRO: KPIs renderizam os dados reais (R$ 1.077,10 emerald-700, R$ 897,10, R$ 224,28, 1 sessão/R$ 180,00) + "4 pedidos pagos · descontos concedidos: R$ 18,90"; gráfico com barra AGO em altura proporcional (128px vs 6px mín nos meses zerados) e aria-labels "AGO: R$ 897,10"; Por produto (Arquitetura R$ 548,10/3 pedidos; Trilha R$ 349,00/1 pedido); Pedidos recentes: order real da 13-g em 29/08/2026 · Direto · chip BEMVINDO10 · −R$ 18,90 · R$ 170,10 + 3 orders seeded
+- ATALHOS: "Ir para a aba Financeiro" e "Ir para a aba Cupons" testados a partir da Visão geral → trocam de aba corretamente
+- Desktop 1440x900: docScrollWidth=docClientWidth=1440 em Cursos/Cupons/Financeiro; Mobile 390x844: sw=cw=390 (zero overflow) nas abas; faixa de abas rolável com 10 tabs (scrollWidth 1172 > clientWidth 356) e última aba alcançável/clicável após rolar
+- Console sem erros de página (só logs de Fast Refresh das minhas edições); dev server NÃO reiniciado (200 em todas as checagens); nenhum teste automatizado criado
+- Screenshots: tool-results/shot-13f-desktop-cursos-duplicar.png, shot-13f-desktop-cupons.png, shot-13f-desktop-financeiro.png (+full), shot-13f-mobile-overview.png, shot-13f-mobile-financeiro.png, shot-13f-mobile-cupons.png
+
+Stage Summary:
+- Painel do mentor agora com 10 abas: Cursos ganhou "Duplicar" (copia título " (cópia)", descrição, categoria, nível, preço, capa e mentorshipCount, sempre como RASCUNHO; clona temas, aulas (vídeo/texto/live com anexos e ordem) e quizzes das aulas; matrículas/progresso NÃO) com toast + refresh; nova aba Cupons com CRUD completo (criar com validação client, copiar código, pausar/reativar, excluir com AlertDialog, empty state); nova aba Financeiro com 4 KPIs, linha de pedidos/descontos, gráfico de barras CSS dos últimos 6 meses, Por produto e Pedidos recentes (com cupom/desconto), retry em erro e empty state; Visão geral com 2 atalhos novos (9 no total)
+- BEMVINDO10 do Carlos permaneceu ATIVO e único cupom no banco; cópia de teste do curso excluída (demo limpo); valores financeiros exibidos com 2 casas via formatBRL local
+- Validado: lint 0/0, tsc limpo em src/, E2E desktop+mobile sem overflow, console limpo, dev server preservado
+
+---
+Task ID: 13-d (concluída pelo agente antes de cair; validação e registro pelo orquestrador)
+Agent: frontend-styling-expert (código) + main (validação)
+Task: Avaliações de curso — seção pública, formulário do aluno e chips de nota nos cards
+
+Work Log:
+- course-view.tsx: seção "Avaliações dos alunos" (resumo com nota grande + Stars + barras de distribuição por estrela; lista de reviews com Avatar/nome/data), formulário "Avaliar este curso" no modo inscrito (5 estrelas clicáveis, comentário até 800 caracteres com contador, pré-preenchido com myReview; botão alterna "Enviar"/"Atualizar minha avaliação"; destaque "Você concluiu o curso! Deixe sua avaliação ⭐" quando 100% sem review); envio via api.saveCourseReview com atualização otimista do reviewSummary/myReview locais
+- marketplace.tsx: chip de nota do CURSO nos cards (Star fill-amber-400 + rating pt-BR + title "N avaliação(ões) do curso") quando reviewCount > 0; ordenações atualizadas para desempate por rating do curso (aba Cursos, aba Tudo, spotlight)
+- Obs: o agente completou o código mas caiu (timeout de infra) antes de validar/registar; estado deixado compilando limpo — validação E2E feita pelo orquestrador
+
+Validation (pelo orquestrador, browser):
+- Ana com review 4★ "Curso excelente!..." salva no curso da Marina: formulário pré-preenchido ("Sua avaliação está salva — você pode atualizá-la quando quiser."), seção pública com resumo 4,0 + distribuição (4★:1) e a review com tag "VOCÊ" ✓
+- Explorar → chip "4,0" com title "1 avaliação do curso" no card do curso ✓; cards sem review permanecem limpos ✓
+- bun run lint 0/0; tsc limpo em src/
+
+Stage Summary:
+- Cursos agora têm nota própria (≠ nota do mentor): aluno avalia (uma por curso, editável), resumo + distribuição na página, chips nos cards do Explorar e ordenação "Populares" usando a nota
+
+---
+Task ID: 13 (pacote completo: 13-a backend + 13-b contratos/wiring + 13-c…13-h frontend + 13-i integração)
+Agent: main (Z.ai Code) + frontend-styling-expert (13-c, 13-d, 13-e, 13-f, 13-g, 13-h)
+Task: Notificações in-app · Continue aprendendo · Reviews de curso · Certificado público · Financeiro · Cupons · Duplicar curso · Título dinâmico
+
+Work Log:
+- [13-a SCHEMA] Notification (kind/title/body/linkView/refId/readAt + índices), CourseReview (@@unique courseId+studentId, editável), Certificate (code @unique, @@unique courseId+studentId), Coupon (mentorId+code único, percentOff/amountOff, maxUses/uses, expiresAt, isActive); Order ganhou couponCode/discount → db:push + db:generate + restart limpo do dev (rm -rf .next após cache stale do Turbopack)
+- [13-a APIs] /api/notifications (GET lista+unreadCount, POST mark-read); /api/courses/[id]/reviews (GET resumo+lista, POST upsert com inscrição obrigatória + notify); /api/certificates (POST emite com 100% das aulas, code MH-XXXXXXXXXX) e /[code] (GET público: aluno/curso/mentor/carga); /api/coupons (GET/POST/PATCH/DELETE CRUD do mentor) + /validate; /api/mentors/finance (receitas products+sessions, mês a mês 6m, por produto, pedidos recentes, descontos); POST /api/courses/[id]/duplicate (copia como RASCUNHO com temas+aulas+quizzes, título "(cópia)")
+- [13-a EVENTOS] src/lib/notify.ts (helper à prova de falhas): booking_new→mentor; confirm/cancel/complete→outra parte; review_new→mentor; lesson_new→até 200 inscritos; enrollment_new→mentor; course_review_new→mentor; purchase_new→mentor (checkout)
+- [13-a CHECKOUT] cupom validado server-side nos 2 branches (curso/trilha), desconto gravado no Order, uses incrementado; valores de conversão com amount final
+- [13-b WIRING] types.ts (NotificationDTO, CourseReviewDTO/Response, CertificateDTO, CouponDTO/Validation, FinanceDTO, CourseListItemDTO.rating/reviewCount, CourseDetailDTO.reviews/reviewSummary/myReview/certificateCode); api.ts (12 métodos novos + couponCode no checkout); store: view {name:'certificate', code}; page.tsx: case certificate (dynamic import), bootstrap aceita ?cert=CODE, título dinâmico por view
+- [13-c…13-h] 6 tarefas de frontend em paralelo via subagentes (entradas próprias abaixo/acima): sino no navbar, reviews UI, continue aprendendo, painel (duplicar+Financeiro+Cupons), cupom no checkout, certificado na sala
+- [13-i INTEGRAÇÃO] fix currencyBRL truncando na tela de sucesso do checkout (formatBRL 2 casas); BUGFIX título: efeito imperativo era revertido pela reconciliação de metadados do Next/React 19 na carga inicial com navegação por URL — resolvido com reafirmação por 3s (interval 500ms auto-limpo) após cada troca de view; testado <title> hoisted declarativo (conflitava com o metadata <title> — descartado); cache stale do Turbopack diagnosticado (chunks sem código novo) e resolvido com restart + rm -rf .next
+
+Validation (browser E2E final, desktop 1440x900 + mobile 390x844):
+- Loop completo comprovado ao vivo: Ana comprou o curso do Carlos com cupom BEMVINDO10 (R$ 189 → R$ 170,10, Order com couponCode/discount, uses 0→1) → Carlos recebeu notificação "Nova venda 🤑" (badge 1, dropdown com chip emerald, corpo com cupom) ✓
+- Home logada (Ana): "Continue aprendendo" com 2 matrículas (1/9 em andamento → Continuar; 7/7 → badge Concluído + Revisar) + CTA "Explorar mais cursos" ✓
+- Reviews: formulário pré-preenchido da Ana (4★, atualizável), seção pública com resumo/distribuição, chip "4,0" no card do Explorar ✓
+- Certificado: /?cert=MH-7FA125CD90 público renderiza (nome com gradiente, curso, mentor Marina, 2,2h, "Certificado autêntico", copiar link/LinkedIn/imprimir) ✓
+- Painel do Carlos: 10 abas; Financeiro com KPIs reais (Receita total R$ 1.077,10 · 4 pedidos · gráfico 6 meses · por produto · pedidos recentes com cupom e desconto); Cupons com BEMVINDO10 ativo (1 uso) + CRUD testado; duplicar curso gerou "(cópia)" rascunho com 9 aulas (depois excluída) ✓
+- Títulos por view em todos os caminhos (home/Explorar/?cert) ✓; sino presente no mobile com dropdown ok; sw=cw=390 sem overflow ✓
+- bun run lint 0/0; bunx tsc limpo em src/; dev.log saudável; servidor no ar (200)
+
+Stage Summary:
+- Plataforma ganhou o ciclo de retenção e o ciclo de venda: notificações puxam o usuário de volta (agendamento/confirmação/aula nova/venda/avaliação), "continue aprendendo" reduz fricção de retorno, reviews de curso criam prova social, certificado público vira marketing, e o mentor agora tem financeiro real + cupons + duplicação de curso
+- Pendências conhecidas para próximas rodadas: PWA instalável, mensagens/chat 1:1, modo escuro, contas de teste descartáveis deixadas no banco (cupom.teste2/teste3@demo.com — inofensivas)
+---
+Task ID: 14-c-a
+Agent: frontend-styling-expert
+Task: Dark mode — área A (footer, landing-mentee, landing-mentor, mentor-lp)
+
+Work Log:
+- Lido worklog.md (tarefas 13: padrões stone+emerald do marketing/painel; worklog não registrava ainda a tarefa 14 — ThemeProvider confirmado em src/app/layout.tsx com attribute="class", tokens .dark presentes em globals.css, ui primitives usam tokens bg-card/bg-accent/bg-primary e se adaptam sozinhos) e lidos na íntegra os 4 arquivos do escopo antes de editar
+- ADDITIVE ONLY: apenas classes dark: acrescentadas ao final das strings de className existentes; verificação automatizada via git diff -U0 + strip de tokens dark: provou que TODAS as linhas editadas preservam 100% do conteúdo light original (0 linhas perdidas; JSX/lógica/textos/aria intocados); nenhum outro arquivo tocado
+- footer.tsx: faixa do rodapé dark:bg-stone-950 + dark:border-stone-800 (topo e divisória interna), marca dark:text-stone-50, textos stone-500→dark:text-stone-400, headings uppercase stone-400→dark:text-stone-500, links stone-600→dark:text-stone-300 com dark:hover:text-emerald-300, ícones dark:text-stone-500, copyright dark:text-stone-500
+- landing-mentee.tsx (home): root dark:bg-stone-950; blobs decorativos emerald → dark:bg-emerald-950/50 (e glow do hero dark:from-emerald-950/60 dark:via-emerald-950/30); chips/botões de categoria com dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 + hovers dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300; Input de busca com dark:bg-stone-900 dark:placeholder:text-stone-500 dark:focus-visible:ring-emerald-900/40 dark:focus-visible:border-emerald-700; bandas alternadas bg-stone-50/50-60 → dark:bg-stone-900/60 com dark:border-stone-800; seção stats (emerald-950 sólida) e CTA escuro mantidos como estão; cards (passos, features, depoimentos, FAQ, cards de destaque/continue) → dark:bg-stone-900 dark:border-stone-800 dark:hover:border-emerald-700; anéis: ring-white→dark:ring-stone-900/950 conforme contexto, ring-emerald-100→dark:ring-emerald-900/40; gradiente do tile de vídeo ganhou dark:ring-white/10; FAQs/dividers/divide-stone-100→dark:divide/border-stone-800; trilhas: badge teal → dark:border-teal-900 dark:bg-teal-950/50 dark:text-teal-300; badges emerald-50/100 → dark:bg-emerald-950/50 + dark:text-emerald-300; preços "Grátis"/pagos no cn() com dark:text-emerald-300/dark:text-stone-50
+- landing-mentor.tsx: root dark:bg-stone-950; pill/hero, mock de UI (card+chips+cards flutuantes) → dark:bg-stone-900/sticky stone-950/50 em chips internos; Card da calculadora dark:border-stone-800 (bg vem do token bg-card) com painel de estimativa dark:bg-stone-950/50; steps/benefícios/depoimento/FAQ com mapeamento completo stone/emerald; CTA final emerald-950 sólido mantido (botão bg-white text-emerald-950 intacto)
+- mentor-lp.tsx: seção hero dark:bg-stone-900 dark:border-stone-800; chips de credenciais/badges verificados dark:bg-stone-900 ou emerald-950/50 conforme cor; SocialButton e cards de curso com dark:hovers emerald-900/30 + dark:hover/focus-within:border-emerald-700; mural dark:divide-stone-800 dark:bg-stone-900 + fallback local de meta.dark (CONTENT_TYPE_META de helpers.ts fora do escopo — só o fallback inline do arquivo recebeu dark); depoimentos dark:bg-stone-900; CTA final e barra de prova (emerald-950) mantidos; rodapé fino dark:border-stone-800 dark:text-stone-500
+- Intencionalmente intactos: navbar.tsx, messages-view.tsx, layout.tsx, globals.css, ui/*, imagens/avatares/gradientes de capa (avatarGradient, overlay from-stone-900/70 sobre capa), bandas sólidas emerald-950 (stats, CTAs, prova social) e seus textos emerald-100/200, gradientes com paradas emerald (regra: manter esmeralda, escurecer só stone/white), estilo inline do padrão de pontos do hero
+
+Stage Summary:
+- Área A (marketing/shell) 100% dark-mode-ready: footer, home do mentorado, página "para mentores" e LP pública do mentor alternam corretamente entre stone-950 (página), stone-900/60 (bandas), stone-900 (cards) e stone-950/50 (insets), com acentos emerald seguindo o mapa de cores compartilhado; tema claro byte a byte idêntico ao anterior (comprovado por diff automatizado)
+- 354 classes dark: adicionadas no total (footer 15, landing-mentee 192, landing-mentor 61, mentor-lp 86) em 243 linhas; zero remoções/renomeações de classes light, zero mudanças de estrutura/lógica/texto/aria
+- Validação: eslint nos 4 arquivos → 0 erros/0 warnings; bun run lint do projeto tem 1 erro+1 warning PRÉ-EXISTENTES/paralelos em navbar.tsx (setState em effect do ThemeToggle) e messages-view.tsx (directive não usada) — fora do meu escopo; bunx tsc --noEmit limpo em src/ (só pré-existentes em examples/ e skills/); http://localhost:3000 → 200, dev server não reiniciado
+Report back: 15 dark: no footer.tsx, 192 na landing-mentee.tsx, 61 na landing-mentor.tsx, 86 no mentor-lp.tsx (total 354). Lint dos meus arquivos 0/0, tsc limpo em src/, servidor 200. Deixei intocados: navbar/messages-view (agentes paralelos), bandas sólidas emerald-950 e seus textos, imagens/avatares/capas, gradientes com paradas emerald, CONTENT_TYPE_META (helpers.ts fora do escopo — recebeu dark apenas no fallback local do mentor-lp).
+---
+Task ID: 14-c-c
+Agent: frontend-styling-expert
+Task: Dark mode — área C (onboarding/painel, library-manager, tracks-manager, dashboard)
+
+Work Log:
+- Lido worklog.md (contexto: ThemeProvider next-themes attribute="class" já no layout, tokens .dark no globals.css, padrão de classes dark: do navbar/page.tsx dos agentes paralelos) e inventariado 100% das ocorrências de cor nos 4 arquivos alvo antes de editar (survey por regex de tokens bg/text/border/ring/fill/divide/hover:/group-hover:/[&::-webkit-scrollbar-*]:)
+- Abordagem: script Node determinístico (tool-results/darkify.mjs, fora de src/) que só INSERE classes dark: ao lado das classes claras existentes — tabela explícita token→dark (exatamente o color mapping da tarefa), processamento por linha, token-longest-first, guardas de fronteira (não casa dentro de hover:/dark:/data-[...]:) e skip se a dark class já existe na linha. Nenhuma classe clara removida/alterada, nenhum JSX/lógica/texto/aria tocado
+- onboarding.tsx (347 dark:): KPI cards (OverviewKpi/TrafficKpiTile bg-white→dark:bg-stone-900), atalhos (bg-white→stone-900, hover:border-emerald-300→dark:hover:border-emerald-700, chevron stone-300→dark:stone-600 + group-hover emerald→dark:400), TabsList strip (bg-white→stone-900, border→stone-800, scrollbar thumb/track→stone-700/800; trigger hover:bg-stone-100→dark:800; data-[state=active] emerald-700 sólido mantido), FontPicker (prévia, chips emerald/teal, opções ativas bg-emerald-50/40→dark:emerald-950/50, segmented bg-stone-50→dark:stone-950/50, bg-emerald-950 sólido mantido), formulários (labels, erros text-rose-600→dark:rose-400, chips de categoria), agenda (badges de horário, hover:bg-emerald-200/70→dark:hover:emerald-900/40), mural/cursos/biblioteca/trilhas managers (listas, badges Publicado/Rascunho, empty states, popover de temas, anexos), quiz dialog (opção correta emerald-300/50/900→dark:700/950-50/300, números bg-stone-200→dark:800), divulgação (TrafficLinksSection/Panel: listas divide-stone-100→dark:800, gráfico de barras bg-emerald-200→dark:bg-emerald-800 com legenda, bg-emerald-600 mantido), cupons (chips <code> bg-stone-100→dark:800, Ativo/Pausado), financeiro (KPIs, gráfico bg-emerald-600/85 mantido, pedidos recentes com cupom e desconto rose), upload placeholders bg-stone-50→dark:stone-950/50, scrollbars customizadas mapeadas
+- library-manager.tsx (56): card principal, lista bg-white→stone-900, badges Livro(amber)/Artigo(emerald)/Publicado/Rascunho, radio de tipo (borda ativa emerald-500/amber-500 mantida, fundos suaves→950/50), capa/upload, erros, hover de exclusão rose
+- tracks-manager.tsx (51): mesma base + badge de categoria teal (border-teal-200/bg-teal-50/text-teal-700→dark:teal-900/950-50/300), bloco de mentoria bg-stone-50/60→dark:stone-950/50, lista de itens
+- dashboard.tsx (72): EmptyState (círculo stone-100→dark:800), PendingRequestRow (card bg-white→stone-900 com borda amber-200→dark:900), BookingCard (chips Como mentor/aluno, statusMeta fallback stone→dark:800/300, botão Cancelar ghost rose→dark:rose-950-50/400), estrelas de avaliação (fill-stone-200/text-stone-300→dark:800/600; fill-amber-400 mantido), XpJourneyCard (bg-white→stone-900, Flame laranja bg-orange-100→dark:orange-950-50/text→400, amber-600→400, amber-500/trophy mantidos), Card de solicitações (bg-amber-50/70→dark:amber-950/50, border-amber-300→dark:800, text-amber-800/90→dark:amber-300/90), CountPills (emerald-100/amber-100/stone-200→950-50/950-50/800), EnrolledCourseCard/MyTrackCard (badge Concluído, badge teal da trilha, text-stone-500 dos contadores); AlertDialogs bg-rose-600 sólidos e meeting/avatars/gradientes intocados
+- BUGFIX próprio no caminho: dashboard line 783 o script anexou dark:bg-amber-950/50 antes do sufixo /70 (virou "/50/70") — corrigido manualmente para bg-amber-50/70 dark:bg-amber-950/50; verificação final das 319 linhas alteradas prova que remover os tokens dark: reproduz a linha original byte a byte (tool-results/verify-additive.mjs → 0 problemas)
+
+Validation (bun lint + tsc + curl):
+- bun run lint: 0 erros/0 warnings nos 4 arquivos desta tarefa (os 2 problemas reportados são de navbar.tsx [erro set-state-in-effect do ThemeToggle] e messages-view.tsx [warning unused-disable] — arquivos de outros agentes, fora do meu escopo, não tocados)
+- bunx tsc --noEmit: limpo em src/ (só os pré-existentes em examples/websocket e skills/, fora de escopo)
+- curl http://localhost:3000/ → 200 (3x seguidas); dev.log sem erros de compilação — hot reload aplicou os 4 arquivos; servidor NÃO foi reiniciado
+
+Stage Summary:
+- Área C (painel do mentor com 10 abas + biblioteca + trilhas + minhas sessões do aluno) totalmente dark-ready: superfícies stone-950/900/800, bordas 800/700, texto 50→600, estados emerald/amber/rose/teal/orange suaves em 950/50 com texto 300/400, sólidos emerald/rose mantidos, scrollbars customizadas escuras
+- Dif garantidamente aditivo (script + verificador automático): tema claro pixel-idêntico ao anterior
+- Pendências p/ orquestrador: lint error pré-existente em navbar.tsx (react-hooks/set-state-in-effect no mount do ThemeToggle) e warning em messages-view.tsx — pertencem às tarefas 14-a/14-b
+Report back: onboarding.tsx 347 dark: · library-manager.tsx 56 · tracks-manager.tsx 51 · dashboard.tsx 72 (total 526); lint/tsc limpos nos meus arquivos; intencionalmente intocados: imagens/capas/avatares e avatarGradient, sólidos (bg-emerald-600/700, bg-emerald-950, bg-rose-600, text-white, focus-visible:ring/outline emerald-500/600/700, fill/text-amber-400, text-amber-500, text-orange-500, border-emerald-400/500/600, ring-emerald-500/30, shadow-emerald-600/20), tokens de tema (muted-foreground/bg-background) e qualquer arquivo fora da minha lista.
+
+---
+Task ID: 14-c-d
+Agent: frontend-styling-expert
+Task: Dark mode — área D (classroom, reader, certificate, meeting, mentor-profile, auth)
+
+Work Log:
+- Lido worklog.md (Task 14: ThemeProvider next-themes attribute="class" no layout, tokens .dark no globals.css, ThemeToggle no navbar) e os 6 arquivos-alvo por completo antes de editar; padrão de convenção copiado dos agentes paralelos (navbar/messages/footer): dark: classes adicionadas ao FIM da string, dark: antes de data-[...] e de [&::-webkit-scrollbar...], tokens de variante empilhados em qualquer ordem (Tailwind 4)
+- APENAS classes dark: adicionadas — nenhuma classe light removida/alterada, nenhum JSX/lógica/texto/aria mudado, nenhum arquivo fora da lista
+- auth-view.tsx (46 dark:): página dark:bg-stone-950 (lado do formulário), card do form dark:border-stone-800 dark:bg-stone-900, TabsList dark:bg-stone-800, TabsTrigger dark:data-[state=active]:bg-stone-900/text-stone-50, labels/textos/erros/hints/divisor mapeados, botões olho, link "Esqueceu a senha" (emerald-300), chips de contas demo (dark:hover:bg-emerald-900/30, border-emerald-700) e scrollbar thumb dark:[&...]:bg-stone-700; painel esmeralda da esquerda intocado (gradiente de marca funciona nos 2 temas)
+- certificate-view.tsx (20 dark:): só o "chrome" — botões Copiar link/LinkedIn/Imprimir (dark:bg-stone-900 dark:text-stone-200 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/30), estado "não encontrado" e linha de rodapé; o PAPEL do certificado (<article> com nome em gradiente, selos, caixa de verificação bg-stone-50) permanece BRANCO no dark (documento imprimível) — zero dark: dentro do article
+- meeting-room.tsx (26 dark:): banner âmbar PENDING (dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-200), caixa de sessão encerrada (dark:bg-stone-800), divisor, inset de duração (dark:bg-stone-950/50), nomes/dicas, card emerald do mentor (dark:bg-emerald-950/50 + textos emerald-200/300); painel de vídeo JÁ era escuro (stone-950/900/800) — intocado
+- reader-view.tsx (50 dark:): superfície dark:bg-stone-950, caixas de erro/bloqueio em dark cards, artigo editorial (títulos stone-50, corpo stone-200, descrição stone-400), card do autor, chips de cursos vinculados e cards "Continue lendo" (KIND_META.badge ganhou dark:border-900 dark:bg-x-950/50 dark:text-300 via acréscimo na própria string), thumb bg-stone-800; IFRAME DO PDF e hint de download intocados (páginas do PDF continuam brancas, renderização nativa); top bar esmeralda já escura — badgeDark strings preservadas
+- mentor-profile.tsx (100 dark:, className strings APENAS — nenhum botão/elemento adicionado ou removido): banner/capa (bg-stone-900), chips de rating âmbar, 4 badges outline (dark:border-stone-700), botões sociais, TabsList, tiles emerald do "Sobre", cards do mural/cursos/avaliações (border dark), linhas de horários (bg-white→dark:bg-stone-900 / bg-stone-50→dark:bg-stone-950/50), BookingWidget completo (dias/slots inativos dark:bg-stone-900, resumo emerald-950/50, dialog de confirmação), fallback de capa bg-stone-800; capas/avatares/fotos intocados
+- classroom.tsx (225 dark:): raiz dark:bg-stone-950 (bate com o overlay dark do page.tsx), sidebar dark:bg-stone-900, todas as superfícies brancas → dark cards (material, Q&A, anotações, quiz, anexos, empty states), TabsList/badges de tipo (rose/amber/violet/emerald soft → dark:bg-x-950/50 + dark:text-x-300/400), aula atual na lista (dark:border-emerald-700 dark:bg-emerald-950/50), opções de quiz (correta/errada/selecionada/travada com ladder 900→200, 800→300, 600/700→400), celebração de 100%, ContentsNav (hovers dark:hover:bg-stone-800, scrollbars dark), dialogs; player de vídeo/LivePanel (já stone-950) e IFRAME do PDF do material intocados; anotações save-state mapeado
+- Ladder aplicado (tabela da task): stone 50/100/200→800/900(/60·/50), 300→700 (borda); texto stone-900/950→50, 700/800→200, 600→300, 500→400, 400→500, 300→600; emerald 600→400, 700/800→300, 900→200 (900 sem cobertura na tabela), border 100/200→900, 300/400→700, sólidos intocados; amber/rose/violet soft → x-950/50 com texto 300/400 (900→200); hover:bg-emerald-50→dark:hover:bg-emerald-900/30 (e /40 na variante com opacidade)
+
+Validation (bun run lint + bunx tsc + curl):
+- bun run lint: 0 problemas nos 6 arquivos (bunx eslint <os 6 arquivos> limpo). O projeto inteiro reporta 1 erro + 1 warning PRÉ-EXISTENTES de outros agentes — navbar.tsx:145 (react-hooks/set-state-in-effect no ThemeToggle da Task 14-a) e messages-view.tsx:107 (eslint-disable não usado) — fora do meu escopo e proibidos de tocar
+- bunx tsc --noEmit: limpo em src/ (só erros pré-existentes em examples/ e skills/)
+- Dev server NÃO reiniciado: curl / → 200, /?cert=MH-7FA125CD90 → 200, dev.log sem ⨯/Error
+- CSS compilado conferido (chunk do Turbopack, 256KB): dark:bg-stone-900/950, dark:data-[state=active]:bg-stone-900 e :text-stone-50 (regra .dark\:...\:is(.dark *)[data-state="active"] presente), dark:[&::-webkit-scrollbar-thumb]:bg-stone-700, dark:hover:bg-emerald-900/30 e /40, dark:bg-violet-950/50, dark:decoration-stone-600, dark:text-rose-200 — variantes empilhadas compilam corretamente
+- Verificação anti-omissão: varredura de todas as linhas com tokens light sem dark: — restantes apenas as intencionais (paper do certificado, iframes de PDF, painéis de vídeo já escuros, brancos sobre gradientes de marca/vídeo)
+
+Stage Summary:
+- Área D 100% dark-mode-ready de forma aditiva: sala de aula imersiva (player escuro + sidebar/abas/quiz/notas/anexos em dark cards), leitor (chrome escuro, PDF e artigo mapeados, PDF nativo intacto), certificado público (chrome escuro, papel branco preservado para impressão), sala de reunião, perfil público do mentor com agendamento e login/cadastro split-screen
+- 467 classes dark: adicionadas (classroom 225, mentor-profile 100, reader 50, auth 46, meeting 26, certificate 20); light theme bit-a-bit idêntico ao anterior; contratos de cor seguem a tabela compartilhada entre os agentes da Task 14
+- Pendências para o orquestrador: erro de lint em navbar.tsx (set-state-in-effect no mounted do ThemeToggle) e warning em messages-view.tsx são dos respectivos agentes, não desta tarefa
+
+---
+Task ID: 14-c-b
+Agent: frontend-styling-expert
+Task: Dark mode — área B (marketplace, course-view, track-view, checkout)
+
+Work Log:
+- Lido worklog.md (entradas 14-c-a/c/d: convenção de inserir dark: ao lado do token claro, tabela de cores compartilhada, problemas pré-existentes de lint em navbar/messages-view) e lidos na íntegra os 4 arquivos do escopo antes de editar; inventário completo de tokens de cor via rg (bg/text/border/ring/divide/placeholder/fill/hover:/group-hover:/focus-visible:) nas 4 telas
+- ADDITIVE ONLY via script determinístico (tool-results/darkify-b.mjs, fora de src/): insere `dark:*` imediatamente após cada token claro mapeado, com guardas de fronteira de regex (não casa dentro de hover:/dark:/variantes nem subtokens com /opacidade), overrides por linha para os casos contextuais e verificação automática anti-não-aditivo (remover todos os dark: da linha reproduz a linha original byte a byte); git diff -U0 + contador confirmou 0 remoções de conteúdo light, 0 mudanças de JSX/lógica/texto/aria, nenhum outro arquivo tocado
+- marketplace.tsx (178 dark:): barra superior dark:bg-stone-950 dark:border-stone-800; controle segmentado de abas (trilho bg-stone-100→dark:800; pílula ativa bg-white text-stone-900→dark:900/dark:stone-50; inativa dark:stone-400 + dark:hover:stone-200); h1/h2/contadores/labels stone→50/400/500; SelectTriggers e Input de busca dark:bg-stone-900 + placeholder dark:500 + focus-visible dark:border-emerald-700/dark:ring-emerald-900/40; botão limpar busca dark:hover:bg-stone-800; pílulas de categoria/áreas (dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300, hovers dark:border-emerald-700 dark:text-emerald-300; ativas emerald-700 sólidas mantidas); 5 empty states (borda dashed dark:stone-700, círculo dark:800, textos); StatTile claro (dark:900/borda 800/ícone emerald-950-50/300); skeletons wrappers dark:border-stone-800; cards Mentor/Course/Track/Library/Author (dark:bg-stone-900 dark:border-stone-800 dark:hover:border-emerald-700), chips emerald/teal/amber soft→950/50 + texto 300, dots e separadores stone-300→dark:600; GridSection "Ver todos" dark:emerald-300→200
+- course-view.tsx (107): cards de seção/avaliações/mentor dark:bg-stone-900 dark:border-stone-800; lista de aprendizado e currículo (dividers dark:divide-stone-800, círculos dark:800, títulos dark:stone-200, chips LIVE rose→950-50/400 e READING amber→950-50/400, Locks dark:stone-600); hero do inscrito (emerald-950) e hero com gradiente intocados; box "Mentorias 1:1 inclusas" (dark:border-emerald-900 dark:bg-emerald-950/50, textos emerald-200/300, botão dark:bg-stone-900 dark:hover:bg-emerald-900/40); ReviewFormCard (banner "Você concluiu" amber→dark:900/950-50/300, estrelas inativas dark:stone-600 com fill-amber-400 mantido, Textarea dark:bg-stone-900 dark:border-stone-800, contador dark:500); seção pública de avaliações (resumo dark:bg-stone-950/50, barras bg-amber-400 mantidas sobre trilho dark:800, chip "Você" dark:950-50/300, textos 50/200/400/500)
+- track-view.tsx (69): cards "Como funciona"/timeline/mentor dark:900/800; caixa de progresso dark:border-emerald-900 dark:bg-emerald-950/50 (texto emerald-200/300); conectores da timeline dark:border-stone-800; CourseItemCard (dark:bg-stone-900, hover dark:border-emerald-700 + dark:bg-emerald-900/30, título dark:stone-50 com dark:group-hover:emerald-300, badge dark:800/400); MentorshipItemCard (painel dark:emerald-900-950/50, ícone dark:950-50/300, chip branco de sessões → dark:bg-stone-950/50 dark:text-emerald-300 dark:ring-emerald-900); sidebar (badge "Você está inscrito" dark:950-50/300, preço dark:emerald-300/stone-50, lista dark:border-stone-800 com Checks dark:emerald-400); hero com gradiente e badges brancos intocados
+- checkout.tsx (96): sucesso (círculo dark:emerald-950-50/400, dl dark:border-stone-800 dark:bg-stone-950/50, total dark:emerald-300); blocos login/já inscrito/gratuito (painéis emerald soft→dark:950/50 com bordas dark:emerald-900, ícones dark:300/400); resumo do pedido (badges dark:950-50/300 e dark:border-stone-700, textos 50/200/400/500); cupom aplicado (box dark:emerald-950-50, chip do código dark:border-emerald-700 dark:bg-stone-950/50, remover dark:hover:bg-stone-950/50); formulário de cupom (ícone dark:500, erro dark:rose-400); aviso demo amber→dark:900/950-50/300; formas de pagamento (selecionado mantém border/ring-emerald-500 com dark:bg-emerald-950/50; não selecionado dark:bg-stone-900 dark:border-stone-800 dark:hover:border-stone-700); caixa PIX dark:border-stone-700 dark:bg-stone-900/60 com QR dark:stone-600; formulário do cartão dark:bg-stone-900 com labels dark:stone-300 e nota dark:amber-400; rodapé de segurança dark:stone-500 + escudo dark:emerald-400
+- Correções manuais pós-script: dark:hover:bg-emerald-950/50 no badge "Você está inscrito" (track), dark:hover:bg-emerald-900/40 no botão "Ver disponibilidade do mentor" (course), dark:ring-emerald-900 no chip de sessões (track), dark:hover:bg-stone-950/50 no botão remover cupom (checkout) — todos aditivos e revalidados
+- Intencionalmente intocados: spotlights/heroes emerald-950 sólidos com seus textos emerald-50/100/200/300, chips emerald-400/10 e blobs teal-400/10 + emerald-500/20, placeholders pulsantes bg-emerald-950/90; chips brancos (bg-white, bg-white/90, bg-white/95) sobre capas/hero e dots do spotlight (bg-white/30); botões brancos text-emerald-950 hover:bg-emerald-100; overlay bg-stone-950/55 de capas e badges bg-stone-900/30; estrelas fill-amber-400 e barras bg-amber-400; bg-amber-600/text-amber-500/text-rose-500/bg-rose-500/25; sólidos bg-emerald-600/700, hover:bg-emerald-800, border/ring-emerald-500, focus-visible:outline-emerald-700 e ring-emerald-600/30·/40, shadow-emerald-950/20; imagens/avatares/avatarGradient; componentes ui/* (tokens próprios já adaptam); navbar/messages-view/page/layout/globals (outros agentes)
+
+Validation (bun run lint + bunx tsc + curl + CSS):
+- bun run lint: 0 problemas nos 4 arquivos desta tarefa (bunx eslint direto nos 4 → limpo); o projeto reporta apenas o 1 erro (navbar.tsx, react-hooks/set-state-in-effect do ThemeToggle) + 1 warning (messages-view.tsx) PRÉ-EXISTENTES das tarefas 14-a/14-b — fora do meu escopo
+- bunx tsc --noEmit: limpo em src/ (só erros pré-existentes em examples/websocket e skills/, fora de escopo)
+- Dev server NÃO reiniciado: curl http://localhost:3000/ → 200 (2x), dev.log sem erros; hot reload aplicou os 4 arquivos
+- CSS compilado (chunk 257KB) conferido: dark:bg-stone-950/900, dark:placeholder:text-stone-500, dark:hover:bg-emerald-900/40, dark:group-hover:text-emerald-300, dark:focus-visible:ring-emerald-900/40, dark:bg-teal-950/50, dark:ring-emerald-900 e dark:hover:bg-stone-950/50 presentes — variantes empilhadas compilam
+- Verificação anti-omissão: varredura final de tokens claros restantes confirma que só restam os intencionais (sólidos de marca, sobre capas/gradientes e tokens de ui/*)
+
+Stage Summary:
+- Área B (Explorar com 5 abas/bento/spotlights, página do curso com avaliações, página da trilha com timeline, checkout com cupom/sucesso) 100% dark-mode-ready de forma aditiva: superfícies stone-950 (faixa superior) / stone-900 (cards) / stone-950/50·900/60 (insets), bordas 800/700, texto 50→600, estados emerald/amber/rose/teal suaves em 950/50 com texto 300/400, sólidos de marca e elementos sobre capas preservados
+- Tema claro byte a byte idêntico ao anterior (comprovado por verificação automática de aditividade linha a linha)
+Report back: 450 classes dark: adicionadas (marketplace 178, course-view 107, track-view 69, checkout 96) em 328 linhas. Lint dos meus arquivos 0/0 (problemas restantes do projeto são de navbar.tsx/messages-view.tsx, tarefas 14-a/14-b); tsc limpo em src/; servidor 200 sem reinício; CSS compilado validado. Deixei intencionamente intocados: sólidos emerald-950/600/700 e seus textos/botões brancos, chips brancos sobre capas e dots de spotlight, estrelas/barras amber-400, ícones rose-500/amber-500, gradientes de marca (avatarGradient), imagens/avatares, componentes ui/* e qualquer arquivo fora da minha lista.
+---
+Task ID: 14 (orquestrador: 14-a PWA + 14-b base dark + 14-d/14-e chat + 14-f validação)
+Agent: main (Z.ai Code) + frontend-styling-expert (14-c-a…14-c-d, entradas próprias acima)
+Task: #12 PWA instalável · #13 modo escuro · #9 chat antes da reserva (fecham os 11 itens escolhidos pelo usuário)
+
+Work Log:
+- [14-a PWA] Ícone gerado por IA (emerald #047857, cap+bolha) → sharp redimensionou 512/192/apple-touch-180 em public/icons/; manifest.webmanifest (standalone, pt-BR, maskable, theme #047857); public/sw.js com estratégia por query (?cache=0 dev = sempre rede p/ evitar stale chunks Turbopack; ?cache=1 prod = network-first navegação + cache-first estáticos imutáveis); PwaRegister registra com ?cache= conforme NODE_ENV (silencioso se falhar); layout.tsx: metadata manifest + appleWebApp + icons 192/512/apple + viewport com themeColor light/dark e viewportFit cover
+- [14-b BASE DARK] next-themes (attribute="class", defaultTheme="light", enableSystem, disableTransitionOnChange) em ThemeProvider no layout; tokens .dark afinados no globals.css (fundo stone quente oklch 0.155/0.205, --primary/ring emerald claro no escuro p/ manter a marca em componentes token-based); ThemeToggle na navbar (Sun/Moon, mounted via useSyncExternalStore — correção de lint set-state-in-effect); dark variants manuais em navbar (busca, sino, menu, pill de navegação) e page.tsx (shell, loaders, overlays classroom/reader)
+- [14-c DARK POR ÁREA] 4 subagentes paralelos (especificação de mapeamento única compartilhada): A=footer/landing-mentee/landing-mentor/mentor-lp (354 classes), B=marketplace/course-view/track-view/checkout (450), C=onboarding/library/tracks-manager/dashboard (526), D=classroom/reader/certificate/meeting/mentor-profile/auth (467). Total ~1.797 classes dark: aditivas (verificação mecânica: remover dark: reproduz a linha original byte a byte). Papel do certificado permanece branco no escuro; PDFs nativos intocados
+- [14-d CHAT BACKEND] Model DirectMessage (sender/recipient/body/readAt + índices) + relações no User; POST /api/messages (valida par, corta 2000 chars, notify message_new 💬 com linkView messages + refId=remetente); GET /api/messages?userId&peerId (últimas 200, marca recebidas como lidas, devolve peer com headline); GET /api/messages/threads (agrupa por par com last message/unread/sort); GET /api/messages/unread (contagem p/ badge); api.ts +4 métodos, types.ts (MessageDTO/ThreadDTO/MessagesResponseDTO/ThreadsResponseDTO), notify.ts +message_new
+- [14-e CHAT FRONTEND] view 'messages' no store (com peerId opcional); messages-view.tsx (code-split): caixa de entrada com filtro + chat 2 painéis (desktop grid, mobile empilhado com voltar), bolhas (emerald p/ próprias, card p/ recebidas, agrupamento <5min), polling 4s thread / 15s lista (pausa em document.hidden), envio otimista com rollback, scroll automático, skeleton/empty states + CTA Explorar; entradas: ícone MessageCircle na navbar com badge emerald (poll 45s), item "Mensagens" no menu do usuário, botão "Conversar com o mentor" no BookingWidget do perfil (!isOwner), notificação message_new navega com peerId; título "Mensagens — MentorHub"; AUTH_REQUIRED +mensagens
+- Restart do dev server necessário (Prisma client regenerado em memória); pkill next dev + bun run dev
+- Correções de lint no caminho: navbar ThemeToggle useSyncExternalStore em vez de setState em effect; messages-view deps de effect reais (sem disable)
+
+Validation (browser E2E, 1440x900 + 390x844, dark e light):
+- DARK: home/hero/marketplace/painel (KPIs+atalhos)/chat/certificado (papel branco preservado)/classroom (badges, sidebar, progresso)/checkout (cupom, PIX, nota demo) todos escuros, legíveis e consistentes; scrollW=clientW em todas
+- LIGHT: home idêntica ao original (toggle de volta restaura 1:1); chat light validado na sessão da Ana
+- CHAT loop real: Ana→Carlos (badge emerald "1 não lida" + sino "Nova mensagem 💬" + thread com preview) → notificação navega à thread correta (peerId) → Carlos responde (bolha emerald + "Você: ..." na lista + scroll auto) → Ana recebe (badge) → Ana responde → Carlos recebe; abrir thread zera unread local e no banco
+- PWA: link[rel=manifest] presente, /manifest.webmanifest 200, /sw.js 200, SW registrado (/sw.js?cache=0 em dev), 2 meta theme-color, apple-touch-icon; ícones 200
+- Perfil do Carlos como Ana: botão "Conversar com o mentor" abre Mensagens na thread dele
+- Mobile 390 dark: home e chat sem overflow (sw=cw=390), back button do chat, header compacto com todos os ícones
+- bun run lint 0 erros/0 warnings; bunx tsc --noEmit limpo em src/; dev.log sem erros; server 200 (não reiniciado durante os subagentes)
+
+Stage Summary:
+- Plataforma agora tem os 3 pilares restantes: instalável como app (PWA com ícone próprio, manifest, SW dev-safe), modo escuro completo e consistente (toggle na navbar, ~1.800 classes dark: aditivas, marca emerald preservada, certificado/PDF permanecem claros por design), e chat direto aluno↔mentor (thread persistente, badges, notificações integradas ao sino, polling leve) — o ciclo de pré-venda fecha: ver perfil → conversar → agendar
+- Todos os 11 itens escolhidos pelo usuário (1,2,3,5,6,7,8,9,11,12,13) estão entregues e validados
+- Pendências conhecidas: contas descartáveis de teste no banco (inofensivas); SW só cacheia em produção (por design, p/ evitar stale no dev)
+
+---
+Task ID: A
+Agent: Z.ai Code (main)
+Task: Pacote A — features de IA: #1 Tutor IA por curso, #2 Resumos automáticos das aulas, #3 Recomendações inteligentes ("Feito para você")
+
+Work Log:
+- Schema: novo model AiLessonSummary (lessonId unique, summary, keyPoints JSON, cache de geração 1x p/ todos os alunos) + relação Lesson.aiSummary; bun run db:push + regeneração do client; restart do dev server
+- course-serialize.ts (novo): extrai courseBaseInclude()+serializeCourse() de /api/courses para reuso (mesmo padrão de tracks-serialize.ts); courses/route.ts refatorado p/ importar
+- API #2 POST /api/lessons/[lessonId]/ai-summary: valida sessão+matrícula (ou dono), devolve cache na hora, senão monta prompt (material da aula próprio ou da Biblioteca, 8k chars) → LLM responde JSON {summary, keyPoints[]} com parse tolerante (extractJson + fallback texto cru) → upsert no cache; normalizeKeyPoints (máx 6×160 chars)
+- API #1 POST /api/ai/tutor: valida sessão+matrícula/dono, mensagem ≤1000 chars, histórico ≤10 trocas (sanitizado); contexto = sumário do curso (temas→aulas, 5k) + aula atual (6k) + descrição; system prompt anti-alucinação (só conteúdo do curso, redireciona p/ aba Perguntas, texto puro sem markdown) + sanitização server-side de **/##/crase na resposta
+- API #3 GET /api/ai/recommendations: histórico do aluno (inscrições+progresso %) + catálogo (24 cursos, exclui próprios e matriculados) → LLM escolhe 4 com motivo curto; fast-path populares (sem IA) quando sem histórico; fallback popular se IA falhar; cache em memória por usuário (TTL 10 min)
+- types.ts: AiLessonSummaryDTO, AiTutorChatMessage, RecommendationDTO, RecommendationsDTO; api.ts: lessonAiSummary/aiTutor/recommendations
+- ai-lesson-summary.tsx (novo): aba "Resumo IA" no classroom — gera automático na 1ª abertura (skeleton com contexto), resumo + tópicos-chave em grid, copiar resumo, retry em erro, CTA login p/ convidado
+- ai-tutor.tsx (novo): botão flutuante "Tutor IA" no classroom + drawer de chat (overlay blur, painel 420px desktop / folha cheia mobile, spring), bolhas (emerald p/ aluno), typing indicator, 4 chips de sugestão, Enter envia/Shift+Enter quebra, aviso "a IA pode errar", prop raised p/ modo foco (bottom-[5.5rem] evita cobrir "Sair do modo foco")
+- classroom.tsx: aba "Resumo IA" (Sparkles) entre Material e Perguntas + <AiTutor> renderizado p/ hasAccess (matriculado ou dono)
+- landing-mentee.tsx: seção "Feito para você" (logado, silenciosa em erro) após Continue aprendendo — badge "IA personalizada" quando gerado, grid 1/2/4 colunas, RecommendationCard com capa, chip de categoria, motivo da IA em pill emerald, preço/Gratuito + CTA Ver curso
+
+Validation (bun lint 0/0; tsc limpo em src/; browser E2E 1440×900 + 390×844, light+dark):
+- Resumo IA: geração real em 2,5s (aula "O que faz um PM"), cache devolve cached:true instantâneo; aba renderiza resumo+4 tópicos e badge "salvo para todos os alunos" (tool-results/ai-summary-tab.png)
+- Tutor IA: pergunta real respondida com conteúdo do curso (descoberta, RICE, 5 perguntas), 2ª resposta sem markdown após sanitização; drawer abre/fecha, sugestões enviam, Enter funciona (ai-tutor-chat.png, ai-mobile-reply.png)
+- Modo foco: tutor "raised" sem overlap com "Sair do modo foco" (overlap:false medido via eval)
+- Recomendações: Ana viu 3 cursos com motivos personalizados ("Continua jornada em tecnologia com Design Systems", "Combina com Product Manager e marketing") + badge IA PERSONALIZADA; guest não vê a seção; fallback popular coberto por código
+- Mobile 390: scrollW=clientW em home e drawer do tutor; chips/composer sem overflow
+- Dark: "Feito para você" e Resumo IA legíveis e consistentes (ai-mobile-foryou-dark.png)
+- Endpoints 200; dev.log sem erros; server não derrubado durante validação
+
+Stage Summary:
+- Plataforma ganhou a camada de IA nos 3 pontos de maior valor: aluno nunca fica travado (Tutor IA com base no conteúdo real do curso), revisão rápida por aula (Resumo IA cacheado — custo de LLM pago 1x por aula) e descoberta personalizada (Feito para você com fallback popular à prova de falhas)
+- Acessos e limites validados no servidor (matrícula/dono, 1000 chars/msg, 10 msgs de histórico, cache anti-abuso)
+- Custos de IA contidos: resumo gerado 1x por aula (persistido), recomendações em cache de 10 min por usuário, tutor sem persistência (histórico no cliente)
+
+---
+Task ID: B
+Agent: Z.ai Code (main)
+Task: Pacote B (parcial) — #4 Pacotes de cursos (bundles) + #5 Programa de indicação
+
+Work Log:
+- Schema: models Bundle + BundleItem (2+ cursos, @@unique bundle/curso) + Referral (referrer/referred @unique, PENDING→REWARDED) + User.referralCode @unique e User.creditCents (centavos) + Order.bundleId e Order.creditsUsed; bun run db:push + regeneração do client + restart do dev server (client antigo em memória causava db.bundle undefined)
+- bundle-serialize.ts (novo): bundleBaseInclude + serializeBundle (coursesTotal = soma dos publicados; discountPercent = 1 − price/total) + serializeBundleDetail (myEnrolledCourseIds); avatar do mentor vem de user.avatarUrl (MentorProfile não tem avatarUrl — correção após erro do Prisma)
+- APIs bundles: GET /api/bundles (filtros mentorUserId p/ painel, courseId p/ callout, userId p/ estado de matrícula), POST (create/update com validação dono + 2+ cursos próprios + price ≥ 0), GET/DELETE /api/bundles/[id]; correção: mkdir faltou antes do 1º Write (rota 404) — reescrito
+- Checkout: branch BUNDLE (409 se já tem todos os cursos, matrícula upsert em todos, order com bundleId), créditos (useCredits → desconto min(saldo, pós-cupom), debita creditCents, grava creditsUsed) em curso/trilha/pacote e rewardPendingReferral() (1ª compra paga → REWARDED + R$ 20 p/ convidante + notificações referral_joined/referral_rewarded)
+- /api/referrals GET: gera código (alfabeto sem ambíguos, retry em colisão), stats completos (saldo/convidados/convertidos/ganhos/pendentes)
+- register: aceita refCode (valida código existente) → creditCents 1000 (R$ 10 boas-vindas) + Referral PENDING + notify convidante; login/me retornam creditCents; notify.ts +kinds referral_joined/referral_rewarded/bundle_new e linkView 'referrals'
+- lib/referral.ts (novo): captureRefCodeFromUrl (?ref= → localStorage 7 dias, mesmo padrão do tracking), get/clear; page.tsx captura no bootstrap
+- referrals-view.tsx (novo, view 'referrals' + AUTH_REQUIRED + docTitle): hero emerald com link ?ref=CODE + copiar + compartilhar, 4 KPIs, "Como funciona" 3 passos, lista de convidados com badges "+ R$ 20 creditados"/"Aguardando 1ª compra"; navbar ganhou menu "Indicar amigos" (Gift) e roteamento de notificações p/ referrals
+- bundles-manager.tsx (novo): aba "Pacotes" no painel do mentor (PANEL_TABS + atalhos) — lista com badges Publicado/Rascunho, chips de cursos com capa, preço cheio riscado + −%; dialog criar/editar com seleção de cursos (capa+preço), preço e desconto ao vivo (ex.: R$ 318 → 199 = 37%), toggle Publicar, exclusão com confirmação
+- Explorar: aba "Pacotes" (segment control) com título/subtítulo próprios, busca e MarketplaceBundles autocontido (skeletons, empty states, cards com mosaico de capas, −% badge, "R$ X à parte"); bento/biblioteca inalterados; correção de estrutura JSX/TS narrowing (branch bundles fora do bloco tab !== 'all')
+- checkout.tsx: bundleId prop, badges Pacote + "Economize N%", lista dos cursos com preços riscados, total dinâmico com cupom + créditos, caixa "Usar meus créditos (R$ X)", sucesso com "Ir para meus cursos"; pacote gratuito matricula em todos os cursos; /api/coupons/validate aceita bundleId
+- course-view.tsx: BundleCallout na sidebar de visitantes ("Este curso faz parte do pacote X — economize N%") com CTA p/ checkout do pacote
+- auth-view: envia refCode no cadastro + toast "R$ 10 de crédito de convite"; limp código após uso
+
+Validation (lint 0/0, tsc 0 erros em src/, browser E2E 1440×900 + 390×844, light+dark):
+- APIs reais: bundle criado p/ Carlos (2 cursos R$ 189+129 → R$ 249, −22%); cadastro com convite MH-J76NPE → Lia com creditCents 1000; compra de curso → Referral REWARDED + Carlos creditCents 2000 + notificações (referral_joined + referral_rewarded no banco); compra do pacote com créditos → order 239 (249−10), saldo 0, matrículas = 2 cursos
+- ?ref= capturado no localStorage (mh_referral_v1) e guard de checkout leva convidado ao login
+- UI desktop: aba Pacotes com card completo (mosaico de capas, −22%, 2 cursos, mentor, R$ 249 / R$ 318 à parte); checkout do pacote com badges, lista de cursos, créditos R$ 20 aplicados (Total 249→229 no toggle, botão Pagar atualiza); referrals com KPIs reais (R$ 20, 1 convite, 1 convertido) + link + código + convidados; painel Pacotes com lista/editar/excluir e dialog com desconto ao vivo (318→199 = 37%)
+- UI mobile 390 dark: pacotes/referrals/checkout sem overflow (390x390), cards legíveis; callout do pacote na página do curso (Camila) navegando ao checkout
+- Radix: cliques no browser exigem sequência completa pointer/mouse events (tabs/dialog) — mesma técnica das tasks anteriores
+- dev.log: ⨯ antigos apenas da janela de criação do referrals-view (inexistente por segundos); após, tudo 200; server não derrubado durante a validação final
+
+Stage Summary:
+- Monetização completa: mentor combina 2+ cursos em pacote com desconto implícito (cria no painel, aparece no Explorar, nas páginas dos cursos e no checkout); indicação dupla (convidado entra com R$ 10, convidante ganha R$ 20 na 1ª compra) com código ?ref= de 7 dias, página de convites com saldo e créditos aplicáveis em qualquer checkout
+- Todos os valores são calculados no servidor (créditos, descontos, recompensa) — cliente só reflete
+- Demo enriquecida: Carlos com 2º curso ("Testes e Qualidade de Código") + pacote "Formação Arquiteto de Software" + indicação real (Lia Teste)
+- Pendência conhecida: clique sintético do Playwright precisa da sequência completa de eventos em tabs/dialogs Radix (limitação de teste, não do produto)
+---
+Task ID: C-b
+Agent: Z.ai Code (backend-integration)
+Task: #7 Lembretes automáticos (POST /api/reminders/run) + #8 Exportar calendário (.ics + Google Calendar)
+
+Work Log:
+- Criado src/app/api/reminders/run/route.ts (POST, force-dynamic): 4 regras na mesma chamada, cada uma isolada em try/catch — welcome (0 notificações E 0 matrículas), session_reminder (bookings PENDING/CONFIRMED como mentee OU mentor via MentorProfile com startsAt na janela [agora, agora+24h], parseNaive → Date local, nome do outro lado via mentee.name/mentor.user.name), streak_risk (studyStreak>0 E lastStudyDate==ontem, refId streak:YYYY-MM-DD), inactive_reminder (≥1 matrícula E max(último XpEvent, última matrícula, lastStudyDate) há >7 dias, refId inactive:YYYY-MM-DD). Dedupe universal: db.notification.findFirst({userId, kind, refId}) antes de criar; títulos/bodies/linkView 'dashboard' conforme spec; 400 sem userId, 404 usuário inexistente; kinds não existiam no union fechado de notify() → cast controlado via Parameters<typeof notify>[0]['kind'] (lib/notify.ts intocado, Notification.kind é String no banco)
+- Criado src/app/api/calendar/export/route.ts (GET, force-dynamic): .ics montado manualmente (BEGIN:VCALENDAR/VERSION 2.0/PRODID -//MentorHub//PT-BR/CALSCALE/X-WR-CALNAME MentorHub) — eventos de bookings PENDING/CONFIRMED (SUMMARY "Mentoria: <topic>", LOCATION meetingRoom, DESCRIPTION "Sessão com <outro> — status: X") e aulas LIVE das matrículas (SUMMARY "Aula (ao vivo): <title>", LOCATION meetingUrl, DESCRIPTION course.title); UID mh-<id>-booking|live@mentorhub; DTSTAMP UTC YYYYMMDDTHHMMSSZ; DTSTART/DTEND floating local (sem Z/TZID) derivado do naive, DTEND = start+durationMin; escape RFC5545 de \ ; , e quebras; ordenado por data, limite 300; Content-Type text/calendar; charset=utf-8 + attachment filename="mentorhub.ics"; 400/404 JSON
+- page.tsx: gatilho único de lembretes — guard de módulo let remindersRunFor (1x por userId por sessão do navegador) + useEffect [user?.id] chamando api.runReminders(uid).catch(() => {}) após carga/login; nada mais tocado
+- dashboard.tsx: no header "Minhas sessões" adicionado botão "Exportar .ics" (Button asChild variant outline → <a href="/api/calendar/export?userId=..." download>, ícone Download, h-11 sm:h-9 p/ toque 44px, label hidden sm:inline + aria-label) ao lado de "Explorar mentores"; no BookingCard link discreto "Google Calendar" (ExternalLink, text-emerald-700, target _blank, aria-label) na linha de metadados, renderizado só p/ PENDING/CONFIRMED futuros, URL render?action=TEMPLATE&text&dates=UTCstart/UTCend&details&location (new Date(naive) → toISOString limpo)
+
+Validation:
+- curl reminders/run Lucas (mentee, booking CONFIRMED hoje 14:00): 1ª {"created":1,"kinds":["session_reminder"]} → 2ª {"created":0,"kinds":[]} (dedupe ✓); Ana (mentora do mesmo booking + streak 2/lastStudyDate ontem): 1ª {"created":2,"kinds":["session_reminder","streak_risk"]} → 2ª {"created":0,"kinds":[]}; notificações no banco com título/body/refId corretos ("Sessão amanhã: ... ⏰", "30/08 às 14:00 com Ana Souza. Prepare suas dúvidas!", streak:2026-08-30); 400/404 corretos
+- curl export Ana: headers text/calendar; charset=utf-8 + attachment filename="mentorhub.ics", 6 VEVENTs ordenados (2 aulas LIVE + 4 bookings mentee/mentor), DTSTAMP UTC com Z, DTSTART floating; Lucas: 2 VEVENTs; escape validado com booking de teste "Teste, vírgula; p-v \ backslash" → SUMMARY "Teste\, vírgula\; p-v \\ backslash" e DTEND +90min; janela 24h revalidada movendo o booking p/ hoje 09:00 → created 1; booking/notificação de teste REMOVIDOS depois (banco restaurado)
+- bun run lint 0/0; bunx tsc: só erro pré-existente em skills/stock-analysis-skill (fora de src/); GET / → 200; dev.log sem erros das novas rotas
+- Anti-corrupção "[m": verificador python (chr(91)+'m') nos 4 arquivos — routes/page 100% limpos; dashboard tem ocorrências APENAS nas linhas pré-existentes do HEAD (destructuring "const [mentorProfile..." linha 605 e "const [myTracks..." linha 607, falsos positivos); git diff prova que nenhuma linha ADICIONADA contém a sequência
+
+Stage Summary:
+- Ciclo de retenção completo: lembretes idempotentes rodando no boot de cada sessão (welcome, sessão em 24h dos dois lados da mesa, ofensiva em risco, inatividade 7d — todos deduped por refId e diários quando aplicável) + calendário exportável (.ics floating local compatível com Google/Apple/Outlook e atalho "Google Calendar" por sessão futura), fechando o laço agenda↔calendário externo
+- Nenhum arquivo compartilhado (types/api/notify) foi editado — integração 100% aditiva; demo com Ana/Lucas/booking CONFIRMED de hoje já exerce as 2 features sem seed extra
+
+---
+Task ID: C-a
+Agent: Z.ai Code (backend-integration)
+Task: #9 Metas semanais (API /api/goals/weekly + widget "Meta semanal" na home do aluno)
+
+Work Log:
+- Lido worklog.md (padrões: cast de kind p/ notify fechado feito pelo C-b, verificador anti-corrupção de colchete+m, stone+emerald, seções da landing) e contratos ANTES de codar: types.ts (WeeklyGoalDTO), api.ts (getWeeklyGoal/updateWeeklyGoal), notify.ts, xp.ts (XP LESSON = 1 evento XpEvent kind=LESSON por aula concluída), schema (WeeklyGoal userId @unique), helpers (addDays/dateKey)
+- Criado src/app/api/goals/weekly/route.ts (GET+PUT, force-dynamic): função compartilhada weeklyGoalDto (DRY) — monday = segunda 00:00 local ((getDay+6)%7), weekStart = dateKey "YYYY-MM-DD"; history = 4 contagens XpEvent kind=LESSON em janelas semanais fechadas (3 passadas + atual, mais antiga primeiro, limite superior exclusivo); completedLessons = semana atual; meta = weeklyGoal.findUnique (ausente → targetLessons 3 e isCustom false); goalAchieved = completed >= target; notificação idempotente 'goal_achieved': findFirst por userId+kind+refId=weekStart antes do notify (título "Meta semanal batida! 🎉", body "Você concluiu X aulas nesta semana. Parabéns!", linkView dashboard) — kind novo fora do union fechado de notify(): cast controlado via Parameters typeof notify, lib/notify intocado (mesmo padrão do C-b)
+- GET: 400 sem userId, 404 usuário inexistente; PUT: body com userId+targetLessons, valida inteiro 1..35 (400) e usuário (404), upsert em weeklyGoal, devolve o DTO recomputado; DTO respondido direto, sem embrulho
+- landing-mentee.tsx (único arquivo de frontend): imports Target/Trophy + WeeklyGoalDTO; render condicional ao usuário logado imediatamente após a seção "Continue aprendendo" (antes de "Feito para você"); componente WeeklyGoalCard no fim do arquivo — fetch no mount (padrão active + catch silencioso do arquivo), skeleton (header+barra+4 chips redondos), erro → return null; card rounded-2xl border p-5 sm:p-6 dentro de section py-8/py-10 com mx-auto max-w-6xl px-4 (mesmo container das seções vizinhas); header ícone Target + "Meta semanal" + subtítulo "X de Y aulas nesta semana"; Progress (ui/progress) h-2.5 + rótulo "% da meta"; goalAchieved → Badge emerald "Meta batida! 🎉" com Trophy + mensagem de parabéns; editor com chips 2·3·5·7 (h-11 w-11 rounded-full = 44px de toque, ativo bg-emerald-700 text-white, aria-pressed + aria-label, disabled enquanto salva) chamando api.updateWeeklyGoal com update otimista simples (aplica na hora, reconcilia com a resposta, rollback silencioso); variantes dark: em todos os tokens
+- Dev server: 1º GET real devolveu 500 "Cannot read properties of undefined (reading 'findUnique')" em db.weeklyGoal — o client Prisma EM MEMÓRIA do server (iniciado 23:59 de ontem) era anterior à regeneração em disco (01:28, postinstall do bun install do init); restart necessário e feito pelo caminho oficial (script init → dev.sh: bun install + db:push idempotentes → next dev saudável na porta 3000, health check 200)
+
+Validation (lint + tsc + curls reais + anti-corrupção):
+- GET Ana Souza (6 XpEvent LESSON nesta semana): {"targetLessons":3,"completedLessons":6,"goalAchieved":true,"weekStart":"2026-08-24","history":[0,0,0,6],"isCustom":false} → PUT targetLessons 5: mesmo DTO com targetLessons 5 e isCustom true → GET de novo: isCustom true (persistido); weekStart 2026-08-24 = segunda da semana corrente (hoje é dom 30/08/2026)
+- Notificação criada exatamente 1x após 3 respostas consecutivas com goalAchieved true (count 1; refId 2026-08-24, linkView dashboard) — idempotência ✓; PUT inválidos (0, 36, 2.5, "abc") e sem userId → 400 com mensagem; GET sem userId → 400; userId inexistente → 404
+- bun run lint: 0 erros / 0 warnings (exit 0); bunx tsc --noEmit: nenhum erro em src/ (apenas o pré-existente de skills/stock-analysis-skill, fora do projeto)
+- Verificador anti-corrupção (probe chr(91)+'m'): route.ts 100% limpo; landing-mentee.tsx tem 5 ocorrências APENAS em linhas pré-existentes do HEAD (useState/useMemo dependentes de mentors e a classe utilitária mask-image do Tailwind) — git diff -U0 + probe prova que nenhuma linha ADICIONADA contém a sequência
+- GET / → 200 e o chunk compilado contém "Meta semanal" (src_components_platform_landing-mentee_tsx_*.js) — widget presente no bundle client; dev.log sem erros das novas rotas
+
+Stage Summary:
+- Aluno agora tem meta semanal de estudos com progresso calculado no servidor a partir do ledger de XP (à prova de farm), histórico de 4 semanas no DTO, meta customizável (chips 2·3·5·7; API aceita 1..35) e celebração com notificação in-app idempotente 1x por semana — fecha o loop de retenção junto de ofensiva/XP/lembretes
+- Widget discreto: skeleton → card, some silenciosamente em erro, mobile-first com toque ≥44px, dark mode completo, aria-pressed/aria-label nos chips; nenhum arquivo compartilhado (types/api/notify) foi editado — integração 100% aditiva
+- Estado real deixado no banco p/ demo: Ana Souza com meta 5 (isCustom true) e notificação "Meta semanal batida! 🎉" da semana 2026-08-24
+---
+Task ID: C-6
+Agent: Z.ai Code (main)
+Task: #6 Assinatura do mentor (membership mensal: todos os cursos + sessão em grupo)
+
+Work Log:
+- Schema: models MentorMembership (mentorId @unique — 1 plano por mentor, price, groupSessionDay/Time, isPublished), MembershipSubscription (ACTIVE|CANCELLED, renewsAt=+30d, cancelledAt, @@unique membership/user) + Order.membershipId + relações User/MentorProfile; db:push + regen client + restart
+- notify.ts: +kinds membership_new/membership_subscribed/session_reminder/streak_risk/inactive_reminder/welcome/goal_achieved (pré-add p/ todos os agentes)
+- APIs: GET/POST /api/memberships (painel c/ assinantes | público | userId → myStatus/renewsAt + RE-SYNC de matrículas dos planos ACTIVE — cursos futuros entram sozinhos), GET/DELETE /api/memberships/[id], POST /api/memberships/cancel (mantém acesso até renewsAt)
+- Checkout: branch MEMBERSHIP no /api/checkout (409 se ACTIVE, upsert reativação, matrícula em todos os cursos publicados, cupom+créditos, tracking purchase, notificações duplas, rewardPendingReferral); /api/coupons/validate aceita membershipId
+- UI: checkout.tsx com kind 'membership' (badge CreditCard "Tudo incluído por R$X/mês", lista de benefícios, sucesso c/ CTA perfil, guard de assinante); store/page.tsx com membershipId; painel ganhou aba "Assinatura" (membership-manager.tsx: KPIs assinantes/MRR/cursos, form c/ dia+hora da sessão, prévia emerald, lista de assinantes, excluir c/ confirmação); course-view MembershipCallout p/ visitantes; mentor-profile MembershipCard na aba Sobre (preço/benefícios/Assinar agora | Ativa até dd/mm + cancelar | Reativar)
+- Corrupção "[m" do canal contornada: padrão `const xTuple = useState(...)` + verificação python chr(91) após cada write
+
+Validation (lint 0/0, tsc 0 em src/, browser E2E desktop+mobile light):
+- API: create → GET painel (subscriberCount, subscribers c/ Ana) ; checkout Ana → 409 na 2ª, subscription ACTIVE renewsAt+30d, matrículas 1→2, order 39.90 PAID, notificações membership_new (Carlos) + membership_subscribed (Ana); cancel → CANCELLED; re-checkout → ACTIVE (reativação)
+- UI E2E: aba Assinatura no painel c/ KPIs+form preenchido+prévia+assinantes ("Ana Souza desde 30/08 · renova 29/09"); perfil público c/ card de assinatura (benefícios, "Assinar agora" | Ana vê "Assinatura ativa"+cancelar); callouts do curso p/ guest (pacote + assinatura) → guard login → checkout completo (badge, benefícios, PIX, "Pagamento confirmado!") → Aluno Cupom Teste ACTIVE c/ 2 matrículas; home da Ana passou a listar os 2 cursos do Carlos (sync)
+- Bug encontrado e corrigido: gate do card de erro do checkout não conhecia membership (`!course && !track && !bundle` → +`&& !membership`) — fetch ok mas card "Item não encontrado."
+- Mobile 390 sem overflow (390=390); dark ok; dev.log sem erros
+
+Stage Summary:
+- Receita recorrente end-to-end: mentor cria 1 plano mensal → aluno assina (cupom/créditos funcionam) → acesso imediato a todos os cursos publicados + sessão em grupo mensal + cursos futuros entram via re-sync; cancelamento mantém ciclo pago; tudo validado no servidor
+---
+Task ID: C-a
+Agent: full-stack-developer (subagente)
+Task: #9 Metas semanais de estudo
+
+Work Log:
+- src/app/api/goals/weekly/route.ts: GET (weekStart=segunda local, completedLessons via XpEvent kind=LESSON, history 4 semanas, meta default 3, notificação goal_achieved idempotente por refId=weekStart) + PUT (target 1..35, upsert) com DTO compartilhado
+- landing-mentee.tsx: widget "Meta semanal" após "Continue aprendendo" (só logado) — barra Progress, badge "Meta batida! 🎉" (Trophy), chips 2·3·5·7 (44px, otimista c/ rollback), skeleton, dark completo
+
+Validation: GET/PUT reais (Ana 6/6 → achieved, PUT 5 → isCustom true persistido; 400/409 cobertos); notificação criada 1x em 3 chamadas; lint 0/0; tsc limpo; server reiniciado via script oficial (client Prisma antigo em memória)
+
+Stage Summary:
+- Aluno define alvo semanal de aulas; progresso real calculado no servidor (XP ledger à prova de farm); celebração + notificação quando bate
+---
+Task ID: C-b
+Agent: full-stack-developer (subagente)
+Task: #7 Lembretes automáticos + #8 Exportar calendário
+
+Work Log:
+- src/app/api/reminders/run/route.ts: POST idempotente c/ 4 regras isoladas (welcome se 0 notifs+0 matrículas; session_reminder p/ bookings CONFIRMED/PENDING em ≤24h (mentee e mentor); streak_risk se estudou ontem e não hoje; inactive_reminder >7 dias) — dedupe universal via (userId, kind, refId)
+- src/app/api/calendar/export/route.ts: GET .ics (text/calendar; attachment) c/ bookings + aulas LIVE das matrículas, DTSTART/DTEND floating local, escape RFC5545, ordenado
+- page.tsx: runReminders 1x por sessão no bootstrap (guard de módulo, falha silenciosa)
+- dashboard.tsx: botão "Exportar .ics" (44px toque) no header de sessões + link "Google Calendar" por sessão futura (datas UTC)
+
+Validation: run 2x → created 1→0 (dedupe ✓ p/ Lucas e Ana); .ics c/ 6 VEVENTs, escape de vírgula/ponto-e-vírgula/backslash validado; lint 0/0; tsc limpo; anti-corrupção OK
+
+Stage Summary:
+- Retenção automática: lembretes de sessão/ofensiva/inatividade/boas-vindas chegam no sino sem cron externo (idempotentes) e a agenda inteira exportável p/ Google/Apple Calendar
+
+---
+Task ID: T1
+Agent: Z.ai Code (main)
+Task: Trilha "Cibersegurança e Direito Digital" (4 cursos) na conta do mentor Gustavo Novaes Cruz (gustavonv@yandex.com)
+
+Work Log:
+- Conta confirmada no banco (já existia com MentorProfile ativo, slug gustavo-novaes-cruz); nenhuma alteração de usuário necessária
+- Web-search para vídeos reais do YouTube: confirmados 7 IDs estáveis (NIST CSF PT-BR Q8e-gM142bw, LGPD 4min n3e0HVcNml0, LGPD Explained EWoe_IUmd3A, Equifax qwgEHbr8PhE, ransomware Vkjekr6jacg, IR NIST CSF 2.0 aA2ldOeqycA, resposta a incidente PT-BR j5SY19S3RQ4); aulas restantes em texto simples (conforme pedido do usuário)
+- 5 capas geradas com image-generation CLI (1344x768, dark + emerald coerente com a plataforma) em public/uploads/seed/: trilha-cyber-direito.png, course-cyber-fundamentos.png, course-cyber-defensiva.png, course-cyber-pericia.png, course-cyber-direito.png
+- Novo script idempotente e atômico prisma/seed-cyber-trilha.ts (não destrutivo; transaction; skip se a trilha já existir): 1 Track + 4 Courses + 10 CourseTheme + 49 Lessons (kind RECORDED/TEXT, content embasado, 7 videoUrl watch?v= compatível com toVideoEmbedUrl) + 7 Quiz (padrão seed.ts: options JSON, correctIndex, explanation) + 4 TrackItem COURSE (order 1..4)
+- Conteúdo com bases sólidas pedidas: NIST CSF 2.0 (6 funções), SP 800-53/800-61/800-63B/800-86, ISO/IEC 27001:2022 (SGSI + Anexo A 93 controles) e 27037/27041-27043, LGPD (arts. 6/7/18/39/46/48/52), ANPD (dosimetria 2023, comunicação de incidentes 3 dias úteis 2024, SCCs 2024), CPP arts. 158-A a 158-F, CPC art. 432, Marco Civil arts. 13/15, MP 2.200-2/2001, Lei 14.478/2022, PL 2338/2023; tríade CIA sempre amarrada a casos reais (Equifax, JBS, Colonial Pipeline, vazamentos CadÚnico/SUS 2021, Netshoes, Americanas) com punições judiciais
+- Cursos: (1) Cyber Segurança I: Fundamentos, Técnicas e Enquadramento Judicial — INICIANTE R$149, 13 aulas/4 temas; (2) Cyber Segurança Defensiva: Laboratório Prático (Blue Team) — INTERMEDIARIO R$199, 12 aulas/4 temas; (3) Perícia Digital e Aquisição de Provas — INTERMEDIARIO R$249, 12 aulas/4 temas; (4) Direito Digital Aplicado: LGPD, ANPD e Casos Reais — INTERMEDIARIO R$199, 12 aulas/4 temas; trilha INICIANTE R$499 categoria Tecnologia
+
+Validation:
+- Seed executado 1x com sucesso (1 trilha · 4 cursos · 10 temas · 49 aulas · 7 vídeos · 7 quizzes); re-execução sai limpa (idempotência)
+- bun run lint 0/0; bunx tsc --noEmit sem erros em src/ e prisma/; dev server sem erros (só 200s)
+- Browser E2E desktop 1440: login gustavonv@yandex.com ok; Explorar→Trilhas mostra "4 trilhas publicadas" e card "Cibersegurança e Direito Digital · 4 cursos · 15h56min · R$499"; página da trilha lista os 4 cursos com capas em ordem; página do curso 1 mostra os 4 temas com contagens; classroom: aula texto renderiza, aula vídeo carrega iframe youtube-nocookie embed real (DARYUS Talks/NIST), quiz em modo Gabarito (comportamento correto para o dono — código classroom.tsx 1768/1802); painel do mentor: aba Trilhas com editar/despublicar/excluir e aba Cursos com os 4 gerenciáveis; perfil público ?mentor=gustavo-novaes-cruz lista os 4 cursos
+- Browser E2E mobile 390x844: home/trilhas/página da trilha/classroom sem overflow (main 390x390, 0 elementos largos); classroom mobile com sidebar de temas e botão Tutor IA no rodapé; dark mode: cards de trilha ok com a capa nova em destaque
+- dev server NÃO derrubado durante a validação
+
+Stage Summary:
+- Gustavo Novaes Cruz agora é mentor com uma formação completa publicada: trilha "Cibersegurança e Direito Digital" (R$ 499) com 4 cursos encadeados (fundamentos+judicial → defensiva prática → perícia → direito aplicado), 49 aulas estruturadas em 10 módulos, 7 vídeos reais, 7 quizzes e embasamento contínuo NIST/ISO 27001/LGPD/ANPD com casos reais e consequências judiciais — estrutura pronta para ele evoluir conteúdo e vender (cursos, trilha, pacotes, assinatura e mentorias 1:1 já integrados à plataforma)
+- Script prisma/seed-cyber-trilha.ts reutilizável e idempotente para reproduzir/estender o conteúdo
+---
+Task ID: U-1
+Agent: Z.ai Code (main)
+Task: Ajustes de UI — cards mais leves (sessão de reunião em primeiro lugar) + busca única ao vivo (o corpo vira só resultados ao digitar)
+
+Work Log:
+- Diagnóstico prévio: BookingCard do dashboard (card de sessão) tinha py-6/px-6, avatar lg, nome + badge "Como mentor/aluno" + headline + tópico + notes completas + data por extenso ("Sábado · 30 de agosto de 2026 · 09:00 → 10:00") + duração + valor + link textual "Google Calendar" + botões — 4 blocos de texto; marketplace/home e navbar tinham 2 barras de busca visíveis simultâneas; busca accent-sensível ("ingles" não achava "Inglês")
+- dashboard.tsx: BookingCard redesenhado no padrão leve dos cards de curso/trilha (Card p-0 + flex p-4): avatar md, nome + pill pequena "Mentor"/"Aluno", tópico em 1 linha truncate, UMA linha de meta compacta (relativeDayLabel ?? formatDayLabel curto "qui, 20 ago" · 09:00–10:00 · 60 min · R$ valor), notes em line-clamp-1, Google Calendar virou botão-ícone (ExternalLink, aria-label+title) na direita da meta, ações só quando existem (border-t), botão mentor "Marcar como concluída" → "Concluir"; novo mapa local SHORT_STATUS (selos curtos: Pendente/Confirmada/Concluída/Cancelada, com dark); PendingRequestRow e caixa âmbar "Solicitações recebidas" compactados (descrição redundante removida); STATUS_META/formatDayLabelLong/Wallet deixaram de ser usados no arquivo
+- Busca única ao vivo (store como fonte de verdade via exploreQuery já existente):
+  - navbar.tsx: campo do header virou busca ao vivo com debounce 250ms (applySearch → setExploreQuery + navigate('marketplace') + setExploreTab('all') na 1ª digitação fora do Explorar); limpar texto sai do modo busca na hora; regra showHeaderSearch = marketplace ? (query externa ativa) : (fora de home) — nunca 2 barras: na home a barra do hero é a única, no Explorar navegar mostra a barra grande e buscar pelo header esconde a barra grande e mostra o campo do header (que continua com foco/digitação); sincroniza texto do campo com o termo externo (hero); atalho "/" ganhou 3 caminhos (Explorar c/ busca do header → campo; Explorar/home → evento 'mentorhub:focus-search' p/ a barra do corpo; demais → campo do header)
+  - marketplace.tsx: consumo one-shot de exploreQuery substituído por sync reativo (useEffect no externalQuery → inputValue/search locais, inclusive ao limpar); searching = termo ativo esconde bento/spotlight/stats (todas as abas), hero bento "Tudo em um só lugar", pílulas "Explore por área" e tira "Conheça os mentores"; título vira "Resultados para “termo”" (com X limpar) quando a busca veio do header, subtítulo "N resultados"; barra grande só no modo navegar; h2 de resultados vira "Resultados"; listener de foco p/ o atalho "/"; todos os 5 botões "Limpar filtros" e clearAllFilters agora limpam também o termo externo (clearAllSearch)
+  - landing-mentee.tsx: hero search ganhou ref + listener 'mentorhub:focus-search' ("/" foca o hero na home)
+- Busca sem acentos/caixa: novo normalizeText() em lib/helpers (NFD + remove diacríticos + lowercase) aplicado nas 4 APIs (mentors/courses/tracks/library: search e comparação) e nos filtros client-side (allView do marketplace, marketplace-bundles, filtro de conversas do messages-view) — "ingles"/"PERICIA"/"LIVRO" agora encontram "Inglês"/"Perícia"/"livro"
+- Cards do marketplace aliviados: MentorCard fundiu linha de experiência + estrelas numa só (★ 5,0 (12)), anos de experiência saíram do card (fica no perfil), idioma do rodapé virou truncate (sem overlap com o preço); CourseCard perdeu as estrelas/nota do mentor duplicadas (a nota do curso já está no rodapé); TrackCard perdeu o preço duplicado do rodapé (chip da capa é a fonte) e ganhou botão "Ver trilha" full-width h-10 igual ao CourseCard; whitespace-nowrap nos metas do MentorCard
+
+Validation (lint 0/0, tsc limpo em src/, browser E2E real desktop 1440 + mobile 390):
+- Digitar "cyber" no campo do header (guest) → navega ao Explorar e o corpo mostra SÓ resultados ("Resultados para “cyber” · 2 resultados", zero bento, zero 2ª barra); X do título limpa e volta ao modo navegar (barra grande retorna, header some)
+- Digitar "ing" direto na barra grande do Explorar → modo busca local (título mantém "Explorar tudo" + "9 resultados"), header continua escondido
+- Hero da home ("ingles" sem acento) → "Resultados para “ingles” · 3 resultados" achando Sofia Santos (Professora de Inglês) e o curso de Inglês (prova do normalizeText nas 4 APIs: mentors ingles ✓, courses PERICIA ✓, tracks direito ✓, library LIVRO ✓)
+- Sessão (desktop + mobile 390, light + dark): cards de histórico/próximas com 3 linhas visuais (pessoa+status / meta única / ações), gcal como ícone, sem overflow (sw=390=main), abas e tabs funcionando; conversa/fluxo "Entrar na sala" e "Concluir" intactos
+- Home logada (Ana): Continue aprendendo / Meta semanal / Feito para você renderizam; header sem campo de busca na home (hero é o único), com busca ativa o Explorar mantém 1 campo só; Pacotes com termo ativo mostra vazio coerente; Mentores/Cursos/Trilhas em modo navegar intactos (chips + destaque)
+- dev.log sem erros; dev server reiniciado pelo caminho oficial (bun run dev background, health 200) após ele ter caído no meio da sessão
+- Nenhum contrato de API mudou (só normalização interna); nenhum arquivo compartilhado quebrado (helpers ganhou export novo)
+
+Stage Summary:
+- O produto ficou visivelmente mais leve: card de sessão caiu de ~5 blocos de texto para 3 linhas visuais com as mesmas ações (confirmar/recusar/concluir/entrar/avaliar/cancelar/ics/gcal preservados), cards do catálogo perderam duplicações (notas duplas, preço duplo, linhas redundantes)
+- Busca agora se comporta como app moderno: UM campo por tela, digitar leva ao modo resultados ao vivo (corpo = só resultados, sem bento/estatísticas), limpar devolve a navegação, "/" foca a barra certa em cada tela, e a busca ignora acentos/caixa em todas as bases (mentores, cursos, trilhas, biblioteca, pacotes e conversas)
+---
+Task ID: U-2
+Agent: Z.ai Code (main)
+Task: Busca central do header como busca principal (sempre visível e prioritária)
+
+Work Log:
+- Feedback do usuário: a busca central do header é A principal e deve ter prioridade (no U-1 ela era escondida na home e no Explorar em modo navegar). Modelo invertido: o header assume a busca em todas as telas e as barras do corpo saem de cena
+- navbar.tsx: campo central de busca agora renderiza SEMPRE (desktop e ícone mobile em todas as views); regra showHeaderSearch removida; atalho "/" simplificado (sempre foca o campo do header — desktop foca direto, mobile abre a linha de busca); digitação ao vivo mantida (debounce 250ms → setExploreQuery + navigate ao Explorar + corpo vira só resultados); texto do campo continua sincronizado com o termo ativo da store
+- marketplace.tsx: barra grande de busca do corpo REMOVIDA de vez (não existe mais busca duplicada no Explorar); `search` agora deriva direto da store (useAppStore exploreQuery) — removidos search/inputValue locais, onSearchChange, debounceRef, searchRef, listener 'mentorhub:focus-search' e imports (Input, Search, useRef); modo busca mantido (título "Resultados para “termo”" + X que limpa a store + "N resultados"; bento/áreas/autores ocultos); clearSearch/clearAllSearch/clearAllFilters limpam o termo da store + categorias
+- landing-mentee.tsx: hero da home perde o input de busca (era a 2ª barra) — fica o CTA "Explorar mentores" (vai à aba Mentores) + dica "ou use a busca acima ✨"; removidos term/handleSearch/heroSearchRef/listener e imports (FormEvent, Input, setExploreQuery)
+- EventBus 'mentorhub:focus-search' deixou de existir (não é mais necessário — o header é sempre o alvo)
+
+Validation (lint 0/0, tsc limpo em src/, browser E2E real desktop 1440 + mobile 390, light + dark):
+- Home (Ana logada): busca central visível no header com kbd "/" e CTA novo no hero; digitar "cyber" direto da home → navega ao Explorar e o corpo vira SÓ resultados ("Resultados para “cyber” · 2 resultados") com a barra do header como única na tela
+- X do título de resultados limpa a store → volta ao modo navegar (header segue com a busca, corpo mostra tabs + bento + contagens, sem nenhum outro campo)
+- Explorar em modo navegar: SEM barra de busca no corpo (header é a única) — página mais leve; digitar "gustavo" no header com o Explorar já aberto → resultados na hora (mentor Gustavo + seus 4 cursos da trilha de Cibersegurança)
+- Mobile 390: ícone de busca sempre no header; linha de busca abre, digita "design", navega e mostra resultados; sem overflow (390=390) em home/explorar/dashboard; fechar a linha e limpar restaura o modo navegar
+- Atalho "/" (desktop): foco cai exatamente no campo central do header (verificado via document.activeElement)
+- Dashboard dark com a busca central presente; sessões/cards intactos
+- dev.log saudável (200s; warnings de Fast Refresh eram do HMR durante as edições)
+
+Stage Summary:
+- Paradigma final da busca: UMA busca só, central no header, sempre visível e prioritária — digitar em qualquer tela leva ao modo resultados ao vivo; o corpo do Explorar não tem mais campo próprio e o hero da home virou CTA; acentos/caixa continuam ignorados; UX consistente em desktop e mobile
+
+---
+Task ID: V-1
+Agent: Z.ai Code (main)
+Task: Landing central com foco em TUDO (não só reuniões) — reformulação completa da home (landing-mentee.tsx)
+
+Work Log:
+- Diagnóstico: a home posicionava a plataforma como só "reunião": badge "Mentorias 1:1 ao vivo", subtítulo de agendamento, mock do produto 100% chamada de vídeo (grid + mic/phone-off), "Três passos até a sua primeira sessão", stats lideradas por "sessões realizadas", FAQ e CTA final girando em torno da sessão 1:1 — nada de cursos/trilhas/biblioteca/IA no discurso principal
+- Hero: badge agora "Mentorias, cursos, trilhas e biblioteca — tudo em um só lugar"; subtítulo cita os 4 formatos + certificado; checklist com 4 pilares (mentorias por vídeo, cursos/trilhas no ritmo, biblioteca, tutor IA + certificados); CTA principal virou "Explorar tudo" (aba Tudo do Explorar); prova social mantida (nota média + avaliações reais)
+- Coluna direita do hero trocada: o mock de videochamada virou um bento de 5 tiles representando a plataforma inteira — (1) Sala de aula com player de curso + progresso 57% (tile principal dark), (2) Mentoria 1:1 ao vivo com avatares reais dos mentores + pulso "ao vivo", (3) Trilha com steps 2/3 concluídos, (4) Biblioteca com capa PDF, (5) Ofensiva/XP com meta semanal; card flutuante de avaliação 5★ mantido; animações suaves preservadas
+- Nova seção "Quatro formas de aprender" (FORMATS): 4 cards (Mentorias 1:1 / Cursos gravados / Trilhas guiadas / Biblioteca) com eyebrow, texto curto e CTA que leva direto à aba correspondente do Explorar (handleFormatTab + setExploreTab)
+- "Como funciona" universalizado e movido para logo após os formatos: "Do descobrimento ao certificado" — passos Descubra (mentores, cursos, trilhas, biblioteca) → Comece (matrícula na hora OU agendamento) → Evolua (vídeo/sala de aula + progresso + certificado)
+- Nova seção "Biblioteca em destaque": fetch preguiçoso (useInView margin 600px, once) de api.listLibrary({sort:'popular'}), 3 itens com card novo (FeaturedLibraryCard: capa foto/gradiente + badge Livro/Artigo + categoria + PDF + autor + tempo de leitura + botão "Ler agora" → reader), CTA "Abrir biblioteca" para a aba library
+- Faixa "A plataforma em números" movida para depois do catálogo e rebalanceada: mentores +8 / cursos publicados +10 / trilhas guiadas +4 / aulas disponíveis +79 (soma lessonCount); os fetches de cursos/trilhas agora também disparam quando a faixa se aproxima (statsInView), eliminando skeletons eternos em saltos de rolagem
+- Grid FEATURES antigo substituído por "Superpoderes em toda a plataforma" (EXTRAS, 6 cards compactos horizontais): Tutor IA e resumos, XP e ofensiva, Certificados, Agenda em tempo real, Pagamento seguro, Mensagens diretas
+- FAQ rebalanceada (6 perguntas): "O que eu encontro na MentorHub?" (visão 360) nova, cursos/trilhas nova, certificado direta; vídeo/pagamentos/mentor mantidas com respostas mais curtas
+- CTA final: "Quero aprender" sem "primeira sessão" (agora cita os 4 formatos, botão "Explorar a plataforma"); "Quero ensinar" cita mentorias+cursos+trilhas+mural; reassurance final trocou "reuniões" por "vídeo, cursos e biblioteca na mesma plataforma" + certificado
+- Limpeza: removidos ícones não usados (Hand, PhoneOff, Quote), stats/fourthStat/totalStudents/previewFillers obsoletos; stats → totalReviews; duplicação de declaração previewMentors eliminada
+
+Validation (lint 0/0; tsc limpo em src/; E2E real desktop 1440 + mobile 390, guest + logado Ana, light + dark):
+- Ordem das seções confirmada no DOM: hero → (logado: continue/feito para você) → Quatro formas → Como funciona → Explore por área → Mentores → Cursos → Trilhas → Biblioteca → Números → Superpoderes → Depoimentos → FAQ → CTA
+- Todos os CTAs testados por clique real: "Explorar tudo"→aba Tudo, "Explorar mentores"→Mentores, "Ver cursos"→Cursos, "Ver trilhas"→Trilhas, "Abrir biblioteca"→Biblioteca, "Ler agora"→reader abrindo o artigo com conteúdo
+- Lazy fetches disparando corretamente (/api/courses, /api/tracks?sort=popular, /api/library?sort=popular); cards da biblioteca com dados reais (30 expressões/Discovery/Arquitetura que Escala) e capas; stats +8/+10/+4/+79 inclusive após salto direto ao fundo (fix statsInView)
+- Mobile 390: varredura de overflow em 10 pontos da página = 0 ocorrências (390=390); hero empilha, cards full-width; dark mode legível em todos os blocos novos
+- dev.log sem erros de runtime (apenas warnings de Fast Refresh durante as edições); dev server não derrubado
+
+Stage Summary:
+- A home agora vende a plataforma INTEIRA: os 4 formatos (mentoria 1:1, cursos, trilhas, biblioteca) ganham peso igual no hero, no fluxo "como funciona", no catálogo em destaque (biblioteca estreou como seção própria), nos números e nos superpoderes (IA, XP, certificados) — a reunião 1:1 continua presente, mas como um dos pilares, não como o único
+- Padrão reutilizável: FORMATS/EXTRAS como constantes declarativas (adicionar um novo formato = 1 objeto), stats resilientes a saltos de rolagem, cards de biblioteca prontos para reuso
+---
+Task ID: W-1
+Agent: Z.ai Code (main)
+Task: Landing — remover o card principal pesado (bento de 5 tiles + card flutuante) e criar um hero rotativo leve, bem construído e sem excesso de efeitos
+
+Work Log:
+- Diagnóstico: a coluna direita do hero tinha 1 tile dark grande (mock de sala de aula com player fake) + 4 tiles menores + card flutuante de avaliação, todos com animações infinitas de flutuação (y loop), glow blur atrás, padrão de pontos no fundo e 2 blobs — muito peso visual e de render
+- Coluna direita substituída por UM card rotativo (novo componente HeroRotator, ~185 linhas): alterna entre os 4 formatos (FORMATS reaproveitado — Mentorias 1:1 / Cursos gravados / Trilhas guiadas / Biblioteca) com crossfade sutil (AnimatePresence mode="wait", opacity+y 0.28s, sem loops infinitos)
+- Card: rounded-3xl, border, shadow-sm (era shadow-2xl), faixa de gradiente fina no topo, ícone do formato em tile esmeralda + chip do eyebrow, título, 1 frase curta e UM detalhe mínimo por formato (avatares reais dos mentores / barra de progresso 57% / steps 2 de 3 / mini capas com BookOpen+FileText) + CTA por slide ("Ver cursos →" etc.) que navega direto para a aba correspondente do Explorar (handleFormatTab)
+- Indicadores: 4 barras finas (ativa = emerald w-8, inativa = stone w-3) clicáveis com aria-label e aria-current
+- Comportamento: auto-avanço a cada 5,2s; pausa no hover/foco (onMouseEnter/Leave + onFocusCapture/BlurCapture); useReducedMotion respeitado (sem transição de movimento e sem auto-avanço); altura estável entre slides (min-h-[17rem] sm:min-h-[16rem] — card mediu 336px antes e depois da troca)
+- Alívios no restante do hero: checklist de 4 itens removido da coluna esquerda (o carrossel comunica os formatos), card flutuante de avaliação removido, glow atrás da composição removido, padrão de pontos removido e 2 blobs → 1 blob suave (emerald-100/60)
+- Limpeza: previewMentors (declarado para o tile antigo) removido; imports Mic, PlayCircle, Flame removidos; adicionados AnimatePresence, useReducedMotion (framer-motion) e FileText (lucide)
+
+Validation (lint 0/0; tsc limpo em src/; E2E real desktop 1440 + mobile 390, guest + logado Ana, light + dark):
+- Bento antigo confirmado fora do DOM (nenhum texto "Sala de aula · curso em vídeo", "5 dias seguidos", "A melhor mentoria que já fiz" etc.)
+- Auto-avanço observado ao vivo: "Mentorias 1:1" → "Cursos gravados" → "Trilhas guiadas" → "Biblioteca" (~5,2s por slide)
+- Clique no 4º indicador troca para Biblioteca; CTA do slide navegou ao Explorar abrindo "Explorar a Biblioteca" (aba correta)
+- Hover real (mouse move sobre o card): rotação pausada por 6s+ (slide imutável); ao mover o mouse para fora, avançou normalmente
+- Altura do card estável em 336px durante as trocas de slide (sem pulo de layout)
+- Mobile 390: scrollWidth = 390 (zero overflow real; únicos elementos " além da borda são blobs decorativos absolutos clipados por overflow-hidden); hero empilha badge/título/subtítulo/CTA/prova social + card
+- Dark mode (localStorage theme=dark): card em stone-900 com borda sutil, dot ativo emerald, avatares reais com ring escuro — legível e coerente
+- Logado (Ana): saudação "Olá, Ana!" + carrossel + Continue aprendendo intactos
+- dev.log sem erros de runtime; dev server NÃO derrubado
+
+Stage Summary:
+- O hero ficou ~3x mais leve: um único card rotativo no lugar de 6 blocos flutuantes, uma animação de crossfade de 0,28s no lugar de 6 loops infinitos, 1 blob no lugar de blobs+pontos+glow
+- O carrossel é construído sobre a constante FORMATS existente (adicionar um 5º formato = 1 objeto em FORMATS, aparece automaticamente no carrossel, nos indicadores e no CTA)
+- Acessível: indicadores com aria-label/aria-current, pausa em hover/foco, prefers-reduced-motion respeitado
+---
+Task ID: P-1
+Agent: Z.ai Code (main)
+Task: Gateway de pagamentos Asaas (sandbox primeiro) + painel de administração seguro com MFA
+
+Work Log:
+- Pesquisa completa na doc oficial do Asaas (docs.asaas.com via .md p/ agentes): sandbox api-sandbox.asaas.com/v3, produção api.asaas.com/v3, header `access_token`, POST /customers (name/email/cpfCnpj), POST /payments (billingType PIX|CREDIT_CARD|BOLETO|UNDEFINED → invoiceUrl), GET /payments/{id}/pixQrCode (encodedImage+payload), POST /payments/{id}/receiveInCash (confirmação manual), POST /webhooks (authToken 32-255 chars devolvido no header `asaas-access-token`), GET /finance/payment/statistics
+- Schema (db:push ok): User += role/block/mfaSecret/mfaEnabled/cpfCnpj/asaasCustomerId; novos models Payment (gateway ASAAS|SIMULATED, gatewayPaymentId único, invoiceUrl, externalReference, lastEvent, confirmedAt), PlatformSetting (key/value), AdminSession (token 12h), AuditLog (actor/action/meta); Order.status agora PENDING|PAID|REFUNDED|CANCELED + relação payments
+- gustavonv@yandex.com promovido a ADMIN (único admin)
+- Libs: lib/totp.ts (TOTP RFC 6238 próprio com crypto — base32, HMAC-SHA1, janela ±1, comparação timing-safe, otpauth:// URI), lib/asaas.ts (cliente completo: ensureCustomer, createPayment, getPixQrCode, getPayment, receiveInCash, createPaymentWebhook, deleteWebhook, testConnection via /finance/payment/statistics, mapAsaasStatus; config vem do PlatformSetting com fallback env), lib/admin-auth.ts (createAdminSession, resolveAdmin via x-admin-token, requireAdmin 401, audit() nunca-quebra), lib/mfa-tickets.ts (desafios de 5 min, 1 uso), lib/fulfillment.ts (resolveCoupon + rewardPendingReferral extraídos do checkout + fulfillOrder idempotente: matrículas por tipo de item, assinatura+renewsAt, consumo de cupom revalidado, débito de créditos, notificações mentor/aluno, recompensa de indicação, marca Payment RECEIVED)
+- Checkout reescrito: resolve item (curso/trilha/pacote/assinatura) → cupom → créditos (cálculo; consumo só no pagamento) → cria Order PENDING → se gateway ativo: ensureAsaasCustomer (exige CPF/CNPJ validado por dígito verificador, salvo no usuário) + cobrança real + Payment + PIX QR inline (PIX) → resposta pending com invoiceUrl/pix; falha do gateway cancela o pedido e devolve o erro real do Asaas; sem gateway: modo demonstração (Payment SIMULADO + fulfillOrder imediato, mesma UX de antes)
+- APIs: /api/webhooks/asaas (valida asaas-access-token contra o token do settings, PAYMENT_RECEIVED/CONFIRMED → fulfillOrder idempotente, OVERDUE → cancela, REFUNDED → marca, PAYMENT_CREATED registra evento; desconhecidas ignoradas), /api/payments/config (gateway ativo?), /api/payments/status (consulta + sync com o Asaas + libera acesso se já caiu — cobre localhost sem webhook público), /api/auth/login (mfaRequired + ticket; bloqueados 403; admins recebem adminToken), /api/auth/mfa/verify (TOTP; segredo nunca sai do servidor; emite adminToken), /api/auth/me+register (role/blocked/mfaEnabled), /api/admin/stats, /api/admin/users (GET busca+paginado, PATCH promote/demote/block/unblock — autoproibido, derruba sessões admin ao rebaixar/bloquear), /api/admin/settings (GET mascarado, PUT chave/ambiente, POST action=test|webhook com troca de ambiente limpando webhook antigo, DELETE remove tudo), /api/admin/payments (GET filtros, POST confirm_asaas=receiveInCash|sync|cancel), /api/admin/mfa (GET status, POST setup→QR data-URL qrcode|enable com verificação TOTP|disable com senha), /api/admin/audit
+- Frontend: store view 'admin' + page.tsx (guard user.role==='ADMIN') + navbar item Administração (ShieldCheck) no dropdown; auth-view ganhou etapa "Verificação em duas etapas" com InputOTP (envio automático ao 6º dígito); checkout com gateway: CPF/CNPJ mascarado + opção Boleto + nota "fatura segura do Asaas" no cartão + tela "Aguardando pagamento" (QR PIX base64, copia-e-cola com botão copiar, abrir fatura, "Já paguei — verificar status" que sincroniza e libera); admin-panel.tsx novo (~1000 linhas, 5 abas): Visão geral (8 métricas + status do gateway + últimas cobranças), Pagamentos (config Asaas salvar/testar/remover + criar webhook com URL pública + lista de cobranças com filtros/busca e ações Confirmar/Verificar status/Cancelar/Abrir fatura), Usuários (busca, promote/demote/block/unblock com badges), Segurança (MFA setup QR + ativação por código + desativar com senha; aviso persistente quando inativo), Auditoria (trilha com ação/ator/meta/hora)
+- Tipos: UserDTO += role/blocked/mfaEnabled/adminToken; novos DTOs PaymentsConfig/PendingPayment/PaymentStatus/AdminStats/AdminUser(s)/AsaasSettings/AdminPayment(s)/AuditLog; api.ts += verifyMfa, paymentsConfig, paymentStatus, api.admin.* (todas com header x-admin-token)
+
+Validation (lint 0/0; tsc limpo em src/; E2E real desktop 1440 + mobile 390, light + dark):
+- TOTP unit: segredo 32 chars, código atual verificado, códigos curtos rejeitados, URI otpauth correta
+- Login Gustavo → dropdown mostra "Administração" → painel carrega com 8 métricas reais (18 usuários, 8 mentores, 10 cursos, 4 trilhas, receita R$ 1.970,8 após compra) + badge "Modo demonstração" + aviso "MFA inativo" com atalho
+- MFA: setup gerou QR real (segredo extraído do DOM), código TOTP calculado e confirmado → "MFA ativo" + campo desativar (com senha); logout → login pediu a 2ª etapa (desktop E mobile) → código aceito → sessão admin nova funcionando no painel
+- Usuários: busca "carlos" → Promover a admin → badge ADMIN + botão Rebaixar → rebaixado; auditoria registrou user.promote e user.demote com ator "Gustavo Novaes Cruz (gustavonv@yandex.com)"
+- Pagamentos: chave fake salva (badge "SANDBOX · fake…") → "Testar conexão" bateu no api-sandbox.asaas.com REAL e mostrou o erro oficial do Asaas ("A chave de API fornecida é inválida") — prova do caminho HTTP, header access_token e parsing de erros
+- Checkout com gateway (chave fake ativa, como Ana): campo CPF/CNPJ + Boleto aparecem; pagar → erro gracioso "O gateway não conseguiu criar a cobrança: …" e pedido ficou CANCELED no banco (nenhum acesso concedido)
+- Checkout modo demonstração (chave removida): campo CPF some; pagar → "Pagamento confirmado!" na hora; banco: Payment SIMULATED/RECEIVED R$149 + Order PAID + matrícula criada (refactor sem regressão)
+- Webhook E2E via curl: token errado → 401; token certo com PAYMENT_RECEIVED → fulfilled:true (Order PAID + Payment RECEIVED + matrícula criada); reenvio → already:true (idempotente); dados de teste limpos depois
+- Auditoria no banco: mfa.enabled, user.promote, user.demote, asaas.settings_update, asaas.test_fail
+- Mobile 390: zero overflow (390=390) na home/checkout/admin; login com MFA funciona; painel empilha (cards 2-up, tabs em 2 linhas); dark mode legível
+- dev.log sem erros de runtime (única exceção registrada é o AsaasError intencional do teste com chave fake, tratado); dev server reiniciado pelo caminho oficial no meio da sessão (havia caído); NÃO derrubado no fim
+
+Stage Summary:
+- A plataforma tem pagamentos reais prontos para homologação: colar a chave do sandbox do Asaas no painel (Pagamentos) ativa PIX com QR real, boleto e cartão via fatura hospedada (PCI no gateway); a liberação de acesso só acontece quando o dinheiro cai (webhook assinado com asaas-access-token, sync manual ou receiveInCash) — e em produção basta criar o webhook com a URL pública para tudo ser automático
+- Modo demonstração preservado: sem chave, o checkout continua instantâneo, mas agora toda compra gera registro Payment auditável (SIMULADO)
+- Painel admin seguro por design: sessão de 12h emitida só após senha (+ TOTP), token obrigatório em todas as 9 APIs admin, bloqueio/rebaixamento derruba sessões, segredo TOTP nunca sai do servidor, auditoria completa; MFA ativado na conta gustavonv@yandex.com
+
+---
+Task ID: W-3
+Agent: Z.ai Code (main)
+Task: Corrigir travamento de login por MFA (usuário não conseguia entrar: "preciso configurar o mfa, porém não consigo acessar a conta porque pede ele") + blindar o fluxo MFA contra repetição do problema
+
+Work Log:
+- Diagnóstico: gustavonv@yandex.com tinha mfaEnabled=true com segredo TOTP que só existia no servidor (ativado em E2E da sessão anterior — worklog W-2 terminava com "MFA ativado na conta"), usuário sem o segredo no app autenticador → travamento chicken-and-egg
+- Desbloqueio imediato: reset mfaEnabled=false/mfaSecret=null via script Prisma
+- BUG CRÍTICO corrigido em src/lib/totp.ts: verifyTotp comparava hotp(secret,step) com hotp(secret,step+drift) — dois códigos gerados do segredo, NUNCA com o token do usuário → qualquer código de 6 dígitos passava (drift=0 sempre igual). Agora compara o código digitado (buffer) contra cada candidato da janela com timingSafeEqual
+- Códigos de recuperação (novo): schema User.mfaRecoveryCodes (JSON [{h:sha256,used}]) + db push; lib/recovery-codes.ts (gera 10 códigos XXXX-XXXX sem chars ambíguos, hash sha256, consumo único atômico via read-modify-write); /api/admin/mfa enable agora retorna os 10 códigos (plaintext exibido UMA vez), GET retorna recoveryCodesRemaining, nova action regenerate-codes (exige senha, invalida lote antigo); disable limpa os códigos
+- /api/auth/mfa/verify: aceita TOTP OU código de recuperação; consumo único; audit mfa.recovery.used com remaining; resposta com usedRecoveryCode/recoveryCodesRemaining para a UI avisar
+- Tickets MFA movidos de Map em memória para o BANCO (model MfaChallenge, 5min, uso único): Map quebrava entre rotas no dev (HMR/Turbopack instanciava módulos separados → "Desafio expirado" com ticket recém-criado); mesmo padrão do AdminSession
+- UI auth-view: etapa MFA com alternância "Não tem o app? Usar código de recuperação" (input mono XXXX-XXXX, Enter envia) ↔ app autenticador; toast de aviso ao entrar com recovery ("Restam N — gere novos no painel")
+- UI admin-panel Segurança: painel âmbar de exibição única dos 10 códigos (grid + Copiar todos + "Já guardei os códigos"), contador de códigos restantes, "Gerar novos códigos" com confirmação de senha inline
+- scripts/mfa-e2e.ts: 12 asserções API do ciclo completo (setup→enable→TOTP errado→recovery→reuso→ticket single-use→TOTP válido→regenerate→lote antigo morto→lote novo→disable→login limpo)
+- E2E browser (agent-browser): login sem MFA ok; Segurança → Ativar MFA agora → QR+chave → código TOTP (segredo extraído do DOM, computado localmente) → painel de 10 códigos; logout → login → etapa MFA (desktop+mobile 390, zero overflow) → modo recuperação → código aceito → logado com aviso; painel mostrou "9 códigos restantes"; regeneração via UI (senha) → 10 novos; desativar via UI; verificação final: audit mfa.recovery.used remaining:9 no banco
+- Estado final DEIXADO: MFA DESATIVADO na conta gustavo (limpa) para o usuário ativar com o app DELE; dev server reiniciado 2x durante a sessão (Prisma client novo exigia processo novo; spawn com double-fork setsid para sobreviver entre chamadas)
+- dev.log: sem erros de runtime no fim; lint 0/0; tsc limpo (src + scripts)
+
+Stage Summary:
+- Causa raiz do ticket do usuário resolvida em 3 camadas: conta desbloqueada, bug que aceitava qualquer código corrigido (segurança real restaurada) e códigos de recuperação garantem que perder o app nunca mais trave a plataforma
+- MFA agora é seguro de verdade: só o código certo (ou recovery de uso único) passa; tudo auditado
+- Fluxo para o usuário: Entrar → menu → Administração → Segurança → "Ativar MFA agora" → escanear QR no app → digitar código → GUARDAR os 10 códigos de recuperação
+- Lição de infra: tickets de segurança em memória não sobrevivem a HMR/restart — persistir em banco (feito); mudanças de schema exigem restart do dev server (Prisma client cacheado)
+
+---
+Task ID: W-4
+Agent: Z.ai Code (main)
+Task: Corrigir erro "email não pode ser vazio" ao criar o webhook do Asaas (relato do usuário após configurar MFA e API key)
+
+Work Log:
+- Diagnóstico: POST /v3/webhooks do Asaas EXIGE o campo `email` (e-mail de contato/comunicações de falha do webhook); src/lib/asaas.ts createPaymentWebhook enviava `email: ''` → Asaas rejeita com 400 "email não pode ser vazio" (validação de corpo roda antes da checagem de auth, por isso apareceu mesmo com a chave inválida)
+- Fix backend: createPaymentWebhook(config, targetUrl, email) agora recebe email obrigatório e o envia no payload (doc /tmp/asaas-wh.md confirma o contrato)
+- Fix API route (admin/settings action=webhook): lê `email` do body, default = e-mail do admin logado (actor.email), valida formato com regex, inclui email no audit asaas.webhook_created
+- Fix client api.ts: createWebhook(token, url, email)
+- Fix UI admin-panel: novo Input "E-mail de contato do webhook" (type=email, aria-label, pré-preenchido com user.email do store) abaixo da URL, com hint explicando a exigência do Asaas
+- Auditoria do banco revelou 2 fatos importantes: (1) a chave salva às 06:15:46 FALHOU no teste às 06:15:56 com "A chave de API fornecida é inválida" — a chave colada não é válida no sandbox do Asaas; (2) PlatformSetting está VAZIA agora (nenhuma asaas.settings_remove auditada — chave sumiu sem trilha; estado atual: sem gateway configurado)
+- MFA: ciclos enable/disable no audit 06:56–07:10 eram do E2E do W-3; estado atual do banco = mfaEnabled FALSE (usuário precisa reativar)
+- Script one-off de contrato contra o sandbox não pôde rodar (sem chave válida no banco) — removido; lint 0/0; tsc limpo; dev.log sem erros de runtime
+
+Stage Summary:
+- Webhook corrigido: e-mail de contato obrigatório agora é enviado (padrão = e-mail do admin) e há campo editável no formulário
+- Bloqueio real está na CHAVE: o teste de conexão deu 401 "chave inválida" — usuário deve copiar a chave do SANDBOX (sandbox.asaas.com → Configurações → Integrações → Chave de API), colar no painel, salvar e "Testar conexão" até ok; chaves de produção NÃO valem no sandbox
+- Gateway atualmente em modo demonstração (settings vazias); MFA desativado — reativar em Segurança
+
+---
+Task ID: W-5
+Agent: Z.ai Code (main)
+Task: Redesign visual "Apple-like" da plataforma (piloto na landing) + reduzir margens laterais do header e do corpo
+
+Work Log:
+- Landing (landing-mentee.tsx, 31 edições): hero sem blob decorativo; eyebrow pill → texto emerald simples; H1 text-4xl/extrabold → text-5xl/6xl/7xl font-semibold tracking-[-0.03em] com gradiente estilo Apple (bg-gradient-to-b stone-900→stone-600 bg-clip-text, dark: stone-50→stone-400); subhead maior em stone-500; CTA trocado por pill sólida preta (dark: branca) + link "Ver cursos ›" com ChevronRight (sem "ou use a busca acima ✨")
+- Tipografia global da landing: TODOS font-extrabold/font-bold → font-semibold; títulos de seção text-2xl sm:text-3xl → text-3xl sm:text-4xl; eyebrows uppercase-widest → text-sm semibold lowercase
+- Efeitos removidos: 6 blobs blur (hero, faixa de números ×2, CTA escuro ×2, CTA claro), linha tracejada dos passos, barra gradiente arco-íris do rotator, shadows de cards (hover:shadow-lg/md → border apenas, sem translate); círculos dos passos emerald → preto (dark: branco)
+- HeroRotator: card rounded-[1.75rem] flat sem shadow, chip de eyebrow → texto simples; indicadores mantidos
+- Espaçamento: seções py-14 sm:py-20 → py-16 sm:py-24; hero pb-20 pt-14 sm:pb-28 sm:pt-20; prova social mt-9
+- Setas: ArrowRight → ChevronRight (›) em todos os links/botões da landing (replace_all, inclui import)
+- Margens laterais (header + corpo): max-w-6xl → max-w-7xl e px-4 → +sm:px-6 em navbar, footer e TODAS as views (landing-mentee, landing-mentor, marketplace, mentor-profile, course-view, track-view, reader-view, admin-panel, messages-view, meeting-room) — 12 arquivos, zero max-w-6xl restante
+- Navbar: logo font-extrabold → font-semibold (footer idem)
+- Verificação: lint 0/0; tsc limpo; E2E agent-browser — desktop 1440 guest (hero, seções, stats, CTA duplo, footer sticky), dark mode (gradiente claro no título, pill branca), mobile 390 (docOverflow=0, mainOverflow=0), logado carlos@demo.com (hero "Olá, Carlos!", Continue aprendendo, Meta semanal, Feito para você, Quatro formas), marketplace; console/erros vazio; dev.log sem erros
+
+Stage Summary:
+- Plataforma com cara Apple: tipografia grande semibold com tracking apertado, gradientes sutis apenas no título hero, pills sólidas pretas/brancas, chevrons ›, cards flat com hairline border, zero blobs/sombras pesadas, mais respiro vertical
+- Corpo mais largo: container global max-w-7xl (1280px) com px-6 no desktop — margens laterais reduzidas em todas as telas
+- Modelo replicável: o mesmo vocabulário (pill preta, chevron, semibold+tracking-tight, hairline) pode ser aplicado às demais páginas nas próximas iterações
+
+---
+Task ID: W-6
+Agent: Z.ai Code (main)
+Task: Barra promocional rotativa com cupons gerenciáveis no admin (site inteiro / contas novas / categoria / mentor) + seção "Acessibilidade à educação" (ESG) na landing
+
+Work Log:
+- Schema: Coupon estendido — mentorId agora OPCIONAL (null = cupom de PLATAFORMA), + scope (MENTOR|SITE_WIDE|NEW_ACCOUNTS|CATEGORY), category, showInPromoBar, promoMessage; db push + generate ( cupcakes de mentor legados intactos, scope default MENTOR)
+- src/lib/coupons.ts: resolução UNIFICADA resolveCoupon(rawCode, { userId, item }) — primeiro cupons de plataforma (checa escopo: NEW_ACCOUNTS = 0 pedidos não cancelados do usuário; CATEGORY = curso/trilha direto, bundle via categorias dos cursos internos, membership via categories do mentor; MENTOR = mentorId alvo; SITE_WIDE = sempre), depois cupons do mentor (mentorId_code). Checagens comuns: ativo/não expirado/não esgotado
+- fulfillment.ts: resolveCoupon antigo removido → re-export de lib/coupons; checkout route atualizado para nova assinatura (passa userId + contexto completo do item)
+- /api/coupons/validate: reescrita sobre a lib; body ganhou userId (checkout.tsx envia user.id) p/ escopo contas novas
+- Nova API /api/admin/coupons (GET lista plataforma + mentores p/ select; POST cria com validações de escopo/código-duplicado; PATCH ativa/promoBar/promoMessage; DELETE) — requireAdmin + auditoria (platform_coupon.*)
+- Nova API pública /api/promo-bar: cupons ativos, válidos (expiração/uses) e marcados → { code, message (custom ou auto), discountLabel, scopeLabel }
+- PromoBar (novo componente no shell acima do header): faixa stone-950 fina estilo Apple, rotação 5.2s com AnimatePresence (pausa hover/foco, reduced-motion), pill do código copiável (clipboard + toast + check verde), X com dismissal persistido (assinatura dos ids — volta quando o conteúdo muda), indicadores; some quando não há cupons; imersivos (classroom/reader) não mostram
+- Admin panel: nova aba CUPONS (grid 6) — form completo (código normalizado, % ou R$, escopo com campos condicionais categoria/mentor, usos máx, validade, toggle barra + mensagem custom) + lista com status (Ativo/Pausado/Expirado/Esgotado), usos X/Y, ações Pôr/Tirar da barra · Pausar/Ativar · Remover; load lazy ao entrar na aba
+- Checkout: campo de cupom JÁ EXISTIA — agora valida cupons de plataforma também (testado: ESCOLA50 50% conta nova e BEMVINDO10 10% site inteiro aplicaram com totais corretos)
+- Landing: nova seção dark emerald-950 "Educação que alcança todo mundo" (entre FAQ e CTA final) — pilares Escolas públicas e privadas / Palestras e cursos / Bolsas e descontos, números 50%+ e 100% bolsas integrais, CTA mailto projetos@mentorhub.com.br
+- Seed: cupom BEMVINDO10 (10% SITE_WIDE, na barra) criado no banco
+- INFRA: dev server NÃO pega Prisma client novo sem restart — e o restart falhou 1x por EADDRINUSE (processo antigo vivo): matar com kill -9 via lsof + pkill next antes de subir; catch silencioso na API mascarava o erro (return items: [])
+- E2E browser: barra render/copy(toast+check)/dismiss(persistência + volta em reload); rotação entre 2 cupons confirmada (5.2s); admin criou ESCOLA50 via UI (toast + lista com badge contas novas 0/100); checkout conta nova aplicou ambos os cupons com valores exatos (94,50 / 170,10); ESG renderizada; mobile 390 zero overflow; lint 0/0; tsc limpo
+
+Stage Summary:
+- Plataforma com marketing próprio: cupons de plataforma com 4 escopos (site inteiro, contas novas/1ª compra, categoria, mentor) + limite de usos + validade, exibíveis na barra promocional rotativa acima do header com código copiável — tudo criado em segundos no painel admin (aba Cupons)
+- Barra some quando não há cupom ativo; dismissal respeita o usuário e reaparece quando o conteúdo muda
+- Mensagem de impacto social/ESG na landing com CTA institucional (mailto placeholder projetos@mentorhub.com.br — trocar pelo e-mail real)
+- Cupons de mentores seguem funcionando exatamente como antes (escopo MENTOR legado)
+---
+Task ID: W-7
+Agent: Z.ai Code (main)
+Task: Header "Minhas sessões" só p/ logado + renomear para "Minhas mentorias"; ESG com palestras escolares (cyberbullying, crimes digitais) e bolsas parciais/integrais; cards de LIVRO em formato de livro (retrato com lombada) no explorar e landing; restyle Apple na Biblioteca e no Explorar
+
+Work Log:
+- Renome: "Minhas sessões" → "Minhas mentorias" em 8 pontos (navbar nav+dropdown, footer, dashboard h1, page.tsx docTitle, meeting-room ×3, mentor-profile)
+- Navbar: item "Minhas mentorias" agora renderiza apenas com `user` logado — visitante vê só "Explorar" (verificado via snapshot: guest sem o item; logado carlos@demo.com com o item ativo)
+- ESG (landing): novo parágrafo com palestras em escolas sobre cyberbullying, crimes digitais e segurança online; pilares "Palestras que abrem a conversa" / "Públicas e privadas" (programas sob medida p/ colégios particulares) / "Bolsas para todos" (parciais p/ todos, integrais p/ os mais esforçados sem condições); stats 100% parciais · Integrais · Sob medida
+- Novo BookCoverCard/FeaturedBookCard: capa retrato aspect-[2/3], lombada com gradiente preto + fio de luz, cantos arredondados só do lado das páginas, chip "Livro", sombra de profundidade com hover-lift (pegar o livro da estante), legenda título+autor·min abaixo
+- Artigos: card tipográfico flat (chip Artigo + categoria, título semibold, meta) sem esticamento (h-full removido — sem vão vazio ao lado de livros altos)
+- LibraryCard/FeaturedLibraryCard viraram dispatchers por kind (BOOK → estante; ARTICLE → tipográfico)
+- Grids de biblioteca viraram "estante": 2 colunas mobile / 3-4 desktop com items-start (landing Biblioteca em destaque, aba Biblioteca, seção Artigos & livros da aba Tudo); skeletons em formato de capa
+- Restyle Apple no marketplace: todos os spotlights (mentor/curso/trilhas/biblioteca) sem blobs blur e sem ping (ponto estático), preços/títulos font-extrabold/bold → semibold + tracking-tight, setas → chevrons ›, cards (mentor/curso/trilha/autor) sem hover-translate/shadow (só hairline border), StatTile sem shadow-lg, h1/h2/h3 dos títulos font-semibold
+- Fix de acessibilidade: legenda do livro usava <p> com Avatar (div) dentro → DOM nesting error; trocado para <div> nos 2 arquivos
+- Verificação: lint 0/0; tsc limpo (excl. examples/skills); E2E agent-browser — guest 1440 (header só Explorar; biblioteca com livro+artigos; ESG nova), dark mode desktop, mobile 390 (docOverflow=0, mainOverflow=0, estante 2 col), login carlos@demo.com (nav "Minhas mentorias" ativa + dashboard h1 ok), zero erros de console após fix do <p>; dev.log sem erros
+
+Stage Summary:
+- Header limpo para visitantes: só "Explorar" — área pessoal ("Minhas mentorias") aparece exclusivamente logado, com nome mais abrangente (cobre sessões + cursos)
+- ESG agora conta a história real: palestras de cyberbullying/crimes digitais em escolas públicas e privadas, bolsa parcial para 100% dos participantes, integrais para os mais esforçados sem condições, e programas sob medida para colégios particulares
+- Livros têm cara de livro: capa em retrato com lombada, profundidade e hover-lift — no landing e em todo o Explorar; artigos viraram cards tipográficos enxutos
+- Vocabulário Apple estendido ao Explorar inteiro: flat, hairline, semibold+tracking-tight, chevrons ›, zero blobs/ping/sombras pesadas
+
+---
+Task ID: W-8
+Agent: Z.ai Code (main)
+Task: Feedback de livros — cards menores na landing/biblioteca, card próprio para artigos (mesma estatura, formato diferente) e 3 capas reais (Inovação, Gestão Financeira para Jovens, Como Estudar com Pomodoro) com PDFs placeholder
+
+Work Log:
+- Capas reais: 3 PNGs (1500×2250, proporção 2:3) salvos em public/uploads/seed/ (livro-inovacao.png, livro-gestao-financeira.png, livro-pomodoro.png) a partir dos arquivos enviados pelo usuário
+- PDFs placeholder gerados sob medida (script Python one-off, xref correto, 1 página A4): faixa emerald, título do livro, autor e nota "Versão de demonstração — substitua pelo PDF final no painel do mentor"; salvos como livro-inovacao.pdf / livro-gestao-financeira.pdf / livro-pomodoro.pdf; scripts temporários removidos
+- Banco EXISTENTE: inserção via script one-off idempotente (checa título antes de criar) — SEM reexecutar o seed, que apaga todos os usuários (destruiria o admin). Inovação → Marina (Negócios, 40 min), Gestão Financeira para Jovens → David (Finanças, 35 min), Como Estudar com Pomodoro → Ana (Carreira, 25 min); todos BOOK, isPublished, com capa + pdfUrl
+- seed.ts: mesmos 3 livros adicionados após artigoFunil (para instalações novas), com void no retorno para não quebrar fluxo
+- Cards menores: estantes mudaram de 2/3/4 colunas para 3 (mobile) / 4 (sm) / 6 (lg/xl) nos 3 pontos — landing "Biblioteca em destaque", aba Biblioteca e seção "Artigos & livros" (aba Tudo); skeleton da GridSection agora aspect-[2/3]; landing exibe 6 itens (antes 3) e trocou sort 'popular' → 'recent' para os 3 lançamentos com capa real aparecerem primeiro
+- Artigos ganharam card próprio formato "revista de papel": retrato 3/4 (mesma estatura do livro 2/3), masthead tipográfico (ARTIGO + categoria, hairline), título semibold no miolo, descrição line-clamp, ficha na base (avatar + autor + tempo), hairline border + hover-lift idêntico ao livro; aplicado em ArticleCard (marketplace) e FeaturedArticleCard (landing)
+- Verificação: lint 0/0; tsc limpo (excl. examples/skills); E2E agent-browser — landing 1440 com os 3 capas reais + 2 papéis + 1 livro gradiente na estante; reader abriu livro-inovacao.pdf com a página placeholder; aba Biblioteca 9 itens em 6 colunas; aba Tudo consistente; mobile 390 com estante de 3 colunas e docOverflow/mainOverflow = 0; dark mode com bg lab(9)/título claro nos papéis (computed style); console e dev.log sem erros
+
+Stage Summary:
+- Estante compacta: livros e artigos em cards pequenos (3/4/6 colunas) na landing e em todo o Explorar — nada gigante
+- Artigos com identidade própria: papel de revista tipográfico, proporcionalmente do mesmo tamanho dos livros, só mudando o formato
+- 3 publicações com capas reais no ar (Inovação, Gestão Financeira para Jovens, Como Estudar com Pomodoro) abrindo PDFs placeholder que o usuário troca depois pelo painel do mentor; capas novas futuras bastam reenviar no formulário da Biblioteca

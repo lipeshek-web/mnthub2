@@ -8,6 +8,15 @@ export interface UserDTO {
   avatarUrl?: string | null
   /** true quando o usuário possui perfil de mentor cadastrado */
   isMentor?: boolean
+  /** Saldo de créditos de indicação em centavos (R$ 10 = 1000) */
+  creditCents?: number
+  /** Papel na plataforma: USER (padrão) ou ADMIN (painel de administração) */
+  role?: 'USER' | 'ADMIN' | string
+  blocked?: boolean
+  /** Segundo fator (TOTP) ativo nesta conta */
+  mfaEnabled?: boolean
+  /** Token da sessão administrativa (só admins, emitido no login) */
+  adminToken?: string | null
 }
 
 export interface SocialLinksDTO {
@@ -236,6 +245,10 @@ export interface CourseListItemDTO {
   liveCount: number
   mentorshipCount: number // sessões de mentoria 1:1 incluídas
   studentCount: number
+  /** Nota média do curso (0 = sem avaliações de curso) */
+  rating: number
+  /** Nº de avaliações de alunos do curso */
+  reviewCount: number
   coverUrl?: string | null
   createdAt: string
 }
@@ -247,6 +260,13 @@ export interface CourseDetailDTO extends CourseListItemDTO {
   themes: CourseThemeDTO[]
   /** Preenchido quando userId é informado e o usuário está inscrito */
   enrollment: { completedLessonIds: string[] } | null
+  /** Avaliações do curso (públicas) + resumo — preenchido no detalhe */
+  reviews: CourseReviewDTO[]
+  reviewSummary: { rating: number; count: number; distribution: number[] }
+  /** Avaliação do próprio usuário (quando logado) */
+  myReview: { rating: number; comment: string } | null
+  /** Código do certificado do usuário neste curso (quando emitido) */
+  certificateCode: string | null
 }
 
 export interface CourseThemeDTO {
@@ -261,6 +281,140 @@ export interface EnrolledCourseDTO {
   enrolledAt: string
   completedLessonIds: string[]
   course: CourseListItemDTO
+}
+
+// ==================== NOTIFICAÇÕES ====================
+
+export type NotificationKind =
+  | 'booking_new'
+  | 'booking_confirmed'
+  | 'booking_cancelled'
+  | 'booking_completed'
+  | 'review_new'
+  | 'lesson_new'
+  | 'enrollment_new'
+  | 'course_review_new'
+  | 'purchase_new'
+  | string
+
+export interface NotificationDTO {
+  id: string
+  kind: NotificationKind
+  title: string
+  body?: string | null
+  linkView?: 'dashboard' | 'course' | 'onboarding' | 'messages' | 'referrals' | null
+  refId?: string | null
+  read: boolean
+  createdAt: string
+}
+
+export interface NotificationsResponseDTO {
+  unreadCount: number
+  items: NotificationDTO[]
+}
+
+// ==================== MENSAGENS DIRETAS (chat) ====================
+
+export interface MessageDTO {
+  id: string
+  body: string
+  mine: boolean
+  read: boolean
+  createdAt: string
+}
+
+export interface ThreadDTO {
+  peer: { id: string; name: string; avatarUrl: string | null; isMentor: boolean }
+  lastBody: string
+  lastAt: string
+  lastMine: boolean
+  unread: number
+}
+
+export interface MessagesResponseDTO {
+  peer: { id: string; name: string; avatarUrl: string | null; isMentor: boolean; headline?: string | null }
+  items: MessageDTO[]
+}
+
+export interface ThreadsResponseDTO {
+  unreadTotal: number
+  threads: ThreadDTO[]
+}
+
+// ==================== AVALIAÇÕES DE CURSO ====================
+
+export interface CourseReviewDTO {
+  id: string
+  rating: number
+  comment: string
+  createdAt: string
+  student: { id: string; name: string; avatarUrl: string | null }
+}
+
+export interface CourseReviewsResponseDTO {
+  rating: number
+  count: number
+  distribution: number[] // [5★, 4★, 3★, 2★, 1★]
+  items: CourseReviewDTO[]
+}
+
+// ==================== CERTIFICADOS ====================
+
+export interface CertificateDTO {
+  code: string
+  studentName: string
+  courseTitle: string
+  category: string
+  mentorName: string
+  mentorHeadline: string
+  totalMin: number
+  issuedAt: string
+}
+
+// ==================== CUPONS ====================
+
+export interface CouponDTO {
+  id: string
+  code: string
+  percentOff: number | null
+  amountOff: number | null
+  maxUses: number | null
+  uses: number
+  expiresAt: string | null
+  isActive: boolean
+  createdAt: string
+}
+
+export interface CouponValidationDTO {
+  ok: boolean
+  code: string
+  label: string
+  discount: number
+  finalPrice: number
+}
+
+// ==================== FINANCEIRO DO MENTOR ====================
+
+export interface FinanceDTO {
+  totalRevenue: number
+  productsRevenue: number
+  sessionsRevenue: number
+  sessionsCount: number
+  last30Revenue: number
+  ordersCount: number
+  avgTicket: number
+  totalDiscount: number
+  monthSeries: { label: string; revenue: number; orders: number }[] // últimos 6 meses
+  byProduct: { id: string; title: string; revenue: number; orders: number }[]
+  recentOrders: {
+    id: string
+    itemTitle: string
+    amount: number
+    discount: number
+    couponCode: string | null
+    channel: string
+    createdAt: string
+  }[]
 }
 
 // ==================== TRILHAS ====================
@@ -418,7 +572,7 @@ export interface PaymentMethod {
 
 export interface OrderDTO {
   id: string
-  itemKind: 'COURSE' | 'TRACK' | string
+  itemKind: 'COURSE' | 'TRACK' | 'BUNDLE' | string
   itemTitle: string
   amount: number
   paymentMethod: string
@@ -448,4 +602,314 @@ export interface TrackingStatsDTO {
   bySource: { source: string; pageviews: number; purchases: number; revenue: number }[]
   byCourse: { courseId: string; title: string; purchases: number; revenue: number }[]
   daily: { date: string; pageviews: number; purchases: number }[] // últimos 14 dias
+}
+
+// ==================== IA (tutor, resumos, recomendações) ====================
+
+/** Resumo IA da aula — gerado 1x no servidor e cacheado p/ todos os alunos */
+export interface AiLessonSummaryDTO {
+  summary: string
+  keyPoints: string[]
+  cached: boolean // true = já existia (gerado antes)
+}
+
+/** Mensagem da conversa com o Tutor IA (histórico mantido no cliente) */
+export interface AiTutorChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+/** Curso recomendado pela IA + motivo curto personalizado */
+export interface RecommendationDTO {
+  course: CourseListItemDTO
+  reason: string
+}
+
+export interface RecommendationsDTO {
+  items: RecommendationDTO[]
+  /** true quando veio da IA personalizada; false = fallback popular */
+  generated: boolean
+}
+
+// ==================== PACOTES DE CURSOS (bundles) ====================
+
+export interface BundleCourseDTO {
+  id: string
+  title: string
+  coverUrl?: string | null
+  price: number
+  category: string
+}
+
+export interface BundleDTO {
+  id: string
+  title: string
+  description: string
+  price: number
+  isPublished: boolean
+  createdAt: string
+  mentor: {
+    id: string
+    userId: string
+    name: string
+    headline: string
+    avatarUrl?: string | null
+  }
+  courses: BundleCourseDTO[]
+  courseCount: number
+  /** Soma dos preços dos cursos individuais (valor cheio) */
+  coursesTotal: number
+  /** Desconto implícito do pacote (0..100, arredondado) */
+  discountPercent: number
+}
+
+export interface BundleDetailDTO extends BundleDTO {
+  /** IDs de cursos do pacote em que o usuário já está inscrito (checkout) */
+  myEnrolledCourseIds?: string[]
+}
+
+// ==================== PROGRAMA DE INDICAÇÃO ====================
+
+export interface ReferralEntryDTO {
+  id: string
+  /** Nome do convidado (nunca e-mail) */
+  referredName: string
+  status: 'PENDING' | 'REWARDED' | string
+  createdAt: string
+  rewardedAt: string | null
+}
+
+export interface ReferralsDTO {
+  code: string
+  /** Link completo de convite (origin + ?ref=CODE) */
+  shareUrl: string
+  /** Saldo do usuário em centavos (R$ 10 = 1000) */
+  creditCents: number
+  invitedCount: number
+  convertedCount: number
+  earnedCents: number // total ganho com indicações
+  pendingCount: number
+  referrals: ReferralEntryDTO[]
+}
+
+// ==================== ASSINATURA DO MENTOR (membership) ====================
+
+/** Assinante do plano (visão do painel do mentor) */
+export interface MembershipSubscriberDTO {
+  id: string
+  name: string
+  avatarUrl?: string | null
+  status: 'ACTIVE' | 'CANCELLED' | string
+  startedAt: string
+  renewsAt: string
+}
+
+export interface MembershipDTO {
+  id: string
+  title: string
+  description: string
+  /** Mensalidade em R$ */
+  price: number
+  /** Dia da semana da sessão em grupo mensal (0=Dom..6=Sáb) */
+  groupSessionDay: number
+  /** Hora naive da sessão em grupo ("HH:mm") */
+  groupSessionTime: string
+  isPublished: boolean
+  createdAt: string
+  mentor: {
+    id: string
+    userId: string
+    name: string
+    headline: string
+    avatarUrl?: string | null
+  }
+  /** Cursos publicados incluídos no plano */
+  coursesCount: number
+  /** Assinantes ativos (painel do mentor) */
+  subscriberCount?: number
+  /** Estado do usuário na requisição (view pública; null = não assinante) */
+  myStatus?: 'ACTIVE' | 'CANCELLED' | null
+  /** Fim do ciclo pago (quando assinante) */
+  renewsAt?: string | null
+  /** Lista de assinantes (apenas no painel do mentor) */
+  subscribers?: MembershipSubscriberDTO[]
+}
+
+// ==================== META SEMANAL DE ESTUDOS ====================
+
+export interface WeeklyGoalDTO {
+  targetLessons: number
+  /** Aulas concluídas na semana atual (segunda = início) */
+  completedLessons: number
+  goalAchieved: boolean
+  /** "YYYY-MM-DD" da segunda-feira da semana atual */
+  weekStart: string
+  /** Concluídas nas últimas 4 semanas (mais antiga primeiro) */
+  history: number[]
+  /** true = meta definida pelo usuário; false = padrão (3 aulas) */
+  isCustom: boolean
+}
+
+// ==================== LEMBRETES AUTOMÁTICOS ====================
+
+export interface ReminderRunDTO {
+  created: number
+  /** Kinds criados nesta execução (dedupe no servidor) */
+  kinds: string[]
+}
+
+// ==================== PAGAMENTOS (GATEWAY ASAAS) ====================
+
+export interface PaymentsConfigDTO {
+  /** ASAAS = gateway real (sandbox/produção); SIMULADO = modo demonstração */
+  gateway: 'ASAAS' | 'SIMULADO'
+  env: 'sandbox' | 'production' | null
+}
+
+export interface PendingPaymentDTO {
+  id: string
+  gatewayPaymentId?: string | null
+  billingType: 'PIX' | 'CREDIT_CARD' | 'BOLETO' | string
+  status: string
+  value: number
+  invoiceUrl?: string | null
+  env?: 'sandbox' | 'production' | null
+  pix?: { payload: string; encodedImage: string } | null
+}
+
+export interface PaymentStatusDTO {
+  status: string
+  orderStatus: string
+  billingType: string
+  invoiceUrl?: string | null
+}
+
+// ==================== PAINEL ADMIN ====================
+
+export interface AdminStatsDTO {
+  totals: {
+    users: number
+    mentors: number
+    courses: number
+    tracks: number
+    libraryItems: number
+    admins: number
+    bookingsPending: number
+    paymentsPending: number
+  }
+  revenue: {
+    totalCents: number
+    ordersCount: number
+    last30dCents: number
+    last30dOrders: number
+  }
+  asaas: {
+    configured: boolean
+    env: 'sandbox' | 'production'
+    webhookConfigured: boolean
+  }
+  recentPayments: Array<{
+    id: string
+    gateway: string
+    status: string
+    value: number
+    billingType: string
+    createdAt: string
+    userName: string
+    itemTitle: string
+  }>
+}
+
+export interface AdminUserDTO {
+  id: string
+  name: string
+  email: string
+  role: string
+  blocked: boolean
+  mfaEnabled: boolean
+  isMentor: boolean
+  creditCents: number
+  enrollments: number
+  orders: number
+  createdAt: string
+}
+
+export interface AdminUsersResponseDTO {
+  users: AdminUserDTO[]
+  total: number
+  page: number
+  pages: number
+}
+
+export interface AsaasSettingsDTO {
+  configured: boolean
+  env: 'sandbox' | 'production'
+  maskedKey: string
+  webhookConfigured: boolean
+}
+
+// ==================== CUPONS DE PLATAFORMA + BARRA PROMOCIONAL ====================
+
+export interface PlatformCouponDTO {
+  id: string
+  code: string
+  percentOff: number | null
+  amountOff: number | null
+  scope: 'SITE_WIDE' | 'NEW_ACCOUNTS' | 'CATEGORY' | 'MENTOR'
+  category: string | null
+  mentorId: string | null
+  mentorName: string | null
+  maxUses: number | null
+  uses: number
+  expiresAt: string | null
+  isActive: boolean
+  showInPromoBar: boolean
+  promoMessage: string | null
+  createdAt: string
+}
+
+export interface AdminCouponsResponseDTO {
+  coupons: PlatformCouponDTO[]
+  mentors: { id: string; name: string }[]
+}
+
+export interface PromoBarItemDTO {
+  id: string
+  code: string
+  message: string
+  discountLabel: string
+  scopeLabel: string
+}
+
+export interface AdminPaymentDTO {
+  id: string
+  gateway: string
+  gatewayPaymentId?: string | null
+  billingType: string
+  status: string
+  orderStatus: string
+  value: number
+  invoiceUrl?: string | null
+  lastEvent?: string | null
+  createdAt: string
+  confirmedAt?: string | null
+  userName: string
+  userEmail: string
+  itemTitle: string
+  orderId: string
+}
+
+export interface AdminPaymentsResponseDTO {
+  payments: AdminPaymentDTO[]
+  total: number
+  page: number
+  pages: number
+}
+
+export interface AuditLogDTO {
+  id: string
+  actorName: string
+  action: string
+  meta: string
+  createdAt: string
 }

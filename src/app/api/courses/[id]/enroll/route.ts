@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { awardXp, XP_COURSE, XP_LESSON } from '@/lib/xp'
+import { notify } from '@/lib/notify'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +13,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const userId = String(body?.userId ?? '')
     if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
 
-    const course = await db.course.findUnique({ where: { id } })
+    const course = await db.course.findUnique({
+      where: { id },
+      include: { mentor: { select: { userId: true } } },
+    })
     if (!course) return NextResponse.json({ error: 'Curso não encontrado.' }, { status: 404 })
     if (!course.isPublished) {
       return NextResponse.json({ error: 'Este curso ainda não está publicado.' }, { status: 400 })
@@ -27,6 +31,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (existing) return NextResponse.json({ ok: true, alreadyEnrolled: true })
 
     await db.enrollment.create({ data: { courseId: id, studentId: userId } })
+    // Notifica o mentor sobre o novo aluno
+    await notify({
+      userId: course.mentor.userId,
+      kind: 'enrollment_new',
+      title: `Novo aluno em "${course.title}" 🎉`,
+      body: `${user.name} acabou de se inscrever no seu curso.`,
+      linkView: 'onboarding',
+      refId: course.id,
+    })
     return NextResponse.json({ ok: true, alreadyEnrolled: false })
   } catch (err) {
     console.error('POST /api/courses/[id]/enroll', err)

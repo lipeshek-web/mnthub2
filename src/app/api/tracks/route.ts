@@ -6,6 +6,7 @@ import {
   trackBaseInclude,
   type TrackRow,
 } from '@/lib/tracks-serialize'
+import { normalizeText } from '@/lib/helpers'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,7 +16,7 @@ const LEVELS = ['INICIANTE', 'INTERMEDIARIO', 'AVANCADO']
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams
-    const search = (sp.get('search') || '').trim().toLowerCase()
+    const search = normalizeText((sp.get('search') || '').trim())
     const category = (sp.get('category') || '').trim()
     const sort = sp.get('sort') || 'relevance'
     const mentorUserId = (sp.get('mentorUserId') || '').trim()
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
 
     if (search) {
       items = items.filter((t) =>
-        [t.title, t.description, t.mentor.name, t.category].join(' ').toLowerCase().includes(search)
+        normalizeText([t.title, t.description, t.mentor.name, t.category].join(' ')).includes(search)
       )
     }
     if (category) {

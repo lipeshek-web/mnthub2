@@ -8,51 +8,78 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  bio       String?
-  avatarUrl String?
-  passwordHash String? // scrypt "salt:hash" (null = conta demo antiga)
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  bio           String?
+  avatarUrl     String?
+  passwordHash  String? // scrypt "salt:hash" (null = conta demo antiga)
   // Gamificação do aprendizado
-  xp            Int     @default(0)
-  studyStreak   Int     @default(0) // ofensiva atual (dias consecutivos com estudo)
-  longestStreak Int     @default(0)
+  xp            Int      @default(0)
+  studyStreak   Int      @default(0) // ofensiva atual (dias consecutivos com estudo)
+  longestStreak Int      @default(0)
   lastStudyDate String? // "YYYY-MM-DD" do último dia com atividade de estudo
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  mentorProfile     MentorProfile?
-  bookingsAsMentee  Booking[]      @relation("MenteeBookings")
-  reviews           Review[]
-  enrollments       Enrollment[]
-  orders            Order[]
-  trackingEvents    TrackingEvent[]
-  trackEnrollments  TrackEnrollment[]
-  lessonQuestions   LessonQuestion[]
-  lessonNotes       LessonNote[]
-  quizAttempts      QuizAttempt[]
-  xpEvents          XpEvent[]
+  mentorProfile           MentorProfile?
+  bookingsAsMentee        Booking[]                @relation("MenteeBookings")
+  reviews                 Review[]
+  enrollments             Enrollment[]
+  orders                  Order[]
+  trackingEvents          TrackingEvent[]
+  trackEnrollments        TrackEnrollment[]
+  lessonQuestions         LessonQuestion[]
+  lessonNotes             LessonNote[]
+  quizAttempts            QuizAttempt[]
+  xpEvents                XpEvent[]
+  notifications           Notification[]
+  courseReviews           CourseReview[]           @relation("CourseReviews")
+  certificates            Certificate[]            @relation("Certificates")
+  messagesSent            DirectMessage[]          @relation("MessagesSent")
+  messagesReceived        DirectMessage[]          @relation("MessagesReceived")
+  // Programa de indicação
+  referralCode            String?                  @unique // código do convite (ex: MH-CARLOS22); gerado no 1º acesso
+  creditCents             Int                      @default(0) // saldo de créditos em centavos (R$ 10 = 1000)
+  referralsGiven          Referral[]               @relation("ReferralsGiven")
+  referralReceived        Referral?                @relation("ReferralsReceived")
+  // Assinaturas de membrosia do mentor + meta semanal de estudos
+  membershipSubscriptions MembershipSubscription[]
+  weeklyGoal              WeeklyGoal?
+  // ==================== ADMINISTRAÇÃO DA PLATAFORMA ====================
+  role          String  @default("USER") // USER | ADMIN
+  blocked       Boolean @default(false) // bloqueado não faz login nem consome a plataforma
+  // MFA (TOTP RFC 6238, obrigatório para admins)
+  mfaSecret     String? // segredo base32 (só persistido quando o MFA é confirmado)
+  mfaEnabled    Boolean @default(false)
+  mfaRecoveryCodes String? // JSON [{h: sha256, used: bool}] — códigos de recuperação (hash)
+  // Pagamentos (gateway Asaas)
+  cpfCnpj        String? // documento do pagador (coletado no checkout)
+  asaasCustomerId String? // id do cliente no Asaas (reutilizado entre compras)
+  adminSessions  AdminSession[]
+  mfaChallenges  MfaChallenge[]
+  auditLogs      AuditLog[]
+  payments       Payment[]
 }
 
 model MentorProfile {
-  id              String  @id @default(cuid())
-  userId          String  @unique
-  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   headline        String
   description     String
-  categories      String  @default("[]") // JSON array of category names
-  hourlyRate      Float   @default(0)
-  experienceYears Int     @default(0)
-  languages       String  @default("Português")
-  isPublished     Boolean @default(true)
+  categories      String   @default("[]") // JSON array of category names
+  hourlyRate      Float    @default(0)
+  experienceYears Int      @default(0)
+  languages       String   @default("Português")
+  isPublished     Boolean  @default(true)
   // Redes sociais e portfólio (instagram/github guardam o @handle; linkedin/website guardam a URL)
   instagram       String?
   linkedin        String?
   github          String?
   website         String?
   // Link público rastreável + fotos
-  slug            String? @unique // usado em /?mentor=slug (LP pública p/ tráfego pago)
+  slug            String?  @unique // usado em /?mentor=slug (LP pública p/ tráfego pago)
   coverUrl        String?
   // Tipografia da página do criador (IDs do catálogo em src/lib/fonts.ts; null = padrão da plataforma)
   fontHeading     String? // fonte do nome e títulos
@@ -68,10 +95,13 @@ model MentorProfile {
   courses        Course[]
   tracks         Track[]
   libraryItems   LibraryItem[]
-  bookings       Booking[]      @relation("MentorBookings")
+  bookings       Booking[]         @relation("MentorBookings")
   reviews        Review[]
   orders         Order[]
   trackingEvents TrackingEvent[]
+  coupons        Coupon[]
+  bundles        Bundle[]
+  membership     MentorMembership?
 }
 
 model Availability {
@@ -79,8 +109,8 @@ model Availability {
   mentorId  String
   mentor    MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
   weekday   Int // 0 = Domingo ... 6 = Sábado
-  startHour Float         // ex: 9.5 => 09:30
-  endHour   Float         // ex: 18 => 18:00
+  startHour Float // ex: 9.5 => 09:30
+  endHour   Float // ex: 18 => 18:00
 }
 
 model ContentPost {
@@ -102,7 +132,7 @@ model Booking {
   mentor      MentorProfile @relation("MentorBookings", fields: [mentorId], references: [id], onDelete: Cascade)
   menteeId    String
   mentee      User          @relation("MenteeBookings", fields: [menteeId], references: [id], onDelete: Cascade)
-  startsAt    String        // naive local datetime "YYYY-MM-DDTHH:mm"
+  startsAt    String // naive local datetime "YYYY-MM-DDTHH:mm"
   durationMin Int           @default(60)
   topic       String
   notes       String?
@@ -122,7 +152,7 @@ model Review {
   mentor    MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
   authorId  String
   author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  rating    Int           // 1..5
+  rating    Int // 1..5
   comment   String
   createdAt DateTime      @default(now())
 }
@@ -143,9 +173,9 @@ model Course {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
-  mentorshipCount Int          @default(0) // sessões de mentoria 1:1 incluídas no curso
+  mentorshipCount Int @default(0) // sessões de mentoria 1:1 incluídas no curso
 
-  themes         CourseTheme[]
+  themes CourseTheme[]
 
   lessons        Lesson[]
   enrollments    Enrollment[]
@@ -153,16 +183,19 @@ model Course {
   trackingEvents TrackingEvent[]
   trackItems     TrackItem[]
   questions      LessonQuestion[]
+  reviews        CourseReview[]
+  certificates   Certificate[]
+  bundleItems    BundleItem[]
 }
 
 /// Tema (módulo) do curso: agrupa aulas em uma sequência organizada
 model CourseTheme {
-  id          String  @id @default(cuid())
+  id          String @id @default(cuid())
   courseId    String
-  course      Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course      Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
   title       String
-  description String  @default("")
-  order       Int     @default(0)
+  description String @default("")
+  order       Int    @default(0)
 
   lessons Lesson[]
 }
@@ -178,8 +211,8 @@ model LibraryItem {
   category    String        @default("Tecnologia")
   level       String        @default("INICIANTE") // INICIANTE | INTERMEDIARIO | AVANCADO
   coverUrl    String?
-  pdfUrl      String?       // PDF enviado (livros/artigos em PDF)
-  content     String?       // texto do artigo (alternativa ao PDF)
+  pdfUrl      String? // PDF enviado (livros/artigos em PDF)
+  content     String? // texto do artigo (alternativa ao PDF)
   readingMin  Int           @default(10)
   isPublished Boolean       @default(true)
   createdAt   DateTime      @default(now())
@@ -189,40 +222,41 @@ model LibraryItem {
 }
 
 model Lesson {
-  id          String   @id @default(cuid())
-  courseId    String
-  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  title       String
-  description String   @default("")
-  kind        String   @default("RECORDED") // RECORDED | TEXT | LIVE
-  videoUrl    String?  // URL de vídeo (YouTube etc.) — opcional (em LIVE serve de gravação)
-  content     String?  // conteúdo textual da aula (artigo/apostila) — opcional
-  startsAt    String?  // LIVE: data/hora agendada (naive "YYYY-MM-DDTHH:mm")
-  meetingUrl  String?  // LIVE: link da transmissão (Meet/Zoom/YouTube)
-  attachments String   @default("[]") // JSON [{ name, url }] — anexos para download
-  durationMin Int      @default(10)
-  order       Int      @default(0)
-  themeId     String?  // tema (módulo) do curso — null = sem tema
-  theme       CourseTheme? @relation(fields: [themeId], references: [id], onDelete: SetNull)
+  id            String       @id @default(cuid())
+  courseId      String
+  course        Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title         String
+  description   String       @default("")
+  kind          String       @default("RECORDED") // RECORDED | TEXT | LIVE
+  videoUrl      String? // URL de vídeo (YouTube etc.) — opcional (em LIVE serve de gravação)
+  content       String? // conteúdo textual da aula (artigo/apostila) — opcional
+  startsAt      String? // LIVE: data/hora agendada (naive "YYYY-MM-DDTHH:mm")
+  meetingUrl    String? // LIVE: link da transmissão (Meet/Zoom/YouTube)
+  attachments   String       @default("[]") // JSON [{ name, url }] — anexos para download
+  durationMin   Int          @default(10)
+  order         Int          @default(0)
+  themeId       String? // tema (módulo) do curso — null = sem tema
+  theme         CourseTheme? @relation(fields: [themeId], references: [id], onDelete: SetNull)
   libraryItemId String? // aula de leitura vinculada a um artigo/livro da Biblioteca
-  libraryItem LibraryItem? @relation(fields: [libraryItemId], references: [id], onDelete: SetNull)
-  createdAt   DateTime @default(now())
+  libraryItem   LibraryItem? @relation(fields: [libraryItemId], references: [id], onDelete: SetNull)
+  createdAt     DateTime     @default(now())
 
   questions LessonQuestion[]
   notes     LessonNote[]
   quizzes   Quiz[]
+  aiSummary AiLessonSummary?
 }
 
 model Enrollment {
-  id                 String   @id @default(cuid())
+  id                 String    @id @default(cuid())
   courseId           String
-  course             Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course             Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
   studentId          String
-  student            User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  completedLessonIds String   @default("[]") // JSON array de lesson ids
-  bonusAwarded       Boolean  @default(false) // XP de conclusão (100%) já concedido
+  student            User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  completedLessonIds String    @default("[]") // JSON array de lesson ids
+  bonusAwarded       Boolean   @default(false) // XP de conclusão (100%) já concedido
   completedAt        DateTime? // momento em que atingiu 100%
-  createdAt          DateTime @default(now())
+  createdAt          DateTime  @default(now())
 
   @@unique([courseId, studentId])
 }
@@ -296,6 +330,17 @@ model LessonNote {
   @@unique([lessonId, userId])
 }
 
+/// Resumo IA da aula — gerado 1x no servidor e cacheado para todos os alunos
+model AiLessonSummary {
+  id        String   @id @default(cuid())
+  lessonId  String   @unique
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  summary   String   @default("")
+  keyPoints String   @default("[]") // JSON array de strings (tópicos-chave)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // ==================== TRILHAS ====================
 
 /// Trilha de aprendizado: sequência de cursos + sessões de mentoria 1:1
@@ -345,20 +390,29 @@ model TrackEnrollment {
 
 // ==================== CHECKOUT & TRACKING (tráfego pago) ====================
 
-/// Pedido de curso ou trilha (checkout demonstrativo — pagamentos simulados)
+/// Pedido de curso, trilha ou pacote (checkout via Asaas ou demonstrativo)
 model Order {
-  id            String        @id @default(cuid())
+  id            String            @id @default(cuid())
   courseId      String?
-  course        Course?       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course        Course?           @relation(fields: [courseId], references: [id], onDelete: Cascade)
   trackId       String?
-  track         Track?        @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  track         Track?            @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  bundleId      String?
+  bundle        Bundle?           @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  membershipId  String?
+  membership    MentorMembership? @relation(fields: [membershipId], references: [id], onDelete: Cascade)
   studentId     String
-  student       User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student       User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
   mentorId      String
-  mentor        MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  mentor        MentorProfile     @relation(fields: [mentorId], references: [id], onDelete: Cascade)
   amount        Float
-  paymentMethod String        @default("PIX") // PIX | CREDIT_CARD
-  status        String        @default("PAID") // PAID | REFUNDED
+  paymentMethod String            @default("PIX") // PIX | CREDIT_CARD | BOLETO
+  status        String            @default("PAID") // PENDING (aguardando gateway) | PAID | REFUNDED | CANCELED
+  couponCode    String? // cupom aplicado (se houve)
+  discount      Float             @default(0) // valor descontado em R$ (cupom)
+  creditsUsed   Float             @default(0) // créditos de indicação usados em R$
+
+  payments Payment[]
 
   // Atribuição de tráfego (last-touch) — segregada por origem
   utmSource   String?
@@ -368,22 +422,22 @@ model Order {
   utmTerm     String?
   gclid       String?
   fbclid      String?
-  channel     String   @default("direct") // direct | social | paid_social | paid_search | email | referral
-  landingPage String   @default("platform") // mentor_lp | platform
+  channel     String  @default("direct") // direct | social | paid_social | paid_search | email | referral
+  landingPage String  @default("platform") // mentor_lp | platform
 
   createdAt DateTime @default(now())
 }
 
 /// Eventos de rastreamento (page_view, view_item, begin_checkout, purchase, lead)
 model TrackingEvent {
-  id        String   @id @default(cuid())
-  name      String // page_view | view_item | begin_checkout | purchase | lead
-  mentorId  String?
-  mentor    MentorProfile? @relation(fields: [mentorId], references: [id], onDelete: Cascade)
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  courseId  String?
-  course    Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  id         String         @id @default(cuid())
+  name       String // page_view | view_item | begin_checkout | purchase | lead
+  mentorId   String?
+  mentor     MentorProfile? @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  courseId   String?
+  course     Course?        @relation(fields: [courseId], references: [id], onDelete: SetNull)
   valueCents Int?
 
   utmSource   String?
@@ -393,8 +447,274 @@ model TrackingEvent {
   utmTerm     String?
   gclid       String?
   fbclid      String?
-  channel     String   @default("direct")
+  channel     String  @default("direct")
   path        String?
 
   createdAt DateTime @default(now())
+}
+
+// ==================== NOTIFICAÇÕES ====================
+
+/// Notificação in-app do usuário (sino no header)
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String // booking_new | booking_confirmed | booking_cancelled | booking_completed | review_new | lesson_new | enrollment_new | course_review_new
+  title     String
+  body      String?
+  linkView  String? // view de destino ao clicar: dashboard | course | onboarding
+  refId     String? // id da entidade (bookingId/courseId)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+}
+
+// ==================== AVALIAÇÕES DE CURSO ====================
+
+/// Avaliação do aluno para um curso em que está inscrito (1 por aluno/curso, editável)
+model CourseReview {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User     @relation("CourseReviews", fields: [studentId], references: [id], onDelete: Cascade)
+  rating    Int // 1..5
+  comment   String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([courseId, studentId])
+}
+
+// ==================== CERTIFICADOS ====================
+
+/// Certificado de conclusão de curso (código público verificável)
+model Certificate {
+  id        String   @id @default(cuid())
+  code      String   @unique // ex: MH-7K3F9QX2 — usado em /?cert=CODE
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User     @relation("Certificates", fields: [studentId], references: [id], onDelete: Cascade)
+  issuedAt  DateTime @default(now())
+
+  @@unique([courseId, studentId])
+}
+
+// ==================== CUPONS DE DESCONTO ====================
+
+/// Cupom do mentor (escopo MENTOR, aplicável aos próprios itens) OU da
+/// plataforma (mentorId null, criado no painel admin): site inteiro, apenas
+/// contas novas (1ª compra), categoria ou mentor específico — com opção de
+/// exibição na barra promocional rotativa acima do header.
+model Coupon {
+  id         String         @id @default(cuid())
+  mentorId   String?
+  mentor     MentorProfile? @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  code       String // uppercase sem espaços (único por mentor; plataforma: checagem no app)
+  percentOff Int? // 1..100 (alternativa 1)
+  amountOff  Float? // valor fixo em R$ (alternativa 2)
+  maxUses    Int? // null = ilimitado
+  uses       Int            @default(0)
+  expiresAt  DateTime?
+  isActive   Boolean        @default(true)
+  createdAt  DateTime       @default(now())
+
+  // ---- Cupons de plataforma (mentorId null) ----
+  scope          String  @default("MENTOR") // MENTOR | SITE_WIDE | NEW_ACCOUNTS | CATEGORY
+  category       String? // alvo quando scope = CATEGORY
+  showInPromoBar Boolean @default(false) // aparece na barra rotativa acima do header
+  promoMessage   String? // texto custom da barra (default gerado do desconto)
+
+  @@unique([mentorId, code])
+}
+
+// ==================== PACOTES DE CURSOS (bundles) ====================
+
+/// Pacote promocional: 2+ cursos do próprio mentor vendidos juntos com desconto
+model Bundle {
+  id          String        @id @default(cuid())
+  mentorId    String
+  mentor      MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  title       String
+  description String        @default("")
+  price       Float         @default(0) // preço do pacote (soma dos cursos = valor cheio)
+  isPublished Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  items  BundleItem[]
+  orders Order[]
+}
+
+// ==================== ASSINATURA DO MENTOR (membership) ====================
+
+/// Plano de assinatura mensal do mentor (1 por mentor): acesso a TODOS os
+/// cursos publicados + sessão em grupo mensal. Pagamento simulado no checkout.
+model MentorMembership {
+  id               String        @id @default(cuid())
+  mentorId         String        @unique // 1 plano por mentor
+  mentor           MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  title            String
+  description      String        @default("")
+  price            Float         @default(0) // mensalidade em R$
+  groupSessionDay  Int           @default(3) // dia da semana da sessão em grupo (0=Dom..6=Sáb)
+  groupSessionTime String        @default("19:00") // hora naive "HH:mm"
+  isPublished      Boolean       @default(true)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  subscriptions MembershipSubscription[]
+  orders        Order[]
+}
+
+/// Assinatura ativa/cancelada de um aluno no plano do mentor.
+/// Cancelamento mantém acesso até renewsAt (fim do ciclo pago).
+model MembershipSubscription {
+  id           String           @id @default(cuid())
+  membershipId String
+  membership   MentorMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mentorId     String // denormalizado p/ consultas rápidas de acesso
+  status       String           @default("ACTIVE") // ACTIVE | CANCELLED
+  startedAt    DateTime         @default(now())
+  renewsAt     DateTime // startedAt + 30 dias (fim do ciclo pago)
+  cancelledAt  DateTime?
+
+  @@unique([membershipId, userId])
+  @@index([userId, status])
+  @@index([mentorId, status])
+}
+
+/// Meta semanal de estudos do aluno (alvo em aulas concluídas por semana).
+/// O progresso é calculado no servidor a partir dos XpEvent kind=LESSON.
+model WeeklyGoal {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetLessons Int      @default(3) // 1..35
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+/// Curso dentro de um pacote (ordem define a exibição)
+model BundleItem {
+  id       String @id @default(cuid())
+  bundleId String
+  bundle   Bundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  order    Int    @default(0)
+
+  @@unique([bundleId, courseId])
+}
+
+// ==================== PROGRAMA DE INDICAÇÃO ====================
+
+/// Indicação: quem convidou → quem entrou. Recompensa em créditos quando o
+/// convidado conclui a 1ª compra paga (status PENDING → REWARDED).
+model Referral {
+  id         String    @id @default(cuid())
+  referrerId String
+  referrer   User      @relation("ReferralsGiven", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredId String    @unique // um usuário só pode ter sido indicado 1x
+  referred   User      @relation("ReferralsReceived", fields: [referredId], references: [id], onDelete: Cascade)
+  code       String // código usado no cadastro
+  status     String    @default("PENDING") // PENDING | REWARDED
+  rewardedAt DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+// ==================== MENSAGENS DIRETAS (chat aluno ↔ mentor) ====================
+
+/// Mensagem direta entre dois usuários (thread por par; usada no chat antes da reserva)
+model DirectMessage {
+  id          String    @id @default(cuid())
+  senderId    String
+  sender      User      @relation("MessagesSent", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User      @relation("MessagesReceived", fields: [recipientId], references: [id], onDelete: Cascade)
+  body        String
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([recipientId, readAt])
+  @@index([senderId, recipientId, createdAt])
+}
+
+// ==================== PAGAMENTOS (GATEWAY ASAAS) ====================
+
+/// Cobrança vinculada a um pedido. Com chave Asaas configurada, o dinheiro real
+/// passa pelo gateway (sandbox em testes); sem chave, o pedido é marcado como
+/// SIMULADO para o modo demonstração.
+model Payment {
+  id                String    @id @default(cuid())
+  orderId           String    @unique
+  order             Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gateway           String    @default("SIMULATED") // ASAAS | SIMULATED
+  gatewayPaymentId  String?   @unique // id da cobrança no Asaas (pay_xxx)
+  billingType       String    @default("PIX") // PIX | CREDIT_CARD | BOLETO
+  status            String    @default("PENDING") // PENDING | RECEIVED | CONFIRMED | OVERDUE | REFUNDED | CANCELED
+  value             Float // valor cobrado no gateway (R$)
+  invoiceUrl        String? // fatura hospedada do Asaas (checkout hosted)
+  externalReference String? // externalReference enviada ao Asaas (= id do Order)
+  lastEvent         String? // último evento de webhook/processamento
+  lastEventAt       DateTime?
+  confirmedAt       DateTime? // momento em que o pagamento caiu (RECEIVED/CONFIRMED)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+}
+
+/// Configuração da plataforma (chave/vault leve): chave API do Asaas, ambiente,
+/// token do webhook etc. Editável apenas pelo painel admin.
+model PlatformSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+/// Sessão administrativa: token emitido APÓS login com senha (+ MFA quando
+/// ativo). Todo endpoint admin exige o header x-admin-token.
+model AdminSession {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// Desafio MFA (2º fator do login) — persistido no banco para sobreviver a
+// reload do servidor e funcionar entre rotas/processos. Uso único, 5 min.
+model MfaChallenge {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+/// Trilha de auditoria das ações administrativas (quem fez o quê, quando)
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String? // null = sistema (webhook)
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorName String   @default("")
+  action    String // ex: asaas.settings_update | user.promote | payment.confirm
+  meta      String   @default("") // JSON curto com contexto
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

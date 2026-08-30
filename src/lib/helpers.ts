@@ -155,6 +155,11 @@ export function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] ?? name
 }
 
+/** Normaliza texto para busca: minúsculas e sem acentos ("Inglês" → "ingles") */
+export function normalizeText(value: string): string {
+  return value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
 // ---------- Redes sociais e portfólio ----------
 
 export type SocialKind = 'instagram' | 'linkedin' | 'github' | 'website'

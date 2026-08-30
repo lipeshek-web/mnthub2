@@ -1,85 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { courseBaseInclude, serializeCourse } from '@/lib/course-serialize'
+import { normalizeText } from '@/lib/helpers'
 
 export const dynamic = 'force-dynamic'
 
 const LEVELS = ['INICIANTE', 'INTERMEDIARIO', 'AVANCADO']
-
-function baseInclude() {
-  return {
-    mentor: {
-      include: {
-        user: { select: { id: true, name: true, avatarUrl: true } },
-        reviews: { select: { rating: true } },
-      },
-    },
-    lessons: { select: { durationMin: true, kind: true } },
-    enrollments: { select: { id: true } },
-  }
-}
-
-function serialize(course: {
-  id: string
-  title: string
-  description: string
-  category: string
-  level: string
-  price: number
-  coverUrl: string | null
-  isPublished: boolean
-  createdAt: Date
-  updatedAt: Date
-  mentorshipCount: number
-  mentor: {
-    id: string
-    userId: string
-    headline: string
-    user: { id: string; name: string; avatarUrl: string | null }
-    reviews: { rating: number }[]
-  }
-  lessons: { durationMin: number; kind: string }[]
-  enrollments: { id: string }[]
-}) {
-  const rating =
-    course.mentor.reviews.length > 0
-      ? Math.round(
-          (course.mentor.reviews.reduce((a, r) => a + r.rating, 0) / course.mentor.reviews.length) * 10
-        ) / 10
-      : 0
-  return {
-    id: course.id,
-    title: course.title,
-    description: course.description,
-    category: course.category,
-    level: course.level,
-    price: course.price,
-    isPublished: course.isPublished,
-    coverUrl: course.coverUrl,
-    createdAt: course.createdAt.toISOString(),
-    updatedAt: course.updatedAt.toISOString(),
-    mentor: {
-      id: course.mentor.id,
-      userId: course.mentor.userId,
-      name: course.mentor.user.name,
-      headline: course.mentor.headline,
-      rating,
-      reviewCount: course.mentor.reviews.length,
-      avatarUrl: course.mentor.user.avatarUrl,
-    },
-    lessonCount: course.lessons.length,
-    totalDurationMin: course.lessons.reduce((a, l) => a + l.durationMin, 0),
-    liveCount: course.lessons.filter((l) => l.kind === 'LIVE').length,
-    mentorshipCount: course.mentorshipCount,
-    studentCount: course.enrollments.length,
-  }
-}
 
 /** GET /api/courses?search=&category=&sort=&mentorId=&mentorUserId=
  *  mentorUserId: lista TODOS os cursos (incl. rascunhos) do mentor daquele usuário */
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams
-    const search = (sp.get('search') || '').trim().toLowerCase()
+    const search = normalizeText((sp.get('search') || '').trim())
     const category = (sp.get('category') || '').trim()
     const sort = sp.get('sort') || 'relevance'
     const mentorId = (sp.get('mentorId') || '').trim()
@@ -95,15 +28,15 @@ export async function GET(req: NextRequest) {
 
     const courses = await db.course.findMany({
       where,
-      include: baseInclude(),
+      include: courseBaseInclude(),
       orderBy: { createdAt: 'desc' },
     })
 
-    let items = courses.map(serialize)
+    let items = courses.map(serializeCourse)
 
     if (search) {
       items = items.filter((c) =>
-        [c.title, c.description, c.mentor.name, c.category].join(' ').toLowerCase().includes(search)
+        normalizeText([c.title, c.description, c.mentor.name, c.category].join(' ')).includes(search)
       )
     }
     if (category) {
@@ -118,7 +51,9 @@ export async function GET(req: NextRequest) {
         items.sort((a, b) => b.price - a.price)
         break
       case 'popular':
-        items.sort((a, b) => b.studentCount - a.studentCount || b.lessonCount - a.lessonCount)
+        items.sort(
+          (a, b) => b.studentCount - a.studentCount || b.rating - a.rating || b.lessonCount - a.lessonCount
+        )
         break
       case 'new':
         items.sort((a, b) => b.createdAt.localeCompare(a.createdAt))

@@ -1,21 +1,21 @@
 'use client'
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
-  ArrowRight,
   BadgeCheck,
   BookMarked,
   BookOpen,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Clock,
   Globe2,
   GraduationCap,
   LayoutGrid,
   Library,
+  Layers,
   Route,
-  Search,
   SearchX,
   Star,
   Users,
@@ -24,7 +24,6 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -42,6 +41,7 @@ import {
   currencyBRL,
   firstName,
   formatTotalDuration,
+  normalizeText,
 } from '@/lib/helpers'
 import { useAppStore, type ExploreTab } from '@/lib/store'
 import type {
@@ -51,11 +51,15 @@ import type {
   TrackListItemDTO,
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { MarketplaceBundles } from './marketplace-bundles'
 
 const SPOTLIGHT_INTERVAL_MS = 6000
 
 /** Itens visíveis por seção da aba "Tudo" antes do botão "Ver mais" */
 const ALL_VISIBLE = 8
+
+/** Nota média formatada no padrão pt-BR (vírgula): 4.5 → "4,5" */
+const ratingBR = (rating: number) => rating.toFixed(1).replace('.', ',')
 
 type ExpandedKey = 'mentors' | 'courses' | 'tracks' | 'lib' | 'authors'
 
@@ -67,12 +71,8 @@ export function MarketplaceView() {
   // Lista filtrada exibida no grid
   const [mentors, setMentors] = useState<MentorListItemDTO[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [inputValue, setInputValue] = useState('')
   const [category, setCategory] = useState('')
   const [sort, setSort] = useState('relevance')
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const searchRef = useRef<HTMLInputElement>(null)
 
   // Aba do Explorar (mentores/cursos): valor inicial lido da store uma única vez
   const [tab, setTab] = useState<ExploreTab>(() => useAppStore.getState().exploreTab)
@@ -107,21 +107,16 @@ export function MarketplaceView() {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }))
   }, [])
 
-  // Consome termo vindo de outra tela (hero da home) uma única vez
-  useEffect(() => {
-    const q = useAppStore.getState().exploreQuery
-    if (q) {
-      setInputValue(q)
-      setSearch(q)
-      useAppStore.setState({ exploreQuery: '' })
-    }
-  }, [])
-
   // Consome a aba pedida por outra tela ("Ver todos os cursos" da home) uma única vez.
   // O valor inicial já foi lido no useState acima; aqui apenas resetamos a store.
   useEffect(() => {
     useAppStore.setState({ exploreTab: 'all' })
   }, [])
+
+  // ---------- Busca principal: o campo central do header ----------
+  // O Explorar não tem barra própria: o termo vem da store (busca central do
+  // header, ao vivo) e o corpo reage — navegando ou exibindo só resultados.
+  const search = useAppStore((s) => s.exploreQuery)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -226,17 +221,17 @@ export function MarketplaceView() {
     if (tab === 'library') void loadLibrary()
   }, [tab, loadLibrary])
 
-  const onSearchChange = (value: string) => {
-    setInputValue(value)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => setSearch(value), 300)
+  /** Limpa o termo da busca principal (header) — volta ao modo navegar */
+  const clearSearch = () => {
+    useAppStore.getState().setExploreQuery('')
   }
 
-  const clearSearch = () => {
-    setInputValue('')
-    setSearch('')
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    searchRef.current?.focus()
+  /** Limpa termo + filtros de área/formato */
+  const clearAllSearch = () => {
+    useAppStore.getState().setExploreQuery('')
+    setCategory('')
+    setLibCategory('')
+    setLibKind('ALL')
   }
 
   // ---------- Derivados da base ----------
@@ -358,10 +353,10 @@ export function MarketplaceView() {
 
   // Busca consciente: filtra todas as prateleiras client-side (nunca filtra com filtros vazios)
   const allView = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = normalizeText(search.trim())
     const filtering = q !== '' || category !== ''
     const matchesTerm = (parts: (string | null | undefined)[]) =>
-      q === '' || parts.some((p) => (p ?? '').toLowerCase().includes(q))
+      q === '' || parts.some((p) => normalizeText(p ?? '').includes(q))
     const matchesCategory = (cats: string | string[]) =>
       category === '' || (Array.isArray(cats) ? cats.includes(category) : cats === category)
 
@@ -447,23 +442,74 @@ export function MarketplaceView() {
     return `${baseCount} ${unit}`
   }
 
-  const clearAllFilters = () => {
-    setInputValue('')
-    setSearch('')
-    setCategory('')
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-  }
+  // ---------- Modo busca: corpo enxuto, só resultados ----------
+  const searching = search.trim() !== ''
+  const searchTotal =
+    tab === 'all'
+      ? allView.total
+      : tab === 'mentors'
+        ? mentors.length
+        : tab === 'courses'
+          ? courses.length
+          : tab === 'tracks'
+            ? tracks.length
+            : tab === 'library'
+              ? libItems.length
+              : null
+  const clearAllFilters = clearAllSearch
+
+  // Títulos por aba (modo navegar)
+  const tabTitle =
+    tab === 'all'
+      ? 'Explorar tudo'
+      : tab === 'mentors'
+        ? 'Explorar mentores'
+        : tab === 'courses'
+          ? 'Explorar cursos'
+          : tab === 'tracks'
+            ? 'Explorar trilhas'
+            : tab === 'bundles'
+              ? 'Pacotes de cursos'
+              : 'Explorar a Biblioteca'
+  const tabSubtitle =
+    tab === 'all'
+      ? totalContents === 0
+        ? 'Carregando conteúdos...'
+        : `${totalContents} conteúdos — ${baseMentors.length} mentores, ${baseCourses.length} cursos, ${baseTracks.length} trilhas e ${baseLibItems.length} leituras`
+      : tab === 'mentors'
+        ? loading
+          ? 'Carregando especialistas...'
+          : `${mentors.length} ${mentors.length === 1 ? 'especialista' : 'especialistas'} pronto${
+              mentors.length === 1 ? '' : 's'
+            } para mentoria 1:1`
+        : tab === 'courses'
+          ? coursesLoading
+            ? 'Carregando cursos...'
+            : `${courses.length} ${courses.length === 1 ? 'curso publicado' : 'cursos publicados'}`
+          : tab === 'tracks'
+            ? tracksLoading
+              ? 'Carregando trilhas...'
+              : `${tracks.length} ${tracks.length === 1 ? 'trilha publicada' : 'trilhas publicadas'}`
+            : tab === 'bundles'
+              ? 'Vários cursos do mesmo mentor por um preço especial — economize comprando o conjunto'
+              : libLoading
+                ? 'Carregando conteúdos...'
+                : `${libItems.length} ${libItems.length === 1 ? 'conteúdo publicado' : 'conteúdos publicados'}`
+  const searchSubtitle =
+    searchTotal === null
+      ? 'Exibindo resultados'
+      : `${searchTotal} ${searchTotal === 1 ? 'resultado' : 'resultados'}`
 
   return (
     <div>
       {/* ---------- BARRA SUPERIOR: título, ordenação, busca e categorias ---------- */}
-      <section className="border-b border-stone-200/70 bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-7 sm:py-9">
+      <section className="border-b border-stone-200/70 dark:border-stone-800 bg-white dark:bg-stone-950">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-7 sm:py-9">
           {/* Controle segmentado: Tudo | Mentores | Cursos | Trilhas | Biblioteca */}
           <div
             role="tablist"
             aria-label="Seções do Explorar"
-            className="inline-flex max-w-full flex-wrap rounded-full bg-stone-100 p-1"
+            className="inline-flex max-w-full flex-wrap rounded-full bg-stone-100 dark:bg-stone-800 p-1"
           >
             <button
               role="tab"
@@ -472,8 +518,8 @@ export function MarketplaceView() {
               className={cn(
                 'inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-all',
                 tab === 'all'
-                  ? 'bg-white text-stone-900 shadow-sm'
-                  : 'text-stone-500 hover:text-stone-700'
+                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-50 shadow-sm'
+                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
               )}
             >
               <LayoutGrid aria-hidden className="h-4 w-4" /> Tudo
@@ -485,8 +531,8 @@ export function MarketplaceView() {
               className={cn(
                 'inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-all',
                 tab === 'mentors'
-                  ? 'bg-white text-stone-900 shadow-sm'
-                  : 'text-stone-500 hover:text-stone-700'
+                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-50 shadow-sm'
+                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
               )}
             >
               <Users aria-hidden className="h-4 w-4" /> Mentores
@@ -498,8 +544,8 @@ export function MarketplaceView() {
               className={cn(
                 'inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-all',
                 tab === 'courses'
-                  ? 'bg-white text-stone-900 shadow-sm'
-                  : 'text-stone-500 hover:text-stone-700'
+                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-50 shadow-sm'
+                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
               )}
             >
               <BookOpen aria-hidden className="h-4 w-4" /> Cursos
@@ -511,11 +557,24 @@ export function MarketplaceView() {
               className={cn(
                 'inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-all',
                 tab === 'tracks'
-                  ? 'bg-white text-stone-900 shadow-sm'
-                  : 'text-stone-500 hover:text-stone-700'
+                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-50 shadow-sm'
+                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
               )}
             >
               <Route aria-hidden className="h-4 w-4" /> Trilhas
+            </button>
+            <button
+              role="tab"
+              aria-selected={tab === 'bundles'}
+              onClick={() => setTab('bundles')}
+              className={cn(
+                'inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-all',
+                tab === 'bundles'
+                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-50 shadow-sm'
+                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
+              )}
+            >
+              <Layers aria-hidden className="h-4 w-4" /> Pacotes
             </button>
             <button
               role="tab"
@@ -524,8 +583,8 @@ export function MarketplaceView() {
               className={cn(
                 'inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-all',
                 tab === 'library'
-                  ? 'bg-white text-stone-900 shadow-sm'
-                  : 'text-stone-500 hover:text-stone-700'
+                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-50 shadow-sm'
+                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
               )}
             >
               <Library aria-hidden className="h-4 w-4" /> Biblioteca
@@ -533,67 +592,42 @@ export function MarketplaceView() {
           </div>
 
           <div className="mt-5 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              {tab === 'all' ? (
-                <>
-                  <h1 className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
-                    Explorar tudo
-                  </h1>
-                  <p className="mt-1 text-sm text-stone-500" aria-live="polite">
-                    {totalContents === 0
-                      ? 'Carregando conteúdos...'
-                      : `${totalContents} conteúdos — ${baseMentors.length} mentores, ${baseCourses.length} cursos, ${baseTracks.length} trilhas e ${baseLibItems.length} leituras`}
+            <div className="min-w-0">
+              {searching ? (
+                /* Modo busca: título compacto com o termo + limpar (a busca é a do header) */
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="min-w-0 text-lg font-semibold tracking-tight text-stone-900 dark:text-stone-50 sm:text-xl">
+                      <span className="sm:hidden">Resultados: </span>
+                      <span className="hidden sm:inline">Resultados para </span>
+                      <span className="text-emerald-700 dark:text-emerald-400">“{search.trim()}”</span>
+                    </h1>
+                    <button
+                      type="button"
+                      onClick={clearSearch}
+                      aria-label="Limpar busca"
+                      className="flex size-7 shrink-0 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700 dark:text-stone-500 dark:hover:bg-stone-800 dark:hover:text-stone-200"
+                    >
+                      <X aria-hidden className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="mt-1 text-sm text-stone-500 dark:text-stone-400" aria-live="polite">
+                    {searchSubtitle} em toda a plataforma
                   </p>
-                </>
-              ) : tab === 'mentors' ? (
-                <>
-                  <h1 className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
-                    Explorar mentores
-                  </h1>
-                  <p className="mt-1 text-sm text-stone-500">
-                    {loading
-                      ? 'Carregando especialistas...'
-                      : `${mentors.length} ${mentors.length === 1 ? 'especialista' : 'especialistas'} pronto${
-                          mentors.length === 1 ? '' : 's'
-                        } para mentoria 1:1`}
-                  </p>
-                </>
-              ) : tab === 'courses' ? (
-                <>
-                  <h1 className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
-                    Explorar cursos
-                  </h1>
-                  <p className="mt-1 text-sm text-stone-500" aria-live="polite">
-                    {coursesLoading
-                      ? 'Carregando cursos...'
-                      : `${courses.length} ${courses.length === 1 ? 'curso publicado' : 'cursos publicados'}`}
-                  </p>
-                </>
-              ) : tab === 'tracks' ? (
-                <>
-                  <h1 className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
-                    Explorar trilhas
-                  </h1>
-                  <p className="mt-1 text-sm text-stone-500" aria-live="polite">
-                    {tracksLoading
-                      ? 'Carregando trilhas...'
-                      : `${tracks.length} ${tracks.length === 1 ? 'trilha publicada' : 'trilhas publicadas'}`}
-                  </p>
-                </>
+                </div>
               ) : (
                 <>
-                  <h1 className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
-                    Explorar a Biblioteca
+                  <h1 className="text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-50 sm:text-3xl">
+                    {tabTitle}
                   </h1>
-                  <p className="mt-1 text-sm text-stone-500" aria-live="polite">
-                    {libLoading
-                      ? 'Carregando conteúdos...'
-                      : `${libItems.length} ${libItems.length === 1 ? 'conteúdo publicado' : 'conteúdos publicados'}`}
+                  <p className="mt-1 text-sm text-stone-500 dark:text-stone-400" aria-live="polite">
+                    {tabSubtitle}
                   </p>
                 </>
               )}
             </div>
             <div className="w-44">
+              {tab === 'bundles' ? null : (
               <Select
                 value={
                   tab === 'all'
@@ -630,7 +664,7 @@ export function MarketplaceView() {
                             ? 'Ordenar trilhas'
                             : 'Ordenar conteúdos da Biblioteca'
                   }
-                  className="bg-white"
+                  className="bg-white dark:bg-stone-900"
                 >
                   <SelectValue placeholder="Ordenar" />
                 </SelectTrigger>
@@ -665,52 +699,12 @@ export function MarketplaceView() {
                   )}
                 </SelectContent>
               </Select>
+              )}
             </div>
           </div>
 
-          <div className="relative mt-5 max-w-2xl">
-            <Search
-              aria-hidden
-              className="absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-stone-400"
-            />
-            <Input
-              ref={searchRef}
-              value={inputValue}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder={
-                tab === 'all'
-                  ? 'Busque em mentores, cursos, trilhas e leituras...'
-                  : tab === 'mentors'
-                    ? 'Busque por nome, especialidade ou área...'
-                    : tab === 'courses'
-                      ? 'Busque por curso, tema ou mentor...'
-                      : tab === 'tracks'
-                        ? 'Busque por trilha, tema ou mentor...'
-                        : 'Busque por artigo, livro ou autor...'
-              }
-              aria-label={
-                tab === 'all'
-                  ? 'Buscar em tudo'
-                  : tab === 'mentors'
-                    ? 'Buscar mentores'
-                    : tab === 'courses'
-                      ? 'Buscar cursos'
-                      : tab === 'tracks'
-                        ? 'Buscar trilhas'
-                        : 'Buscar na Biblioteca'
-              }
-              className="h-12 rounded-2xl border-stone-200 bg-white pl-11 pr-16 text-stone-900 shadow-none placeholder:text-stone-400 focus-visible:border-emerald-400 focus-visible:ring-emerald-200"
-            />
-            {inputValue && (
-              <button
-                onClick={clearSearch}
-                aria-label="Limpar busca"
-                className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+          {/* A busca é a barra central do header — o corpo não tem campo próprio;
+              ao digitar no header o corpo inteiro vira somente resultados. */}
 
           {tab === 'library' ? (
             <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -718,7 +712,7 @@ export function MarketplaceView() {
                 value={libKind}
                 onValueChange={(value) => setLibKind(value as 'ALL' | 'ARTICLE' | 'BOOK')}
               >
-                <SelectTrigger aria-label="Filtrar por formato" className="w-44 bg-white">
+                <SelectTrigger aria-label="Filtrar por formato" className="w-44 bg-white dark:bg-stone-900">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -731,7 +725,7 @@ export function MarketplaceView() {
                 value={libCategory || 'all'}
                 onValueChange={(value) => setLibCategory(value === 'all' ? '' : value)}
               >
-                <SelectTrigger aria-label="Filtrar por categoria" className="w-48 bg-white">
+                <SelectTrigger aria-label="Filtrar por categoria" className="w-48 bg-white dark:bg-stone-900">
                   <SelectValue placeholder="Todas as áreas" />
                 </SelectTrigger>
                 <SelectContent>
@@ -744,7 +738,7 @@ export function MarketplaceView() {
                 </SelectContent>
               </Select>
             </div>
-          ) : tab === 'all' ? null : (
+          ) : tab === 'all' || tab === 'bundles' ? null : (
             <div
               aria-label="Filtrar por categoria"
               className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -755,7 +749,7 @@ export function MarketplaceView() {
                 'shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
                 category === ''
                   ? 'border-emerald-700 bg-emerald-700 text-white'
-                  : 'border-stone-200 bg-white text-stone-600 hover:border-emerald-300 hover:text-emerald-700'
+                  : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 hover:border-emerald-300 dark:hover:border-emerald-700 hover:text-emerald-700 dark:hover:text-emerald-300'
               )}
             >
               Todas as áreas
@@ -781,12 +775,12 @@ export function MarketplaceView() {
                     'shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
                     category === c
                       ? 'border-emerald-700 bg-emerald-700 text-white'
-                      : 'border-stone-200 bg-white text-stone-600 hover:border-emerald-300 hover:text-emerald-700'
+                      : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 hover:border-emerald-300 dark:hover:border-emerald-700 hover:text-emerald-700 dark:hover:text-emerald-300'
                   )}
                 >
                   {c}
                   {countsReady && (
-                    <span className={cn('ml-1.5 text-[10px]', category === c ? 'text-emerald-100' : 'text-stone-400')}>
+                    <span className={cn('ml-1.5 text-[10px]', category === c ? 'text-emerald-100' : 'text-stone-400 dark:text-stone-500')}>
                       {count}
                     </span>
                   )}
@@ -798,10 +792,15 @@ export function MarketplaceView() {
         </div>
       </section>
 
-      {tab !== 'all' && (
+      {tab === 'bundles' ? (
+        <section aria-labelledby="resultado-title" className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-12 pt-8">
+          <MarketplaceBundles search={search} />
+        </section>
+      ) : tab !== 'all' && (
         <>
-          {/* ---------- BENTO: destaque + estatísticas (por aba) ---------- */}
-          <section aria-label="Destaques e estatísticas" className="mx-auto w-full max-w-6xl px-4 pt-6">
+          {/* ---------- BENTO: destaque + estatísticas (por aba) — oculto no modo busca ---------- */}
+          {!searching && (
+          <section aria-label="Destaques e estatísticas" className="mx-auto w-full max-w-7xl px-4 sm:px-6 pt-6">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {/* Spotlight */}
           <div className="lg:col-span-2">
@@ -870,18 +869,21 @@ export function MarketplaceView() {
           </div>
         </div>
       </section>
+      )}
 
       {/* ---------- RESULTADOS ---------- */}
-      <section aria-labelledby="resultado-title" className="mx-auto w-full max-w-6xl px-4 pb-12 pt-8">
+      <section aria-labelledby="resultado-title" className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-12 pt-8">
         <div className="flex flex-wrap items-end justify-between gap-2">
-          <h2 id="resultado-title" className="text-lg font-extrabold tracking-tight text-stone-900">
-            {tab === 'mentors'
-              ? 'Todos os mentores'
-              : tab === 'courses'
-                ? 'Todos os cursos'
-                : tab === 'tracks'
-                  ? 'Todas as trilhas'
-                  : 'Todos os conteúdos'}
+          <h2 id="resultado-title" className="text-lg font-semibold tracking-tight text-stone-900 dark:text-stone-50">
+            {searching
+              ? 'Resultados'
+              : tab === 'mentors'
+                ? 'Todos os mentores'
+                : tab === 'courses'
+                  ? 'Todos os cursos'
+                  : tab === 'tracks'
+                    ? 'Todas as trilhas'
+                    : 'Todos os conteúdos'}
           </h2>
           {!(tab === 'mentors'
             ? loading
@@ -890,7 +892,7 @@ export function MarketplaceView() {
               : tab === 'tracks'
                 ? tracksLoading
                 : libLoading) && (
-            <p className="text-xs font-medium text-stone-400">
+            <p className="text-xs font-medium text-stone-400 dark:text-stone-500">
               {(tab === 'library'
                 ? Boolean(search || libCategory || libKind !== 'ALL')
                 : Boolean(search || category))
@@ -907,7 +909,7 @@ export function MarketplaceView() {
             <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {loading
                 ? Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="rounded-2xl border border-stone-200 p-5">
+                    <div key={i} className="rounded-2xl border border-stone-200 dark:border-stone-800 p-5">
                       <div className="flex items-center gap-3">
                         <Skeleton className="h-14 w-14 rounded-full" />
                         <div className="flex-1 space-y-2">
@@ -928,23 +930,19 @@ export function MarketplaceView() {
             </div>
 
             {!loading && mentors.length === 0 && (
-              <div className="mt-2 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 px-6 py-14 text-center">
-                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100">
-                  <SearchX className="h-7 w-7 text-stone-400" />
+              <div className="mt-2 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 dark:border-stone-700 px-6 py-14 text-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
+                  <SearchX className="h-7 w-7 text-stone-400 dark:text-stone-500" />
                 </span>
-                <p className="font-bold text-stone-900">Nenhum mentor encontrado</p>
-                <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+                <p className="font-bold text-stone-900 dark:text-stone-50">Nenhum mentor encontrado</p>
+                <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
                   Tente remover os filtros ou buscar por outro termo — temos especialistas em várias
                   áreas.
                 </p>
                 <Button
                   variant="outline"
                   className="rounded-full"
-                  onClick={() => {
-                    setSearch('')
-                    setInputValue('')
-                    setCategory('')
-                  }}
+                  onClick={clearAllSearch}
                 >
                   Limpar filtros
                 </Button>
@@ -956,7 +954,7 @@ export function MarketplaceView() {
             <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {coursesLoading
                 ? Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="overflow-hidden rounded-2xl border border-stone-200">
+                    <div key={i} className="overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800">
                       <Skeleton className="h-28 w-full rounded-none" />
                       <div className="space-y-3 p-5">
                         <Skeleton className="h-4 w-3/4" />
@@ -971,22 +969,18 @@ export function MarketplaceView() {
             </div>
 
             {!coursesLoading && courses.length === 0 && (
-              <div className="mt-2 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 px-6 py-14 text-center">
-                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100">
-                  <SearchX className="h-7 w-7 text-stone-400" />
+              <div className="mt-2 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 dark:border-stone-700 px-6 py-14 text-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
+                  <SearchX className="h-7 w-7 text-stone-400 dark:text-stone-500" />
                 </span>
-                <p className="font-bold text-stone-900">Nenhum curso encontrado</p>
-                <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+                <p className="font-bold text-stone-900 dark:text-stone-50">Nenhum curso encontrado</p>
+                <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
                   Tente remover os filtros ou buscar por outro tema — temos cursos em várias áreas.
                 </p>
                 <Button
                   variant="outline"
                   className="rounded-full"
-                  onClick={() => {
-                    setSearch('')
-                    setInputValue('')
-                    setCategory('')
-                  }}
+                  onClick={clearAllSearch}
                 >
                   Limpar filtros
                 </Button>
@@ -998,7 +992,7 @@ export function MarketplaceView() {
             <div className="mt-5 grid min-w-0 gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {tracksLoading
                 ? Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="overflow-hidden rounded-2xl border border-stone-200">
+                    <div key={i} className="overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800">
                       <Skeleton className="h-36 w-full rounded-none" />
                       <div className="space-y-3 p-4">
                         <div className="flex gap-1.5">
@@ -1020,23 +1014,19 @@ export function MarketplaceView() {
             </div>
 
             {!tracksLoading && tracks.length === 0 && (
-              <div className="mt-2 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 px-6 py-14 text-center">
-                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100">
-                  <SearchX className="h-7 w-7 text-stone-400" />
+              <div className="mt-2 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 dark:border-stone-700 px-6 py-14 text-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
+                  <SearchX className="h-7 w-7 text-stone-400 dark:text-stone-500" />
                 </span>
-                <p className="font-bold text-stone-900">Nenhuma trilha encontrada</p>
-                <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+                <p className="font-bold text-stone-900 dark:text-stone-50">Nenhuma trilha encontrada</p>
+                <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
                   Tente remover os filtros ou buscar por outro tema — temos trilhas combinando cursos
                   e mentorias 1:1 em várias áreas.
                 </p>
                 <Button
                   variant="outline"
                   className="rounded-full"
-                  onClick={() => {
-                    setSearch('')
-                    setInputValue('')
-                    setCategory('')
-                  }}
+                  onClick={clearAllSearch}
                 >
                   Limpar filtros
                 </Button>
@@ -1045,26 +1035,15 @@ export function MarketplaceView() {
           </>
         ) : (
           <>
-            <div className="mt-5 grid min-w-0 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Estante: capas e papéis menores — 3 colunas no mobile, 4 no tablet, 6 no desktop */}
+            <div className="mt-5 grid min-w-0 grid-cols-3 items-start gap-x-4 gap-y-7 sm:grid-cols-4 lg:grid-cols-6">
               {libLoading
-                ? Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="overflow-hidden rounded-2xl border border-stone-200">
-                      <Skeleton className="h-36 w-full rounded-none" />
-                      <div className="space-y-3 p-4">
-                        <div className="flex gap-1.5">
-                          <Skeleton className="h-5 w-16 rounded-full" />
-                          <Skeleton className="h-5 w-20 rounded-full" />
-                        </div>
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-3 w-full" />
-                        <Skeleton className="h-3 w-5/6" />
-                        <div className="mt-3 flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <Skeleton className="h-6 w-6 rounded-full" />
-                            <Skeleton className="h-3 w-24" />
-                          </div>
-                          <Skeleton className="h-3 w-14" />
-                        </div>
+                ? Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i}>
+                      <Skeleton className="aspect-[2/3] w-full rounded-xl" />
+                      <div className="space-y-2 pt-3">
+                        <Skeleton className="h-3.5 w-4/5" />
+                        <Skeleton className="h-3 w-3/5" />
                       </div>
                     </div>
                   ))
@@ -1072,24 +1051,19 @@ export function MarketplaceView() {
             </div>
 
             {!libLoading && libItems.length === 0 && (
-              <div className="mt-2 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 px-6 py-14 text-center">
-                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100">
-                  <SearchX className="h-7 w-7 text-stone-400" />
+              <div className="mt-2 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 dark:border-stone-700 px-6 py-14 text-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
+                  <SearchX className="h-7 w-7 text-stone-400 dark:text-stone-500" />
                 </span>
-                <p className="font-bold text-stone-900">Nenhum conteúdo encontrado na Biblioteca.</p>
-                <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+                <p className="font-bold text-stone-900 dark:text-stone-50">Nenhum conteúdo encontrado na Biblioteca.</p>
+                <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
                   Tente remover os filtros ou buscar por outro tema — temos artigos e livros em
                   várias áreas.
                 </p>
                 <Button
                   variant="outline"
                   className="rounded-full"
-                  onClick={() => {
-                    setSearch('')
-                    setInputValue('')
-                    setLibCategory('')
-                    setLibKind('ALL')
-                  }}
+                  onClick={clearAllSearch}
                 >
                   Limpar filtros
                 </Button>
@@ -1103,18 +1077,19 @@ export function MarketplaceView() {
 
       {tab === 'all' && (
         <>
-          {/* ---------- HERO BENTO (aba Tudo): título editorial + stats globais + destaques ---------- */}
-          <section aria-label="Visão geral do Explorar" className="mx-auto w-full max-w-6xl px-4 pt-8">
+          {/* ---------- HERO BENTO (aba Tudo): título editorial + stats globais + destaques — oculto no modo busca ---------- */}
+          {!searching && (
+          <section aria-label="Visão geral do Explorar" className="mx-auto w-full max-w-7xl px-4 sm:px-6 pt-8">
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, ease: 'easeOut' }}
             >
               <div className="max-w-2xl">
-                <h2 className="text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
+                <h2 className="text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-50 sm:text-3xl">
                   Tudo em um só lugar
                 </h2>
-                <p className="mt-1.5 text-sm leading-relaxed text-stone-500 sm:text-[15px]">
+                <p className="mt-1.5 text-sm leading-relaxed text-stone-500 dark:text-stone-400 sm:text-[15px]">
                   Mentorias 1:1, cursos, trilhas e leituras — feitos por quem vive o que ensina.
                 </p>
               </div>
@@ -1164,19 +1139,20 @@ export function MarketplaceView() {
               </div>
             </motion.div>
           </section>
+          )}
 
           {/* ---------- SEÇÕES EM GRADE + ÁREAS + AUTORES (aba Tudo) ---------- */}
           <section
             aria-label="Conteúdos em destaque do Explorar"
-            className="mx-auto w-full max-w-6xl px-4 pb-12 pt-10"
+            className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-12 pt-10"
           >
             {allView.filtering && allView.total === 0 ? (
-              <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 px-6 py-14 text-center">
-                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100">
-                  <SearchX className="h-7 w-7 text-stone-400" />
+              <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 dark:border-stone-700 px-6 py-14 text-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
+                  <SearchX className="h-7 w-7 text-stone-400 dark:text-stone-500" />
                 </span>
-                <p className="font-bold text-stone-900">Nenhum conteúdo encontrado</p>
-                <p className="max-w-sm text-sm leading-relaxed text-stone-500">
+                <p className="font-bold text-stone-900 dark:text-stone-50">Nenhum conteúdo encontrado</p>
+                <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
                   Tente remover os filtros ou buscar por outro termo — temos mentorias, cursos,
                   trilhas e leituras em várias áreas.
                 </p>
@@ -1285,6 +1261,8 @@ export function MarketplaceView() {
                       expanded={expanded.lib}
                       onToggleExpand={() => toggleExpanded('lib')}
                       moreLabel="leituras"
+                      gridClassName="grid grid-cols-3 items-start gap-x-4 gap-y-7 sm:grid-cols-4 xl:grid-cols-6"
+                      skeletonClassName="aspect-[2/3] w-full rounded-xl"
                     >
                       {visibleSlice(allView.lib, 'lib').map((item) => (
                         <LibraryCard key={item.id} item={item} />
@@ -1295,7 +1273,8 @@ export function MarketplaceView() {
               </div>
             )}
 
-            {/* Explore por área: pílulas com contagem unificada das 4 bases */}
+            {/* Explore por área: pílulas com contagem unificada das 4 bases — oculto no modo busca */}
+            {!searching && (
             <motion.section
               aria-labelledby="explore-areas-title"
               className="pt-10"
@@ -1306,7 +1285,7 @@ export function MarketplaceView() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2
                   id="explore-areas-title"
-                  className="text-lg font-extrabold tracking-tight text-stone-900"
+                  className="text-lg font-semibold tracking-tight text-stone-900 dark:text-stone-50"
                 >
                   Explore por área
                 </h2>
@@ -1329,7 +1308,7 @@ export function MarketplaceView() {
                       className="h-8 rounded-full"
                       onClick={() => setTab('mentors')}
                     >
-                      Ver mentores de {category} <ArrowRight aria-hidden className="h-3.5 w-3.5" />
+                      Ver mentores de {category} <ChevronRight aria-hidden className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 )}
@@ -1345,14 +1324,14 @@ export function MarketplaceView() {
                       'rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
                       category === cat
                         ? 'border-emerald-700 bg-emerald-700 text-white'
-                        : 'border-stone-200 bg-white text-stone-600 hover:border-emerald-300 hover:text-emerald-700'
+                        : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 hover:border-emerald-300 dark:hover:border-emerald-700 hover:text-emerald-700 dark:hover:text-emerald-300'
                     )}
                   >
                     {cat}
                     <span
                       className={cn(
                         'ml-1.5 text-[10px]',
-                        category === cat ? 'text-emerald-100' : 'text-stone-400'
+                        category === cat ? 'text-emerald-100' : 'text-stone-400 dark:text-stone-500'
                       )}
                     >
                       {count}
@@ -1361,9 +1340,10 @@ export function MarketplaceView() {
                 ))}
               </div>
             </motion.section>
+            )}
 
-            {/* Conheça os mentores: tira editorial de autores (induz ver mais do autor) */}
-            {(!allView.filtering || allView.counts.authors > 0) && (
+            {/* Conheça os mentores: tira editorial de autores (induz ver mais do autor) — oculto no modo busca */}
+            {!searching && (!allView.filtering || allView.counts.authors > 0) && (
               <motion.section
                 aria-label="Conheça os mentores"
                 className="pt-10"
@@ -1415,21 +1395,10 @@ function SpotlightCard({
 
   return (
     <div className="relative flex h-full min-h-56 flex-col overflow-hidden rounded-2xl bg-emerald-950 p-5 text-white sm:p-6">
-      <div
-        aria-hidden
-        className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="absolute -bottom-24 left-10 h-48 w-48 rounded-full bg-teal-400/10 blur-3xl"
-      />
 
       <div className="relative flex items-center justify-between gap-3">
         <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-300" />
-          </span>
+          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
           Mentor em destaque
         </span>
         {total > 1 && (
@@ -1463,7 +1432,7 @@ function SpotlightCard({
           <div className="flex items-center gap-4">
             <Avatar name={mentor.name} src={mentor.avatarUrl} size="xl" />
             <div className="min-w-0">
-              <p className="flex items-center gap-1.5 truncate text-lg font-bold">
+              <p className="flex items-center gap-1.5 truncate text-lg font-semibold tracking-tight">
                 {mentor.name}
                 {mentor.reviewCount >= 3 && mentor.rating >= 4.5 && (
                   <BadgeCheck className="h-4.5 w-4.5 shrink-0 text-emerald-300" aria-label="Mentor bem avaliado" />
@@ -1499,7 +1468,7 @@ function SpotlightCard({
       </AnimatePresence>
 
       <div className="relative mt-5 flex items-center justify-between gap-3 border-t border-emerald-400/15 pt-4">
-        <p className="text-xl font-extrabold tracking-tight">
+        <p className="text-xl font-semibold tracking-tight">
           {currencyBRL(mentor.hourlyRate)}
           <span className="text-xs font-medium text-emerald-200/70">/h</span>
         </p>
@@ -1509,7 +1478,7 @@ function SpotlightCard({
           aria-label={`Ver perfil de ${mentor.name}`}
           className="rounded-full bg-white font-bold text-emerald-950 hover:bg-emerald-100"
         >
-          Ver perfil <ArrowRight className="h-4 w-4" />
+          Ver perfil <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
     </div>
@@ -1534,22 +1503,22 @@ function StatTile({
       className={cn(
         'flex flex-col justify-center rounded-2xl border p-4 sm:p-5',
         dark
-          ? 'border-emerald-400/20 bg-emerald-950 text-white shadow-lg shadow-emerald-950/20'
-          : 'border-stone-200 bg-white'
+          ? 'border-emerald-400/20 bg-emerald-950 text-white'
+          : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900'
       )}
     >
       <span
         className={cn(
           'flex h-9 w-9 items-center justify-center rounded-xl',
-          dark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 text-emerald-700'
+          dark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300'
         )}
       >
         {icon}
       </span>
       <p
         className={cn(
-          'mt-3 text-2xl font-extrabold tracking-tight',
-          dark ? 'text-white' : 'text-stone-900'
+          'mt-3 text-2xl font-semibold tracking-tight',
+          dark ? 'text-white' : 'text-stone-900 dark:text-stone-50'
         )}
       >
         {value}
@@ -1557,7 +1526,7 @@ function StatTile({
       <p
         className={cn(
           'mt-0.5 text-xs font-medium leading-snug',
-          dark ? 'text-emerald-100/80' : 'text-stone-500'
+          dark ? 'text-emerald-100/80' : 'text-stone-500 dark:text-stone-400'
         )}
       >
         {label}
@@ -1572,30 +1541,29 @@ const MentorCard = memo(function MentorCard({ mentor }: { mentor: MentorListItem
   const navigate = useAppStore((s) => s.navigate)
 
   return (
-    <article className="group flex h-full flex-col rounded-2xl border border-stone-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md">
+    <article className="group flex h-full flex-col rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 transition-colors hover:border-emerald-300 dark:hover:border-emerald-700">
       <div className="flex items-start gap-3.5">
         <Avatar name={mentor.name} src={mentor.avatarUrl} size="lg" />
         <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1.5 truncate font-bold text-stone-900">
+          <p className="flex items-center gap-1.5 truncate font-semibold tracking-tight text-stone-900 dark:text-stone-50">
             {mentor.name}
             {mentor.reviewCount >= 3 && mentor.rating >= 4.5 && (
-              <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-600" aria-label="Mentor bem avaliado" />
+              <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-label="Mentor bem avaliado" />
             )}
           </p>
-          <p className="text-xs font-medium text-stone-500">
-            {firstName(mentor.name)} · {mentor.experienceYears} anos de experiência
-          </p>
-          <div className="mt-1 flex items-center gap-1.5">
+          <div className="mt-1 flex items-center gap-1.5 text-xs">
             <Stars rating={mentor.rating} size={13} />
-            <span className="text-xs font-semibold text-stone-700">
+            <span className="font-semibold text-stone-700 dark:text-stone-200">
               {mentor.rating > 0 ? mentor.rating.toFixed(1) : 'Novo'}
             </span>
-            <span className="text-xs text-stone-400">({mentor.reviewCount})</span>
+            {mentor.rating > 0 && (
+              <span className="text-stone-400 dark:text-stone-500">({mentor.reviewCount})</span>
+            )}
           </div>
         </div>
       </div>
 
-      <p className="mt-3.5 line-clamp-2 min-h-10 text-sm leading-relaxed text-stone-600">
+      <p className="mt-3.5 line-clamp-2 min-h-10 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
         {mentor.headline}
       </p>
 
@@ -1603,26 +1571,26 @@ const MentorCard = memo(function MentorCard({ mentor }: { mentor: MentorListItem
         {mentor.categories.slice(0, 3).map((c) => (
           <span
             key={c}
-            className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-800"
+            className="rounded-full bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-800 dark:text-emerald-300"
           >
             {c}
           </span>
         ))}
       </div>
 
-      <div className="mt-auto flex items-center justify-between gap-2 border-t border-stone-100 pt-3.5">
-        <div className="flex items-center gap-3 text-xs text-stone-400">
+      <div className="mt-auto flex items-center justify-between gap-2 border-t border-stone-100 pt-3.5 dark:border-stone-800">
+        <div className="flex min-w-0 items-center gap-3 text-xs whitespace-nowrap text-stone-400 dark:text-stone-500">
           <span className="inline-flex items-center gap-1">
             <GraduationCap className="h-3.5 w-3.5" />{' '}
             {mentor.totalSessions} {mentor.totalSessions === 1 ? 'sessão' : 'sessões'}
           </span>
-          <span className="inline-flex items-center gap-1">
-            <Globe2 className="h-3.5 w-3.5" /> {mentor.languages.split(',')[0]}
+          <span className="inline-flex min-w-0 items-center gap-1">
+            <Globe2 className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{mentor.languages.split(',')[0]}</span>
           </span>
         </div>
-        <p className="text-sm font-extrabold text-stone-900">
+        <p className="text-sm font-semibold text-stone-900 dark:text-stone-50">
           {currencyBRL(mentor.hourlyRate)}
-          <span className="text-xs font-medium text-stone-400">/h</span>
+          <span className="text-xs font-medium text-stone-400 dark:text-stone-500">/h</span>
         </p>
       </div>
 
@@ -1655,20 +1623,9 @@ function CourseSpotlightCard({ course }: { course: CourseListItemDTO }) {
         />
       )}
       {course.coverUrl && <div aria-hidden className="absolute inset-0 bg-emerald-950/40" />}
-      <div
-        aria-hidden
-        className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="absolute -bottom-24 left-10 h-48 w-48 rounded-full bg-teal-400/10 blur-3xl"
-      />
 
       <span className="relative inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-300" />
-        </span>
+        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
         Curso em destaque
       </span>
 
@@ -1689,7 +1646,7 @@ function CourseSpotlightCard({ course }: { course: CourseListItemDTO }) {
             </span>
           </span>
           <div className="min-w-0">
-            <p className="truncate text-lg font-bold">{course.title}</p>
+            <p className="truncate text-lg font-semibold tracking-tight">{course.title}</p>
             <div className="mt-0.5 flex items-center gap-1.5">
               <span className="truncate text-xs text-emerald-100/80">por {course.mentor.name}</span>
               <Stars rating={course.mentor.rating} size={12} />
@@ -1705,6 +1662,15 @@ function CourseSpotlightCard({ course }: { course: CourseListItemDTO }) {
         </p>
 
         <div className="mt-3.5 flex flex-wrap gap-1.5">
+          {course.rating > 0 ? (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-100"
+              title={`${course.reviewCount} ${course.reviewCount === 1 ? 'avaliação' : 'avaliações'} do curso`}
+            >
+              <Star aria-hidden className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />
+              {ratingBR(course.rating)}
+            </span>
+          ) : null}
           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100">
             <BookOpen aria-hidden className="h-3.5 w-3.5" />
             {course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'}
@@ -1721,7 +1687,7 @@ function CourseSpotlightCard({ course }: { course: CourseListItemDTO }) {
       </div>
 
       <div className="relative mt-5 flex items-center justify-between gap-3 border-t border-emerald-400/15 pt-4">
-        <p className="text-xl font-extrabold tracking-tight">
+        <p className="text-xl font-semibold tracking-tight">
           {course.price === 0 ? (
             <span className="text-emerald-300">Grátis</span>
           ) : (
@@ -1734,7 +1700,7 @@ function CourseSpotlightCard({ course }: { course: CourseListItemDTO }) {
           aria-label={`Ver curso ${course.title}`}
           className="rounded-full bg-white font-bold text-emerald-950 hover:bg-emerald-100"
         >
-          Ver curso <ArrowRight className="h-4 w-4" />
+          Ver curso <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
     </div>
@@ -1747,9 +1713,9 @@ const CourseCard = memo(function CourseCard({ course }: { course: CourseListItem
   const navigate = useAppStore((s) => s.navigate)
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white p-0 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md">
+    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-0 transition-colors hover:border-emerald-300 dark:hover:border-emerald-700">
       {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
-      <div className="relative h-28 w-full bg-stone-100">
+      <div className="relative h-28 w-full bg-stone-100 dark:bg-stone-800">
         {course.coverUrl ? (
           <img
             src={course.coverUrl}
@@ -1783,8 +1749,8 @@ const CourseCard = memo(function CourseCard({ course }: { course: CourseListItem
       </div>
 
       <div className="flex flex-1 flex-col p-5">
-        <p className="line-clamp-1 font-bold text-stone-900">{course.title}</p>
-        <div className="mt-1 flex items-center gap-1.5 text-xs text-stone-500">
+        <p className="line-clamp-1 font-semibold tracking-tight text-stone-900 dark:text-stone-50">{course.title}</p>
+        <div className="mt-1 flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400">
           <Avatar
             name={course.mentor.name}
             src={course.mentor.avatarUrl}
@@ -1792,17 +1758,20 @@ const CourseCard = memo(function CourseCard({ course }: { course: CourseListItem
             className="h-5 w-5 text-[8px] ring-0"
           />
           <span className="truncate">por {firstName(course.mentor.name)}</span>
-          <Stars rating={course.mentor.rating} size={11} />
-          <span className="text-[11px] font-semibold text-stone-600">
-            {course.mentor.rating > 0 ? course.mentor.rating.toFixed(1) : 'Novo'}
-          </span>
         </div>
 
-        <p className="mt-2.5 line-clamp-2 min-h-10 text-sm leading-relaxed text-stone-600">
+        <p className="mt-2.5 line-clamp-2 min-h-10 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
           {course.description}
         </p>
 
-        <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-stone-100 pt-3.5 text-xs text-stone-400">
+        <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-stone-100 dark:border-stone-800 pt-3.5 text-xs text-stone-400 dark:text-stone-500">
+          {course.reviewCount > 0 ? (
+            <span className="inline-flex items-center gap-1 font-semibold text-stone-700 dark:text-stone-200">
+              <Star aria-hidden className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+              {ratingBR(course.rating)}
+              <span className="font-normal text-stone-400 dark:text-stone-500">({course.reviewCount})</span>
+            </span>
+          ) : null}
           <span className="inline-flex items-center gap-1">
             <BookOpen aria-hidden className="h-3.5 w-3.5" />
             {course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'}
@@ -1847,20 +1816,9 @@ function TrackSpotlightCard({ track }: { track: TrackListItemDTO }) {
         />
       )}
       {track.coverUrl && <div aria-hidden className="absolute inset-0 bg-emerald-950/40" />}
-      <div
-        aria-hidden
-        className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="absolute -bottom-24 left-10 h-48 w-48 rounded-full bg-teal-400/10 blur-3xl"
-      />
 
       <span className="relative inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-300" />
-        </span>
+        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
         Trilha em destaque
       </span>
 
@@ -1881,7 +1839,7 @@ function TrackSpotlightCard({ track }: { track: TrackListItemDTO }) {
             </span>
           </span>
           <div className="min-w-0">
-            <p className="truncate text-lg font-bold">{track.title}</p>
+            <p className="truncate text-lg font-semibold tracking-tight">{track.title}</p>
             <div className="mt-0.5 flex items-center gap-1.5">
               <span className="truncate text-xs text-emerald-100/80">por {track.mentor.name}</span>
               <Stars rating={track.mentor.rating} size={12} />
@@ -1913,7 +1871,7 @@ function TrackSpotlightCard({ track }: { track: TrackListItemDTO }) {
       </div>
 
       <div className="relative mt-5 flex items-center justify-between gap-3 border-t border-emerald-400/15 pt-4">
-        <p className="text-xl font-extrabold tracking-tight">
+        <p className="text-xl font-semibold tracking-tight">
           {track.price === 0 ? (
             <span className="text-emerald-300">Grátis</span>
           ) : (
@@ -1926,7 +1884,7 @@ function TrackSpotlightCard({ track }: { track: TrackListItemDTO }) {
           aria-label={`Ver trilha ${track.title}`}
           className="rounded-full bg-white font-bold text-emerald-950 hover:bg-emerald-100"
         >
-          Ver trilha <ArrowRight className="h-4 w-4" />
+          Ver trilha <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
     </div>
@@ -1940,11 +1898,11 @@ const TrackCard = memo(function TrackCard({ track }: { track: TrackListItemDTO }
 
   return (
     <article
-      className="group flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white p-0 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+      className="group flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-0 transition-colors hover:border-emerald-300 dark:hover:border-emerald-700"
       onClick={() => navigate({ name: 'track', trackId: track.id })}
     >
       {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
-      <div className="relative h-36 w-full bg-stone-100">
+      <div className="relative h-36 w-full bg-stone-100 dark:bg-stone-800">
         {track.coverUrl ? (
           <img
             src={track.coverUrl}
@@ -1979,29 +1937,29 @@ const TrackCard = memo(function TrackCard({ track }: { track: TrackListItemDTO }
 
       <div className="flex min-w-0 flex-1 flex-col p-4">
         <div className="flex flex-wrap items-center gap-1.5">
-          <Badge className="rounded-full border border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-50">
+          <Badge className="rounded-full border border-teal-200 dark:border-teal-900 bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/50">
             Trilha
           </Badge>
-          <Badge variant="outline" className="rounded-full border-stone-200 text-stone-600">
+          <Badge variant="outline" className="rounded-full border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300">
             {track.category}
           </Badge>
         </div>
 
-        <p className="mt-2 line-clamp-1 font-bold text-stone-900">{track.title}</p>
+        <p className="mt-2 line-clamp-1 font-semibold tracking-tight text-stone-900 dark:text-stone-50">{track.title}</p>
 
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-500">
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-500 dark:text-stone-400">
           <span className="inline-flex items-center gap-1">
             <BookOpen aria-hidden className="h-3.5 w-3.5" />
             {track.courseCount} {track.courseCount === 1 ? 'curso' : 'cursos'}
           </span>
-          <span aria-hidden className="text-stone-300">
+          <span aria-hidden className="text-stone-300 dark:text-stone-600">
             ·
           </span>
           <span className="inline-flex items-center gap-1">
             <Users aria-hidden className="h-3.5 w-3.5" />
             {track.mentorshipSessions} {track.mentorshipSessions === 1 ? 'mentoria' : 'mentorias'}
           </span>
-          <span aria-hidden className="text-stone-300">
+          <span aria-hidden className="text-stone-300 dark:text-stone-600">
             ·
           </span>
           <span className="inline-flex items-center gap-1">
@@ -2017,23 +1975,15 @@ const TrackCard = memo(function TrackCard({ track }: { track: TrackListItemDTO }
             size="sm"
             className="h-5 w-5 text-[8px] ring-0"
           />
-          <span className="truncate text-xs font-medium text-stone-600">
+          <span className="truncate text-xs font-medium text-stone-600 dark:text-stone-300">
             por {firstName(track.mentor.name)}
           </span>
           <Stars rating={track.mentor.rating} size={11} />
         </div>
 
-        <div className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-3.5">
-          <p
-            className={cn(
-              'text-sm font-extrabold',
-              track.price === 0 ? 'text-emerald-700' : 'text-stone-900'
-            )}
-          >
-            {track.price === 0 ? 'Grátis' : currencyBRL(track.price)}
-          </p>
+        <div className="mt-auto border-t border-stone-100 pt-3.5 dark:border-stone-800">
           <Button
-            className="h-11 rounded-full px-5 font-semibold"
+            className="h-10 w-full rounded-full font-semibold"
             onClick={(e) => {
               e.stopPropagation()
               navigate({ name: 'track', trackId: track.id })
@@ -2066,20 +2016,9 @@ function LibrarySpotlightCard({ item }: { item: LibraryItemDTO }) {
         />
       )}
       {item.coverUrl && <div aria-hidden className="absolute inset-0 bg-emerald-950/40" />}
-      <div
-        aria-hidden
-        className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="absolute -bottom-24 left-10 h-48 w-48 rounded-full bg-teal-400/10 blur-3xl"
-      />
 
       <span className="relative inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-300" />
-        </span>
+        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
         Mais lido
       </span>
 
@@ -2102,7 +2041,7 @@ function LibrarySpotlightCard({ item }: { item: LibraryItemDTO }) {
             </span>
           </span>
           <div className="min-w-0">
-            <p className="truncate text-lg font-bold">{item.title}</p>
+            <p className="truncate text-lg font-semibold tracking-tight">{item.title}</p>
             <p className="mt-0.5 truncate text-xs text-emerald-100/80">por {item.author.name}</p>
           </div>
         </div>
@@ -2140,25 +2079,34 @@ function LibrarySpotlightCard({ item }: { item: LibraryItemDTO }) {
           aria-label={`Ler agora ${item.title}`}
           className="rounded-full bg-white font-bold text-emerald-950 hover:bg-emerald-100"
         >
-          Ler agora <ArrowRight className="h-4 w-4" />
+          Ler agora <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
     </div>
   )
 }
 
-/* ---------- Card da Biblioteca (grade da aba Biblioteca) ---------- */
+/* ---------- Card-livro: capa em retrato com lombada (estante) ---------- */
 
-const LibraryCard = memo(function LibraryCard({ item }: { item: LibraryItemDTO }) {
+const BookCoverCard = memo(function BookCoverCard({ item }: { item: LibraryItemDTO }) {
   const navigate = useAppStore((s) => s.navigate)
 
   return (
     <article
-      className="group flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white p-0 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+      className="group min-w-0 cursor-pointer"
       onClick={() => navigate({ name: 'reader', itemId: item.id })}
+      aria-label={`Ler o livro ${item.title}, ${item.readingMin} minutos, por ${item.author.name}`}
     >
-      {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
-      <div className="relative h-36 w-full bg-stone-100">
+      {/* O livro: capa retrato 2:3, lombada à esquerda, cantos retos na lombada e arredondados nas páginas */}
+      <div
+        className={cn(
+          'relative aspect-[2/3] overflow-hidden rounded-l-[5px] rounded-r-xl bg-stone-100 dark:bg-stone-800',
+          'shadow-[0_1px_2px_rgba(0,0,0,0.06),0_10px_28px_-14px_rgba(0,0,0,0.30)]',
+          'transition-[box-shadow,transform] duration-300',
+          'group-hover:-translate-y-1 group-hover:shadow-[0_2px_6px_rgba(0,0,0,0.08),0_22px_44px_-18px_rgba(0,0,0,0.38)]',
+          'dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_10px_28px_-14px_rgba(0,0,0,0.7)]'
+        )}
+      >
         {item.coverUrl ? (
           <img
             src={item.coverUrl}
@@ -2169,68 +2117,111 @@ const LibraryCard = memo(function LibraryCard({ item }: { item: LibraryItemDTO }
             className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
-          <div
-            aria-hidden
-            className="absolute inset-0"
-            style={avatarGradient(item.title)}
-          >
-            {item.kind === 'BOOK' ? (
-              <BookMarked className="pointer-events-none absolute -bottom-3 right-3 h-20 w-20 text-white/20" />
-            ) : (
-              <BookOpen className="pointer-events-none absolute -bottom-3 right-3 h-20 w-20 text-white/20" />
-            )}
+          <div aria-hidden className="absolute inset-0" style={avatarGradient(item.title)}>
+            <BookMarked className="pointer-events-none absolute -bottom-4 right-2 h-24 w-24 text-white/15" />
           </div>
         )}
-        <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-0.5 text-[11px] font-semibold text-stone-700">
-          {LEVEL_LABELS[item.level] ?? item.level}
+        {/* Lombada: sombra interna + fio de luz na dobra */}
+        <div aria-hidden className="absolute inset-y-0 left-0 w-[11px] bg-gradient-to-r from-black/30 via-black/10 to-transparent" />
+        <div aria-hidden className="absolute inset-y-0 left-[10px] w-px bg-white/25" />
+        {/* Brilho de papel no topo */}
+        <div aria-hidden className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white/10 to-transparent" />
+        <span className="absolute right-2 top-2 rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+          Livro
         </span>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col p-4">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Badge
-            className={cn(
-              'rounded-full border',
-              item.kind === 'BOOK'
-                ? 'border-amber-200 bg-amber-100 text-amber-800 hover:bg-amber-100'
-                : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50'
-            )}
-          >
-            {item.kind === 'BOOK' ? 'Livro' : 'Artigo'}
-          </Badge>
-          <Badge variant="outline" className="rounded-full border-stone-200 text-stone-600">
+      {/* Legenda sob a capa */}
+      <div className="pt-3">
+        <p className="line-clamp-2 text-sm font-semibold leading-snug tracking-tight text-stone-900 dark:text-stone-50">
+          {item.title}
+        </p>
+        <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400">
+          <Avatar
+            name={item.author.name}
+            src={item.author.avatarUrl}
+            size="sm"
+            className="h-4.5 w-4.5 shrink-0 text-[8px] ring-0"
+          />
+          <span className="truncate">
+            {item.author.name} · {item.readingMin} min
+          </span>
+        </div>
+      </div>
+    </article>
+  )
+})
+
+/* ---------- Card de artigo: "revista" de papel (mesma estatura do livro, formato diferente) ---------- */
+
+const ArticleCard = memo(function ArticleCard({ item }: { item: LibraryItemDTO }) {
+  const navigate = useAppStore((s) => s.navigate)
+
+  return (
+    <article
+      className="group min-w-0 cursor-pointer"
+      onClick={() => navigate({ name: 'reader', itemId: item.id })}
+      aria-label={`Ler o artigo ${item.title}, ${item.readingMin} minutos, por ${item.author.name}`}
+    >
+      {/* O papel: retrato 3/4 com masthead tipográfico no topo e ficha na base — contraste com a capa fotográfica do livro */}
+      <div
+        className={cn(
+          'relative flex aspect-[3/4] flex-col overflow-hidden rounded-lg border border-stone-200 bg-white p-3.5 sm:p-4',
+          'shadow-[0_1px_2px_rgba(0,0,0,0.05),0_8px_20px_-12px_rgba(0,0,0,0.22)]',
+          'transition-[box-shadow,transform,border-color] duration-300',
+          'group-hover:-translate-y-1 group-hover:border-emerald-300',
+          'group-hover:shadow-[0_2px_6px_rgba(0,0,0,0.07),0_18px_36px_-16px_rgba(0,0,0,0.30)]',
+          'dark:border-stone-800 dark:bg-stone-900 dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_8px_20px_-12px_rgba(0,0,0,0.55)]',
+          'dark:group-hover:border-emerald-700'
+        )}
+      >
+        {/* Masthead: chip Artigo + categoria, hairline embaixo (cara de periódico) */}
+        <div className="flex items-baseline justify-between gap-2 border-b border-stone-200 pb-2 dark:border-stone-800">
+          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">
+            Artigo
+          </span>
+          <span className="truncate text-[10px] font-medium uppercase tracking-wider text-stone-400 dark:text-stone-500">
             {item.category}
-          </Badge>
+          </span>
         </div>
 
-        <p className="mt-2 line-clamp-1 font-bold text-stone-900">{item.title}</p>
-
+        {/* Título no miolo do papel */}
+        <p className="mt-3 line-clamp-4 text-[15px] font-semibold leading-snug tracking-tight text-stone-900 dark:text-stone-50">
+          {item.title}
+        </p>
         {item.description && (
-          <p className="mt-1.5 line-clamp-2 min-h-10 text-sm leading-relaxed text-stone-600">
+          <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
             {item.description}
           </p>
         )}
 
-        <div className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-3.5">
+        {/* Ficha da base: autor + tempo de leitura */}
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-stone-200 pt-2.5 dark:border-stone-800">
           <div className="flex min-w-0 items-center gap-1.5">
             <Avatar
               name={item.author.name}
               src={item.author.avatarUrl}
               size="sm"
-              className="h-6 w-6 text-[9px] ring-0"
+              className="h-4.5 w-4.5 shrink-0 text-[8px] ring-0"
             />
-            <span className="truncate text-xs font-medium text-stone-600">
+            <span className="truncate text-[11px] font-medium text-stone-600 dark:text-stone-300">
               {item.author.name}
             </span>
           </div>
-          <span className="inline-flex shrink-0 items-center gap-1 text-xs text-stone-400">
-            <Clock aria-hidden className="h-3.5 w-3.5" />
+          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-stone-400 dark:text-stone-500">
+            <Clock aria-hidden className="h-3 w-3" />
             {item.readingMin} min
           </span>
         </div>
       </div>
     </article>
   )
+})
+
+/* ---------- Card da Biblioteca (livro → estante; artigo → tipográfico) ---------- */
+
+const LibraryCard = memo(function LibraryCard({ item }: { item: LibraryItemDTO }) {
+  return item.kind === 'BOOK' ? <BookCoverCard item={item} /> : <ArticleCard item={item} />
 })
 
 /* ---------- Seção em grade organizada (aba Tudo) ---------- */
@@ -2268,16 +2259,16 @@ function GridSection({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-baseline gap-2.5">
-          <h3 className="text-lg font-extrabold tracking-tight text-stone-900">{title}</h3>
-          <span className="text-xs font-medium text-stone-400">{countText}</span>
+          <h3 className="text-lg font-semibold tracking-tight text-stone-900 dark:text-stone-50">{title}</h3>
+          <span className="text-xs font-medium text-stone-400 dark:text-stone-500">{countText}</span>
         </div>
         <button
           type="button"
           onClick={onSeeAll}
-          className="group inline-flex items-center gap-1 text-sm font-bold text-emerald-700 transition-colors hover:text-emerald-800"
+          className="group inline-flex items-center gap-1 text-sm font-bold text-emerald-700 dark:text-emerald-300 transition-colors hover:text-emerald-800 dark:hover:text-emerald-200"
         >
           {seeAllLabel}
-          <ArrowRight
+          <ChevronRight
             aria-hidden
             className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
           />
@@ -2329,21 +2320,21 @@ const AuthorMiniCard = memo(function AuthorMiniCard({ mentor }: { mentor: Mentor
       type="button"
       onClick={() => navigate({ name: 'mentor', mentorId: mentor.id })}
       aria-label={`Ver perfil de ${mentor.name}`}
-      className="flex h-full w-full flex-col items-start rounded-2xl border border-stone-200 bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+      className="flex h-full w-full flex-col items-start rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 text-left transition-colors hover:border-emerald-300 dark:hover:border-emerald-700"
     >
       <Avatar name={mentor.name} src={mentor.avatarUrl} size="xl" />
-      <p className="mt-3 w-full truncate text-sm font-bold text-stone-900">{mentor.name}</p>
-      <p className="mt-0.5 w-full line-clamp-1 text-xs leading-relaxed text-stone-500">
+      <p className="mt-3 w-full truncate text-sm font-semibold tracking-tight text-stone-900 dark:text-stone-50">{mentor.name}</p>
+      <p className="mt-0.5 w-full line-clamp-1 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
         {mentor.headline}
       </p>
       <div className="mt-2 flex items-center gap-1.5">
         <Stars rating={mentor.rating} size={12} />
-        <span className="text-xs font-semibold text-stone-700">
+        <span className="text-xs font-semibold text-stone-700 dark:text-stone-200">
           {mentor.rating > 0 ? mentor.rating.toFixed(1) : 'Novo'}
         </span>
       </div>
-      <span className="mt-auto inline-flex items-center gap-1 pt-3 text-xs font-bold text-emerald-700">
-        Ver perfil <ArrowRight aria-hidden className="h-3.5 w-3.5" />
+      <span className="mt-auto inline-flex items-center gap-1 pt-3 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+        Ver perfil <ChevronRight aria-hidden className="h-3.5 w-3.5" />
       </span>
     </button>
   )

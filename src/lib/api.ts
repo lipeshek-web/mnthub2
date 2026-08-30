@@ -1,20 +1,49 @@
 import type {
+  AdminPaymentsResponseDTO,
+  AdminStatsDTO,
+  AdminUsersResponseDTO,
+  AiLessonSummaryDTO,
+  AiTutorChatMessage,
+  AsaasSettingsDTO,
+  AuditLogDTO,
   AvailabilitySlotInput,
+  AdminCouponsResponseDTO,
   BookingDTO,
+  BundleDTO,
+  BundleDetailDTO,
+  CertificateDTO,
   CheckoutResultDTO,
   ContentPostDTO,
+  CouponDTO,
+  CouponValidationDTO,
   CourseDetailDTO,
   CourseLessonDTO,
   CourseListItemDTO,
+  CourseReviewsResponseDTO,
   CourseThemeDTO,
   EnrolledCourseDTO,
+  FinanceDTO,
   LibraryItemDTO,
   LibraryItemDetailDTO,
   LessonAttachmentDTO,
   LessonNoteDTO,
   LessonQuestionDTO,
+  MessageDTO,
+  MembershipDTO,
+  PaymentStatusDTO,
+  PaymentsConfigDTO,
+  PendingPaymentDTO,
+  PlatformCouponDTO,
+  PromoBarItemDTO,
+  ReminderRunDTO,
+  WeeklyGoalDTO,
+  MessagesResponseDTO,
+  NotificationsResponseDTO,
+  ReferralsDTO,
+  ThreadsResponseDTO,
   QuizAttemptResultDTO,
   QuizDTO,
+  RecommendationsDTO,
   XpStatsDTO,
   MentorDetailDTO,
   MentorListItemDTO,
@@ -59,10 +88,20 @@ const qs = (params: Record<string, string | number | undefined>) => {
 
 export const api = {
   // Autenticação
-  register: (data: { name: string; email: string; password: string }) =>
-    request<UserDTO>('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  register: (data: { name: string; email: string; password: string; refCode?: string }) =>
+    request<UserDTO & { referralApplied?: boolean }>('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   login: (data: { email: string; password: string }) =>
-    request<UserDTO>('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+    request<
+      | UserDTO
+      | { mfaRequired: true; mfaTicket: string; email: string }
+    >('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+  verifyMfa: (data: { ticket: string; code: string }) =>
+    request<
+      UserDTO & { usedRecoveryCode?: boolean; recoveryCodesRemaining?: number }
+    >('/api/auth/mfa/verify', { method: 'POST', body: JSON.stringify(data) }),
   me: (userId: string) =>
     request<{ user: UserDTO | null }>(`/api/auth/me${qs({ userId })}`),
 
@@ -409,15 +448,326 @@ export const api = {
   // LP pública do mentor (tráfego pago) — por slug
   getMentorBySlug: (slug: string) => request<MentorLpDTO>(`/api/mentors/by-slug/${encodeURIComponent(slug)}`),
 
-  // Checkout (pagamento demonstrativo) — curso ou trilha
-  checkout: (data: {
+  // Checkout — curso, trilha, pacote ou assinatura (gateway Asaas ou modo demonstração)
+  checkout: (
+    data: {
+      userId: string
+      courseId?: string
+      trackId?: string
+      bundleId?: string
+      membershipId?: string
+      paymentMethod: 'PIX' | 'CREDIT_CARD' | 'BOLETO'
+      couponCode?: string
+      useCredits?: boolean
+      cpfCnpj?: string
+    }
+  ) =>
+    request<CheckoutResultDTO | { pending: true; order: CheckoutResultDTO['order']; payment: PendingPaymentDTO }>(
+      '/api/checkout',
+      { method: 'POST', body: JSON.stringify(data) }
+    ),
+
+  // Pagamentos (config do gateway + status de cobrança pendente)
+  paymentsConfig: () => request<PaymentsConfigDTO>('/api/payments/config'),
+  paymentStatus: (userId: string, paymentId: string) =>
+    request<PaymentStatusDTO>(`/api/payments/status${qs({ userId, paymentId })}`),
+
+  // Pacotes de cursos (bundles)
+  listBundles: (params: { mentorUserId?: string; courseId?: string; userId?: string }) =>
+    request<{ bundles: BundleDTO[] }>(`/api/bundles${qs(params)}`),
+  getBundle: (id: string, userId?: string) =>
+    request<{ bundle: BundleDetailDTO }>(`/api/bundles/${id}${qs({ userId })}`),
+  saveBundle: (data: {
     userId: string
-    courseId?: string
-    trackId?: string
-    paymentMethod: 'PIX' | 'CREDIT_CARD'
-  }) => request<CheckoutResultDTO>('/api/checkout', { method: 'POST', body: JSON.stringify(data) }),
+    id?: string
+    title: string
+    description?: string
+    price: number
+    courseIds: string[]
+    isPublished?: boolean
+  }) => request<{ id: string }>('/api/bundles', { method: 'POST', body: JSON.stringify(data) }),
+  deleteBundle: (id: string, userId: string) =>
+    request<{ ok: boolean }>(`/api/bundles/${id}${qs({ userId })}`, { method: 'DELETE' }),
+
+  // Programa de indicação (código, saldo e convidados)
+  referrals: (userId: string) => request<ReferralsDTO>(`/api/referrals${qs({ userId })}`),
 
   // Estatísticas de tráfego do mentor (dashboard)
   trackingStats: (mentorUserId: string) =>
     request<TrackingStatsDTO>(`/api/track/stats${qs({ mentorUserId })}`),
+
+  // Notificações in-app (sino do header)
+  listNotifications: (userId: string) =>
+    request<NotificationsResponseDTO>(`/api/notifications${qs({ userId })}`),
+  markNotificationsRead: (userId: string, ids?: string[]) =>
+    request<{ ok: boolean }>('/api/notifications', {
+      method: 'POST',
+      body: JSON.stringify({ userId, ids }),
+    }),
+
+  // Mensagens diretas (chat aluno ↔ mentor)
+  listThreads: (userId: string) =>
+    request<ThreadsResponseDTO>(`/api/messages/threads${qs({ userId })}`),
+  listMessages: (userId: string, peerId: string) =>
+    request<MessagesResponseDTO>(`/api/messages${qs({ userId, peerId })}`),
+  sendMessage: (userId: string, peerId: string, body: string) =>
+    request<MessageDTO>('/api/messages', {
+      method: 'POST',
+      body: JSON.stringify({ userId, peerId, body }),
+    }),
+  unreadMessages: (userId: string) =>
+    request<{ count: number }>(`/api/messages/unread${qs({ userId })}`),
+
+  // Avaliações de curso
+  listCourseReviews: (courseId: string) =>
+    request<CourseReviewsResponseDTO>(`/api/courses/${courseId}/reviews`),
+  saveCourseReview: (
+    courseId: string,
+    data: { userId: string; rating: number; comment: string }
+  ) =>
+    request<{ id: string; updated: boolean }>(`/api/courses/${courseId}/reviews`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Certificado de conclusão (código público verificável)
+  issueCertificate: (courseId: string, userId: string) =>
+    request<{ code: string; issuedAt: string }>('/api/certificates', {
+      method: 'POST',
+      body: JSON.stringify({ courseId, userId }),
+    }),
+  getCertificate: (code: string) =>
+    request<CertificateDTO>(`/api/certificates/${encodeURIComponent(code)}`),
+
+  // Cupons de desconto (painel do mentor + checkout)
+  listCoupons: (userId: string) => request<CouponDTO[]>(`/api/coupons${qs({ userId })}`),
+  createCoupon: (data: {
+    userId: string
+    code: string
+    percentOff?: number | null
+    amountOff?: number | null
+    maxUses?: number | null
+    expiresAt?: string | null
+  }) => request<CouponDTO>('/api/coupons', { method: 'POST', body: JSON.stringify(data) }),
+  toggleCoupon: (data: { userId: string; id: string; isActive: boolean }) =>
+    request<{ id: string; isActive: boolean }>('/api/coupons', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteCoupon: (id: string, userId: string) =>
+    request<{ ok: boolean }>(`/api/coupons${qs({ userId, id })}`, { method: 'DELETE' }),
+  validateCoupon: (data: { code: string; userId?: string; courseId?: string; trackId?: string; bundleId?: string; membershipId?: string }) =>
+    request<CouponValidationDTO>('/api/coupons/validate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Barra promocional (público): cupons ativos em rotação acima do header
+  promoBar: () => request<{ items: PromoBarItemDTO[] }>('/api/promo-bar'),
+
+  // Financeiro do mentor
+  finance: (userId: string) => request<FinanceDTO>(`/api/mentors/finance${qs({ userId })}`),
+
+  // Duplicar curso (rascunho com temas/aulas/quizzes)
+  duplicateCourse: (courseId: string, userId: string) =>
+    request<{ id: string; title: string }>(`/api/courses/${courseId}/duplicate`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    }),
+
+  // IA: resumo da aula (gerado 1x no servidor e cacheado)
+  lessonAiSummary: (lessonId: string, userId: string) =>
+    request<AiLessonSummaryDTO>(`/api/lessons/${lessonId}/ai-summary`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    }),
+
+  // IA: tutor do curso (responde com base no conteúdo do curso/aula)
+  aiTutor: (data: {
+    courseId: string
+    lessonId?: string
+    userId: string
+    message: string
+    history: AiTutorChatMessage[]
+  }) =>
+    request<{ reply: string }>('/api/ai/tutor', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // IA: recomendações personalizadas ("Feito para você")
+  recommendations: (userId: string) =>
+    request<RecommendationsDTO>(`/api/ai/recommendations${qs({ userId })}`),
+
+  // Assinatura do mentor (membership)
+  listMemberships: (params: { mentorUserId?: string; mentorId?: string; userId?: string }) =>
+    request<{ memberships: MembershipDTO[] }>(`/api/memberships${qs(params)}`),
+  getMembership: (id: string, userId?: string) =>
+    request<{ membership: MembershipDTO }>(`/api/memberships/${id}${qs({ userId })}`),
+  saveMembership: (data: {
+    userId: string
+    id?: string
+    title: string
+    description?: string
+    price: number
+    groupSessionDay?: number
+    groupSessionTime?: string
+    isPublished?: boolean
+  }) => request<{ id: string }>('/api/memberships', { method: 'POST', body: JSON.stringify(data) }),
+  deleteMembership: (id: string, userId: string) =>
+    request<{ ok: boolean }>(`/api/memberships/${id}${qs({ userId })}`, { method: 'DELETE' }),
+  cancelMembership: (data: { userId: string; membershipId: string }) =>
+    request<{ ok: boolean }>('/api/memberships/cancel', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Meta semanal de estudos (progresso calculado no servidor)
+  getWeeklyGoal: (userId: string) =>
+    request<WeeklyGoalDTO>(`/api/goals/weekly${qs({ userId })}`),
+  updateWeeklyGoal: (data: { userId: string; targetLessons: number }) =>
+    request<WeeklyGoalDTO>('/api/goals/weekly', { method: 'PUT', body: JSON.stringify(data) }),
+
+  // Lembretes automáticos (idempotente — seguro chamar a cada boot)
+  runReminders: (userId: string) =>
+    request<ReminderRunDTO>('/api/reminders/run', {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    }),
+
+  // ==================== PAINEL DE ADMINISTRAÇÃO ====================
+  // Todas as chamadas exigem o header x-admin-token (sessão emitida no login)
+  admin: {
+    stats: (token: string) =>
+      request<AdminStatsDTO>('/api/admin/stats', { headers: { 'x-admin-token': token } }),
+
+    users: (token: string, params: { q?: string; page?: number }) =>
+      request<AdminUsersResponseDTO>(`/api/admin/users${qs({ ...params })}`, {
+        headers: { 'x-admin-token': token },
+      }),
+    userAction: (
+      token: string,
+      data: { userId: string; action: 'promote' | 'demote' | 'block' | 'unblock' }
+    ) =>
+      request<{ user: { id: string; role: string; blocked: boolean } }>('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'x-admin-token': token },
+        body: JSON.stringify(data),
+      }),
+
+    // Cupons de plataforma (barra promocional / descontos globais)
+    coupons: (token: string) =>
+      request<AdminCouponsResponseDTO>('/api/admin/coupons', {
+        headers: { 'x-admin-token': token },
+      }),
+    createCoupon: (
+      token: string,
+      data: {
+        code: string
+        percentOff?: number | null
+        amountOff?: number | null
+        scope: 'SITE_WIDE' | 'NEW_ACCOUNTS' | 'CATEGORY' | 'MENTOR'
+        category?: string
+        mentorId?: string
+        maxUses?: number | null
+        expiresAt?: string | null
+        showInPromoBar?: boolean
+        promoMessage?: string | null
+      }
+    ) =>
+      request<{ coupon: PlatformCouponDTO }>('/api/admin/coupons', {
+        method: 'POST',
+        headers: { 'x-admin-token': token },
+        body: JSON.stringify(data),
+      }),
+    updateCoupon: (
+      token: string,
+      data: { id: string; isActive?: boolean; showInPromoBar?: boolean; promoMessage?: string | null }
+    ) =>
+      request<{ coupon: PlatformCouponDTO }>('/api/admin/coupons', {
+        method: 'PATCH',
+        headers: { 'x-admin-token': token },
+        body: JSON.stringify(data),
+      }),
+    deleteCoupon: (token: string, id: string) =>
+      request<{ ok: boolean }>(`/api/admin/coupons${qs({ id })}`, {
+        method: 'DELETE',
+        headers: { 'x-admin-token': token },
+      }),
+
+    settings: (token: string) =>
+      request<{ asaas: AsaasSettingsDTO }>('/api/admin/settings', {
+        headers: { 'x-admin-token': token },
+      }),
+    saveSettings: (token: string, data: { apiKey?: string; env: 'sandbox' | 'production' }) =>
+      request<{ asaas: AsaasSettingsDTO }>('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'x-admin-token': token },
+        body: JSON.stringify(data),
+      }),
+    removeSettings: (token: string) =>
+      request<{ asaas: AsaasSettingsDTO }>('/api/admin/settings', {
+        method: 'DELETE',
+        headers: { 'x-admin-token': token },
+      }),
+    testConnection: (token: string) =>
+      request<{ ok: true; env: string; stats: { received: number; pending: number } } | { ok: false; error: string }>(
+        '/api/admin/settings',
+        { method: 'POST', headers: { 'x-admin-token': token }, body: JSON.stringify({ action: 'test' }) }
+      ),
+    createWebhook: (token: string, url: string, email: string) =>
+      request<{ ok: true; asaas: AsaasSettingsDTO } | { ok: false; error: string }>(
+        '/api/admin/settings',
+        { method: 'POST', headers: { 'x-admin-token': token }, body: JSON.stringify({ action: 'webhook', url, email }) }
+      ),
+
+    payments: (token: string, params: { status?: string; q?: string; page?: number }) =>
+      request<AdminPaymentsResponseDTO>(`/api/admin/payments${qs({ ...params })}`, {
+        headers: { 'x-admin-token': token },
+      }),
+    paymentAction: (
+      token: string,
+      data: { paymentId: string; action: 'confirm_asaas' | 'sync' | 'cancel' }
+    ) =>
+      request<{ ok: boolean } & Record<string, unknown>>('/api/admin/payments', {
+        method: 'POST',
+        headers: { 'x-admin-token': token },
+        body: JSON.stringify(data),
+      }),
+
+    mfaStatus: (token: string) =>
+      request<{ mfaEnabled: boolean; recoveryCodesRemaining: number }>('/api/admin/mfa', {
+        headers: { 'x-admin-token': token },
+      }),
+    mfaSetup: (token: string) =>
+      request<{ secret: string; uri: string; qrDataUrl: string }>('/api/admin/mfa', {
+        method: 'POST',
+        headers: { 'x-admin-token': token },
+        body: JSON.stringify({ action: 'setup' }),
+      }),
+    mfaEnable: (token: string, code: string) =>
+      request<{ ok: true; mfaEnabled: true; recoveryCodes: string[] }>('/api/admin/mfa', {
+        method: 'POST',
+        headers: { 'x-admin-token': token },
+        body: JSON.stringify({ action: 'enable', code }),
+      }),
+    mfaRegenerateCodes: (token: string, password: string) =>
+      request<{ ok: true; recoveryCodes: string[] }>('/api/admin/mfa', {
+        method: 'POST',
+        headers: { 'x-admin-token': token },
+        body: JSON.stringify({ action: 'regenerate-codes', password }),
+      }),
+    mfaDisable: (token: string, password: string) =>
+      request<{ ok: true; mfaEnabled: false }>('/api/admin/mfa', {
+        method: 'POST',
+        headers: { 'x-admin-token': token },
+        body: JSON.stringify({ action: 'disable', password }),
+      }),
+
+    audit: (token: string, page = 1) =>
+      request<{ logs: AuditLogDTO[]; total: number; page: number; pages: number }>(
+        `/api/admin/audit${qs({ page })}`,
+        { headers: { 'x-admin-token': token } }
+      ),
+  },
 }
