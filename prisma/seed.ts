@@ -38,22 +38,22 @@ async function main() {
   await db.user.deleteMany()
 
   console.log('👤 Criando usuários...')
-  const ana = await db.user.create({ data: { name: 'Ana Souza', email: 'ana@demo.com', bio: 'Product designer apaixonada por educação e produto digital.', avatarUrl: '/uploads/seed/avatar-ana.png' } })
-  const lucas = await db.user.create({ data: { name: 'Lucas Prado', email: 'lucas@demo.com', bio: 'Dev backend migrando para produto.', avatarUrl: '/uploads/seed/avatar-lucas.png' } })
-  const julia = await db.user.create({ data: { name: 'Júlia Mendes', email: 'julia@demo.com', bio: 'Empreendedora, fundadora de um app de bem-estar.', avatarUrl: '/uploads/seed/avatar-julia.png' } })
-  const pedro = await db.user.create({ data: { name: 'Pedro Henrique', email: 'pedro@demo.com', bio: 'UX designer júnior em busca de crescimento.', avatarUrl: '/uploads/seed/avatar-pedro.png' } })
-  const camila = await db.user.create({ data: { name: 'Camila Rocha', email: 'camila@demo.com', bio: 'Full-stack em transição de carreira.', avatarUrl: '/uploads/seed/avatar-camila.png' } })
-  const fernanda = await db.user.create({ data: { name: 'Fernanda Dias', email: 'fernanda@demo.com', bio: 'Estudante de marketing digital.', avatarUrl: '/uploads/seed/avatar-fernanda.png' } })
-  const thiago = await db.user.create({ data: { name: 'Thiago Nunes', email: 'thiago@demo.com', bio: 'Product manager em formação.', avatarUrl: '/uploads/seed/avatar-thiago.png' } })
+  const ana = await db.user.create({ data: { name: 'Ana Souza', email: 'ana@demo.com', bio: 'Product designer apaixonada por educação e produto digital.', avatarUrl: '/uploads/seed/avatar-ana.webp' } })
+  const lucas = await db.user.create({ data: { name: 'Lucas Prado', email: 'lucas@demo.com', bio: 'Dev backend migrando para produto.', avatarUrl: '/uploads/seed/avatar-lucas.webp' } })
+  const julia = await db.user.create({ data: { name: 'Júlia Mendes', email: 'julia@demo.com', bio: 'Empreendedora, fundadora de um app de bem-estar.', avatarUrl: '/uploads/seed/avatar-julia.webp' } })
+  const pedro = await db.user.create({ data: { name: 'Pedro Henrique', email: 'pedro@demo.com', bio: 'UX designer júnior em busca de crescimento.', avatarUrl: '/uploads/seed/avatar-pedro.webp' } })
+  const camila = await db.user.create({ data: { name: 'Camila Rocha', email: 'camila@demo.com', bio: 'Full-stack em transição de carreira.', avatarUrl: '/uploads/seed/avatar-camila.webp' } })
+  const fernanda = await db.user.create({ data: { name: 'Fernanda Dias', email: 'fernanda@demo.com', bio: 'Estudante de marketing digital.', avatarUrl: '/uploads/seed/avatar-fernanda.webp' } })
+  const thiago = await db.user.create({ data: { name: 'Thiago Nunes', email: 'thiago@demo.com', bio: 'Product manager em formação.', avatarUrl: '/uploads/seed/avatar-thiago.webp' } })
 
   console.log('🧑‍🏫 Criando mentores...')
 
-  const carlosUser = await db.user.create({ data: { name: 'Carlos Ferreira', email: 'carlos@demo.com', bio: 'Engenheiro de software com 12 anos de experiência em startups e big techs.', avatarUrl: '/uploads/seed/avatar-carlos.png' } })
+  const carlosUser = await db.user.create({ data: { name: 'Carlos Ferreira', email: 'carlos@demo.com', bio: 'Engenheiro de software com 12 anos de experiência em startups e big techs.', avatarUrl: '/uploads/seed/avatar-carlos.webp' } })
   const carlosProfile = await db.mentorProfile.create({
     data: {
       userId: carlosUser.id,
       slug: 'carlos-ferreira',
-      coverUrl: '/uploads/seed/cover-carlos.png',
+      coverUrl: '/uploads/seed/cover-carlos.webp',
       gaMeasurementId: 'G-MHDEMO01',
       metaPixelId: '1029384756101928',
       instagram: 'carlosferreira.dev',
@@ -70,12 +70,12 @@ async function main() {
     },
   })
 
-  const marinaUser = await db.user.create({ data: { name: 'Marina Costa', email: 'marina@demo.com', bio: 'PM com 9 anos de experiência em produtos digitais de alto crescimento.', avatarUrl: '/uploads/seed/avatar-marina.png' } })
+  const marinaUser = await db.user.create({ data: { name: 'Marina Costa', email: 'marina@demo.com', bio: 'PM com 9 anos de experiência em produtos digitais de alto crescimento.', avatarUrl: '/uploads/seed/avatar-marina.webp' } })
   const marina = await db.mentorProfile.create({
     data: {
       userId: marinaUser.id,
       slug: 'marina-costa',
-      coverUrl: '/uploads/seed/cover-marina.png',
+      coverUrl: '/uploads/seed/cover-marina.webp',
       headline: 'Product Manager · Carreira em Produto Digital',
       description:
         'Lidero produtos digitais há 9 anos em empresas de alto crescimento. Já lancei produtos do zero e escalei features usadas por milhões de pessoas.\n\nNa mentoria, te ajudo com: transição de carreira para produto, discovery e priorização (RICE, Jobs to be Done), métricas north star, roadmap e comunicação com stakeholders. Se você está migrando de área ou quer acelerar como PM, montamos juntos um plano de ação com metas de 30/60/90 dias.',
@@ -88,12 +88,12 @@ async function main() {
     },
   })
 
-  const rafaelUser = await db.user.create({ data: { name: 'Rafael Almeida', email: 'rafael@demo.com', bio: 'Growth marketer, scalei 3 startups de 0 a 7 dígitos.', avatarUrl: '/uploads/seed/avatar-rafael.png' } })
+  const rafaelUser = await db.user.create({ data: { name: 'Rafael Almeida', email: 'rafael@demo.com', bio: 'Growth marketer, scalei 3 startups de 0 a 7 dígitos.', avatarUrl: '/uploads/seed/avatar-rafael.webp' } })
   const rafael = await db.mentorProfile.create({
     data: {
       userId: rafaelUser.id,
       slug: 'rafael-almeida',
-      coverUrl: '/uploads/seed/cover-rafael.png',
+      coverUrl: '/uploads/seed/cover-rafael.webp',
       metaPixelId: '2938475610201938',
       headline: 'Estrategista de Growth & Marketing Digital',
       description:
@@ -107,12 +107,12 @@ async function main() {
     },
   })
 
-  const beatrizUser = await db.user.create({ data: { name: 'Beatriz Lima', email: 'beatriz@demo.com', bio: 'UX/UI designer sênior, especialista em design systems.', avatarUrl: '/uploads/seed/avatar-beatriz.png' } })
+  const beatrizUser = await db.user.create({ data: { name: 'Beatriz Lima', email: 'beatriz@demo.com', bio: 'UX/UI designer sênior, especialista em design systems.', avatarUrl: '/uploads/seed/avatar-beatriz.webp' } })
   const beatriz = await db.mentorProfile.create({
     data: {
       userId: beatrizUser.id,
       slug: 'beatriz-lima',
-      coverUrl: '/uploads/seed/cover-beatriz.png',
+      coverUrl: '/uploads/seed/cover-beatriz.webp',
       headline: 'UX/UI Designer Sênior · Design Systems',
       description:
         'Designer de produto há 10 anos, sou especialista em design systems e experiência de usuário em produtos financeiros e SaaS.\n\nNa mentoria revisamos seu portfólio linha a linha, trabalhamos storytelling de case studies, processo de design, handoff com engenharia e preparação para entrevistas (incluindo whiteboard challenge). Também ajudo times a estruturarem design systems do zero com Figma e tokens.',
@@ -126,12 +126,12 @@ async function main() {
     },
   })
 
-  const davidUser = await db.user.create({ data: { name: 'David Okoye', email: 'david@demo.com', bio: 'Assessor de investimentos CFP®, educador financeiro.', avatarUrl: '/uploads/seed/avatar-david.png' } })
+  const davidUser = await db.user.create({ data: { name: 'David Okoye', email: 'david@demo.com', bio: 'Assessor de investimentos CFP®, educador financeiro.', avatarUrl: '/uploads/seed/avatar-david.webp' } })
   const david = await db.mentorProfile.create({
     data: {
       userId: davidUser.id,
       slug: 'david-okoye',
-      coverUrl: '/uploads/seed/cover-david.png',
+      coverUrl: '/uploads/seed/cover-david.webp',
       headline: 'Assessor de Investimentos (CFP®) · Finanças Pessoais',
       description:
         'Certificado CFP® com 11 anos de mercado, já ajudei centenas de famílias a saírem das dívidas e construírem patrimônio com planejamento financeiro de verdade.\n\nNa mentoria organizamos sua vida financeira: orçamento, quitação de dívidas, reserva de emergência e alocação de investimentos (renda fixa, fundos, ações e FIIs) alinhada aos seus objetivos. Sem enrolação e sem "achismo": método, planilhas e acompanhamento.',
@@ -143,12 +143,12 @@ async function main() {
     },
   })
 
-  const sofiaUser = await db.user.create({ data: { name: 'Sofia Santos', email: 'sofia@demo.com', bio: 'Professora de inglês há 14 anos, CELTA pela Cambridge.', avatarUrl: '/uploads/seed/avatar-sofia.png' } })
+  const sofiaUser = await db.user.create({ data: { name: 'Sofia Santos', email: 'sofia@demo.com', bio: 'Professora de inglês há 14 anos, CELTA pela Cambridge.', avatarUrl: '/uploads/seed/avatar-sofia.webp' } })
   const sofia = await db.mentorProfile.create({
     data: {
       userId: sofiaUser.id,
       slug: 'sofia-santos',
-      coverUrl: '/uploads/seed/cover-sofia.png',
+      coverUrl: '/uploads/seed/cover-sofia.webp',
       headline: 'Professora de Inglês · Business English & Fluência',
       description:
         'Professora de inglês há 14 anos, com CELTA pela Universidade de Cambridge e experiência corporativa com executivos de multinacionais.\n\nAs mentorias são imersivas e personalizadas: preparação para entrevistas em inglês, business english, apresentações e reuniões, ou conversação para destravar a fluência de uma vez. Uso material autêntico e simulações reais do seu dia a dia.',
@@ -165,7 +165,7 @@ async function main() {
     data: {
       userId: ana.id,
       slug: 'ana-souza',
-      coverUrl: '/uploads/seed/cover-ana.png',
+      coverUrl: '/uploads/seed/cover-ana.webp',
       headline: 'Lead Product Designer · Design de Produto & Carreira',
       description:
         'Lead de design em produtos digitais com foco em experiências de alto impacto. Já construí design systems, conduzi discoveries e liderei squads multidisciplinares.\n\nMentoro designers em todos os níveis: portfólio, processo de UX, pesquisa com usuários, métricas de design, liderança e transição para produto. Vamos evoluir sua carreira com um plano claro e prático.',
@@ -311,7 +311,7 @@ async function main() {
         'Do caos de pastas à arquitetura em camadas: um curso direto ao ponto para devs que querem escrever sistemas organizados, testáveis e prontos para escalar. Baseado em 12 anos de projetos reais — incluindo os erros que eu cometerei para você não cometer.',
       category: 'Tecnologia',
       level: 'INTERMEDIARIO',
-      coverUrl: '/uploads/seed/course-arquitetura.png',
+      coverUrl: '/uploads/seed/course-arquitetura.webp',
       price: 189,
       mentorshipCount: 2,
     },
@@ -460,7 +460,7 @@ async function main() {
         'Curso gratuito e direto: o que um PM faz de verdade, como fazer discovery que gera insight, priorizar com RICE e montar seu plano de transição em 90 dias. O mesmo conteúdo que uso nas mentorias com quem está migrando para produto.',
       category: 'Carreira',
       level: 'INICIANTE',
-      coverUrl: '/uploads/seed/course-product-manager.png',
+      coverUrl: '/uploads/seed/course-product-manager.webp',
       price: 0,
       mentorshipCount: 0,
     },
@@ -519,7 +519,7 @@ async function main() {
         'Tokens, componentes, governança e handoff: construa um design system que engenharia ama usar e que sobrevive ao crescimento do produto. Para designers e times enxutos que querem consistência sem burocracia.',
       category: 'Design',
       level: 'INTERMEDIARIO',
-      coverUrl: '/uploads/seed/course-design-systems.png',
+      coverUrl: '/uploads/seed/course-design-systems.webp',
       price: 199,
       mentorshipCount: 1,
     },
@@ -562,7 +562,7 @@ async function main() {
         'Pare de apostar em campanhas isoladas: construa um sistema de aquisição com funil instrumentado, experimentos priorizados e canais que compostam. O playbook que usei para escalar 3 startups de 0 a 7 dígitos.',
       category: 'Marketing',
       level: 'INTERMEDIARIO',
-      coverUrl: '/uploads/seed/course-growth.png',
+      coverUrl: '/uploads/seed/course-growth.webp',
       price: 149,
       mentorshipCount: 1,
     },
@@ -613,7 +613,7 @@ async function main() {
         'Prepare-se para processos em inglês com o método que uso com executivos há 14 anos: STAR method, vocabulário de alto impacto e rotina de prática de 20 minutos. Simulações reais, feedback e material autêntico.',
       category: 'Idiomas',
       level: 'INICIANTE',
-      coverUrl: '/uploads/seed/course-english.png',
+      coverUrl: '/uploads/seed/course-english.webp',
       price: 89,
       mentorshipCount: 2,
     },
@@ -700,7 +700,7 @@ async function main() {
         'Um resumo direto ao ponto das 4 camadas que sobrevivem ao crescimento de um app — com o checklist que uso em toda revisão de código.',
       category: 'Tecnologia',
       level: 'INTERMEDIARIO',
-      coverUrl: '/uploads/seed/course-arquitetura.png',
+      coverUrl: '/uploads/seed/course-arquitetura.webp',
       content:
         'Arquitetura em 4 camadas, sem teoria demais\n\nDepois de 12 anos revisando sistemas alheios, eu resumi tudo o que importa em quatro perguntas:\n\n## 1. A UI está “burra”?\n\nComponente que decide regra de negócio é componente que vai doer no próximo sprint. A interface só exibe e coleta — o resto mora nos casos de uso.\n\n## 2. Os verbos têm nome de negócio?\n\nInscreverAluno, PublicarCurso, CancelarAgendamento. Se o seu código fala “handlePostV2”, o negócio e o sistema estão falando línguas diferentes.\n\n## 3. As regras moram num lugar só?\n\n“Aluno não pode se inscrever em curso despublicado” é uma regra — e uma regra não pode viver em três ifs espalhados pela UI.\n\n## 4. A infra é plugável?\n\nTrocar Postgres por outro banco deveria tocar pouquíssimos arquivos. Se tocar vinte, a infra virou protagonista.\n\n## O checklist de revisão\n\n- Dependências apontam para dentro?\n- Todo caso de uso retorna sucesso ou erro de negócio — nunca stack trace cru?\n- O domínio roda num script de terminal, sem navegador?\n\nQuatro “sims” e seu sistema está pronto para escalar. É exatamente esse método que aplicamos, aula por aula, no curso Arquitetura de Software na Prática.',
       readingMin: 12,
@@ -716,7 +716,7 @@ async function main() {
         'Capítulo de amostra do livro do curso: camadas, domínio, casos de uso e o método de refatoração das duas semanas — em 7 páginas ilustradas.',
       category: 'Tecnologia',
       level: 'INTERMEDIARIO',
-      coverUrl: '/uploads/seed/course-arquitetura.png',
+      coverUrl: '/uploads/seed/course-arquitetura.webp',
       pdfUrl: '/uploads/seed/livro-arquitetura.pdf',
       readingMin: 45,
       isPublished: true,
@@ -792,7 +792,7 @@ async function main() {
         'Um guia direto sobre como ideias viram impacto: gatilhos de inovação, experimentos baratos e a rotina que mantém a criação viva em times pequenos.',
       category: 'Negócios',
       level: 'INTERMEDIARIO',
-      coverUrl: '/uploads/seed/livro-inovacao.png',
+      coverUrl: '/uploads/seed/livro-inovacao.webp',
       pdfUrl: '/uploads/seed/livro-inovacao.pdf',
       readingMin: 40,
       isPublished: true,
@@ -807,7 +807,7 @@ async function main() {
         'O manual de bolso para começar bem: orçamento sem planilha assustadora, primeiros investimentos e como fugir das dívidas mais comuns dos 18 aos 25.',
       category: 'Finanças',
       level: 'INICIANTE',
-      coverUrl: '/uploads/seed/livro-gestao-financeira.png',
+      coverUrl: '/uploads/seed/livro-gestao-financeira.webp',
       pdfUrl: '/uploads/seed/livro-gestao-financeira.pdf',
       readingMin: 35,
       isPublished: true,
@@ -822,7 +822,7 @@ async function main() {
         'Método completo de estudo em blocos de foco: como montar sessões de 25 minutos, lidar com interrupções e manter o ritmo sem esgotar.',
       category: 'Carreira',
       level: 'INICIANTE',
-      coverUrl: '/uploads/seed/livro-pomodoro.png',
+      coverUrl: '/uploads/seed/livro-pomodoro.webp',
       pdfUrl: '/uploads/seed/livro-pomodoro.pdf',
       readingMin: 25,
       isPublished: true,

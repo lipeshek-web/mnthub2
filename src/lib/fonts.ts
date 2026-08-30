@@ -65,38 +65,38 @@ export interface MentorFont {
 }
 
 // ---- Sans (modernas e limpas) ----
-const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap' })
-const poppins = Poppins({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap' })
-const montserrat = Montserrat({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap' })
-const nunito = Nunito({ subsets: ['latin'], weight: ['400', '600', '700'], display: 'swap' })
-const workSans = Work_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap' })
-const outfit = Outfit({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap' })
-const sora = Sora({ subsets: ['latin'], weight: ['400', '600', '700'], display: 'swap' })
-const manrope = Manrope({ subsets: ['latin'], weight: ['400', '600', '700'], display: 'swap' })
-const plusJakarta = Plus_Jakarta_Sans({ subsets: ['latin'], weight: ['400', '600', '700'], display: 'swap' })
+const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap', preload: false })
+const poppins = Poppins({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap', preload: false })
+const montserrat = Montserrat({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap', preload: false })
+const nunito = Nunito({ subsets: ['latin'], weight: ['400', '600', '700'], display: 'swap', preload: false })
+const workSans = Work_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap', preload: false })
+const outfit = Outfit({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap', preload: false })
+const sora = Sora({ subsets: ['latin'], weight: ['400', '600', '700'], display: 'swap', preload: false })
+const manrope = Manrope({ subsets: ['latin'], weight: ['400', '600', '700'], display: 'swap', preload: false })
+const plusJakarta = Plus_Jakarta_Sans({ subsets: ['latin'], weight: ['400', '600', '700'], display: 'swap', preload: false })
 
 // ---- Serif (elegantes e editoriais) ----
-const playfair = Playfair_Display({ subsets: ['latin'], weight: ['400', '600', '700', '900'], display: 'swap' })
-const dmSerif = DM_Serif_Display({ subsets: ['latin'], weight: '400', display: 'swap' })
-const lora = Lora({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap' })
-const merriweather = Merriweather({ subsets: ['latin'], weight: ['400', '700'], display: 'swap' })
-const crimsonPro = Crimson_Pro({ subsets: ['latin'], weight: ['400', '600', '700'], display: 'swap' })
-const libreBaskerville = Libre_Baskerville({ subsets: ['latin'], weight: ['400', '700'], display: 'swap' })
-const fraunces = Fraunces({ subsets: ['latin'], weight: ['400', '600', '700', '900'], display: 'swap' })
+const playfair = Playfair_Display({ subsets: ['latin'], weight: ['400', '600', '700', '900'], display: 'swap', preload: false })
+const dmSerif = DM_Serif_Display({ subsets: ['latin'], weight: '400', display: 'swap', preload: false })
+const lora = Lora({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap', preload: false })
+const merriweather = Merriweather({ subsets: ['latin'], weight: ['400', '700'], display: 'swap', preload: false })
+const crimsonPro = Crimson_Pro({ subsets: ['latin'], weight: ['400', '600', '700'], display: 'swap', preload: false })
+const libreBaskerville = Libre_Baskerville({ subsets: ['latin'], weight: ['400', '700'], display: 'swap', preload: false })
+const fraunces = Fraunces({ subsets: ['latin'], weight: ['400', '600', '700', '900'], display: 'swap', preload: false })
 
 // ---- Display (personalidade forte) ----
-const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], weight: ['400', '500', '700'], display: 'swap' })
-const archivo = Archivo({ subsets: ['latin'], weight: ['400', '600', '700', '900'], display: 'swap' })
-const bebasNeue = Bebas_Neue({ subsets: ['latin'], weight: '400', display: 'swap' })
+const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], weight: ['400', '500', '700'], display: 'swap', preload: false })
+const archivo = Archivo({ subsets: ['latin'], weight: ['400', '600', '700', '900'], display: 'swap', preload: false })
+const bebasNeue = Bebas_Neue({ subsets: ['latin'], weight: '400', display: 'swap', preload: false })
 
 // ---- Manuscritas (toque humano) ----
-const caveat = Caveat({ subsets: ['latin'], weight: ['400', '700'], display: 'swap' })
-const dancingScript = Dancing_Script({ subsets: ['latin'], weight: ['400', '700'], display: 'swap' })
-const patrickHand = Patrick_Hand({ subsets: ['latin'], weight: '400', display: 'swap' })
+const caveat = Caveat({ subsets: ['latin'], weight: ['400', '700'], display: 'swap', preload: false })
+const dancingScript = Dancing_Script({ subsets: ['latin'], weight: ['400', '700'], display: 'swap', preload: false })
+const patrickHand = Patrick_Hand({ subsets: ['latin'], weight: '400', display: 'swap', preload: false })
 
 // ---- Mono (código e tecnologia) ----
-const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '700'], display: 'swap' })
-const ibmPlexMono = IBM_Plex_Mono({ subsets: ['latin'], weight: ['400', '600'], display: 'swap' })
+const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '700'], display: 'swap', preload: false })
+const ibmPlexMono = IBM_Plex_Mono({ subsets: ['latin'], weight: ['400', '600'], display: 'swap', preload: false })
 
 // A ordem define a exibição no seletor. IDs nunca mudam (estão no banco).
 type MentorFontSeed = Omit<MentorFont, 'style'> & { font: NextFontModule }

@@ -45,6 +45,7 @@ export function Avatar({
           alt={`Foto de ${name}`}
           className="h-full w-full object-cover"
           loading="lazy"
+          decoding="async"
           onError={() => setBroken(true)}
         />
       ) : (
