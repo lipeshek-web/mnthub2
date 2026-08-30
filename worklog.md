@@ -1669,3 +1669,24 @@ Stage Summary:
 - Banco de dados intacto com dados reais do usuário: conta ADMIN, cupons, publicações com capas reais, histórico de pagamentos/auditoria
 - Redundância: cópia do snapshot em /home/z/restore-snapshot-0830 + commit a5cef7a no git
 - Aprendizado operacional: iniciar o dev server SEMPRE via .zscripts/dev.sh (servidores manuais são mortos pelo ambiente); snapshot /tmp/my-project é volátil — manter commits git frequentes como política
+---
+Task ID: W-10
+Agent: Z.ai Code (main)
+Task: Modo imersivo (sem header/footer) no login/cadastro, no painel admin e nos fluxos de criação de cursos/aulas — contas demo em menu retraído, botão de fechar no admin e dialogs fullscreen estilo Apple
+
+Work Log:
+- Shell (page.tsx): flag immersive estendida para view 'auth', view 'admin' e needsAuth (guest caindo em view protegida vê o login imersivo) — PromoBar, Navbar e Footer somem nessas telas; classroom/reader continuam overlay tela cheia como antes
+- Auth (auth-view.tsx): contas demo agora vivem num Collapsible RETRAÍDO por padrão — trigger card com ícone Users, título + hint "Entre com um clique · senha demo123" e chevron giratório; divisor "ou continue com" virou só "ou"; pills de login demo intactos dentro do conteúdo
+- Fix de layout no auth: sections ganharam min-w-0 (grid blowout — a tablist grid-cols-2 forçava min-content 415px e causava 25px de overflow horizontal no mobile 390) e o grid raiz trocou min-h-full → min-h-dvh (com a tela sempre imersiva, dvh dá altura definida: painel esmeralda agora cobre a viewport inteira, antes parava em ~685px)
+- Admin (admin-panel.tsx): botão "Voltar" virou botão circular estilo iOS (X em fundo stone, hover escurece, aria-label "Fechar administração e voltar ao site"); mesma moeda no estado needsRelogin (X absoluto no canto) — imersivo, resta só o conteúdo do painel
+- Onboarding: dialog de curso (Novo/Editar) e LessonsManagerDialog viraram SHEETS fullscreen estilo Apple — DialogContent com showCloseButton={false}, classes de override (top-0/left-0, translate 0, h-dvh, max-w-none, rounded-none, border-0, p-0, flex flex-col, gap-0, zoom 100), header fixo com backdrop-blur + hairline (título semibold tracking-tight + X circular), corpo rolável com coluna centralizada (max-w-xl curso / max-w-2xl aulas) e footer fixo com ações (Cancelar ghost + ação principal rounded-full)
+- Lista de aulas sem max-h-64 (o corpo do sheet rola); form "Adicionar aula" em card rounded-xl p-4; QuizManager e AlertDialog de exclusão continuam modais centrados sobrepostos ao sheet
+- Estilo Apple nos dois dialogs: todos os inputs/selects/textareas h-11 rounded-xl (título, descrição, categoria, nível, preço, mentorias, aula: título, tema, novo tema, data/hora, duração ×3, link transmissão, vídeo ×2, conteúdo biblioteca, conteúdo textual, resumo), botões de tipo de aula rounded-xl, footer actions rounded-full
+- Verificação: lint 0/0; tsc limpo (excl. examples/skills); E2E agent-browser — home 1440 mantém nav+footer+promo; /auth sem nav/footer/promo com demo retraído (aria-expanded=false, 0 pills), expandiu com 20 contas, login demo Carlos funcionou; dialogs de curso e aulas medidos fullscreen (1280×577 e 390×844 exatos, radius 0, corpo rolando, X presente); screenshots light+dark desktop e mobile 390; overflow 0 em todas as telas testadas; console limpo; dev.log sem erros; commit 3c2b271
+- NÃO verificado no browser: painel admin renderizado (senha do gustavonv@yandex.com desconhecida — não toquei no banco); mudanças lá são de baixo risco (flag imersiva no shell + botão circular) e seguem o mesmo padrão validado nas outras telas
+
+Stage Summary:
+- Login/cadastro, admin e editor de cursos/aulas agora são experiências fullscreen: nada de header, footer ou barra promocional — só o conteúdo (padrão que o usuário quer ver no futuro do produto)
+- Contas demo escondidas atrás de um menu retraído no login; admin fecha com um X circular; criar curso e gerenciar aulas viraram sheets Apple com topo fixo, corpo centralizado e rodapé de ações
+- Dois bugs de layout do auth aproveitados e corrigidos: overflow horizontal de 25px no mobile (min-w-0) e painel esmeralda não esticando até o fim da tela (min-h-dvh)
+- Checkpoint git 3c2b271 (próximo downgrade → git checkout)
