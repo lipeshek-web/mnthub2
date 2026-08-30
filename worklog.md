@@ -1401,3 +1401,26 @@ Validation (lint 0/0, tsc limpo em src/, browser E2E real desktop 1440 + mobile 
 Stage Summary:
 - O produto ficou visivelmente mais leve: card de sessão caiu de ~5 blocos de texto para 3 linhas visuais com as mesmas ações (confirmar/recusar/concluir/entrar/avaliar/cancelar/ics/gcal preservados), cards do catálogo perderam duplicações (notas duplas, preço duplo, linhas redundantes)
 - Busca agora se comporta como app moderno: UM campo por tela, digitar leva ao modo resultados ao vivo (corpo = só resultados, sem bento/estatísticas), limpar devolve a navegação, "/" foca a barra certa em cada tela, e a busca ignora acentos/caixa em todas as bases (mentores, cursos, trilhas, biblioteca, pacotes e conversas)
+---
+Task ID: U-2
+Agent: Z.ai Code (main)
+Task: Busca central do header como busca principal (sempre visível e prioritária)
+
+Work Log:
+- Feedback do usuário: a busca central do header é A principal e deve ter prioridade (no U-1 ela era escondida na home e no Explorar em modo navegar). Modelo invertido: o header assume a busca em todas as telas e as barras do corpo saem de cena
+- navbar.tsx: campo central de busca agora renderiza SEMPRE (desktop e ícone mobile em todas as views); regra showHeaderSearch removida; atalho "/" simplificado (sempre foca o campo do header — desktop foca direto, mobile abre a linha de busca); digitação ao vivo mantida (debounce 250ms → setExploreQuery + navigate ao Explorar + corpo vira só resultados); texto do campo continua sincronizado com o termo ativo da store
+- marketplace.tsx: barra grande de busca do corpo REMOVIDA de vez (não existe mais busca duplicada no Explorar); `search` agora deriva direto da store (useAppStore exploreQuery) — removidos search/inputValue locais, onSearchChange, debounceRef, searchRef, listener 'mentorhub:focus-search' e imports (Input, Search, useRef); modo busca mantido (título "Resultados para “termo”" + X que limpa a store + "N resultados"; bento/áreas/autores ocultos); clearSearch/clearAllSearch/clearAllFilters limpam o termo da store + categorias
+- landing-mentee.tsx: hero da home perde o input de busca (era a 2ª barra) — fica o CTA "Explorar mentores" (vai à aba Mentores) + dica "ou use a busca acima ✨"; removidos term/handleSearch/heroSearchRef/listener e imports (FormEvent, Input, setExploreQuery)
+- EventBus 'mentorhub:focus-search' deixou de existir (não é mais necessário — o header é sempre o alvo)
+
+Validation (lint 0/0, tsc limpo em src/, browser E2E real desktop 1440 + mobile 390, light + dark):
+- Home (Ana logada): busca central visível no header com kbd "/" e CTA novo no hero; digitar "cyber" direto da home → navega ao Explorar e o corpo vira SÓ resultados ("Resultados para “cyber” · 2 resultados") com a barra do header como única na tela
+- X do título de resultados limpa a store → volta ao modo navegar (header segue com a busca, corpo mostra tabs + bento + contagens, sem nenhum outro campo)
+- Explorar em modo navegar: SEM barra de busca no corpo (header é a única) — página mais leve; digitar "gustavo" no header com o Explorar já aberto → resultados na hora (mentor Gustavo + seus 4 cursos da trilha de Cibersegurança)
+- Mobile 390: ícone de busca sempre no header; linha de busca abre, digita "design", navega e mostra resultados; sem overflow (390=390) em home/explorar/dashboard; fechar a linha e limpar restaura o modo navegar
+- Atalho "/" (desktop): foco cai exatamente no campo central do header (verificado via document.activeElement)
+- Dashboard dark com a busca central presente; sessões/cards intactos
+- dev.log saudável (200s; warnings de Fast Refresh eram do HMR durante as edições)
+
+Stage Summary:
+- Paradigma final da busca: UMA busca só, central no header, sempre visível e prioritária — digitar em qualquer tela leva ao modo resultados ao vivo; o corpo do Explorar não tem mais campo próprio e o hero da home virou CTA; acentos/caixa continuam ignorados; UX consistente em desktop e mobile

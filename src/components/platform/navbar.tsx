@@ -377,20 +377,16 @@ function NotificationsBell() {
 export function Navbar() {
   const { user, view, setUser, navigate } = useAppStore()
 
-  // ---------- Busca global do header (ao vivo) ----------
+  // ---------- Busca global do header (a busca principal, sempre visível) ----------
   const [query, setQuery] = useState('')
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const desktopSearchRef = useRef<HTMLInputElement>(null)
   const mobileSearchRef = useRef<HTMLInputElement>(null)
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Telas com busca própria no corpo (a home tem a do hero; o Explorar tem a
-  // barra grande): o campo do header some para nunca haver 2 barras. No
-  // Explorar com busca ativa vinda daqui, ele volta — é o único campo na tela.
+  // O texto do campo acompanha o termo ativo em qualquer tela (ex.: busca feita
+  // em outra aba/session) — a busca é uma só, centralizada no header.
   const externalQuery = useAppStore((s) => s.exploreQuery)
-  const showHeaderSearch =
-    view.name === 'marketplace' ? externalQuery !== '' : view.name !== 'home'
 
-  // Mantém o texto do campo sincronizado com o termo ativo (ex.: busca do hero)
   useEffect(() => {
     setQuery(externalQuery)
   }, [externalQuery])
@@ -439,8 +435,7 @@ export function Navbar() {
     setMobileSearchOpen(false)
   }
 
-  // Atalho "/" foca a busca do header (sensação de app nativo); no Explorar,
-  // foca a barra grande do corpo quando é a ativa
+  // Atalho "/" foca a busca principal do header (sensação de app nativo)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null
@@ -450,22 +445,11 @@ export function Navbar() {
         target?.isContentEditable
       if (e.key === '/' && !typing) {
         e.preventDefault()
-        const state = useAppStore.getState()
-        if (state.view.name === 'marketplace' && state.exploreQuery) {
-          // busca do header ativa no Explorar: foca o próprio campo
-          if (window.matchMedia('(min-width: 768px)').matches) {
-            desktopSearchRef.current?.focus()
-          } else {
-            setMobileSearchOpen(true)
-            setTimeout(() => mobileSearchRef.current?.focus(), 60)
-          }
-        } else if (state.view.name === 'marketplace' || state.view.name === 'home') {
-          // telas com busca própria no corpo: foca a barra delas
-          window.dispatchEvent(new CustomEvent('mentorhub:focus-search'))
-        } else if (window.matchMedia('(min-width: 768px)').matches) {
+        if (window.matchMedia('(min-width: 768px)').matches) {
           desktopSearchRef.current?.focus()
         } else {
           setMobileSearchOpen(true)
+          setTimeout(() => mobileSearchRef.current?.focus(), 60)
         }
       }
     }
@@ -580,13 +564,10 @@ export function Navbar() {
           {navItem({ name: 'dashboard' }, 'Minhas sessões', <CalendarDays className="h-4 w-4" />)}
         </nav>
 
-        {/* Busca global (desktop): escondida no Explorar (a barra grande do corpo
-            é a única) — reaparece quando a busca ativa veio daqui */}
-        {showHeaderSearch && (
-          <div className="mx-auto hidden w-full max-w-xs md:block lg:max-w-sm">
-            {searchField(false)}
-          </div>
-        )}
+        {/* Busca principal (desktop): sempre visível, centralizada no header */}
+        <div className="mx-auto hidden w-full max-w-xs md:block lg:max-w-sm">
+          {searchField(false)}
+        </div>
 
         <div className={cn('flex items-center gap-2', 'md:ml-0 ml-auto')}>
           {/* Tema claro/escuro (todos) + mensagens e sino (apenas logado) */}
@@ -594,21 +575,18 @@ export function Navbar() {
           {user && <MessagesButton />}
           {user && <NotificationsBell />}
 
-          {/* Busca (mobile): ícone que expande uma linha de busca abaixo — fora
-              do Explorar, que já tem a própria barra grande no corpo */}
-          {showHeaderSearch && (
-            <button
-              onClick={() => {
-                setMobileSearchOpen((open) => !open)
-                setTimeout(() => mobileSearchRef.current?.focus(), 60)
-              }}
-              aria-expanded={mobileSearchOpen}
-              aria-label={mobileSearchOpen ? 'Fechar busca' : 'Abrir busca'}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 md:hidden dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
-            >
-              {mobileSearchOpen ? <X className="h-4.5 w-4.5" /> : <Search className="h-4.5 w-4.5" />}
-            </button>
-          )}
+          {/* Busca (mobile): ícone que expande a linha de busca abaixo do header */}
+          <button
+            onClick={() => {
+              setMobileSearchOpen((open) => !open)
+              setTimeout(() => mobileSearchRef.current?.focus(), 60)
+            }}
+            aria-expanded={mobileSearchOpen}
+            aria-label={mobileSearchOpen ? 'Fechar busca' : 'Abrir busca'}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 md:hidden dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
+          >
+            {mobileSearchOpen ? <X className="h-4.5 w-4.5" /> : <Search className="h-4.5 w-4.5" />}
+          </button>
 
           {user ? (
             <DropdownMenu>

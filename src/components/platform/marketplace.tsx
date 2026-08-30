@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowRight,
@@ -16,7 +16,6 @@ import {
   Library,
   Layers,
   Route,
-  Search,
   SearchX,
   Star,
   Users,
@@ -25,7 +24,6 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -73,12 +71,8 @@ export function MarketplaceView() {
   // Lista filtrada exibida no grid
   const [mentors, setMentors] = useState<MentorListItemDTO[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [inputValue, setInputValue] = useState('')
   const [category, setCategory] = useState('')
   const [sort, setSort] = useState('relevance')
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const searchRef = useRef<HTMLInputElement>(null)
 
   // Aba do Explorar (mentores/cursos): valor inicial lido da store uma única vez
   const [tab, setTab] = useState<ExploreTab>(() => useAppStore.getState().exploreTab)
@@ -119,25 +113,10 @@ export function MarketplaceView() {
     useAppStore.setState({ exploreTab: 'all' })
   }, [])
 
-  // ---------- Busca ao vivo (header/hero → corpo vira só resultados) ----------
-  // O termo externo (digitação no header, busca do hero) é a fonte da verdade
-  // enquanto existir: sincroniza o estado local sempre que muda — inclusive ao
-  // limpar — e esconde a barra grande do corpo para nunca haver 2 buscas.
-  const externalQuery = useAppStore((s) => s.exploreQuery)
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    setInputValue(externalQuery)
-    setSearch(externalQuery)
-  }, [externalQuery])
-
-  // Atalho "/" vindo do header: foca a barra grande quando é a busca ativa
-  useEffect(() => {
-    const onFocusSearch = () => {
-      if (!useAppStore.getState().exploreQuery) searchRef.current?.focus()
-    }
-    window.addEventListener('mentorhub:focus-search', onFocusSearch)
-    return () => window.removeEventListener('mentorhub:focus-search', onFocusSearch)
-  }, [])
+  // ---------- Busca principal: o campo central do header ----------
+  // O Explorar não tem barra própria: o termo vem da store (busca central do
+  // header, ao vivo) e o corpo reage — navegando ou exibindo só resultados.
+  const search = useAppStore((s) => s.exploreQuery)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -242,29 +221,14 @@ export function MarketplaceView() {
     if (tab === 'library') void loadLibrary()
   }, [tab, loadLibrary])
 
-  const onSearchChange = (value: string) => {
-    setInputValue(value)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => setSearch(value), 300)
-  }
-
+  /** Limpa o termo da busca principal (header) — volta ao modo navegar */
   const clearSearch = () => {
-    setInputValue('')
-    setSearch('')
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    searchRef.current?.focus()
-  }
-
-  /** Limpa termo externo (busca vinda do header/hero) — volta ao modo navegar */
-  const clearExternalSearch = () => {
     useAppStore.getState().setExploreQuery('')
   }
 
-  /** Limpa tudo (termo local + externo + filtros de área) */
+  /** Limpa termo + filtros de área/formato */
   const clearAllSearch = () => {
     useAppStore.getState().setExploreQuery('')
-    setInputValue('')
-    setSearch('')
     setCategory('')
     setLibCategory('')
     setLibKind('ALL')
@@ -492,10 +456,7 @@ export function MarketplaceView() {
             : tab === 'library'
               ? libItems.length
               : null
-  const clearAllFilters = () => {
-    clearAllSearch()
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-  }
+  const clearAllFilters = clearAllSearch
 
   // Títulos por aba (modo navegar)
   const tabTitle =
@@ -632,8 +593,8 @@ export function MarketplaceView() {
 
           <div className="mt-5 flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
-              {searching && externalQuery ? (
-                /* Modo busca vinda do header: título compacto com o termo + limpar */
+              {searching ? (
+                /* Modo busca: título compacto com o termo + limpar (a busca é a do header) */
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h1 className="min-w-0 text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50 sm:text-xl">
@@ -643,7 +604,7 @@ export function MarketplaceView() {
                     </h1>
                     <button
                       type="button"
-                      onClick={clearExternalSearch}
+                      onClick={clearSearch}
                       aria-label="Limpar busca"
                       className="flex size-7 shrink-0 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700 dark:text-stone-500 dark:hover:bg-stone-800 dark:hover:text-stone-200"
                     >
@@ -660,7 +621,7 @@ export function MarketplaceView() {
                     {tabTitle}
                   </h1>
                   <p className="mt-1 text-sm text-stone-500 dark:text-stone-400" aria-live="polite">
-                    {searching ? searchSubtitle : tabSubtitle}
+                    {tabSubtitle}
                   </p>
                 </>
               )}
@@ -742,57 +703,8 @@ export function MarketplaceView() {
             </div>
           </div>
 
-          {/* Barra grande de busca do corpo — somente no modo navegar. Com a
-              busca ativa vinda do header ela some: nunca 2 barras na tela. */}
-          {!externalQuery && (
-            <div className="relative mt-5 max-w-2xl">
-              <Search
-                aria-hidden
-                className="absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-stone-400 dark:text-stone-500"
-              />
-              <Input
-                ref={searchRef}
-                value={inputValue}
-                onChange={(e) => onSearchChange(e.target.value)}
-                placeholder={
-                  tab === 'all'
-                    ? 'Busque em mentores, cursos, trilhas e leituras...'
-                    : tab === 'mentors'
-                      ? 'Busque por nome, especialidade ou área...'
-                      : tab === 'courses'
-                        ? 'Busque por curso, tema ou mentor...'
-                        : tab === 'tracks'
-                          ? 'Busque por trilha, tema ou mentor...'
-                          : tab === 'bundles'
-                            ? 'Busque por pacote ou mentor...'
-                            : 'Busque por artigo, livro ou autor...'
-                }
-                aria-label={
-                  tab === 'all'
-                    ? 'Buscar em tudo'
-                    : tab === 'mentors'
-                      ? 'Buscar mentores'
-                      : tab === 'courses'
-                        ? 'Buscar cursos'
-                        : tab === 'tracks'
-                          ? 'Buscar trilhas'
-                          : tab === 'bundles'
-                            ? 'Buscar pacotes'
-                            : 'Buscar na Biblioteca'
-                }
-                className="h-12 rounded-2xl border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 pl-11 pr-16 text-stone-900 dark:text-stone-50 shadow-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus-visible:border-emerald-400 dark:focus-visible:border-emerald-700 focus-visible:ring-emerald-200 dark:focus-visible:ring-emerald-900/40"
-              />
-              {inputValue && (
-                <button
-                  onClick={clearSearch}
-                  aria-label="Limpar busca"
-                  className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-stone-400 dark:text-stone-500 transition-colors hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-700 dark:hover:text-stone-200"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          )}
+          {/* A busca é a barra central do header — o corpo não tem campo próprio;
+              ao digitar no header o corpo inteiro vira somente resultados. */}
 
           {tab === 'library' ? (
             <div className="mt-4 flex flex-wrap items-center gap-2">

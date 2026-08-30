@@ -1,6 +1,6 @@
 'use client'
 
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, useInView } from 'framer-motion'
 import {
   ArrowRight,
@@ -38,7 +38,6 @@ import {
 } from '@/components/ui/accordion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, Stars } from '@/components/platform/avatar'
@@ -166,7 +165,6 @@ const FINAL_REASSURANCES = [
 
 export function LandingMenteeView() {
   const navigate = useAppStore((s) => s.navigate)
-  const setExploreQuery = useAppStore((s) => s.setExploreQuery)
   const setExploreTab = useAppStore((s) => s.setExploreTab)
   const user = useAppStore((s) => s.user)
   const [mentors, setMentors] = useState<MentorListItemDTO[]>([])
@@ -175,15 +173,6 @@ export function LandingMenteeView() {
   const [coursesLoading, setCoursesLoading] = useState(true)
   const [tracks, setTracks] = useState<TrackListItemDTO[]>([])
   const [tracksLoading, setTracksLoading] = useState(true)
-  const [term, setTerm] = useState('')
-  const heroSearchRef = useRef<HTMLInputElement>(null)
-
-  // Atalho "/" do header: na home a busca do hero é a ativa — foca aqui
-  useEffect(() => {
-    const onFocusSearch = () => heroSearchRef.current?.focus()
-    window.addEventListener('mentorhub:focus-search', onFocusSearch)
-    return () => window.removeEventListener('mentorhub:focus-search', onFocusSearch)
-  }, [])
 
   // Fetch preguiçoso: cursos e trilhas só saem quando as seções se aproximam da viewport
   const coursesSectionRef = useRef<HTMLElement | null>(null)
@@ -370,9 +359,8 @@ export function LandingMenteeView() {
       ? { value: `+${totalStudents}`, label: 'alunos aprendendo' }
       : { value: `+${stats.contents}`, label: 'conteúdos publicados' }
 
-  const handleSearch = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setExploreQuery(term.trim())
+  const handleExploreMentors = () => {
+    setExploreTab('mentors')
     navigate({ name: 'marketplace' })
   }
 
@@ -456,32 +444,18 @@ export function LandingMenteeView() {
                 minutos e encontre-se por vídeo dentro da própria plataforma.
               </p>
 
-              <form
-                role="search"
-                onSubmit={handleSearch}
-                className="mt-8 flex max-w-xl flex-col gap-2.5 sm:flex-row"
-              >
-                <div className="relative flex-1">
-                  <Search
-                    aria-hidden
-                    className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400 dark:text-stone-500"
-                  />
-                  <Input
-                    ref={heroSearchRef}
-                    value={term}
-                    onChange={(e) => setTerm(e.target.value)}
-                    placeholder="Qual habilidade você quer dominar?"
-                    aria-label="Buscar mentores por área ou especialidade"
-                    className="h-13 rounded-full border-stone-200 bg-white pl-11 pr-4 text-stone-900 shadow-sm placeholder:text-stone-400 focus-visible:border-emerald-300 focus-visible:ring-emerald-100 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-50 dark:placeholder:text-stone-500 dark:focus-visible:border-emerald-700 dark:focus-visible:ring-emerald-900/40"
-                  />
-                </div>
+              {/* CTA: a busca vive na barra central do header — aqui, o convite direto */}
+              <div className="mt-8 flex max-w-xl flex-col gap-2.5 sm:flex-row sm:items-center">
                 <Button
-                  type="submit"
-                  className="h-13 shrink-0 rounded-full px-7 font-bold shadow-sm shadow-emerald-700/20"
+                  onClick={handleExploreMentors}
+                  className="h-13 w-full rounded-full px-8 font-bold shadow-sm shadow-emerald-700/20 sm:w-auto"
                 >
-                  Explorar mentores
+                  <Search aria-hidden className="h-4.5 w-4.5" /> Explorar mentores
                 </Button>
-              </form>
+                <p className="text-sm text-stone-500 dark:text-stone-400">
+                  ou use a busca acima ✨
+                </p>
+              </div>
 
               {/* Prova social: avatares + nota média + avaliações reais */}
               {loading ? (
