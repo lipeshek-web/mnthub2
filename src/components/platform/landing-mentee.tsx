@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { motion, useInView } from 'framer-motion'
+import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-motion'
 import {
   ArrowRight,
   BadgeCheck,
@@ -11,13 +11,11 @@ import {
   Check,
   CheckCircle2,
   Clock,
-  Flame,
+  FileText,
   GraduationCap,
   Library,
   MessagesSquare,
-  Mic,
   MonitorPlay,
-  PlayCircle,
   Presentation,
   Route,
   Search,
@@ -419,9 +417,6 @@ export function LandingMenteeView() {
     }
   }, [userId])
 
-  // Avatares do tile "mentoria ao vivo" (decorativo)
-  const previewMentors = mentors.slice(0, 2)
-
   const handleExploreMentors = () => {
     setExploreTab('mentors')
     navigate({ name: 'marketplace' })
@@ -454,25 +449,12 @@ export function LandingMenteeView() {
 
   return (
     <div className="flex flex-col bg-white dark:bg-stone-950">
-      {/* ---------- HERO (split com preview do produto) ---------- */}
+      {/* ---------- HERO (split com carrossel leve dos formatos) ---------- */}
       <section aria-labelledby="hero-title" className="relative overflow-hidden">
-        {/* Decoração de fundo: blobs suaves + padrão de pontos */}
+        {/* Decoração de fundo: um único brilho suave — leve, sem ruído */}
         <div
           aria-hidden
-          className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-emerald-100/80 blur-3xl dark:bg-emerald-950/50"
-        />
-        <div
-          aria-hidden
-          className="absolute -right-24 top-40 h-80 w-80 rounded-full bg-emerald-50 blur-3xl dark:bg-emerald-950/50"
-        />
-        <div
-          aria-hidden
-          className="absolute inset-0 opacity-60 [mask-image:radial-gradient(75%_60%_at_50%_0%,black,transparent)]"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle at 1px 1px, rgba(5, 150, 105, 0.12) 1px, transparent 0)',
-            backgroundSize: '26px 26px',
-          }}
+          className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-emerald-100/60 blur-3xl dark:bg-emerald-950/40"
         />
 
         <div className="relative mx-auto max-w-6xl px-4 pb-16 pt-12 sm:pt-16 lg:pb-24">
@@ -563,263 +545,16 @@ export function LandingMenteeView() {
                 </div>
               ) : null}
 
-              <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2">
-                {[
-                  'Mentorias 1:1 por vídeo',
-                  'Cursos e trilhas no seu ritmo',
-                  'Biblioteca com artigos e livros',
-                  'Tutor IA e certificados',
-                ].map(
-                  (item) => (
-                    <li key={item} className="inline-flex items-center gap-1.5 text-sm text-stone-600 dark:text-stone-300">
-                      <Check aria-hidden className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                      {item}
-                    </li>
-                  )
-                )}
-              </ul>
             </motion.div>
 
-            {/* Coluna direita: bento com os 4 formatos + gamificação (decorativo) */}
+            {/* Coluna direita: carrossel leve — um formato por vez, sem excesso de efeitos */}
             <motion.div
-              aria-hidden
-              initial={{ opacity: 0, y: 16 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.15 }}
+              transition={{ duration: 0.45, delay: 0.15 }}
               className="relative mt-2 min-w-0 lg:mt-0"
             >
-              {/* Glow esmeralda atrás da composição */}
-              <div className="absolute -inset-x-6 -top-6 bottom-8 rounded-[3rem] bg-gradient-to-br from-emerald-200/70 via-emerald-100/40 to-transparent blur-2xl dark:from-emerald-950/60 dark:via-emerald-950/30" />
-
-              <div className="relative grid grid-cols-2 gap-3">
-                {/* Tile principal: sala de aula (curso em vídeo) */}
-                <motion.div
-                  animate={{ y: [0, -5, 0] }}
-                  transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-                  className="col-span-2"
-                >
-                  <div className="overflow-hidden rounded-3xl bg-stone-950 shadow-2xl shadow-stone-900/25 ring-1 ring-stone-900/10 dark:ring-white/10">
-                    <div className="flex items-center justify-between px-5 pb-2.5 pt-4">
-                      <div className="flex items-center gap-2">
-                        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-300">
-                          <MonitorPlay className="h-3.5 w-3.5" />
-                        </span>
-                        <span className="text-xs font-semibold text-white/85">
-                          Sala de aula · curso em vídeo
-                        </span>
-                      </div>
-                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-white/70">
-                        Aula 4 de 7
-                      </span>
-                    </div>
-
-                    <div
-                      className="relative mx-3 aspect-[16/7] overflow-hidden rounded-xl"
-                      style={avatarGradient('Fundamentos de Gestão de Produto')}
-                    >
-                      <div className="absolute inset-0 bg-stone-950/30" />
-                      <span className="absolute inset-0 flex items-center justify-center">
-                        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/95 text-emerald-800 shadow-lg">
-                          <PlayCircle className="h-6 w-6" />
-                        </span>
-                      </span>
-                      <span className="absolute bottom-2 left-2.5 rounded-md bg-black/45 px-1.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
-                        Fundamentos de Gestão de Produto
-                      </span>
-                    </div>
-
-                    <div className="px-5 pb-4 pt-3">
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/15">
-                        <div className="h-full w-[57%] rounded-full bg-emerald-400" />
-                      </div>
-                      <div className="mt-1.5 flex items-center justify-between">
-                        <span className="text-[11px] text-white/60">12 min restantes</span>
-                        <span className="text-[11px] font-semibold text-emerald-300">
-                          57% concluído
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Tile: mentoria 1:1 ao vivo */}
-                <motion.div
-                  animate={{ y: [0, -6, 0] }}
-                  transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
-                >
-                  <div className="flex h-full flex-col rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xl shadow-stone-900/10 dark:border-stone-800 dark:bg-stone-900">
-                    <div className="flex items-center justify-between">
-                      <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-rose-500">
-                        <span className="relative flex h-2 w-2">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
-                          <span className="relative inline-flex h-2 w-2 rounded-full bg-rose-500" />
-                        </span>
-                        ao vivo
-                      </span>
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-stone-950 text-white/80 dark:bg-white/10">
-                        <Mic className="h-3.5 w-3.5" />
-                      </span>
-                    </div>
-                    <div className="mt-3 flex items-center gap-2.5">
-                      <div className="flex -space-x-2">
-                        {previewMentors.map((m) => (
-                          <Avatar
-                            key={m.id}
-                            name={m.name}
-                            src={m.avatarUrl}
-                            size="sm"
-                            className="ring-2 ring-white dark:ring-stone-900"
-                          />
-                        ))}
-                        {previewMentors.length < 2 &&
-                          Array.from({ length: 2 - previewMentors.length }).map((_, i) => (
-                            <span
-                              key={`live-filler-${i}`}
-                              className={cn(
-                                'h-8 w-8 rounded-full ring-2 ring-white dark:ring-stone-900',
-                                i === 0 ? 'bg-stone-200 dark:bg-stone-700' : 'bg-stone-300 dark:bg-stone-600'
-                              )}
-                            />
-                          ))}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-xs font-bold text-stone-900 dark:text-stone-50">
-                          Mentoria 1:1
-                        </p>
-                        <p className="text-[11px] text-stone-500 dark:text-stone-400">
-                          vídeo na plataforma
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Tile: trilha guiada */}
-                <motion.div
-                  animate={{ y: [0, -6, 0] }}
-                  transition={{ duration: 6.5, repeat: Infinity, ease: 'easeInOut', delay: 1.2 }}
-                >
-                  <div className="flex h-full flex-col rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xl shadow-stone-900/10 dark:border-stone-800 dark:bg-stone-900">
-                    <div className="flex items-center justify-between">
-                      <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-teal-600 dark:text-teal-300">
-                        <Route className="h-3.5 w-3.5" />
-                        trilha
-                      </span>
-                      <span className="text-[10px] font-semibold text-stone-400 dark:text-stone-500">
-                        4 cursos · 15h
-                      </span>
-                    </div>
-                    <div className="mt-3.5 flex items-center gap-1.5">
-                      {[1, 2, 3].map((s) => (
-                        <span key={s} className="flex flex-1 items-center gap-1.5">
-                          <span
-                            className={cn(
-                              'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-extrabold',
-                              s < 3
-                                ? 'bg-emerald-700 text-white'
-                                : 'border border-stone-300 bg-white text-stone-400 dark:border-stone-600 dark:bg-stone-800'
-                            )}
-                          >
-                            {s < 3 ? <Check className="h-3 w-3" /> : s}
-                          </span>
-                          {s < 3 && <span className="h-px flex-1 bg-emerald-300 dark:bg-emerald-700" />}
-                        </span>
-                      ))}
-                    </div>
-                    <p className="mt-2.5 text-[11px] text-stone-500 dark:text-stone-400">
-                      2 de 3 etapas concluídas
-                    </p>
-                  </div>
-                </motion.div>
-
-                {/* Tile: biblioteca */}
-                <motion.div
-                  animate={{ y: [0, -6, 0] }}
-                  transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut', delay: 1.6 }}
-                >
-                  <div className="flex h-full flex-col rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xl shadow-stone-900/10 dark:border-stone-800 dark:bg-stone-900">
-                    <div className="flex items-center justify-between">
-                      <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-amber-600 dark:text-amber-400">
-                        <Library className="h-3.5 w-3.5" />
-                        biblioteca
-                      </span>
-                      <span className="rounded-full bg-stone-100 px-1.5 py-0.5 text-[9px] font-bold text-stone-500 dark:bg-stone-800 dark:text-stone-400">
-                        PDF
-                      </span>
-                    </div>
-                    <div className="mt-3 flex items-center gap-2.5">
-                      <span
-                        className="flex h-10 w-8 shrink-0 items-center justify-center rounded-md shadow-sm"
-                        style={avatarGradient('Guia prático de produto')}
-                      >
-                        <BookOpen className="h-4 w-4 text-white/90" />
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate text-xs font-bold text-stone-900 dark:text-stone-50">
-                          Artigos e livros
-                        </p>
-                        <p className="text-[11px] text-stone-500 dark:text-stone-400">
-                          leitor integrado
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Tile: gamificação (XP + meta) */}
-                <motion.div
-                  animate={{ y: [0, -6, 0] }}
-                  transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-                >
-                  <div className="flex h-full flex-col rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xl shadow-stone-900/10 dark:border-stone-800 dark:bg-stone-900">
-                    <div className="flex items-center justify-between">
-                      <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
-                        <Flame className="h-3.5 w-3.5" />
-                        ofensiva
-                      </span>
-                      <span className="text-[10px] font-bold text-stone-500 dark:text-stone-400">
-                        +120 XP
-                      </span>
-                    </div>
-                    <p className="mt-3 text-xs font-bold text-stone-900 dark:text-stone-50">
-                      5 dias seguidos 🔥
-                    </p>
-                    <div className="mt-2">
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
-                        <div className="h-full w-3/5 rounded-full bg-emerald-500" />
-                      </div>
-                      <p className="mt-1.5 text-[11px] text-stone-500 dark:text-stone-400">
-                        meta semanal: 3 de 5 aulas
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-
-              {/* Card flutuante: avaliação */}
-              <motion.div
-                animate={{ y: [0, -8, 0] }}
-                transition={{ duration: 6.5, repeat: Infinity, ease: 'easeInOut', delay: 1.4 }}
-                className="absolute -right-2 -top-6 hidden w-44 lg:block xl:-right-8 xl:w-48"
-              >
-                <div className="rounded-2xl border border-stone-200/80 bg-white/95 p-3.5 shadow-xl shadow-stone-900/10 backdrop-blur dark:border-stone-800 dark:bg-stone-900/95">
-                  <Stars rating={5} size={13} />
-                  <p className="mt-1.5 text-[11px] leading-snug text-stone-600 dark:text-stone-300">
-                    A melhor mentoria que já fiz. Recomendo demais!
-                  </p>
-                  <div className="mt-2 flex items-center gap-1.5">
-                    <span
-                      className="flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-extrabold text-white"
-                      style={avatarGradient('Ana Paula')}
-                    >
-                      {initials('Ana Paula')}
-                    </span>
-                    <span className="text-[10px] font-semibold text-stone-500 dark:text-stone-400">
-                      Ana Paula · mentorada
-                    </span>
-                  </div>
-                </div>
-              </motion.div>
+              <HeroRotator onOpen={handleFormatTab} mentors={mentors} />
             </motion.div>
           </div>
         </div>
@@ -1648,6 +1383,194 @@ export function LandingMenteeView() {
           ))}
         </ul>
       </motion.section>
+    </div>
+  )
+}
+
+/** Intervalo entre slides do hero rotativo */
+const HERO_ROTATE_MS = 5200
+
+/** Carrossel do hero: um card único e leve que alterna entre os 4 formatos da plataforma */
+function HeroRotator({
+  onOpen,
+  mentors,
+}: {
+  onOpen: (tab: (typeof FORMATS)[number]['tab']) => void
+  mentors: MentorListItemDTO[]
+}) {
+  const [active, setActive] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const reducedMotion = useReducedMotion()
+  const slide = FORMATS[active]
+
+  // Avanço automático — pausa no hover/foco e respeita quem prefere menos movimento
+  useEffect(() => {
+    if (paused || reducedMotion) return
+    const id = window.setInterval(() => {
+      setActive((i) => (i + 1) % FORMATS.length)
+    }, HERO_ROTATE_MS)
+    return () => window.clearInterval(id)
+  }, [paused, reducedMotion])
+
+  return (
+    <div
+      role="group"
+      aria-roledescription="carrossel"
+      aria-label="Formatos da plataforma"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
+    >
+      <div className="overflow-hidden rounded-3xl border border-stone-200/80 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900">
+        <div
+          aria-hidden
+          className="h-1 w-full bg-gradient-to-r from-emerald-600/70 via-teal-400/50 to-amber-300/60"
+        />
+
+        <div className="px-6 pb-4 pt-6 sm:px-8 sm:pt-8">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={active}
+              initial={{ opacity: 0, y: reducedMotion ? 0 : 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: reducedMotion ? 0 : -10 }}
+              transition={{ duration: 0.28, ease: 'easeOut' }}
+              className="min-h-[17rem] sm:min-h-[16rem]"
+            >
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 dark:ring-emerald-900">
+                  <slide.icon aria-hidden className="h-5 w-5" />
+                </span>
+                <span className="rounded-full bg-stone-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-stone-500 dark:bg-stone-800 dark:text-stone-400">
+                  {slide.eyebrow}
+                </span>
+              </div>
+
+              <h2 className="mt-4 text-2xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+                {slide.title}
+              </h2>
+              <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+                {slide.text}
+              </p>
+
+              {/* Um detalhe mínimo por formato (decorativo) */}
+              <div className="mt-5">
+                {active === 0 ? (
+                  <div className="flex items-center gap-3">
+                    <div className="flex -space-x-2.5">
+                      {mentors.slice(0, 3).map((m) => (
+                        <Avatar
+                          key={m.id}
+                          name={m.name}
+                          src={m.avatarUrl}
+                          size="sm"
+                          className="ring-2 ring-white dark:ring-stone-900"
+                        />
+                      ))}
+                      {mentors.length === 0 &&
+                        Array.from({ length: 3 }).map((_, i) => (
+                          <span
+                            key={`hero-mentor-filler-${i}`}
+                            className="h-8 w-8 rounded-full bg-stone-200 ring-2 ring-white dark:bg-stone-700 dark:ring-stone-900"
+                          />
+                        ))}
+                    </div>
+                    <p className="text-xs text-stone-500 dark:text-stone-400">
+                      especialistas disponíveis agora
+                    </p>
+                  </div>
+                ) : active === 1 ? (
+                  <div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-stone-500 dark:text-stone-400">
+                        Progresso salvo automaticamente
+                      </span>
+                      <span className="font-bold text-emerald-700 dark:text-emerald-300">57%</span>
+                    </div>
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
+                      <div className="h-full w-[57%] rounded-full bg-emerald-500" />
+                    </div>
+                  </div>
+                ) : active === 2 ? (
+                  <div className="flex items-center gap-2" aria-hidden>
+                    {[1, 2, 3].map((s) => (
+                      <span key={s} className="flex flex-1 items-center gap-2">
+                        <span
+                          className={cn(
+                            'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-extrabold',
+                            s <= 2
+                              ? 'bg-emerald-700 text-white'
+                              : 'border border-stone-300 bg-white text-stone-400 dark:border-stone-600 dark:bg-stone-800'
+                          )}
+                        >
+                          {s <= 2 ? <Check aria-hidden className="h-3.5 w-3.5" /> : s}
+                        </span>
+                        {s < 3 && (
+                          <span
+                            className={cn(
+                              'h-px flex-1',
+                              s < 2
+                                ? 'bg-emerald-300 dark:bg-emerald-700'
+                                : 'bg-stone-200 dark:bg-stone-700'
+                            )}
+                          />
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="flex h-11 w-9 shrink-0 items-center justify-center rounded-md shadow-sm"
+                      style={avatarGradient('Biblioteca MentorHub')}
+                    >
+                      <BookOpen aria-hidden className="h-4 w-4 text-white/90" />
+                    </span>
+                    <span
+                      className="flex h-11 w-9 shrink-0 items-center justify-center rounded-md shadow-sm"
+                      style={avatarGradient('Artigos e livros')}
+                    >
+                      <FileText aria-hidden className="h-4 w-4 text-white/90" />
+                    </span>
+                    <p className="text-xs text-stone-500 dark:text-stone-400">
+                      Leitor integrado, com PDF e favoritos
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onOpen(slide.tab)}
+                className="mt-6 inline-flex items-center gap-1.5 text-sm font-bold text-emerald-700 transition-all hover:gap-2.5 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-emerald-300 dark:hover:text-emerald-200"
+              >
+                {slide.cta}
+                <ArrowRight aria-hidden className="h-4 w-4" />
+              </button>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* Indicadores: um por formato */}
+        <div className="flex items-center gap-1.5 px-6 pb-5 sm:px-8">
+          {FORMATS.map((f, i) => (
+            <button
+              key={f.title}
+              type="button"
+              aria-label={`Mostrar ${f.title}`}
+              aria-current={i === active ? 'true' : undefined}
+              onClick={() => setActive(i)}
+              className={cn(
+                'h-1.5 rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40',
+                i === active
+                  ? 'w-8 bg-emerald-600 dark:bg-emerald-400'
+                  : 'w-3 bg-stone-200 hover:bg-stone-300 dark:bg-stone-700 dark:hover:bg-stone-600'
+              )}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

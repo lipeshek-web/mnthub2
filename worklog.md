@@ -1453,3 +1453,32 @@ Validation (lint 0/0; tsc limpo em src/; E2E real desktop 1440 + mobile 390, gue
 Stage Summary:
 - A home agora vende a plataforma INTEIRA: os 4 formatos (mentoria 1:1, cursos, trilhas, biblioteca) ganham peso igual no hero, no fluxo "como funciona", no catálogo em destaque (biblioteca estreou como seção própria), nos números e nos superpoderes (IA, XP, certificados) — a reunião 1:1 continua presente, mas como um dos pilares, não como o único
 - Padrão reutilizável: FORMATS/EXTRAS como constantes declarativas (adicionar um novo formato = 1 objeto), stats resilientes a saltos de rolagem, cards de biblioteca prontos para reuso
+---
+Task ID: W-1
+Agent: Z.ai Code (main)
+Task: Landing — remover o card principal pesado (bento de 5 tiles + card flutuante) e criar um hero rotativo leve, bem construído e sem excesso de efeitos
+
+Work Log:
+- Diagnóstico: a coluna direita do hero tinha 1 tile dark grande (mock de sala de aula com player fake) + 4 tiles menores + card flutuante de avaliação, todos com animações infinitas de flutuação (y loop), glow blur atrás, padrão de pontos no fundo e 2 blobs — muito peso visual e de render
+- Coluna direita substituída por UM card rotativo (novo componente HeroRotator, ~185 linhas): alterna entre os 4 formatos (FORMATS reaproveitado — Mentorias 1:1 / Cursos gravados / Trilhas guiadas / Biblioteca) com crossfade sutil (AnimatePresence mode="wait", opacity+y 0.28s, sem loops infinitos)
+- Card: rounded-3xl, border, shadow-sm (era shadow-2xl), faixa de gradiente fina no topo, ícone do formato em tile esmeralda + chip do eyebrow, título, 1 frase curta e UM detalhe mínimo por formato (avatares reais dos mentores / barra de progresso 57% / steps 2 de 3 / mini capas com BookOpen+FileText) + CTA por slide ("Ver cursos →" etc.) que navega direto para a aba correspondente do Explorar (handleFormatTab)
+- Indicadores: 4 barras finas (ativa = emerald w-8, inativa = stone w-3) clicáveis com aria-label e aria-current
+- Comportamento: auto-avanço a cada 5,2s; pausa no hover/foco (onMouseEnter/Leave + onFocusCapture/BlurCapture); useReducedMotion respeitado (sem transição de movimento e sem auto-avanço); altura estável entre slides (min-h-[17rem] sm:min-h-[16rem] — card mediu 336px antes e depois da troca)
+- Alívios no restante do hero: checklist de 4 itens removido da coluna esquerda (o carrossel comunica os formatos), card flutuante de avaliação removido, glow atrás da composição removido, padrão de pontos removido e 2 blobs → 1 blob suave (emerald-100/60)
+- Limpeza: previewMentors (declarado para o tile antigo) removido; imports Mic, PlayCircle, Flame removidos; adicionados AnimatePresence, useReducedMotion (framer-motion) e FileText (lucide)
+
+Validation (lint 0/0; tsc limpo em src/; E2E real desktop 1440 + mobile 390, guest + logado Ana, light + dark):
+- Bento antigo confirmado fora do DOM (nenhum texto "Sala de aula · curso em vídeo", "5 dias seguidos", "A melhor mentoria que já fiz" etc.)
+- Auto-avanço observado ao vivo: "Mentorias 1:1" → "Cursos gravados" → "Trilhas guiadas" → "Biblioteca" (~5,2s por slide)
+- Clique no 4º indicador troca para Biblioteca; CTA do slide navegou ao Explorar abrindo "Explorar a Biblioteca" (aba correta)
+- Hover real (mouse move sobre o card): rotação pausada por 6s+ (slide imutável); ao mover o mouse para fora, avançou normalmente
+- Altura do card estável em 336px durante as trocas de slide (sem pulo de layout)
+- Mobile 390: scrollWidth = 390 (zero overflow real; únicos elementos " além da borda são blobs decorativos absolutos clipados por overflow-hidden); hero empilha badge/título/subtítulo/CTA/prova social + card
+- Dark mode (localStorage theme=dark): card em stone-900 com borda sutil, dot ativo emerald, avatares reais com ring escuro — legível e coerente
+- Logado (Ana): saudação "Olá, Ana!" + carrossel + Continue aprendendo intactos
+- dev.log sem erros de runtime; dev server NÃO derrubado
+
+Stage Summary:
+- O hero ficou ~3x mais leve: um único card rotativo no lugar de 6 blocos flutuantes, uma animação de crossfade de 0,28s no lugar de 6 loops infinitos, 1 blob no lugar de blobs+pontos+glow
+- O carrossel é construído sobre a constante FORMATS existente (adicionar um 5º formato = 1 objeto em FORMATS, aparece automaticamente no carrossel, nos indicadores e no CTA)
+- Acessível: indicadores com aria-label/aria-current, pausa em hover/foco, prefers-reduced-motion respeitado
