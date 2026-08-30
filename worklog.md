@@ -1350,3 +1350,27 @@ Validation: run 2x → created 1→0 (dedupe ✓ p/ Lucas e Ana); .ics c/ 6 VEVE
 
 Stage Summary:
 - Retenção automática: lembretes de sessão/ofensiva/inatividade/boas-vindas chegam no sino sem cron externo (idempotentes) e a agenda inteira exportável p/ Google/Apple Calendar
+
+---
+Task ID: T1
+Agent: Z.ai Code (main)
+Task: Trilha "Cibersegurança e Direito Digital" (4 cursos) na conta do mentor Gustavo Novaes Cruz (gustavonv@yandex.com)
+
+Work Log:
+- Conta confirmada no banco (já existia com MentorProfile ativo, slug gustavo-novaes-cruz); nenhuma alteração de usuário necessária
+- Web-search para vídeos reais do YouTube: confirmados 7 IDs estáveis (NIST CSF PT-BR Q8e-gM142bw, LGPD 4min n3e0HVcNml0, LGPD Explained EWoe_IUmd3A, Equifax qwgEHbr8PhE, ransomware Vkjekr6jacg, IR NIST CSF 2.0 aA2ldOeqycA, resposta a incidente PT-BR j5SY19S3RQ4); aulas restantes em texto simples (conforme pedido do usuário)
+- 5 capas geradas com image-generation CLI (1344x768, dark + emerald coerente com a plataforma) em public/uploads/seed/: trilha-cyber-direito.png, course-cyber-fundamentos.png, course-cyber-defensiva.png, course-cyber-pericia.png, course-cyber-direito.png
+- Novo script idempotente e atômico prisma/seed-cyber-trilha.ts (não destrutivo; transaction; skip se a trilha já existir): 1 Track + 4 Courses + 10 CourseTheme + 49 Lessons (kind RECORDED/TEXT, content embasado, 7 videoUrl watch?v= compatível com toVideoEmbedUrl) + 7 Quiz (padrão seed.ts: options JSON, correctIndex, explanation) + 4 TrackItem COURSE (order 1..4)
+- Conteúdo com bases sólidas pedidas: NIST CSF 2.0 (6 funções), SP 800-53/800-61/800-63B/800-86, ISO/IEC 27001:2022 (SGSI + Anexo A 93 controles) e 27037/27041-27043, LGPD (arts. 6/7/18/39/46/48/52), ANPD (dosimetria 2023, comunicação de incidentes 3 dias úteis 2024, SCCs 2024), CPP arts. 158-A a 158-F, CPC art. 432, Marco Civil arts. 13/15, MP 2.200-2/2001, Lei 14.478/2022, PL 2338/2023; tríade CIA sempre amarrada a casos reais (Equifax, JBS, Colonial Pipeline, vazamentos CadÚnico/SUS 2021, Netshoes, Americanas) com punições judiciais
+- Cursos: (1) Cyber Segurança I: Fundamentos, Técnicas e Enquadramento Judicial — INICIANTE R$149, 13 aulas/4 temas; (2) Cyber Segurança Defensiva: Laboratório Prático (Blue Team) — INTERMEDIARIO R$199, 12 aulas/4 temas; (3) Perícia Digital e Aquisição de Provas — INTERMEDIARIO R$249, 12 aulas/4 temas; (4) Direito Digital Aplicado: LGPD, ANPD e Casos Reais — INTERMEDIARIO R$199, 12 aulas/4 temas; trilha INICIANTE R$499 categoria Tecnologia
+
+Validation:
+- Seed executado 1x com sucesso (1 trilha · 4 cursos · 10 temas · 49 aulas · 7 vídeos · 7 quizzes); re-execução sai limpa (idempotência)
+- bun run lint 0/0; bunx tsc --noEmit sem erros em src/ e prisma/; dev server sem erros (só 200s)
+- Browser E2E desktop 1440: login gustavonv@yandex.com ok; Explorar→Trilhas mostra "4 trilhas publicadas" e card "Cibersegurança e Direito Digital · 4 cursos · 15h56min · R$499"; página da trilha lista os 4 cursos com capas em ordem; página do curso 1 mostra os 4 temas com contagens; classroom: aula texto renderiza, aula vídeo carrega iframe youtube-nocookie embed real (DARYUS Talks/NIST), quiz em modo Gabarito (comportamento correto para o dono — código classroom.tsx 1768/1802); painel do mentor: aba Trilhas com editar/despublicar/excluir e aba Cursos com os 4 gerenciáveis; perfil público ?mentor=gustavo-novaes-cruz lista os 4 cursos
+- Browser E2E mobile 390x844: home/trilhas/página da trilha/classroom sem overflow (main 390x390, 0 elementos largos); classroom mobile com sidebar de temas e botão Tutor IA no rodapé; dark mode: cards de trilha ok com a capa nova em destaque
+- dev server NÃO derrubado durante a validação
+
+Stage Summary:
+- Gustavo Novaes Cruz agora é mentor com uma formação completa publicada: trilha "Cibersegurança e Direito Digital" (R$ 499) com 4 cursos encadeados (fundamentos+judicial → defensiva prática → perícia → direito aplicado), 49 aulas estruturadas em 10 módulos, 7 vídeos reais, 7 quizzes e embasamento contínuo NIST/ISO 27001/LGPD/ANPD com casos reais e consequências judiciais — estrutura pronta para ele evoluir conteúdo e vender (cursos, trilha, pacotes, assinatura e mentorias 1:1 já integrados à plataforma)
+- Script prisma/seed-cyber-trilha.ts reutilizável e idempotente para reproduzir/estender o conteúdo
