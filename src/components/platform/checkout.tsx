@@ -1,9 +1,9 @@
 'use client'
 
-// Checkout de curso OU trilha pago — pagamento DEMONSTRATIVO (nenhuma cobrança real).
-// Fluxo: resumo do pedido → forma de pagamento (PIX/Cartão) → confirmação,
+// Checkout de curso, trilha OU pacote pago — pagamento DEMONSTRATIVO (nenhuma cobrança real).
+// Fluxo: resumo do pedido → cupom/créditos → forma de pagamento (PIX/Cartão) → confirmação,
 // com funil de rastreamento (begin_checkout na montagem, purchase no sucesso).
-// A loja navega { name: 'checkout', courseId } ou { name: 'checkout', trackId }.
+// A loja navega { name: 'checkout', courseId | trackId | bundleId }.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
@@ -11,8 +11,10 @@ import {
   ArrowLeft,
   BookOpen,
   CheckCircle2,
+  CircleDollarSign,
   CreditCard,
   Info,
+  Layers,
   Library,
   Loader2,
   Lock,
@@ -39,6 +41,8 @@ import { LEVEL_LABELS, avatarGradient, currencyBRL } from '@/lib/helpers'
 import { getAttribution, loadTrackingScripts, trackEvent } from '@/lib/tracking'
 import { useAppStore } from '@/lib/store'
 import type {
+  BundleCourseDTO,
+  BundleDetailDTO,
   CheckoutResultDTO,
   CouponValidationDTO,
   CourseDetailDTO,
@@ -57,9 +61,9 @@ const METHOD_LABEL: Record<string, string> = {
 const formatBRL = (value: number) =>
   value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })
 
-/** Resumo normalizado do item em checkout (curso ou trilha) */
+/** Resumo normalizado do item em checkout (curso, trilha ou pacote) */
 interface ItemSummary {
-  kind: 'course' | 'track'
+  kind: 'course' | 'track' | 'bundle'
   id: string
   title: string
   coverUrl: string | null
@@ -76,17 +80,29 @@ interface ItemSummary {
   isEnrolled: boolean
   /** Presente apenas em trilhas: composição da jornada */
   trackStats?: { courseCount: number; mentorshipSessions: number }
+  /** Presente apenas em pacotes: cursos inclusos e economia */
+  bundleStats?: {
+    courses: BundleCourseDTO[]
+    coursesTotal: number
+    discountPercent: number
+    enrolledCount: number
+  }
 }
 
-export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId?: string }) {
+export function CheckoutView({ courseId, trackId, bundleId }: { courseId?: string; trackId?: string; bundleId?: string }) {
   const navigate = useAppStore((s) => s.navigate)
   const setExploreTab = useAppStore((s) => s.setExploreTab)
   const user = useAppStore((s) => s.user)
 
   const [course, setCourse] = useState<CourseDetailDTO | null>(null)
   const [track, setTrack] = useState<TrackDetailDTO | null>(null)
+  const [bundle, setBundle] = useState<BundleDetailDTO | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Créditos de indicação (saldo fresco da API — o store pode estar desatualizado)
+  const [creditCents, setCreditCents] = useState(0)
+  const [useCredits, setUseCredits] = useState(false)
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodValue>('PIX')
   const [paying, setPaying] = useState(false)
@@ -107,7 +123,22 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
     setLoading(true)
     setError(null)
     try {
-      if (trackId) {
+      if (bundleId) {
+        const { bundle: b } = await api.getBundle(bundleId, user?.id)
+        setBundle(b)
+        setCourse(null)
+        setTrack(null)
+
+        if (!trackedRef.current) {
+          trackedRef.current = true
+          loadTrackingScripts()
+          trackEvent('begin_checkout', {
+            mentorId: b.mentor.id,
+            value: b.price,
+            contentName: b.title,
+          })
+        }
+      } else if (trackId) {
         const d = await api.getTrack(trackId, user?.id)
         setTrack(d)
         setCourse(null)
@@ -126,6 +157,7 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
         const d = await api.getCourse(courseId, user?.id)
         setCourse(d)
         setTrack(null)
+        setBundle(null)
 
         // Pixels do mentor recebem as conversões deste checkout
         if (!trackedRef.current) {
@@ -149,11 +181,26 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
     } finally {
       setLoading(false)
     }
-  }, [courseId, trackId, user?.id])
+  }, [bundleId, courseId, trackId, user?.id])
 
   useEffect(() => {
     void fetchSummary()
   }, [fetchSummary])
+
+  // Saldo fresco de créditos de indicação (a sessão pode ser antiga)
+  useEffect(() => {
+    if (!user) return
+    let active = true
+    api
+      .me(user.id)
+      .then(({ user: fresh }) => {
+        if (active && fresh) setCreditCents(fresh.creditCents ?? 0)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [user])
 
   // Trocou o item do checkout: volta o cupom ao estado inicial
   useEffect(() => {
@@ -161,7 +208,8 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
     setCouponApplied(null)
     setCouponError(null)
     setCouponLoading(false)
-  }, [courseId, trackId])
+    setUseCredits(false)
+  }, [bundleId, courseId, trackId])
 
   /* ---------- Ações ---------- */
 
@@ -180,6 +228,7 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
         code,
         courseId: item.kind === 'course' ? item.id : undefined,
         trackId: item.kind === 'track' ? item.id : undefined,
+        bundleId: item.kind === 'bundle' ? item.id : undefined,
       })
       setCouponApplied(result)
       setCouponInput('')
@@ -201,7 +250,15 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
     if (!user || !item) return
     setFreeEnrolling(true)
     try {
-      if (item.kind === 'track') {
+      if (item.kind === 'bundle') {
+        // Pacote gratuito: matrícula em todos os cursos inclusos
+        const courses = item.bundleStats?.courses ?? []
+        for (const c of courses) {
+          await api.enrollCourse(c.id, user.id).catch(() => {})
+        }
+        toast.success('Inscrição realizada em todos os cursos do pacote! Boa jornada 🎉')
+        navigate({ name: 'dashboard' })
+      } else if (item.kind === 'track') {
         await api.enrollTrack(item.id, user.id)
         toast.success('Inscrição realizada! Boa jornada 🎉')
         navigate({ name: 'track', trackId: item.id })
@@ -231,8 +288,10 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
         userId: user.id,
         courseId: item.kind === 'course' ? item.id : undefined,
         trackId: item.kind === 'track' ? item.id : undefined,
+        bundleId: item.kind === 'bundle' ? item.id : undefined,
         paymentMethod,
         couponCode: couponApplied?.code || undefined,
+        useCredits,
         attribution: getAttribution(),
       }
       const result = await api.checkout(payload)
@@ -277,7 +336,7 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
   }
 
   /* ---------- Erro ---------- */
-  if (error || (!course && !track)) {
+  if (error || (!course && !track && !bundle)) {
     return (
       <div className="mx-auto w-full max-w-3xl px-4 py-16">
         <Card className="mx-auto max-w-md border-dashed">
@@ -298,8 +357,35 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
     )
   }
 
-  /* ---------- Resumo normalizado (curso ou trilha) ---------- */
-  const item: ItemSummary | null = track
+  /* ---------- Resumo normalizado (curso, trilha ou pacote) ---------- */
+  const item: ItemSummary | null = bundle
+    ? {
+        kind: 'bundle',
+        id: bundle.id,
+        title: bundle.title,
+        coverUrl: bundle.courses.find((c) => c.coverUrl)?.coverUrl ?? null,
+        category: bundle.courses[0]?.category ?? '',
+        level: '',
+        price: bundle.price,
+        mentor: {
+          id: bundle.mentor.id,
+          name: bundle.mentor.name,
+          rating: 0,
+          reviewCount: 0,
+          avatarUrl: bundle.mentor.avatarUrl,
+        },
+        isEnrolled:
+          bundle.courseCount > 0 &&
+          (bundle.myEnrolledCourseIds?.length ?? 0) >=
+            bundle.courses.filter((c) => c.id).length,
+        bundleStats: {
+          courses: bundle.courses,
+          coursesTotal: bundle.coursesTotal,
+          discountPercent: bundle.discountPercent,
+          enrolledCount: bundle.myEnrolledCourseIds?.length ?? 0,
+        },
+      }
+    : track
     ? {
         kind: 'track',
         id: track.id,
@@ -344,6 +430,14 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
   if (!item) return null
 
   const isTrack = item.kind === 'track'
+  const isBundle = item.kind === 'bundle'
+
+  // Descontos combinados: cupom + créditos de indicação
+  const couponDiscount = couponApplied?.discount ?? 0
+  const afterCoupon = Math.max(0, Math.round((item.price - couponDiscount) * 100) / 100)
+  const creditsApplied =
+    useCredits && creditCents > 0 ? Math.min(creditCents / 100, afterCoupon) : 0
+  const finalAmount = Math.max(0, Math.round((afterCoupon - creditsApplied) * 100) / 100)
 
   /* ---------- Tela de SUCESSO (substitui o formulário) ---------- */
   if (order) {
@@ -379,7 +473,29 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
               </div>
             </dl>
 
-            {isTrack ? (
+            {isBundle ? (
+              <>
+                <p className="mt-1 text-xs leading-relaxed text-stone-400 dark:text-stone-500">
+                  Todos os {item.bundleStats?.courses.length ?? 0} cursos do pacote já estão na sua conta.
+                </p>
+                <Button
+                  onClick={() => navigate({ name: 'dashboard' })}
+                  className="mt-4 h-12 w-full rounded-full font-bold"
+                >
+                  Ir para meus cursos
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setExploreTab('bundles')
+                    navigate({ name: 'marketplace' })
+                  }}
+                  className="w-full rounded-full"
+                >
+                  Explorar mais pacotes
+                </Button>
+              </>
+            ) : isTrack ? (
               <>
                 <Button
                   onClick={() => navigate({ name: 'track', trackId: item.id })}
@@ -428,14 +544,19 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
       <Button
         variant="ghost"
         onClick={() =>
-          isTrack
-            ? navigate({ name: 'track', trackId: item.id })
-            : navigate({ name: 'course', courseId: item.id })
+          isBundle
+            ? (() => {
+                setExploreTab('bundles')
+                navigate({ name: 'marketplace' })
+              })()
+            : isTrack
+              ? navigate({ name: 'track', trackId: item.id })
+              : navigate({ name: 'course', courseId: item.id })
         }
         className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-50"
       >
         <ArrowLeft aria-hidden className="h-4 w-4" />
-        {isTrack ? 'Voltar à trilha' : 'Voltar ao curso'}
+        {isBundle ? 'Voltar aos pacotes' : isTrack ? 'Voltar à trilha' : 'Voltar ao curso'}
       </Button>
       <h1 className="mt-1 text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50 sm:text-2xl">
         Checkout
@@ -462,7 +583,7 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
         </Card>
       )}
 
-      {/* Já inscrito: acesso liberado */}
+      {/* Já tem acesso: libera navegação */}
       {user && item.isEnrolled && (
         <Card className="mt-5 rounded-2xl border-emerald-200 dark:border-emerald-900 bg-emerald-50/40 dark:bg-emerald-950/50">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
@@ -470,31 +591,39 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
               <CheckCircle2 aria-hidden className="h-7 w-7 text-emerald-700 dark:text-emerald-300" />
             </span>
             <p className="font-bold text-stone-900 dark:text-stone-50">
-              {isTrack ? 'Você já tem acesso a esta trilha' : 'Você já tem acesso a este curso'}
+              {isBundle
+                ? 'Você já tem acesso a todos os cursos deste pacote'
+                : isTrack
+                  ? 'Você já tem acesso a esta trilha'
+                  : 'Você já tem acesso a este curso'}
             </p>
             <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
-              Sua matrícula em “{item.title}” já está ativa — bons estudos!
+              {isBundle
+                ? `Sua conta já inclui os ${item.bundleStats?.courses.length ?? 0} cursos do pacote “${item.title}” — bons estudos!`
+                : `Sua matrícula em “${item.title}” já está ativa — bons estudos!`}
             </p>
             <Button
               onClick={() =>
-                isTrack
-                  ? navigate({ name: 'track', trackId: item.id })
-                  : navigate({ name: 'course', courseId: item.id })
+                isBundle
+                  ? navigate({ name: 'dashboard' })
+                  : isTrack
+                    ? navigate({ name: 'track', trackId: item.id })
+                    : navigate({ name: 'course', courseId: item.id })
               }
               className="mt-1 h-11 rounded-full px-6 font-bold"
             >
-              {isTrack ? 'Acessar a trilha' : 'Ir para o curso'}
+              {isBundle ? 'Ir para meus cursos' : isTrack ? 'Acessar a trilha' : 'Ir para o curso'}
             </Button>
           </CardContent>
         </Card>
       )}
 
-      {/* Item gratuito: matrícula direta (defensivo — trilhas gratuitas normalmente
-          são inscritas direto na tela da trilha, sem passar pelo checkout) */}
+      {/* Item gratuito: matrícula direta (defensivo — trilhas/pacotes gratuitos normalmente
+          são inscritos direto na tela correspondente, sem passar pelo checkout) */}
       {user && !item.isEnrolled && item.price === 0 && (
         <div className="mt-5 flex flex-col items-center gap-2.5 rounded-2xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/50 p-8 text-center">
           <p className="font-bold text-stone-900 dark:text-stone-50">
-            {isTrack ? 'Esta trilha é gratuita' : 'Este curso é gratuito'}
+            {isBundle ? 'Este pacote é gratuito' : isTrack ? 'Esta trilha é gratuita' : 'Este curso é gratuito'}
           </p>
           <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
             Não é preciso pagar nada: matricule-se e comece a aprender agora mesmo.
@@ -518,7 +647,7 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
             {item.coverUrl ? (
               <img
                 src={item.coverUrl}
-                alt={`Capa ${isTrack ? 'da trilha' : 'do curso'} ${item.title}`}
+                alt={`Capa ${isBundle ? 'do pacote' : isTrack ? 'da trilha' : 'do curso'} ${item.title}`}
                 className="h-28 w-full object-cover"
               />
             ) : (
@@ -527,7 +656,9 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
                 className="flex h-28 w-full items-center justify-center"
                 style={avatarGradient(item.title)}
               >
-                {isTrack ? (
+                {isBundle ? (
+                  <Layers className="h-8 w-8 text-white/20" />
+                ) : isTrack ? (
                   <Route className="h-8 w-8 text-white/20" />
                 ) : (
                   <Library className="h-8 w-8 text-white/20" />
@@ -537,12 +668,27 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
 
             <div className="p-5 sm:p-6">
               <div className="flex flex-wrap items-center gap-1.5">
-                <Badge className="rounded-full border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50">
-                  {item.category}
-                </Badge>
-                <Badge variant="outline" className="rounded-full border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-300">
-                  {LEVEL_LABELS[item.level] ?? item.level}
-                </Badge>
+                {isBundle ? (
+                  <>
+                    <Badge className="rounded-full border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50">
+                      <Layers aria-hidden className="h-3 w-3" /> Pacote
+                    </Badge>
+                    {item.bundleStats && item.bundleStats.discountPercent > 0 && (
+                      <Badge className="rounded-full bg-amber-400 text-stone-950 hover:bg-amber-400">
+                        Economize {item.bundleStats.discountPercent}%
+                      </Badge>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Badge className="rounded-full border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50">
+                      {item.category}
+                    </Badge>
+                    <Badge variant="outline" className="rounded-full border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-300">
+                      {LEVEL_LABELS[item.level] ?? item.level}
+                    </Badge>
+                  </>
+                )}
               </div>
 
               <h2 className="mt-2.5 text-lg font-extrabold leading-snug text-stone-900 dark:text-stone-50">
@@ -562,6 +708,30 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
                     {item.trackStats.mentorshipSessions === 1 ? 'mentoria' : 'mentorias'} 1:1
                   </span>
                 </p>
+              )}
+
+              {isBundle && item.bundleStats && (
+                <ul className="mt-2.5 space-y-1.5">
+                  {item.bundleStats.courses.map((c) => (
+                    <li key={c.id} className="flex min-w-0 items-center justify-between gap-2 text-sm">
+                      <span className="flex min-w-0 items-center gap-1.5 text-stone-600 dark:text-stone-400">
+                        <BookOpen aria-hidden className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <span className="truncate">{c.title}</span>
+                      </span>
+                      <span className="shrink-0 text-xs font-medium text-stone-400 dark:text-stone-500 line-through">
+                        {c.price === 0 ? 'Gratuito' : formatBRL(c.price)}
+                      </span>
+                    </li>
+                  ))}
+                  <li className="flex items-center justify-between gap-2 pt-1 text-xs font-semibold">
+                    <span className="text-stone-500 dark:text-stone-400">
+                      {item.bundleStats.courses.length} cursos · valor cheio
+                    </span>
+                    <span className="text-stone-500 dark:text-stone-400 line-through">
+                      {formatBRL(item.bundleStats.coursesTotal)}
+                    </span>
+                  </li>
+                </ul>
               )}
 
               <div className="mt-3 flex items-center gap-3">
@@ -584,9 +754,9 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
 
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-medium text-stone-500 dark:text-stone-400">Total</span>
-                {couponApplied ? (
+                {couponApplied || creditsApplied > 0 ? (
                   <span className="text-2xl font-extrabold tracking-tight text-emerald-700 dark:text-emerald-300">
-                    {formatBRL(couponApplied.finalPrice)}
+                    {formatBRL(finalAmount)}
                   </span>
                 ) : (
                   <span className="text-2xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
@@ -601,6 +771,47 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
                     −{formatBRL(couponApplied.discount)}
                   </span>
                 </div>
+              )}
+              {creditsApplied > 0 && (
+                <div className="mt-1 flex items-center justify-between gap-3 text-sm">
+                  <span className="text-emerald-700 dark:text-emerald-300">Créditos de indicação</span>
+                  <span className="font-bold text-emerald-700 dark:text-emerald-300">
+                    −{formatBRL(creditsApplied)}
+                  </span>
+                </div>
+              )}
+
+              {/* ---- CRÉDITOS DE INDICAÇÃO ---- */}
+              {creditCents > 0 && item.price > 0 && (
+                <label
+                  htmlFor="use-credits"
+                  className={cn(
+                    'mt-3 flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors',
+                    useCredits
+                      ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50/70 dark:bg-emerald-950/50'
+                      : 'border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-950/40 hover:border-emerald-200 dark:hover:border-emerald-900'
+                  )}
+                >
+                  <input
+                    id="use-credits"
+                    type="checkbox"
+                    checked={useCredits}
+                    onChange={(e) => setUseCredits(e.target.checked)}
+                    className="size-4 accent-emerald-700"
+                  />
+                  <CircleDollarSign
+                    aria-hidden
+                    className="h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-300"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-bold text-stone-900 dark:text-stone-50">
+                      Usar meus créditos ({formatBRL(creditCents / 100)})
+                    </span>
+                    <span className="block text-xs text-stone-500 dark:text-stone-400">
+                      Saldo de indicações — descontado na hora
+                    </span>
+                  </span>
+                </label>
               )}
 
               {/* ---- CUPOM DE DESCONTO (apenas itens pagos) ---- */}
@@ -834,8 +1045,7 @@ export function CheckoutView({ courseId, trackId }: { courseId?: string; trackId
               </>
             ) : (
               <>
-                <Lock aria-hidden className="h-4 w-4" /> Pagar{' '}
-                {couponApplied ? formatBRL(couponApplied.finalPrice) : currencyBRL(item.price)}
+                <Lock aria-hidden className="h-4 w-4" /> Pagar {formatBRL(finalAmount)}
               </>
             )}
           </Button>

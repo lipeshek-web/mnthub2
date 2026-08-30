@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Avatar, Stars } from '@/components/platform/avatar'
 import { api } from '@/lib/api'
 import { firstName } from '@/lib/helpers'
+import { clearStoredRefCode, getStoredRefCode } from '@/lib/referral'
 import { useAppStore } from '@/lib/store'
 import type { UserDTO } from '@/lib/types'
 
@@ -139,13 +140,21 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
     setRegLoading(true)
     setRegFormError(null)
     try {
+      // Convite capturado em ?ref= (localStorage, janela de 7 dias)
+      const refCode = getStoredRefCode() ?? undefined
       const user = await api.register({
         name: regName.trim(),
         email: regEmail.trim(),
         password: regPassword,
+        refCode,
       })
+      if (refCode) clearStoredRefCode()
       setUser(user)
-      toast.success(`Conta criada! Bem-vindo(a), ${firstName(user.name)}! 🎉`)
+      toast.success(
+        user.referralApplied
+          ? `Conta criada! R$ 10 de crédito de convite adicionados, ${firstName(user.name)}! 🎁`
+          : `Conta criada! Bem-vindo(a), ${firstName(user.name)}! 🎉`
+      )
       navigate({ name: 'home' })
     } catch (err) {
       const msg =

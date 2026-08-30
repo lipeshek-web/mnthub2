@@ -14,6 +14,7 @@ import {
   GraduationCap,
   LayoutGrid,
   Library,
+  Layers,
   Route,
   Search,
   SearchX,
@@ -51,6 +52,7 @@ import type {
   TrackListItemDTO,
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { MarketplaceBundles } from './marketplace-bundles'
 
 const SPOTLIGHT_INTERVAL_MS = 6000
 
@@ -522,6 +524,19 @@ export function MarketplaceView() {
             </button>
             <button
               role="tab"
+              aria-selected={tab === 'bundles'}
+              onClick={() => setTab('bundles')}
+              className={cn(
+                'inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-all',
+                tab === 'bundles'
+                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-50 shadow-sm'
+                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
+              )}
+            >
+              <Layers aria-hidden className="h-4 w-4" /> Pacotes
+            </button>
+            <button
+              role="tab"
               aria-selected={tab === 'library'}
               onClick={() => setTab('library')}
               className={cn(
@@ -583,6 +598,15 @@ export function MarketplaceView() {
                       : `${tracks.length} ${tracks.length === 1 ? 'trilha publicada' : 'trilhas publicadas'}`}
                   </p>
                 </>
+              ) : tab === 'bundles' ? (
+                <>
+                  <h1 className="text-2xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50 sm:text-3xl">
+                    Pacotes de cursos
+                  </h1>
+                  <p className="mt-1 text-sm text-stone-500 dark:text-stone-400" aria-live="polite">
+                    Vários cursos do mesmo mentor por um preço especial — economize comprando o conjunto
+                  </p>
+                </>
               ) : (
                 <>
                   <h1 className="text-2xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50 sm:text-3xl">
@@ -597,6 +621,7 @@ export function MarketplaceView() {
               )}
             </div>
             <div className="w-44">
+              {tab === 'bundles' ? null : (
               <Select
                 value={
                   tab === 'all'
@@ -668,6 +693,7 @@ export function MarketplaceView() {
                   )}
                 </SelectContent>
               </Select>
+              )}
             </div>
           </div>
 
@@ -689,7 +715,9 @@ export function MarketplaceView() {
                       ? 'Busque por curso, tema ou mentor...'
                       : tab === 'tracks'
                         ? 'Busque por trilha, tema ou mentor...'
-                        : 'Busque por artigo, livro ou autor...'
+                        : tab === 'bundles'
+                          ? 'Busque por pacote ou mentor...'
+                          : 'Busque por artigo, livro ou autor...'
               }
               aria-label={
                 tab === 'all'
@@ -700,7 +728,9 @@ export function MarketplaceView() {
                       ? 'Buscar cursos'
                       : tab === 'tracks'
                         ? 'Buscar trilhas'
-                        : 'Buscar na Biblioteca'
+                        : tab === 'bundles'
+                          ? 'Buscar pacotes'
+                          : 'Buscar na Biblioteca'
               }
               className="h-12 rounded-2xl border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 pl-11 pr-16 text-stone-900 dark:text-stone-50 shadow-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus-visible:border-emerald-400 dark:focus-visible:border-emerald-700 focus-visible:ring-emerald-200 dark:focus-visible:ring-emerald-900/40"
             />
@@ -747,7 +777,7 @@ export function MarketplaceView() {
                 </SelectContent>
               </Select>
             </div>
-          ) : tab === 'all' ? null : (
+          ) : tab === 'all' || tab === 'bundles' ? null : (
             <div
               aria-label="Filtrar por categoria"
               className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -801,7 +831,11 @@ export function MarketplaceView() {
         </div>
       </section>
 
-      {tab !== 'all' && (
+      {tab === 'bundles' ? (
+        <section aria-labelledby="resultado-title" className="mx-auto w-full max-w-6xl px-4 pb-12 pt-8">
+          <MarketplaceBundles search={search} />
+        </section>
+      ) : tab !== 'all' && (
         <>
           {/* ---------- BENTO: destaque + estatísticas (por aba) ---------- */}
           <section aria-label="Destaques e estatísticas" className="mx-auto w-full max-w-6xl px-4 pt-6">

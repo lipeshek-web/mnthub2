@@ -8,6 +8,8 @@ export interface UserDTO {
   avatarUrl?: string | null
   /** true quando o usuário possui perfil de mentor cadastrado */
   isMentor?: boolean
+  /** Saldo de créditos de indicação em centavos (R$ 10 = 1000) */
+  creditCents?: number
 }
 
 export interface SocialLinksDTO {
@@ -293,7 +295,7 @@ export interface NotificationDTO {
   kind: NotificationKind
   title: string
   body?: string | null
-  linkView?: 'dashboard' | 'course' | 'onboarding' | 'messages' | null
+  linkView?: 'dashboard' | 'course' | 'onboarding' | 'messages' | 'referrals' | null
   refId?: string | null
   read: boolean
   createdAt: string
@@ -563,7 +565,7 @@ export interface PaymentMethod {
 
 export interface OrderDTO {
   id: string
-  itemKind: 'COURSE' | 'TRACK' | string
+  itemKind: 'COURSE' | 'TRACK' | 'BUNDLE' | string
   itemTitle: string
   amount: number
   paymentMethod: string
@@ -620,4 +622,65 @@ export interface RecommendationsDTO {
   items: RecommendationDTO[]
   /** true quando veio da IA personalizada; false = fallback popular */
   generated: boolean
+}
+
+// ==================== PACOTES DE CURSOS (bundles) ====================
+
+export interface BundleCourseDTO {
+  id: string
+  title: string
+  coverUrl?: string | null
+  price: number
+  category: string
+}
+
+export interface BundleDTO {
+  id: string
+  title: string
+  description: string
+  price: number
+  isPublished: boolean
+  createdAt: string
+  mentor: {
+    id: string
+    userId: string
+    name: string
+    headline: string
+    avatarUrl?: string | null
+  }
+  courses: BundleCourseDTO[]
+  courseCount: number
+  /** Soma dos preços dos cursos individuais (valor cheio) */
+  coursesTotal: number
+  /** Desconto implícito do pacote (0..100, arredondado) */
+  discountPercent: number
+}
+
+export interface BundleDetailDTO extends BundleDTO {
+  /** IDs de cursos do pacote em que o usuário já está inscrito (checkout) */
+  myEnrolledCourseIds?: string[]
+}
+
+// ==================== PROGRAMA DE INDICAÇÃO ====================
+
+export interface ReferralEntryDTO {
+  id: string
+  /** Nome do convidado (nunca e-mail) */
+  referredName: string
+  status: 'PENDING' | 'REWARDED' | string
+  createdAt: string
+  rewardedAt: string | null
+}
+
+export interface ReferralsDTO {
+  code: string
+  /** Link completo de convite (origin + ?ref=CODE) */
+  shareUrl: string
+  /** Saldo do usuário em centavos (R$ 10 = 1000) */
+  creditCents: number
+  invitedCount: number
+  convertedCount: number
+  earnedCents: number // total ganho com indicações
+  pendingCount: number
+  referrals: ReferralEntryDTO[]
 }

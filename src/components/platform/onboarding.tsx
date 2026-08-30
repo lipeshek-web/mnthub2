@@ -23,6 +23,7 @@ import {
   GraduationCap,
   ImagePlus,
   LayoutDashboard,
+  Layers,
   Library,
   Link2,
   ListChecks,
@@ -102,6 +103,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Avatar, Stars } from '@/components/platform/avatar'
 import { LibraryManager } from './library-manager'
 import { TracksManager } from './tracks-manager'
+import { BundlesManager } from './bundles-manager'
 import { api } from '@/lib/api'
 import {
   MENTOR_FONT_CATEGORIES,
@@ -3712,6 +3714,7 @@ const PANEL_TABS = [
   { id: 'cursos', label: 'Cursos', icon: ListVideo },
   { id: 'biblioteca', label: 'Biblioteca', icon: Library },
   { id: 'trilhas', label: 'Trilhas', icon: Route },
+  { id: 'pacotes', label: 'Pacotes', icon: Layers },
   { id: 'divulgacao', label: 'Divulgação', icon: Megaphone },
   { id: 'cupons', label: 'Cupons', icon: Ticket },
   { id: 'financeiro', label: 'Financeiro', icon: Wallet },
@@ -3760,6 +3763,12 @@ const PANEL_SHORTCUTS: ReadonlyArray<{
     label: 'Trilhas',
     description: 'Combine cursos e conteúdos em jornadas.',
     icon: Route,
+  },
+  {
+    id: 'pacotes',
+    label: 'Pacotes',
+    description: 'Venda 2+ cursos juntos com desconto.',
+    icon: Layers,
   },
   {
     id: 'divulgacao',
@@ -4750,6 +4759,10 @@ export default function OnboardingView() {
 
             <TabsContent value="trilhas" className="min-w-0 mt-4 sm:mt-6">
               <TracksManager userId={user.id} onChanged={reload} />
+            </TabsContent>
+
+            <TabsContent value="pacotes" className="min-w-0 mt-4 sm:mt-6">
+              <BundlesManager userId={user.id} />
             </TabsContent>
 
             <TabsContent value="divulgacao" className="min-w-0 mt-4 sm:mt-6">

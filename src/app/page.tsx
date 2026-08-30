@@ -11,6 +11,7 @@ import { LandingMenteeView } from '@/components/platform/landing-mentee'
 import { useAppStore } from '@/lib/store'
 import { api } from '@/lib/api'
 import { captureAttributionFromUrl, cleanUrlParams, loadTrackingScripts, trackEvent } from '@/lib/tracking'
+import { captureRefCodeFromUrl } from '@/lib/referral'
 
 /** Fallback enxuto enquanto um view pesado é baixado sob demanda */
 function ViewLoading() {
@@ -76,14 +77,18 @@ const MessagesView = dynamic(
   () => import('@/components/platform/messages-view').then((m) => m.MessagesView),
   { ssr: false, loading: ViewLoading }
 )
+const ReferralsView = dynamic(
+  () => import('@/components/platform/referrals-view').then((m) => m.ReferralsView),
+  { ssr: false, loading: ViewLoading }
+)
 const LandingMentor = dynamic(() => import('@/components/platform/landing-mentor'), {
   ssr: false,
   loading: ViewLoading,
 })
 
 /** Views que exigem sessão ativa — convidado é levado ao login/cadastro */
-const AUTH_REQUIRED: AppViewNames[] = ['dashboard', 'onboarding', 'checkout', 'meeting', 'messages']
-type AppViewNames = 'dashboard' | 'onboarding' | 'checkout' | 'meeting' | 'messages'
+const AUTH_REQUIRED: AppViewNames[] = ['dashboard', 'onboarding', 'checkout', 'meeting', 'messages', 'referrals']
+type AppViewNames = 'dashboard' | 'onboarding' | 'checkout' | 'meeting' | 'messages' | 'referrals'
 
 /** Título da aba por view — renderizado como <title> hoisted no shell */
 function docTitleFor(viewName: string): string {
@@ -103,6 +108,7 @@ function docTitleFor(viewName: string): string {
     checkout: 'Checkout — MentorHub',
     certificate: 'Certificado — MentorHub',
     messages: 'Mensagens — MentorHub',
+    referrals: 'Indique e ganhe — MentorHub',
     auth: 'Entrar — MentorHub',
   }
   return titles[viewName] ?? 'MentorHub — Plataforma de Mentorias 1:1'
@@ -147,6 +153,7 @@ export default function Home() {
 
     // 1. Atribuição (last non-direct click, janela de 7 dias)
     captureAttributionFromUrl(mentorSlug)
+    captureRefCodeFromUrl()
 
     // 2. Pixels da plataforma (IDs via env) — pixels dos mentores são
     //    carregados dentro das telas correspondentes (LP, curso, checkout).
@@ -257,10 +264,15 @@ export default function Home() {
               {view.name === 'onboarding' && <OnboardingView />}
               {view.name === 'mentor-lp' && <MentorLpView slug={view.slug} />}
               {view.name === 'checkout' && (
-                <CheckoutView courseId={view.courseId} trackId={view.trackId} />
+                <CheckoutView
+                  courseId={view.courseId}
+                  trackId={view.trackId}
+                  bundleId={view.bundleId}
+                />
               )}
               {view.name === 'certificate' && <CertificateView code={view.code} />}
               {view.name === 'messages' && <MessagesView initialPeerId={view.peerId} />}
+              {view.name === 'referrals' && <ReferralsView />}
             </>
           )}
 

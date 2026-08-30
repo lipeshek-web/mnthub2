@@ -17,9 +17,12 @@ export async function notify(input: {
     | 'course_review_new'
     | 'purchase_new'
     | 'message_new'
+    | 'referral_joined'
+    | 'referral_rewarded'
+    | 'bundle_new'
   title: string
   body?: string | null
-  linkView?: 'dashboard' | 'course' | 'onboarding' | 'messages' | null
+  linkView?: 'dashboard' | 'course' | 'onboarding' | 'messages' | 'referrals' | null
   refId?: string | null
 }): Promise<void> {
   try {

@@ -10,6 +10,7 @@ const USER_SELECT = {
   email: true,
   bio: true,
   avatarUrl: true,
+  creditCents: true,
   passwordHash: true,
   mentorProfile: { select: { id: true } },
 } as const

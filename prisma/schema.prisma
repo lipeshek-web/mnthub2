@@ -38,6 +38,11 @@ model User {
   certificates      Certificate[]  @relation("Certificates")
   messagesSent      DirectMessage[] @relation("MessagesSent")
   messagesReceived  DirectMessage[] @relation("MessagesReceived")
+  // Programa de indicação
+  referralCode  String? @unique // código do convite (ex: MH-CARLOS22); gerado no 1º acesso
+  creditCents   Int     @default(0) // saldo de créditos em centavos (R$ 10 = 1000)
+  referralsGiven   Referral[] @relation("ReferralsGiven")
+  referralReceived Referral?  @relation("ReferralsReceived")
 }
 
 model MentorProfile {
@@ -78,6 +83,7 @@ model MentorProfile {
   orders         Order[]
   trackingEvents TrackingEvent[]
   coupons        Coupon[]
+  bundles        Bundle[]
 }
 
 model Availability {
@@ -161,6 +167,7 @@ model Course {
   questions      LessonQuestion[]
   reviews        CourseReview[]
   certificates   Certificate[]
+  bundleItems    BundleItem[]
 }
 
 /// Tema (módulo) do curso: agrupa aulas em uma sequência organizada
@@ -365,13 +372,15 @@ model TrackEnrollment {
 
 // ==================== CHECKOUT & TRACKING (tráfego pago) ====================
 
-/// Pedido de curso ou trilha (checkout demonstrativo — pagamentos simulados)
+/// Pedido de curso, trilha ou pacote (checkout demonstrativo — pagamentos simulados)
 model Order {
   id            String        @id @default(cuid())
   courseId      String?
   course        Course?       @relation(fields: [courseId], references: [id], onDelete: Cascade)
   trackId       String?
   track         Track?        @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  bundleId      String?
+  bundle        Bundle?       @relation(fields: [bundleId], references: [id], onDelete: Cascade)
   studentId     String
   student       User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
   mentorId      String
@@ -380,7 +389,8 @@ model Order {
   paymentMethod String        @default("PIX") // PIX | CREDIT_CARD
   status        String        @default("PAID") // PAID | REFUNDED
   couponCode    String? // cupom aplicado (se houve)
-  discount      Float         @default(0) // valor descontado em R$
+  discount      Float         @default(0) // valor descontado em R$ (cupom)
+  creditsUsed   Float         @default(0) // créditos de indicação usados em R$
 
   // Atribuição de tráfego (last-touch) — segregada por origem
   utmSource   String?
@@ -489,6 +499,52 @@ model Coupon {
   createdAt  DateTime      @default(now())
 
   @@unique([mentorId, code])
+}
+
+// ==================== PACOTES DE CURSOS (bundles) ====================
+
+/// Pacote promocional: 2+ cursos do próprio mentor vendidos juntos com desconto
+model Bundle {
+  id          String        @id @default(cuid())
+  mentorId    String
+  mentor      MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  title       String
+  description String        @default("")
+  price       Float         @default(0) // preço do pacote (soma dos cursos = valor cheio)
+  isPublished Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  items  BundleItem[]
+  orders Order[]
+}
+
+/// Curso dentro de um pacote (ordem define a exibição)
+model BundleItem {
+  id       String @id @default(cuid())
+  bundleId String
+  bundle   Bundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  order    Int    @default(0)
+
+  @@unique([bundleId, courseId])
+}
+
+// ==================== PROGRAMA DE INDICAÇÃO ====================
+
+/// Indicação: quem convidou → quem entrou. Recompensa em créditos quando o
+/// convidado conclui a 1ª compra paga (status PENDING → REWARDED).
+model Referral {
+  id         String    @id @default(cuid())
+  referrerId String
+  referrer   User      @relation("ReferralsGiven", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredId String    @unique // um usuário só pode ter sido indicado 1x
+  referred   User      @relation("ReferralsReceived", fields: [referredId], references: [id], onDelete: Cascade)
+  code       String // código usado no cadastro
+  status     String    @default("PENDING") // PENDING | REWARDED
+  rewardedAt DateTime?
+  createdAt  DateTime  @default(now())
 }
 
 // ==================== MENSAGENS DIRETAS (chat aluno ↔ mentor) ====================

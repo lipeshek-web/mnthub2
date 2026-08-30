@@ -3,6 +3,8 @@ import type {
   AiTutorChatMessage,
   AvailabilitySlotInput,
   BookingDTO,
+  BundleDTO,
+  BundleDetailDTO,
   CertificateDTO,
   CheckoutResultDTO,
   ContentPostDTO,
@@ -23,6 +25,7 @@ import type {
   MessageDTO,
   MessagesResponseDTO,
   NotificationsResponseDTO,
+  ReferralsDTO,
   ThreadsResponseDTO,
   QuizAttemptResultDTO,
   QuizDTO,
@@ -71,8 +74,11 @@ const qs = (params: Record<string, string | number | undefined>) => {
 
 export const api = {
   // Autenticação
-  register: (data: { name: string; email: string; password: string }) =>
-    request<UserDTO>('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  register: (data: { name: string; email: string; password: string; refCode?: string }) =>
+    request<UserDTO & { referralApplied?: boolean }>('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   login: (data: { email: string; password: string }) =>
     request<UserDTO>('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
   me: (userId: string) =>
@@ -421,14 +427,36 @@ export const api = {
   // LP pública do mentor (tráfego pago) — por slug
   getMentorBySlug: (slug: string) => request<MentorLpDTO>(`/api/mentors/by-slug/${encodeURIComponent(slug)}`),
 
-  // Checkout (pagamento demonstrativo) — curso ou trilha, com cupom opcional
+  // Checkout (pagamento demonstrativo) — curso, trilha ou pacote, com cupom e créditos
   checkout: (data: {
     userId: string
     courseId?: string
     trackId?: string
+    bundleId?: string
     paymentMethod: 'PIX' | 'CREDIT_CARD'
     couponCode?: string
+    useCredits?: boolean
   }) => request<CheckoutResultDTO>('/api/checkout', { method: 'POST', body: JSON.stringify(data) }),
+
+  // Pacotes de cursos (bundles)
+  listBundles: (params: { mentorUserId?: string; courseId?: string; userId?: string }) =>
+    request<{ bundles: BundleDTO[] }>(`/api/bundles${qs(params)}`),
+  getBundle: (id: string, userId?: string) =>
+    request<{ bundle: BundleDetailDTO }>(`/api/bundles/${id}${qs({ userId })}`),
+  saveBundle: (data: {
+    userId: string
+    id?: string
+    title: string
+    description?: string
+    price: number
+    courseIds: string[]
+    isPublished?: boolean
+  }) => request<{ id: string }>('/api/bundles', { method: 'POST', body: JSON.stringify(data) }),
+  deleteBundle: (id: string, userId: string) =>
+    request<{ ok: boolean }>(`/api/bundles/${id}${qs({ userId })}`, { method: 'DELETE' }),
+
+  // Programa de indicação (código, saldo e convidados)
+  referrals: (userId: string) => request<ReferralsDTO>(`/api/referrals${qs({ userId })}`),
 
   // Estatísticas de tráfego do mentor (dashboard)
   trackingStats: (mentorUserId: string) =>
@@ -494,7 +522,7 @@ export const api = {
     }),
   deleteCoupon: (id: string, userId: string) =>
     request<{ ok: boolean }>(`/api/coupons${qs({ userId, id })}`, { method: 'DELETE' }),
-  validateCoupon: (data: { code: string; courseId?: string; trackId?: string }) =>
+  validateCoupon: (data: { code: string; courseId?: string; trackId?: string; bundleId?: string }) =>
     request<CouponValidationDTO>('/api/coupons/validate', {
       method: 'POST',
       body: JSON.stringify(data),

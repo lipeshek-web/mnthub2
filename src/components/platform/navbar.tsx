@@ -11,6 +11,7 @@ import {
   CalendarX,
   CheckCircle2,
   Compass,
+  Gift,
   GraduationCap,
   LayoutDashboard,
   ListVideo,
@@ -242,6 +243,7 @@ function NotificationsBell() {
     else if (item.linkView === 'course' && item.refId) navigate({ name: 'course', courseId: item.refId })
     else if (item.linkView === 'onboarding') navigate({ name: 'onboarding' })
     else if (item.linkView === 'messages') navigate({ name: 'messages', peerId: item.refId ?? undefined })
+    else if (item.linkView === 'referrals') navigate({ name: 'referrals' })
     setOpen(false)
   }
 
@@ -584,6 +586,9 @@ export function Navbar() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate({ name: 'marketplace' })}>
                   <Compass className="h-4 w-4" /> Explorar
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate({ name: 'referrals' })}>
+                  <Gift className="h-4 w-4" /> Indicar amigos
                 </DropdownMenuItem>
                 {user.isMentor ? (
                   <DropdownMenuItem onClick={() => navigate({ name: 'onboarding' })}>

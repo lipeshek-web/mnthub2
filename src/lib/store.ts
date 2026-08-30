@@ -18,12 +18,13 @@ export type AppView =
   | { name: 'onboarding' }
   | { name: 'for-mentors' }
   | { name: 'mentor-lp'; slug: string } // LP pública rastreável (tráfego pago)
-  | { name: 'checkout'; courseId?: string; trackId?: string } // checkout de curso ou trilha pago
+  | { name: 'checkout'; courseId?: string; trackId?: string; bundleId?: string } // checkout de curso, trilha ou pacote pago
   | { name: 'certificate'; code: string } // certificado público verificável (?cert=CODE)
   | { name: 'messages'; peerId?: string } // chat direto aluno ↔ mentor (mensagens); peerId = conversa a abrir
+  | { name: 'referrals' } // programa de indicação (convite + créditos)
 
-/** Aba ativa do Explorar: visão geral (tudo), mentores, cursos, trilhas ou biblioteca */
-export type ExploreTab = 'all' | 'mentors' | 'courses' | 'tracks' | 'library'
+/** Aba ativa do Explorar: visão geral (tudo), mentores, cursos, trilhas, pacotes ou biblioteca */
+export type ExploreTab = 'all' | 'mentors' | 'courses' | 'tracks' | 'bundles' | 'library'
 
 interface AppState {
   user: UserDTO | null

@@ -11,6 +11,7 @@ import {
 import {
   AlertCircle,
   ArrowLeft,
+  BadgePercent,
   BookOpen,
   Check,
   CheckCircle2,
@@ -18,6 +19,7 @@ import {
   ExternalLink,
   FileText,
   Folder,
+  Layers,
   Library,
   Lock,
   PlayCircle,
@@ -46,7 +48,7 @@ import {
 } from '@/lib/helpers'
 import { loadTrackingScripts, trackEvent } from '@/lib/tracking'
 import { useAppStore } from '@/lib/store'
-import type { CourseDetailDTO, CourseLessonDTO, CourseReviewDTO } from '@/lib/types'
+import type { BundleDTO, CourseDetailDTO, CourseLessonDTO, CourseReviewDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 export function CourseView({ courseId }: { courseId: string }) {
@@ -806,10 +808,67 @@ function OverviewContent({
             </>
           )}
         </Card>
+        {!enrolled && <BundleCallout courseId={course.id} currentUserId={currentUserId} />}
         {reviewFormNode}
         </div>
       </div>
     </>
+  )
+}
+
+/* ==================== CALLOUT "ESTE CURSO FAZ PARTE DE UM PACOTE" ==================== */
+
+/** Busca pacotes publicados que contêm este curso; esconde silenciosamente se não houver */
+function BundleCallout({
+  courseId,
+  currentUserId,
+}: {
+  courseId: string
+  currentUserId?: string | null
+}) {
+  const navigate = useAppStore((s) => s.navigate)
+  const [bundle, setBundle] = useState<BundleDTO | null>(null)
+
+  useEffect(() => {
+    let active = true
+    api
+      .listBundles({ courseId, userId: currentUserId ?? undefined })
+      .then((res) => {
+        if (active && res.bundles.length > 0) setBundle(res.bundles[0])
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [courseId, currentUserId])
+
+  if (!bundle) return null
+
+  const brl = (v: number) =>
+    v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })
+
+  return (
+    <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/50 p-4">
+      <p className="flex items-center gap-2 text-sm font-bold text-emerald-900 dark:text-emerald-200">
+        <Layers aria-hidden className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
+        Este curso faz parte do pacote “{bundle.title}”
+      </p>
+      <p className="mt-1 text-xs leading-relaxed text-emerald-800/80 dark:text-emerald-300/80">
+        Leve {bundle.courseCount} cursos de {bundle.mentor.name} por {bundle.price === 0 ? 'grátis' : brl(bundle.price)}
+        {bundle.coursesTotal > bundle.price && bundle.price > 0
+          ? ` — economize ${bundle.discountPercent}% em relação à compra separada`
+          : ''}
+        .
+      </p>
+      <Button
+        size="sm"
+        onClick={() => navigate({ name: 'checkout', bundleId: bundle.id })}
+        className="mt-3 h-10 w-full rounded-full bg-emerald-700 font-bold hover:bg-emerald-800"
+      >
+        <BadgePercent aria-hidden className="h-4 w-4" />
+        Ver pacote
+      </Button>
+    </div>
   )
 }
 

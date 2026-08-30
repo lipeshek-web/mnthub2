@@ -1223,3 +1223,37 @@ Stage Summary:
 - Plataforma ganhou a camada de IA nos 3 pontos de maior valor: aluno nunca fica travado (Tutor IA com base no conteúdo real do curso), revisão rápida por aula (Resumo IA cacheado — custo de LLM pago 1x por aula) e descoberta personalizada (Feito para você com fallback popular à prova de falhas)
 - Acessos e limites validados no servidor (matrícula/dono, 1000 chars/msg, 10 msgs de histórico, cache anti-abuso)
 - Custos de IA contidos: resumo gerado 1x por aula (persistido), recomendações em cache de 10 min por usuário, tutor sem persistência (histórico no cliente)
+
+---
+Task ID: B
+Agent: Z.ai Code (main)
+Task: Pacote B (parcial) — #4 Pacotes de cursos (bundles) + #5 Programa de indicação
+
+Work Log:
+- Schema: models Bundle + BundleItem (2+ cursos, @@unique bundle/curso) + Referral (referrer/referred @unique, PENDING→REWARDED) + User.referralCode @unique e User.creditCents (centavos) + Order.bundleId e Order.creditsUsed; bun run db:push + regeneração do client + restart do dev server (client antigo em memória causava db.bundle undefined)
+- bundle-serialize.ts (novo): bundleBaseInclude + serializeBundle (coursesTotal = soma dos publicados; discountPercent = 1 − price/total) + serializeBundleDetail (myEnrolledCourseIds); avatar do mentor vem de user.avatarUrl (MentorProfile não tem avatarUrl — correção após erro do Prisma)
+- APIs bundles: GET /api/bundles (filtros mentorUserId p/ painel, courseId p/ callout, userId p/ estado de matrícula), POST (create/update com validação dono + 2+ cursos próprios + price ≥ 0), GET/DELETE /api/bundles/[id]; correção: mkdir faltou antes do 1º Write (rota 404) — reescrito
+- Checkout: branch BUNDLE (409 se já tem todos os cursos, matrícula upsert em todos, order com bundleId), créditos (useCredits → desconto min(saldo, pós-cupom), debita creditCents, grava creditsUsed) em curso/trilha/pacote e rewardPendingReferral() (1ª compra paga → REWARDED + R$ 20 p/ convidante + notificações referral_joined/referral_rewarded)
+- /api/referrals GET: gera código (alfabeto sem ambíguos, retry em colisão), stats completos (saldo/convidados/convertidos/ganhos/pendentes)
+- register: aceita refCode (valida código existente) → creditCents 1000 (R$ 10 boas-vindas) + Referral PENDING + notify convidante; login/me retornam creditCents; notify.ts +kinds referral_joined/referral_rewarded/bundle_new e linkView 'referrals'
+- lib/referral.ts (novo): captureRefCodeFromUrl (?ref= → localStorage 7 dias, mesmo padrão do tracking), get/clear; page.tsx captura no bootstrap
+- referrals-view.tsx (novo, view 'referrals' + AUTH_REQUIRED + docTitle): hero emerald com link ?ref=CODE + copiar + compartilhar, 4 KPIs, "Como funciona" 3 passos, lista de convidados com badges "+ R$ 20 creditados"/"Aguardando 1ª compra"; navbar ganhou menu "Indicar amigos" (Gift) e roteamento de notificações p/ referrals
+- bundles-manager.tsx (novo): aba "Pacotes" no painel do mentor (PANEL_TABS + atalhos) — lista com badges Publicado/Rascunho, chips de cursos com capa, preço cheio riscado + −%; dialog criar/editar com seleção de cursos (capa+preço), preço e desconto ao vivo (ex.: R$ 318 → 199 = 37%), toggle Publicar, exclusão com confirmação
+- Explorar: aba "Pacotes" (segment control) com título/subtítulo próprios, busca e MarketplaceBundles autocontido (skeletons, empty states, cards com mosaico de capas, −% badge, "R$ X à parte"); bento/biblioteca inalterados; correção de estrutura JSX/TS narrowing (branch bundles fora do bloco tab !== 'all')
+- checkout.tsx: bundleId prop, badges Pacote + "Economize N%", lista dos cursos com preços riscados, total dinâmico com cupom + créditos, caixa "Usar meus créditos (R$ X)", sucesso com "Ir para meus cursos"; pacote gratuito matricula em todos os cursos; /api/coupons/validate aceita bundleId
+- course-view.tsx: BundleCallout na sidebar de visitantes ("Este curso faz parte do pacote X — economize N%") com CTA p/ checkout do pacote
+- auth-view: envia refCode no cadastro + toast "R$ 10 de crédito de convite"; limp código após uso
+
+Validation (lint 0/0, tsc 0 erros em src/, browser E2E 1440×900 + 390×844, light+dark):
+- APIs reais: bundle criado p/ Carlos (2 cursos R$ 189+129 → R$ 249, −22%); cadastro com convite MH-J76NPE → Lia com creditCents 1000; compra de curso → Referral REWARDED + Carlos creditCents 2000 + notificações (referral_joined + referral_rewarded no banco); compra do pacote com créditos → order 239 (249−10), saldo 0, matrículas = 2 cursos
+- ?ref= capturado no localStorage (mh_referral_v1) e guard de checkout leva convidado ao login
+- UI desktop: aba Pacotes com card completo (mosaico de capas, −22%, 2 cursos, mentor, R$ 249 / R$ 318 à parte); checkout do pacote com badges, lista de cursos, créditos R$ 20 aplicados (Total 249→229 no toggle, botão Pagar atualiza); referrals com KPIs reais (R$ 20, 1 convite, 1 convertido) + link + código + convidados; painel Pacotes com lista/editar/excluir e dialog com desconto ao vivo (318→199 = 37%)
+- UI mobile 390 dark: pacotes/referrals/checkout sem overflow (390x390), cards legíveis; callout do pacote na página do curso (Camila) navegando ao checkout
+- Radix: cliques no browser exigem sequência completa pointer/mouse events (tabs/dialog) — mesma técnica das tasks anteriores
+- dev.log: ⨯ antigos apenas da janela de criação do referrals-view (inexistente por segundos); após, tudo 200; server não derrubado durante a validação final
+
+Stage Summary:
+- Monetização completa: mentor combina 2+ cursos em pacote com desconto implícito (cria no painel, aparece no Explorar, nas páginas dos cursos e no checkout); indicação dupla (convidado entra com R$ 10, convidante ganha R$ 20 na 1ª compra) com código ?ref= de 7 dias, página de convites com saldo e créditos aplicáveis em qualquer checkout
+- Todos os valores são calculados no servidor (créditos, descontos, recompensa) — cliente só reflete
+- Demo enriquecida: Carlos com 2º curso ("Testes e Qualidade de Código") + pacote "Formação Arquiteto de Software" + indicação real (Lia Teste)
+- Pendência conhecida: clique sintético do Playwright precisa da sequência completa de eventos em tabs/dialogs Radix (limitação de teste, não do produto)
