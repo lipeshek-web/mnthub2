@@ -1819,3 +1819,20 @@ Work Log:
 Stage Summary:
 - Links finais: https://mentorhub.space-z.ai/mentorhub-mobile-snack-v2.zip · https://mentorhub.space-z.ai/snack-App-js.txt
 - Causa raiz não era o código: era estado velho no Snack/cache; checklist no README cobre recorrência
+
+---
+Task ID: W-18
+Agent: Z.ai Code (main)
+Task: Push do repositório para GitHub (lipeshek-web/mnthub2)
+
+Work Log:
+- Ambiente sem credenciais GitHub (sem gh CLI, sem token em env, sem credential helper)
+- Segurança: .env estava trackeado (DATABASE_URL, MOBILE_JWT_SECRET) — git rm --cached .env (arquivo mantido local) + regra .env.local no .gitignore; commit d6b9bf1
+- Snapshot: db/custom.db commitado junto (estado atual)
+- Remote adicionado: origin → https://github.com/lipeshek-web/mnthub2.git; branch já é main
+- Push testado com GIT_TERMINAL_PROMPT=0 → falha só de auth ("could not read Username") = URL OK, falta PAT
+- Repo leve (maior arquivo 1.5MB, sem risco de limite do GitHub)
+
+Stage Summary:
+- Tudo pronto para push: falta o usuário gerar um Personal Access Token (repo scope) e colar no chat
+- Comando pendente: git push -u origin main (com token que o usuário fornecer)
