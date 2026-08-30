@@ -80,6 +80,7 @@ import {
 } from '@/components/ui/card'
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -1721,16 +1722,39 @@ function CoursesManager({
           if (open) setFormErrors({})
         }}
       >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editing ? 'Editar curso' : 'Novo curso'}</DialogTitle>
-            <DialogDescription>
-              {editing
-                ? 'Atualize as informações do curso. As aulas são gerenciadas separadamente.'
-                : 'Crie a estrutura do curso. Depois de salvar, você adiciona as aulas.'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-4">
+        <DialogContent
+          showCloseButton={false}
+          className="top-0 left-0 flex h-dvh max-h-dvh w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 bg-stone-50 p-0 data-[state=closed]:zoom-out-100 data-[state=open]:zoom-in-100 dark:bg-stone-950 sm:max-w-none"
+        >
+          {/* Barra superior fixa — fechar à direita, estilo Apple */}
+          <header className="flex shrink-0 items-center justify-between gap-3 border-b border-stone-200 bg-white/80 px-4 py-3 backdrop-blur-xl dark:border-stone-800 dark:bg-stone-950/80 sm:px-6">
+            <div className="min-w-0">
+              <DialogTitle className="truncate text-base font-semibold tracking-tight text-stone-900 dark:text-stone-50 sm:text-lg">
+                {editing ? 'Editar curso' : 'Novo curso'}
+              </DialogTitle>
+              <DialogDescription className="mt-0.5 truncate text-xs text-stone-500 dark:text-stone-400 sm:text-sm">
+                {editing
+                  ? 'Atualize as informações do curso. As aulas são gerenciadas separadamente.'
+                  : 'Crie a estrutura do curso. Depois de salvar, você adiciona as aulas.'}
+              </DialogDescription>
+            </div>
+            <DialogClose asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={saving}
+                aria-label="Fechar"
+                title="Fechar"
+                className="size-9 shrink-0 rounded-full bg-stone-100 text-stone-500 transition-colors hover:bg-stone-200 hover:text-stone-800 dark:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-700 dark:hover:text-stone-100"
+              >
+                <X className="h-4.5 w-4.5" aria-hidden />
+              </Button>
+            </DialogClose>
+          </header>
+
+          {/* Corpo rolável em coluna centralizada */}
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <div className="mx-auto flex w-full max-w-xl flex-col gap-5 px-4 py-6 sm:px-6">
             <div className="flex flex-col gap-2">
               <Label htmlFor="course-title">Título</Label>
               <Input
@@ -1738,6 +1762,7 @@ function CoursesManager({
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder="Ex.: Arquitetura de Software na prática"
+                className="h-11 rounded-xl"
                 aria-invalid={Boolean(formErrors.title)}
               />
               {formErrors.title ? <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.title}</p> : null}
@@ -1750,6 +1775,7 @@ function CoursesManager({
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
                 placeholder="O que o aluno vai aprender e para quem é o curso..."
+                className="rounded-xl"
                 aria-invalid={Boolean(formErrors.description)}
               />
               {formErrors.description ? (
@@ -1766,7 +1792,7 @@ function CoursesManager({
                     setFormErrors((prev) => ({ ...prev, category: undefined }))
                   }}
                 >
-                  <SelectTrigger id="course-category" className="w-full" aria-invalid={Boolean(formErrors.category)}>
+                  <SelectTrigger id="course-category" className="h-11 w-full rounded-xl" aria-invalid={Boolean(formErrors.category)}>
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -1782,7 +1808,7 @@ function CoursesManager({
               <div className="flex flex-col gap-2">
                 <Label htmlFor="course-level">Nível</Label>
                 <Select value={level} onValueChange={setLevel}>
-                  <SelectTrigger id="course-level" className="w-full">
+                  <SelectTrigger id="course-level" className="h-11 w-full rounded-xl">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1804,6 +1830,7 @@ function CoursesManager({
                 step={10}
                 value={price}
                 onChange={(event) => setPrice(event.target.value)}
+                className="h-11 rounded-xl"
                 aria-invalid={Boolean(formErrors.price)}
               />
               {formErrors.price ? (
@@ -1822,6 +1849,7 @@ function CoursesManager({
                 step={1}
                 value={mentorshipCount}
                 onChange={(event) => setMentorshipCount(event.target.value)}
+                className="h-11 rounded-xl"
               />
               <p className="text-xs text-muted-foreground">
                 Sessões de mentoria que o aluno pode agendar com você (0 = nenhuma).
@@ -1875,12 +1903,15 @@ function CoursesManager({
                 />
               </div>
             </div>
+            </div>
           </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setDialogOpen(false)} disabled={saving}>
+
+          {/* Barra inferior fixa */}
+          <DialogFooter className="shrink-0 border-t border-stone-200 bg-white px-4 py-3 dark:border-stone-800 dark:bg-stone-950 sm:px-6">
+            <Button variant="ghost" className="rounded-full" onClick={() => setDialogOpen(false)} disabled={saving}>
               Cancelar
             </Button>
-            <Button onClick={() => void handleSubmit()} disabled={saving}>
+            <Button className="rounded-full px-6 font-semibold" onClick={() => void handleSubmit()} disabled={saving}>
               {saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Criar curso'}
             </Button>
           </DialogFooter>
@@ -2180,15 +2211,37 @@ function LessonsManagerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Aulas do curso</DialogTitle>
-          <DialogDescription>
-            {course.title} · {lessons.length} {lessons.length === 1 ? 'aula' : 'aulas'} — exibidas nesta ordem
-            para os alunos.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-3">
+      <DialogContent
+        showCloseButton={false}
+        className="top-0 left-0 flex h-dvh max-h-dvh w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 bg-stone-50 p-0 data-[state=closed]:zoom-out-100 data-[state=open]:zoom-in-100 dark:bg-stone-950 sm:max-w-none"
+      >
+        {/* Barra superior fixa — fechar à direita, estilo Apple */}
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-stone-200 bg-white/80 px-4 py-3 backdrop-blur-xl dark:border-stone-800 dark:bg-stone-950/80 sm:px-6">
+          <div className="min-w-0">
+            <DialogTitle className="truncate text-base font-semibold tracking-tight text-stone-900 dark:text-stone-50 sm:text-lg">
+              Aulas do curso
+            </DialogTitle>
+            <DialogDescription className="mt-0.5 truncate text-xs text-stone-500 dark:text-stone-400 sm:text-sm">
+              {course.title} · {lessons.length} {lessons.length === 1 ? 'aula' : 'aulas'} — exibidas nesta
+              ordem para os alunos.
+            </DialogDescription>
+          </div>
+          <DialogClose asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Fechar"
+              title="Fechar"
+              className="size-9 shrink-0 rounded-full bg-stone-100 text-stone-500 transition-colors hover:bg-stone-200 hover:text-stone-800 dark:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-700 dark:hover:text-stone-100"
+            >
+              <X className="h-4.5 w-4.5" aria-hidden />
+            </Button>
+          </DialogClose>
+        </header>
+
+        {/* Corpo rolável em coluna centralizada */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="mx-auto flex w-full max-w-2xl flex-col gap-3 px-4 py-6 sm:px-6">
           {loading ? (
             <div className="space-y-2">
               <Skeleton className="h-14 rounded-lg" />
@@ -2199,7 +2252,7 @@ function LessonsManagerDialog({
               Nenhuma aula ainda — adicione a primeira abaixo.
             </p>
           ) : (
-            <div className="max-h-64 space-y-2 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-stone-100 dark:[&::-webkit-scrollbar-track]:bg-stone-800 [&::-webkit-scrollbar]:w-1.5">
+            <div className="space-y-2">
               {lessons.map((lesson) => (
                 <div
                   key={lesson.id}
@@ -2325,7 +2378,7 @@ function LessonsManagerDialog({
           )}
 
           {adding ? (
-            <div className="flex flex-col gap-3 rounded-lg border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/50 p-3">
+            <div className="flex flex-col gap-3 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/50 p-4 sm:p-5">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="lesson-title">Título</Label>
                 <Input
@@ -2333,6 +2386,7 @@ function LessonsManagerDialog({
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
                   placeholder="Ex.: Boas-vindas e visão geral"
+                  className="h-11 rounded-xl"
                   aria-invalid={Boolean(formErrors.title)}
                 />
                 {formErrors.title ? <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.title}</p> : null}
@@ -2343,7 +2397,7 @@ function LessonsManagerDialog({
                 <Label htmlFor="lesson-theme">Tema</Label>
                 <div className="flex items-center gap-2">
                   <Select value={themeId} onValueChange={setThemeId}>
-                    <SelectTrigger id="lesson-theme" className="w-full">
+                    <SelectTrigger id="lesson-theme" className="h-11 w-full rounded-xl">
                       <SelectValue placeholder="Tema da aula" />
                     </SelectTrigger>
                     <SelectContent>
@@ -2378,6 +2432,7 @@ function LessonsManagerDialog({
                       }}
                       placeholder="Ex.: Módulo 1 — Fundamentos"
                       aria-label="Título do novo tema"
+                      className="h-11 rounded-xl"
                       autoFocus
                     />
                     <Button
@@ -2411,7 +2466,7 @@ function LessonsManagerDialog({
                       onClick={() => setKind(opt.value)}
                       aria-pressed={kind === opt.value}
                       className={cn(
-                        'flex min-h-11 items-center justify-center gap-1.5 rounded-lg border text-sm font-semibold transition-colors',
+                        'flex min-h-11 items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold transition-colors',
                         kind === opt.value
                           ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300'
                           : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
@@ -2433,6 +2488,7 @@ function LessonsManagerDialog({
                         type="datetime-local"
                         value={startsAt}
                         onChange={(event) => setStartsAt(event.target.value)}
+                        className="h-11 rounded-xl"
                         aria-invalid={Boolean(formErrors.startsAt)}
                       />
                       {formErrors.startsAt ? (
@@ -2448,6 +2504,7 @@ function LessonsManagerDialog({
                         step={5}
                         value={durationMin}
                         onChange={(event) => setDurationMin(event.target.value)}
+                        className="h-11 rounded-xl"
                         aria-invalid={Boolean(formErrors.durationMin)}
                       />
                       {formErrors.durationMin ? (
@@ -2463,6 +2520,7 @@ function LessonsManagerDialog({
                       onChange={(event) => setMeetingUrl(event.target.value)}
                       placeholder="https://meet.google.com/... ou https://youtube.com/live/..."
                       autoComplete="off"
+                      className="h-11 rounded-xl"
                       aria-invalid={Boolean(formErrors.meetingUrl)}
                     />
                     {formErrors.meetingUrl ? (
@@ -2481,6 +2539,7 @@ function LessonsManagerDialog({
                       onChange={(event) => setVideoUrl(event.target.value)}
                       placeholder="Cole depois da live, para quem perdeu"
                       autoComplete="off"
+                      className="h-11 rounded-xl"
                     />
                   </div>
                 </>
@@ -2502,7 +2561,7 @@ function LessonsManagerDialog({
                       <Select value={libraryItemId} onValueChange={handleLibraryItemChange}>
                         <SelectTrigger
                           id="lesson-library-item"
-                          className="w-full"
+                          className="h-11 w-full rounded-xl"
                           aria-invalid={Boolean(formErrors.material)}
                         >
                           <SelectValue placeholder="Selecione um artigo ou livro..." />
@@ -2529,6 +2588,7 @@ function LessonsManagerDialog({
                       step={5}
                       value={durationMin}
                       onChange={(event) => setDurationMin(event.target.value)}
+                      className="h-11 rounded-xl"
                       aria-invalid={Boolean(formErrors.durationMin)}
                     />
                     {formErrors.durationMin ? (
@@ -2553,6 +2613,7 @@ function LessonsManagerDialog({
                       step={5}
                       value={durationMin}
                       onChange={(event) => setDurationMin(event.target.value)}
+                      className="h-11 rounded-xl"
                       aria-invalid={Boolean(formErrors.durationMin)}
                     />
                     {formErrors.durationMin ? (
@@ -2567,6 +2628,7 @@ function LessonsManagerDialog({
                       onChange={(event) => setVideoUrl(event.target.value)}
                       placeholder="https://youtube.com/watch?v=..."
                       autoComplete="off"
+                      className="h-11 rounded-xl"
                     />
                   </div>
                 </div>
@@ -2581,6 +2643,7 @@ function LessonsManagerDialog({
                     value={content}
                     onChange={(event) => setContent(event.target.value)}
                     placeholder="Cole aqui o material da aula ou escreva o conteúdo..."
+                    className="rounded-xl"
                     aria-invalid={Boolean(formErrors.material)}
                   />
                   {formErrors.material ? (
@@ -2651,6 +2714,7 @@ function LessonsManagerDialog({
                   onChange={(event) => setDescription(event.target.value)}
                   placeholder="Resumo curto da aula"
                   autoComplete="off"
+                  className="h-11 rounded-xl"
                 />
               </div>
               <div className="flex justify-end gap-2">
@@ -2672,6 +2736,7 @@ function LessonsManagerDialog({
               <Plus className="size-4" aria-hidden /> Adicionar aula
             </Button>
           )}
+          </div>
         </div>
       </DialogContent>
 

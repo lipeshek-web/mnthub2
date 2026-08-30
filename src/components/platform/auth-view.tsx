@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react'
 import {
+  ChevronDown,
   Eye,
   EyeOff,
   GraduationCap,
@@ -18,6 +19,11 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
+import {
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
@@ -27,6 +33,7 @@ import { api } from '@/lib/api'
 import { firstName } from '@/lib/helpers'
 import { clearStoredRefCode, getStoredRefCode } from '@/lib/referral'
 import { useAppStore } from '@/lib/store'
+import { cn } from '@/lib/utils'
 import type { UserDTO } from '@/lib/types'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -67,7 +74,8 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
   const [regFormError, setRegFormError] = useState<string | null>(null)
   const [regLoading, setRegLoading] = useState(false)
 
-  // ----- Contas de demonstração -----
+  // ----- Contas de demonstração (menu retraído) -----
+  const [demoOpen, setDemoOpen] = useState(false)
   const [demoUsers, setDemoUsers] = useState<UserDTO[]>([])
   const [demoLoading, setDemoLoading] = useState(true)
   const [demoBusyId, setDemoBusyId] = useState<string | null>(null)
@@ -261,11 +269,13 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
   }
 
   return (
-    <div className="grid min-h-full bg-stone-50 dark:bg-stone-950 lg:grid-cols-2">
+    /* Tela é sempre imersiva (sem header/footer) — dvh dá altura definida p/ o
+       grid dividir 50/50 e o painel esmeralda cobrir a viewport inteira. */
+    <div className="grid min-h-dvh bg-stone-50 dark:bg-stone-950 lg:grid-cols-2">
       {/* ---------- Painel esquerdo (header compacto no mobile, completo no lg+) ---------- */}
       <section
         aria-label="Sobre o MentorHub"
-        className="relative flex flex-col gap-10 overflow-hidden bg-gradient-to-br from-emerald-800 via-emerald-700 to-teal-700 p-6 text-white lg:justify-between lg:gap-12 lg:p-10 xl:p-14"
+        className="relative flex min-w-0 flex-col gap-10 overflow-hidden bg-gradient-to-br from-emerald-800 via-emerald-700 to-teal-700 p-6 text-white lg:justify-between lg:gap-12 lg:p-10 xl:p-14"
       >
         {/* Blobs decorativos */}
         <div aria-hidden className="pointer-events-none absolute inset-0">
@@ -315,7 +325,7 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
       </section>
 
       {/* ---------- Painel direito: formulário ---------- */}
-      <section className="flex items-center justify-center p-4 sm:p-6 lg:p-8 xl:p-12">
+      <section className="flex min-w-0 items-center justify-center p-4 sm:p-6 lg:p-8 xl:p-12">
         <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900 p-6 shadow-sm sm:p-8">
           <Tabs value={tab} onValueChange={switchTab}>
             <TabsList className="grid h-11 w-full grid-cols-2 rounded-full bg-stone-100 dark:bg-stone-800 p-1">
@@ -687,50 +697,77 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
             </TabsContent>
           </Tabs>
 
-          {/* ----- Divisor + contas de demonstração ----- */}
+          {/* ----- Divisor + contas de demonstração (recolhidas por padrão) ----- */}
           <div className="mt-7">
             <div className="flex items-center gap-3" aria-hidden>
               <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" />
-              <span className="text-xs font-medium text-stone-400 dark:text-stone-500">ou continue com</span>
+              <span className="text-xs font-medium text-stone-400 dark:text-stone-500">ou</span>
               <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" />
             </div>
 
-            <div className="mt-5">
-              <p className="text-xs font-semibold text-stone-500 dark:text-stone-400">Contas de demonstração</p>
-              <p className="mt-0.5 text-xs text-stone-400 dark:text-stone-500">
-                Ideal para conhecer a plataforma · senha: demo123
-              </p>
-
-              {demoLoading ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className="h-11 w-32 rounded-full" />
-                  ))}
+            <Collapsible open={demoOpen} onOpenChange={setDemoOpen}>
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  aria-expanded={demoOpen}
+                  className="mt-4 flex w-full items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 text-left transition-colors hover:bg-stone-50 dark:border-stone-800 dark:bg-stone-900 dark:hover:bg-stone-800/60"
+                >
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400">
+                      <Users className="h-3.5 w-3.5" aria-hidden />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold text-stone-900 dark:text-stone-50">
+                        Contas de demonstração
+                      </span>
+                      <span className="block truncate text-xs text-stone-400 dark:text-stone-500">
+                        Entre com um clique · senha demo123
+                      </span>
+                    </span>
+                  </span>
+                  <ChevronDown
+                    aria-hidden
+                    className={cn(
+                      'h-4 w-4 shrink-0 text-stone-400 transition-transform duration-300 dark:text-stone-500',
+                      demoOpen && 'rotate-180'
+                    )}
+                  />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="pt-3">
+                  {demoLoading ? (
+                    <div className="flex flex-wrap gap-2">
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <Skeleton key={i} className="h-11 w-32 rounded-full" />
+                      ))}
+                    </div>
+                  ) : demoUsers.length > 0 ? (
+                    <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto pr-1 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-200 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar]:w-1">
+                      {demoUsers.map((u) => (
+                        <button
+                          key={u.id}
+                          type="button"
+                          onClick={() => handleDemoLogin(u)}
+                          disabled={demoBusyId !== null}
+                          aria-label={`Entrar como ${u.name}`}
+                          className="flex h-11 items-center gap-2 rounded-full border border-stone-200 bg-white pl-1.5 pr-4 text-xs font-semibold text-stone-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300 disabled:cursor-wait disabled:opacity-60"
+                        >
+                          <Avatar name={u.name} src={u.avatarUrl} size="sm" className="ring-0" />
+                          <span className="max-w-36 truncate">{u.name}</span>
+                          {demoBusyId === u.id && (
+                            <Loader2
+                              className="h-3.5 w-3.5 animate-spin text-emerald-700 dark:text-emerald-300"
+                              aria-hidden
+                            />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
-              ) : demoUsers.length > 0 ? (
-                <div className="mt-3 flex max-h-40 flex-wrap gap-2 overflow-y-auto pr-1 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-200 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar]:w-1">
-                  {demoUsers.map((u) => (
-                    <button
-                      key={u.id}
-                      type="button"
-                      onClick={() => handleDemoLogin(u)}
-                      disabled={demoBusyId !== null}
-                      aria-label={`Entrar como ${u.name}`}
-                      className="flex h-11 items-center gap-2 rounded-full border border-stone-200 bg-white pl-1.5 pr-4 text-xs font-semibold text-stone-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300 disabled:cursor-wait disabled:opacity-60"
-                    >
-                      <Avatar name={u.name} src={u.avatarUrl} size="sm" className="ring-0" />
-                      <span className="max-w-36 truncate">{u.name}</span>
-                      {demoBusyId === u.id && (
-                        <Loader2
-                          className="h-3.5 w-3.5 animate-spin text-emerald-700 dark:text-emerald-300"
-                          aria-hidden
-                        />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         </div>
       </section>

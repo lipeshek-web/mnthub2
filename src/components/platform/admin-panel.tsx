@@ -7,7 +7,6 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ArrowLeft,
   BadgeCheck,
   Ban,
   BookOpen,
@@ -489,7 +488,17 @@ export function AdminPanel() {
   // ---------- Sem sessão admin ----------
   if (needsRelogin) {
     return (
-      <div className="mx-auto w-full max-w-md px-4 py-16">
+      <div className="relative mx-auto w-full max-w-md px-4 py-16">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate({ name: 'home' })}
+          aria-label="Fechar administração e voltar ao site"
+          title="Fechar"
+          className="absolute right-4 top-4 size-9 rounded-full bg-stone-100 text-stone-500 transition-colors hover:bg-stone-200 hover:text-stone-800 dark:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-700 dark:hover:text-stone-100"
+        >
+          <X aria-hidden className="h-4.5 w-4.5" />
+        </Button>
         <Card className="rounded-2xl">
           <CardContent className="flex flex-col items-center p-8 text-center">
             <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300">
@@ -531,8 +540,15 @@ export function AdminPanel() {
             )}
           </p>
         </div>
-        <Button variant="ghost" onClick={() => navigate({ name: 'home' })} className="rounded-full">
-          <ArrowLeft aria-hidden className="h-4 w-4" /> Voltar
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate({ name: 'home' })}
+          aria-label="Fechar administração e voltar ao site"
+          title="Fechar"
+          className="size-9 shrink-0 rounded-full bg-stone-100 text-stone-500 transition-colors hover:bg-stone-200 hover:text-stone-800 dark:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-700 dark:hover:text-stone-100"
+        >
+          <X aria-hidden className="h-4.5 w-4.5" />
         </Button>
       </div>
 

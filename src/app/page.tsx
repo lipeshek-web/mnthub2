@@ -236,8 +236,14 @@ export default function Home() {
     }
   }, [view])
 
-  // Sala de aula e leitor: overlay tela cheia (imersão) cobrindo header/footer.
-  const immersive = view.name === 'classroom' || view.name === 'reader'
+  // Imersão total: sala de aula, leitor, login/cadastro (direto ou via guard de
+  // sessão) e painel admin — sem PromoBar/Navbar/Footer, só o conteúdo da tela.
+  const immersive =
+    view.name === 'classroom' ||
+    view.name === 'reader' ||
+    view.name === 'auth' ||
+    view.name === 'admin' ||
+    needsAuth
 
   if (!mounted) {
     // Evita mismatch de hidratação com o estado persistido (usuário/logado)
