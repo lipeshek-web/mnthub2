@@ -782,6 +782,56 @@ async function main() {
     },
   })
 
+  // Livros com capas reais (publicações MentorHub) — PDFs placeholder
+  const livroInovacao = await db.libraryItem.create({
+    data: {
+      mentorId: marina.id,
+      kind: 'BOOK',
+      title: 'Inovação',
+      description:
+        'Um guia direto sobre como ideias viram impacto: gatilhos de inovação, experimentos baratos e a rotina que mantém a criação viva em times pequenos.',
+      category: 'Negócios',
+      level: 'INTERMEDIARIO',
+      coverUrl: '/uploads/seed/livro-inovacao.png',
+      pdfUrl: '/uploads/seed/livro-inovacao.pdf',
+      readingMin: 40,
+      isPublished: true,
+    },
+  })
+  const livroGestaoFinanceira = await db.libraryItem.create({
+    data: {
+      mentorId: david.id,
+      kind: 'BOOK',
+      title: 'Gestão Financeira para Jovens',
+      description:
+        'O manual de bolso para começar bem: orçamento sem planilha assustadora, primeiros investimentos e como fugir das dívidas mais comuns dos 18 aos 25.',
+      category: 'Finanças',
+      level: 'INICIANTE',
+      coverUrl: '/uploads/seed/livro-gestao-financeira.png',
+      pdfUrl: '/uploads/seed/livro-gestao-financeira.pdf',
+      readingMin: 35,
+      isPublished: true,
+    },
+  })
+  const livroPomodoro = await db.libraryItem.create({
+    data: {
+      mentorId: anaProfile.id,
+      kind: 'BOOK',
+      title: 'Como Estudar com Pomodoro',
+      description:
+        'Método completo de estudo em blocos de foco: como montar sessões de 25 minutos, lidar com interrupções e manter o ritmo sem esgotar.',
+      category: 'Carreira',
+      level: 'INICIANTE',
+      coverUrl: '/uploads/seed/livro-pomodoro.png',
+      pdfUrl: '/uploads/seed/livro-pomodoro.pdf',
+      readingMin: 25,
+      isPublished: true,
+    },
+  })
+  void livroInovacao
+  void livroGestaoFinanceira
+  void livroPomodoro
+
   // ==================== AULAS DE LEITURA (Biblioteca nos cursos) ====================
   console.log('📚 Aulas de leitura vinculadas à Biblioteca...')
   const appendReading = async (

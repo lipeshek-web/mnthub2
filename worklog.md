@@ -1628,3 +1628,22 @@ Stage Summary:
 - ESG agora conta a história real: palestras de cyberbullying/crimes digitais em escolas públicas e privadas, bolsa parcial para 100% dos participantes, integrais para os mais esforçados sem condições, e programas sob medida para colégios particulares
 - Livros têm cara de livro: capa em retrato com lombada, profundidade e hover-lift — no landing e em todo o Explorar; artigos viraram cards tipográficos enxutos
 - Vocabulário Apple estendido ao Explorar inteiro: flat, hairline, semibold+tracking-tight, chevrons ›, zero blobs/ping/sombras pesadas
+
+---
+Task ID: W-8
+Agent: Z.ai Code (main)
+Task: Feedback de livros — cards menores na landing/biblioteca, card próprio para artigos (mesma estatura, formato diferente) e 3 capas reais (Inovação, Gestão Financeira para Jovens, Como Estudar com Pomodoro) com PDFs placeholder
+
+Work Log:
+- Capas reais: 3 PNGs (1500×2250, proporção 2:3) salvos em public/uploads/seed/ (livro-inovacao.png, livro-gestao-financeira.png, livro-pomodoro.png) a partir dos arquivos enviados pelo usuário
+- PDFs placeholder gerados sob medida (script Python one-off, xref correto, 1 página A4): faixa emerald, título do livro, autor e nota "Versão de demonstração — substitua pelo PDF final no painel do mentor"; salvos como livro-inovacao.pdf / livro-gestao-financeira.pdf / livro-pomodoro.pdf; scripts temporários removidos
+- Banco EXISTENTE: inserção via script one-off idempotente (checa título antes de criar) — SEM reexecutar o seed, que apaga todos os usuários (destruiria o admin). Inovação → Marina (Negócios, 40 min), Gestão Financeira para Jovens → David (Finanças, 35 min), Como Estudar com Pomodoro → Ana (Carreira, 25 min); todos BOOK, isPublished, com capa + pdfUrl
+- seed.ts: mesmos 3 livros adicionados após artigoFunil (para instalações novas), com void no retorno para não quebrar fluxo
+- Cards menores: estantes mudaram de 2/3/4 colunas para 3 (mobile) / 4 (sm) / 6 (lg/xl) nos 3 pontos — landing "Biblioteca em destaque", aba Biblioteca e seção "Artigos & livros" (aba Tudo); skeleton da GridSection agora aspect-[2/3]; landing exibe 6 itens (antes 3) e trocou sort 'popular' → 'recent' para os 3 lançamentos com capa real aparecerem primeiro
+- Artigos ganharam card próprio formato "revista de papel": retrato 3/4 (mesma estatura do livro 2/3), masthead tipográfico (ARTIGO + categoria, hairline), título semibold no miolo, descrição line-clamp, ficha na base (avatar + autor + tempo), hairline border + hover-lift idêntico ao livro; aplicado em ArticleCard (marketplace) e FeaturedArticleCard (landing)
+- Verificação: lint 0/0; tsc limpo (excl. examples/skills); E2E agent-browser — landing 1440 com os 3 capas reais + 2 papéis + 1 livro gradiente na estante; reader abriu livro-inovacao.pdf com a página placeholder; aba Biblioteca 9 itens em 6 colunas; aba Tudo consistente; mobile 390 com estante de 3 colunas e docOverflow/mainOverflow = 0; dark mode com bg lab(9)/título claro nos papéis (computed style); console e dev.log sem erros
+
+Stage Summary:
+- Estante compacta: livros e artigos em cards pequenos (3/4/6 colunas) na landing e em todo o Explorar — nada gigante
+- Artigos com identidade própria: papel de revista tipográfico, proporcionalmente do mesmo tamanho dos livros, só mudando o formato
+- 3 publicações com capas reais no ar (Inovação, Gestão Financeira para Jovens, Como Estudar com Pomodoro) abrindo PDFs placeholder que o usuário troca depois pelo painel do mentor; capas novas futuras bastam reenviar no formulário da Biblioteca

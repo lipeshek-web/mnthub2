@@ -1035,8 +1035,8 @@ export function MarketplaceView() {
           </>
         ) : (
           <>
-            {/* Estante: 2 colunas no mobile (capas em retrato), 4 no desktop */}
-            <div className="mt-5 grid min-w-0 grid-cols-2 items-start gap-x-4 gap-y-7 sm:grid-cols-3 lg:grid-cols-4">
+            {/* Estante: capas e papéis menores — 3 colunas no mobile, 4 no tablet, 6 no desktop */}
+            <div className="mt-5 grid min-w-0 grid-cols-3 items-start gap-x-4 gap-y-7 sm:grid-cols-4 lg:grid-cols-6">
               {libLoading
                 ? Array.from({ length: 8 }).map((_, i) => (
                     <div key={i}>
@@ -1261,8 +1261,8 @@ export function MarketplaceView() {
                       expanded={expanded.lib}
                       onToggleExpand={() => toggleExpanded('lib')}
                       moreLabel="leituras"
-                      gridClassName="grid grid-cols-2 items-start gap-x-4 gap-y-7 sm:grid-cols-3 xl:grid-cols-4"
-                      skeletonClassName="h-64 rounded-2xl"
+                      gridClassName="grid grid-cols-3 items-start gap-x-4 gap-y-7 sm:grid-cols-4 xl:grid-cols-6"
+                      skeletonClassName="aspect-[2/3] w-full rounded-xl"
                     >
                       {visibleSlice(allView.lib, 'lib').map((item) => (
                         <LibraryCard key={item.id} item={item} />
@@ -2152,51 +2152,67 @@ const BookCoverCard = memo(function BookCoverCard({ item }: { item: LibraryItemD
   )
 })
 
-/* ---------- Card de artigo: tipográfico, flat (Apple) ---------- */
+/* ---------- Card de artigo: "revista" de papel (mesma estatura do livro, formato diferente) ---------- */
 
 const ArticleCard = memo(function ArticleCard({ item }: { item: LibraryItemDTO }) {
   const navigate = useAppStore((s) => s.navigate)
 
   return (
     <article
-      className="group flex min-w-0 cursor-pointer flex-col rounded-2xl border border-stone-200 bg-white p-4 transition-colors hover:border-emerald-300 sm:p-5 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700"
+      className="group min-w-0 cursor-pointer"
       onClick={() => navigate({ name: 'reader', itemId: item.id })}
+      aria-label={`Ler o artigo ${item.title}, ${item.readingMin} minutos, por ${item.author.name}`}
     >
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Badge className="rounded-full border border-emerald-200 bg-emerald-50 text-[11px] text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-950/50">
-          Artigo
-        </Badge>
-        <span className="truncate text-xs font-medium text-stone-400 dark:text-stone-500">
-          {item.category}
-        </span>
-      </div>
-
-      <p className="mt-2.5 line-clamp-2 text-sm font-semibold leading-snug tracking-tight text-stone-900 dark:text-stone-50">
-        {item.title}
-      </p>
-
-      {item.description && (
-        <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-          {item.description}
-        </p>
-      )}
-
-      <div className="mt-auto flex items-center justify-between gap-3 pt-4">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <Avatar
-            name={item.author.name}
-            src={item.author.avatarUrl}
-            size="sm"
-            className="h-5 w-5 shrink-0 text-[8px] ring-0"
-          />
-          <span className="truncate text-xs font-medium text-stone-600 dark:text-stone-300">
-            {item.author.name}
+      {/* O papel: retrato 3/4 com masthead tipográfico no topo e ficha na base — contraste com a capa fotográfica do livro */}
+      <div
+        className={cn(
+          'relative flex aspect-[3/4] flex-col overflow-hidden rounded-lg border border-stone-200 bg-white p-3.5 sm:p-4',
+          'shadow-[0_1px_2px_rgba(0,0,0,0.05),0_8px_20px_-12px_rgba(0,0,0,0.22)]',
+          'transition-[box-shadow,transform,border-color] duration-300',
+          'group-hover:-translate-y-1 group-hover:border-emerald-300',
+          'group-hover:shadow-[0_2px_6px_rgba(0,0,0,0.07),0_18px_36px_-16px_rgba(0,0,0,0.30)]',
+          'dark:border-stone-800 dark:bg-stone-900 dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_8px_20px_-12px_rgba(0,0,0,0.55)]',
+          'dark:group-hover:border-emerald-700'
+        )}
+      >
+        {/* Masthead: chip Artigo + categoria, hairline embaixo (cara de periódico) */}
+        <div className="flex items-baseline justify-between gap-2 border-b border-stone-200 pb-2 dark:border-stone-800">
+          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">
+            Artigo
+          </span>
+          <span className="truncate text-[10px] font-medium uppercase tracking-wider text-stone-400 dark:text-stone-500">
+            {item.category}
           </span>
         </div>
-        <span className="inline-flex shrink-0 items-center gap-1 text-xs text-stone-400 dark:text-stone-500">
-          <Clock aria-hidden className="h-3.5 w-3.5" />
-          {item.readingMin} min
-        </span>
+
+        {/* Título no miolo do papel */}
+        <p className="mt-3 line-clamp-4 text-[15px] font-semibold leading-snug tracking-tight text-stone-900 dark:text-stone-50">
+          {item.title}
+        </p>
+        {item.description && (
+          <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+            {item.description}
+          </p>
+        )}
+
+        {/* Ficha da base: autor + tempo de leitura */}
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-stone-200 pt-2.5 dark:border-stone-800">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Avatar
+              name={item.author.name}
+              src={item.author.avatarUrl}
+              size="sm"
+              className="h-4.5 w-4.5 shrink-0 text-[8px] ring-0"
+            />
+            <span className="truncate text-[11px] font-medium text-stone-600 dark:text-stone-300">
+              {item.author.name}
+            </span>
+          </div>
+          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-stone-400 dark:text-stone-500">
+            <Clock aria-hidden className="h-3 w-3" />
+            {item.readingMin} min
+          </span>
+        </div>
       </div>
     </article>
   )
