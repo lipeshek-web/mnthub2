@@ -116,6 +116,10 @@ export function AdminPanel() {
   const [mfaCode, setMfaCode] = useState('')
   const [mfaBusy, setMfaBusy] = useState(false)
   const [disablePassword, setDisablePassword] = useState('')
+  const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null)
+  const [recoveryRemaining, setRecoveryRemaining] = useState<number | null>(null)
+  const [regenPassword, setRegenPassword] = useState('')
+  const [showRegen, setShowRegen] = useState(false)
 
   // ---------- Auditoria ----------
   const [auditLogs, setAuditLogs] = useState<{ logs: { id: string; actorName: string; action: string; meta: string; createdAt: string }[]; total: number } | null>(null)
@@ -176,7 +180,10 @@ export function AdminPanel() {
     if (!token) return
     api.admin
       .mfaStatus(token)
-      .then(({ mfaEnabled: enabled }) => setMfaEnabled(enabled))
+      .then(({ mfaEnabled: enabled, recoveryCodesRemaining }) => {
+        setMfaEnabled(enabled)
+        setRecoveryRemaining(recoveryCodesRemaining)
+      })
       .catch(() => setMfaEnabled(null))
   }, [token])
 
@@ -331,14 +338,33 @@ export function AdminPanel() {
     if (!mfaSetup || value.length !== 6 || mfaBusy) return
     setMfaBusy(true)
     try {
-      await api.admin.mfaEnable(token, value)
+      const result = await api.admin.mfaEnable(token, value)
       setMfaEnabled(true)
       setMfaSetup(null)
       setMfaCode('')
-      toast.success('MFA ativado! Seu próximo login pedirá o código 🔐')
+      setRecoveryCodes(result.recoveryCodes)
+      setRecoveryRemaining(result.recoveryCodes.length)
+      toast.success('MFA ativado! Guarde os códigos de recuperação 🔐')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Código inválido.')
       setMfaCode('')
+    } finally {
+      setMfaBusy(false)
+    }
+  }
+
+  const regenerateCodes = async () => {
+    if (!regenPassword || mfaBusy) return
+    setMfaBusy(true)
+    try {
+      const result = await api.admin.mfaRegenerateCodes(token, regenPassword)
+      setRecoveryCodes(result.recoveryCodes)
+      setRecoveryRemaining(result.recoveryCodes.length)
+      setRegenPassword('')
+      setShowRegen(false)
+      toast.success('Novos códigos gerados — os antigos deixaram de valer.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Senha incorreta.')
     } finally {
       setMfaBusy(false)
     }
@@ -917,6 +943,121 @@ export function AdminPanel() {
                     MFA <strong>ativo</strong> — todo login desta conta pede o código do app
                     autenticador. Sessões administrativas duram 12h.
                   </div>
+
+                  {/* Códigos de recuperação recém-gerados (exibição única) */}
+                  {recoveryCodes && (
+                    <div className="rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/40 p-4">
+                      <div className="flex items-center gap-2 text-sm font-bold text-amber-800 dark:text-amber-200">
+                        <KeyRound aria-hidden className="h-4 w-4 shrink-0" />
+                        Guarde seus códigos de recuperação agora
+                      </div>
+                      <p className="mt-1 text-xs leading-relaxed text-amber-700 dark:text-amber-300">
+                        Estes códigos só são exibidos <strong>uma única vez</strong>. Se perder o
+                        app autenticador, use um deles na tela de login (cada código funciona uma
+                        única vez).
+                      </p>
+                      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
+                        {recoveryCodes.map((code) => (
+                          <code
+                            key={code}
+                            className="rounded-lg border border-amber-200 dark:border-amber-900 bg-white dark:bg-stone-950/60 px-2 py-1.5 text-center font-mono text-xs font-bold tracking-wider text-stone-700 dark:text-stone-200"
+                          >
+                            {code}
+                          </code>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 rounded-full font-bold"
+                          onClick={() => {
+                            void navigator.clipboard.writeText(recoveryCodes.join('\n'))
+                            toast.success('Códigos copiados!')
+                          }}
+                        >
+                          <Copy className="h-3.5 w-3.5" aria-hidden />
+                          Copiar todos
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-9 rounded-full font-bold"
+                          onClick={() => setRecoveryCodes(null)}
+                        >
+                          <Check className="h-3.5 w-3.5" aria-hidden />
+                          Já guardei os códigos
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Status dos códigos + regeneração */}
+                  <div className="rounded-xl border border-stone-200 dark:border-stone-800 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="text-sm text-stone-600 dark:text-stone-300">
+                        <span className="font-bold">
+                          {recoveryRemaining ?? '—'} códigos de recuperação
+                        </span>{' '}
+                        disponíveis (uso único, no lugar do TOTP).
+                      </div>
+                      {!showRegen && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 rounded-full font-bold"
+                          onClick={() => setShowRegen(true)}
+                        >
+                          <KeyRound className="h-3.5 w-3.5" aria-hidden />
+                          Gerar novos códigos
+                        </Button>
+                      )}
+                    </div>
+                    {showRegen && (
+                      <div className="mt-3 max-w-sm">
+                        <Label
+                          htmlFor="mfa-regen-pass"
+                          className="text-xs font-semibold text-stone-600 dark:text-stone-300"
+                        >
+                          Confirme sua senha para gerar um lote novo (os antigos deixam de valer)
+                        </Label>
+                        <div className="mt-1.5 flex gap-2">
+                          <Input
+                            id="mfa-regen-pass"
+                            type="password"
+                            value={regenPassword}
+                            onChange={(e) => setRegenPassword(e.target.value)}
+                            placeholder="Sua senha"
+                            autoComplete="current-password"
+                            className="h-10 flex-1 rounded-xl"
+                          />
+                          <Button
+                            variant="outline"
+                            onClick={() => void regenerateCodes()}
+                            disabled={mfaBusy || !regenPassword}
+                            className="h-10 rounded-xl font-bold"
+                          >
+                            {mfaBusy ? (
+                              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                            ) : (
+                              'Gerar'
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            onClick={() => {
+                              setShowRegen(false)
+                              setRegenPassword('')
+                            }}
+                            className="h-10 rounded-xl"
+                          >
+                            <X className="h-4 w-4" aria-hidden />
+                            <span className="sr-only">Cancelar</span>
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="max-w-sm">
                     <Label htmlFor="mfa-disable-pass" className="text-xs font-semibold text-stone-600 dark:text-stone-300">
                       Desativar MFA (exige sua senha)

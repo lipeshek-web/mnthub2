@@ -3,14 +3,20 @@ import QRCode from 'qrcode'
 import { db } from '@/lib/db'
 import { audit, requireAdmin } from '@/lib/admin-auth'
 import { generateTotpSecret, otpauthUri, verifyTotp } from '@/lib/totp'
+import {
+  countRemainingCodes,
+  generateRecoveryCodes,
+  serializeRecoveryCodes,
+} from '@/lib/recovery-codes'
 import { verifyPassword } from '@/lib/password'
 
 export const dynamic = 'force-dynamic'
 
 // ==================== MFA DO ADMIN (TOTP) ====================
-// GET: status do MFA do admin logado
+// GET: status do MFA do admin logado (+ códigos de recuperação restantes)
 // POST action=setup: gera segredo temporário + QR (ainda não ativa)
-// POST action=enable: valida o código e ativa o MFA
+// POST action=enable: valida o código, ativa o MFA e emite códigos de recuperação
+// POST action=regenerate-codes: exige a senha e emite um lote novo (invalida o antigo)
 // POST action=disable: exige a senha e desativa
 
 /** Segredos de setup pendentes em memória (10 min) — só viram conta após enable */
@@ -23,9 +29,12 @@ export async function GET(req: NextRequest) {
 
   const user = await db.user.findUnique({
     where: { id: actor.id },
-    select: { mfaEnabled: true },
+    select: { mfaEnabled: true, mfaRecoveryCodes: true },
   })
-  return NextResponse.json({ mfaEnabled: user?.mfaEnabled ?? false })
+  return NextResponse.json({
+    mfaEnabled: user?.mfaEnabled ?? false,
+    recoveryCodesRemaining: countRemainingCodes(user?.mfaRecoveryCodes),
+  })
 }
 
 export async function POST(req: NextRequest) {
@@ -63,13 +72,44 @@ export async function POST(req: NextRequest) {
       if (!verifyTotp(pending.secret, code)) {
         return NextResponse.json({ error: 'Código inválido. Confira o horário e tente o próximo.' }, { status: 401 })
       }
+      // Códigos de recuperação: salvos como hash; o plaintext sai UMA vez, aqui
+      const recoveryCodes = generateRecoveryCodes()
       await db.user.update({
         where: { id: actor.id },
-        data: { mfaSecret: pending.secret, mfaEnabled: true },
+        data: {
+          mfaSecret: pending.secret,
+          mfaEnabled: true,
+          mfaRecoveryCodes: serializeRecoveryCodes(recoveryCodes),
+        },
       })
       PENDING_SETUP.delete(actor.id)
       await audit(actor, 'mfa.enabled')
-      return NextResponse.json({ ok: true, mfaEnabled: true })
+      return NextResponse.json({ ok: true, mfaEnabled: true, recoveryCodes })
+    }
+
+    // ---------- Regenerar códigos de recuperação (exige senha) ----------
+    if (action === 'regenerate-codes') {
+      const password = String(body?.password ?? '')
+      const user = await db.user.findUnique({
+        where: { id: actor.id },
+        select: { passwordHash: true, mfaEnabled: true },
+      })
+      if (!user || !verifyPassword(password, user.passwordHash)) {
+        return NextResponse.json({ error: 'Senha incorreta.' }, { status: 401 })
+      }
+      if (!user.mfaEnabled) {
+        return NextResponse.json(
+          { error: 'Ative o MFA antes de gerar códigos de recuperação.' },
+          { status: 400 }
+        )
+      }
+      const recoveryCodes = generateRecoveryCodes()
+      await db.user.update({
+        where: { id: actor.id },
+        data: { mfaRecoveryCodes: serializeRecoveryCodes(recoveryCodes) },
+      })
+      await audit(actor, 'mfa.recovery.regenerated')
+      return NextResponse.json({ ok: true, recoveryCodes })
     }
 
     // ---------- Desativar (exige senha) ----------
@@ -84,7 +124,7 @@ export async function POST(req: NextRequest) {
       }
       await db.user.update({
         where: { id: actor.id },
-        data: { mfaEnabled: false, mfaSecret: null },
+        data: { mfaEnabled: false, mfaSecret: null, mfaRecoveryCodes: null },
       })
       await audit(actor, 'mfa.disabled')
       return NextResponse.json({ ok: true, mfaEnabled: false })

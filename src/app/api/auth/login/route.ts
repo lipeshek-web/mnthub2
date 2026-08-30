@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     if (user.mfaEnabled) {
       return NextResponse.json({
         mfaRequired: true,
-        mfaTicket: createMfaTicket(user.id),
+        mfaTicket: await createMfaTicket(user.id),
         email: user.email,
       })
     }

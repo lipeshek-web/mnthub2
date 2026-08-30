@@ -77,6 +77,8 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
   const [mfaCode, setMfaCode] = useState('')
   const [mfaLoading, setMfaLoading] = useState(false)
   const [mfaError, setMfaError] = useState<string | null>(null)
+  const [mfaMode, setMfaMode] = useState<'totp' | 'recovery'>('totp')
+  const [mfaRecoveryCode, setMfaRecoveryCode] = useState('')
 
   // Sincroniza quando a view chega com outro modo (ex.: clique em "Criar conta" no navbar)
   useEffect(() => {
@@ -131,6 +133,8 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
         setMfaTicket(result.mfaTicket)
         setMfaCode('')
         setMfaError(null)
+        setMfaMode('totp')
+        setMfaRecoveryCode('')
         toast.info('Confirme com o código do seu app autenticador 🔐')
         return
       }
@@ -148,24 +152,37 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
     }
   }
 
-  // ---------- MFA: verifica o código TOTP ----------
+  // ---------- MFA: verifica o código TOTP ou de recuperação ----------
   const handleMfaVerify = async (code?: string) => {
     if (!mfaTicket || mfaLoading) return
-    const value = (code ?? mfaCode).replace(/\D/g, '')
-    if (value.length !== 6) return
+    const value =
+      mfaMode === 'totp'
+        ? (code ?? mfaCode).replace(/\D/g, '')
+        : (code ?? mfaRecoveryCode).trim().toUpperCase()
+    if (mfaMode === 'totp' && value.length !== 6) return
+    if (mfaMode === 'recovery' && value.length < 6) return
     setMfaLoading(true)
     setMfaError(null)
     try {
       const user = await api.verifyMfa({ ticket: mfaTicket, code: value })
       setUser(user)
-      toast.success(`Bem-vindo(a) de volta, ${firstName(user.name)}! 👋`)
+      if (user.usedRecoveryCode) {
+        toast.warning(
+          `Você entrou com um código de recuperação. Restam ${user.recoveryCodesRemaining ?? 0} — gere novos no painel admin. ⚠️`
+        )
+      } else {
+        toast.success(`Bem-vindo(a) de volta, ${firstName(user.name)}! 👋`)
+      }
       setMfaTicket(null)
       setMfaCode('')
+      setMfaRecoveryCode('')
+      setMfaMode('totp')
       navigate({ name: 'home' })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Código inválido.'
       setMfaError(msg)
       setMfaCode('')
+      setMfaRecoveryCode('')
     } finally {
       setMfaLoading(false)
     }
@@ -327,27 +344,48 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
                     Verificação em duas etapas
                   </h2>
                   <p className="mt-1.5 max-w-xs text-sm leading-relaxed text-stone-500 dark:text-stone-400">
-                    Digite o código de 6 dígitos do seu app autenticador (Google
-                    Authenticator, Authy…).
+                    {mfaMode === 'totp' ? (
+                      <>Digite o código de 6 dígitos do seu app autenticador (Google Authenticator, Authy…).</>
+                    ) : (
+                      <>Digite um dos seus códigos de recuperação (formato XXXX-XXXX). Cada código funciona uma única vez.</>
+                    )}
                   </p>
 
                   <div className="mt-6">
-                    <InputOTP
-                      maxLength={6}
-                      value={mfaCode}
-                      onChange={(v) => {
-                        setMfaCode(v)
-                        setMfaError(null)
-                        if (v.length === 6) void handleMfaVerify(v)
-                      }}
-                      disabled={mfaLoading}
-                    >
-                      <InputOTPGroup>
-                        {[0, 1, 2, 3, 4, 5].map((i) => (
-                          <InputOTPSlot key={i} index={i} className="h-12 w-11 rounded-lg border-stone-300 text-lg font-bold dark:border-stone-700" />
-                        ))}
-                      </InputOTPGroup>
-                    </InputOTP>
+                    {mfaMode === 'totp' ? (
+                      <InputOTP
+                        maxLength={6}
+                        value={mfaCode}
+                        onChange={(v) => {
+                          setMfaCode(v)
+                          setMfaError(null)
+                          if (v.length === 6) void handleMfaVerify(v)
+                        }}
+                        disabled={mfaLoading}
+                      >
+                        <InputOTPGroup>
+                          {[0, 1, 2, 3, 4, 5].map((i) => (
+                            <InputOTPSlot key={i} index={i} className="h-12 w-11 rounded-lg border-stone-300 text-lg font-bold dark:border-stone-700" />
+                          ))}
+                        </InputOTPGroup>
+                      </InputOTP>
+                    ) : (
+                      <Input
+                        value={mfaRecoveryCode}
+                        onChange={(e) => {
+                          setMfaRecoveryCode(e.target.value.toUpperCase())
+                          setMfaError(null)
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') void handleMfaVerify()
+                        }}
+                        placeholder="XXXX-XXXX"
+                        autoComplete="off"
+                        disabled={mfaLoading}
+                        className="h-12 w-56 rounded-xl text-center font-mono text-lg font-bold tracking-widest uppercase"
+                        aria-label="Código de recuperação"
+                      />
+                    )}
                   </div>
 
                   {mfaError && (
@@ -358,7 +396,12 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
 
                   <Button
                     onClick={() => void handleMfaVerify()}
-                    disabled={mfaLoading || mfaCode.replace(/\D/g, '').length !== 6}
+                    disabled={
+                      mfaLoading ||
+                      (mfaMode === 'totp'
+                        ? mfaCode.replace(/\D/g, '').length !== 6
+                        : mfaRecoveryCode.trim().length < 6)
+                    }
                     className="mt-6 h-11 w-full rounded-full text-sm font-bold"
                   >
                     {mfaLoading ? (
@@ -373,11 +416,31 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
                   <button
                     type="button"
                     onClick={() => {
-                      setMfaTicket(null)
-                      setMfaCode('')
+                      if (mfaMode === 'recovery') {
+                        setMfaMode('totp')
+                        setMfaRecoveryCode('')
+                      } else {
+                        setMfaMode('recovery')
+                        setMfaCode('')
+                      }
                       setMfaError(null)
                     }}
                     className="mt-4 text-xs font-medium text-stone-400 underline-offset-2 transition-colors hover:text-stone-600 hover:underline dark:text-stone-500 dark:hover:text-stone-300"
+                  >
+                    {mfaMode === 'recovery'
+                      ? 'Usar o app autenticador'
+                      : 'Não tem o app? Usar código de recuperação'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMfaTicket(null)
+                      setMfaCode('')
+                      setMfaRecoveryCode('')
+                      setMfaError(null)
+                      setMfaMode('totp')
+                    }}
+                    className="mt-2 text-xs font-medium text-stone-400 underline-offset-2 transition-colors hover:text-stone-600 hover:underline dark:text-stone-500 dark:hover:text-stone-300"
                   >
                     Voltar para o login
                   </button>

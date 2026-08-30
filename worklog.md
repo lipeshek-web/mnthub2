@@ -1514,3 +1514,28 @@ Stage Summary:
 - A plataforma tem pagamentos reais prontos para homologação: colar a chave do sandbox do Asaas no painel (Pagamentos) ativa PIX com QR real, boleto e cartão via fatura hospedada (PCI no gateway); a liberação de acesso só acontece quando o dinheiro cai (webhook assinado com asaas-access-token, sync manual ou receiveInCash) — e em produção basta criar o webhook com a URL pública para tudo ser automático
 - Modo demonstração preservado: sem chave, o checkout continua instantâneo, mas agora toda compra gera registro Payment auditável (SIMULADO)
 - Painel admin seguro por design: sessão de 12h emitida só após senha (+ TOTP), token obrigatório em todas as 9 APIs admin, bloqueio/rebaixamento derruba sessões, segredo TOTP nunca sai do servidor, auditoria completa; MFA ativado na conta gustavonv@yandex.com
+
+---
+Task ID: W-3
+Agent: Z.ai Code (main)
+Task: Corrigir travamento de login por MFA (usuário não conseguia entrar: "preciso configurar o mfa, porém não consigo acessar a conta porque pede ele") + blindar o fluxo MFA contra repetição do problema
+
+Work Log:
+- Diagnóstico: gustavonv@yandex.com tinha mfaEnabled=true com segredo TOTP que só existia no servidor (ativado em E2E da sessão anterior — worklog W-2 terminava com "MFA ativado na conta"), usuário sem o segredo no app autenticador → travamento chicken-and-egg
+- Desbloqueio imediato: reset mfaEnabled=false/mfaSecret=null via script Prisma
+- BUG CRÍTICO corrigido em src/lib/totp.ts: verifyTotp comparava hotp(secret,step) com hotp(secret,step+drift) — dois códigos gerados do segredo, NUNCA com o token do usuário → qualquer código de 6 dígitos passava (drift=0 sempre igual). Agora compara o código digitado (buffer) contra cada candidato da janela com timingSafeEqual
+- Códigos de recuperação (novo): schema User.mfaRecoveryCodes (JSON [{h:sha256,used}]) + db push; lib/recovery-codes.ts (gera 10 códigos XXXX-XXXX sem chars ambíguos, hash sha256, consumo único atômico via read-modify-write); /api/admin/mfa enable agora retorna os 10 códigos (plaintext exibido UMA vez), GET retorna recoveryCodesRemaining, nova action regenerate-codes (exige senha, invalida lote antigo); disable limpa os códigos
+- /api/auth/mfa/verify: aceita TOTP OU código de recuperação; consumo único; audit mfa.recovery.used com remaining; resposta com usedRecoveryCode/recoveryCodesRemaining para a UI avisar
+- Tickets MFA movidos de Map em memória para o BANCO (model MfaChallenge, 5min, uso único): Map quebrava entre rotas no dev (HMR/Turbopack instanciava módulos separados → "Desafio expirado" com ticket recém-criado); mesmo padrão do AdminSession
+- UI auth-view: etapa MFA com alternância "Não tem o app? Usar código de recuperação" (input mono XXXX-XXXX, Enter envia) ↔ app autenticador; toast de aviso ao entrar com recovery ("Restam N — gere novos no painel")
+- UI admin-panel Segurança: painel âmbar de exibição única dos 10 códigos (grid + Copiar todos + "Já guardei os códigos"), contador de códigos restantes, "Gerar novos códigos" com confirmação de senha inline
+- scripts/mfa-e2e.ts: 12 asserções API do ciclo completo (setup→enable→TOTP errado→recovery→reuso→ticket single-use→TOTP válido→regenerate→lote antigo morto→lote novo→disable→login limpo)
+- E2E browser (agent-browser): login sem MFA ok; Segurança → Ativar MFA agora → QR+chave → código TOTP (segredo extraído do DOM, computado localmente) → painel de 10 códigos; logout → login → etapa MFA (desktop+mobile 390, zero overflow) → modo recuperação → código aceito → logado com aviso; painel mostrou "9 códigos restantes"; regeneração via UI (senha) → 10 novos; desativar via UI; verificação final: audit mfa.recovery.used remaining:9 no banco
+- Estado final DEIXADO: MFA DESATIVADO na conta gustavo (limpa) para o usuário ativar com o app DELE; dev server reiniciado 2x durante a sessão (Prisma client novo exigia processo novo; spawn com double-fork setsid para sobreviver entre chamadas)
+- dev.log: sem erros de runtime no fim; lint 0/0; tsc limpo (src + scripts)
+
+Stage Summary:
+- Causa raiz do ticket do usuário resolvida em 3 camadas: conta desbloqueada, bug que aceitava qualquer código corrigido (segurança real restaurada) e códigos de recuperação garantem que perder o app nunca mais trave a plataforma
+- MFA agora é seguro de verdade: só o código certo (ou recovery de uso único) passa; tudo auditado
+- Fluxo para o usuário: Entrar → menu → Administração → Segurança → "Ativar MFA agora" → escanear QR no app → digitar código → GUARDAR os 10 códigos de recuperação
+- Lição de infra: tickets de segurança em memória não sobrevivem a HMR/restart — persistir em banco (feito); mudanças de schema exigem restart do dev server (Prisma client cacheado)

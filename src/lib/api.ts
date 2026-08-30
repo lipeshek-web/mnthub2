@@ -96,7 +96,9 @@ export const api = {
       | { mfaRequired: true; mfaTicket: string; email: string }
     >('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
   verifyMfa: (data: { ticket: string; code: string }) =>
-    request<UserDTO>('/api/auth/mfa/verify', { method: 'POST', body: JSON.stringify(data) }),
+    request<
+      UserDTO & { usedRecoveryCode?: boolean; recoveryCodesRemaining?: number }
+    >('/api/auth/mfa/verify', { method: 'POST', body: JSON.stringify(data) }),
   me: (userId: string) =>
     request<{ user: UserDTO | null }>(`/api/auth/me${qs({ userId })}`),
 
@@ -688,7 +690,7 @@ export const api = {
       }),
 
     mfaStatus: (token: string) =>
-      request<{ mfaEnabled: boolean }>('/api/admin/mfa', {
+      request<{ mfaEnabled: boolean; recoveryCodesRemaining: number }>('/api/admin/mfa', {
         headers: { 'x-admin-token': token },
       }),
     mfaSetup: (token: string) =>
@@ -698,10 +700,16 @@ export const api = {
         body: JSON.stringify({ action: 'setup' }),
       }),
     mfaEnable: (token: string, code: string) =>
-      request<{ ok: true; mfaEnabled: true }>('/api/admin/mfa', {
+      request<{ ok: true; mfaEnabled: true; recoveryCodes: string[] }>('/api/admin/mfa', {
         method: 'POST',
         headers: { 'x-admin-token': token },
         body: JSON.stringify({ action: 'enable', code }),
+      }),
+    mfaRegenerateCodes: (token: string, password: string) =>
+      request<{ ok: true; recoveryCodes: string[] }>('/api/admin/mfa', {
+        method: 'POST',
+        headers: { 'x-admin-token': token },
+        body: JSON.stringify({ action: 'regenerate-codes', password }),
       }),
     mfaDisable: (token: string, password: string) =>
       request<{ ok: true; mfaEnabled: false }>('/api/admin/mfa', {

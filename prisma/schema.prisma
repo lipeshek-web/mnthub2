@@ -52,10 +52,12 @@ model User {
   // MFA (TOTP RFC 6238, obrigatório para admins)
   mfaSecret     String? // segredo base32 (só persistido quando o MFA é confirmado)
   mfaEnabled    Boolean @default(false)
+  mfaRecoveryCodes String? // JSON [{h: sha256, used: bool}] — códigos de recuperação (hash)
   // Pagamentos (gateway Asaas)
   cpfCnpj        String? // documento do pagador (coletado no checkout)
   asaasCustomerId String? // id do cliente no Asaas (reutilizado entre compras)
   adminSessions  AdminSession[]
+  mfaChallenges  MfaChallenge[]
   auditLogs      AuditLog[]
   payments       Payment[]
 }
@@ -680,6 +682,19 @@ model AdminSession {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+// Desafio MFA (2º fator do login) — persistido no banco para sobreviver a
+// reload do servidor e funcionar entre rotas/processos. Uso único, 5 min.
+model MfaChallenge {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 /// Trilha de auditoria das ações administrativas (quem fez o quê, quando)

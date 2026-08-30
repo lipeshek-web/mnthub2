@@ -58,7 +58,8 @@ function hotp(secret: Buffer, counter: number, digits = 6): string {
 
 /**
  * Verifica um código TOTP com janela de tolerância (padrão ±1 passo de 30s
- * para cobrir desvio de relógio). Comparação em tempo constante.
+ * para cobrir desvio de relógio). Comparação em tempo constante contra o
+ * código informado pelo usuário.
  */
 export function verifyTotp(secretB32: string, token: string, window = 1): boolean {
   const clean = (token ?? '').replace(/\D/g, '')
@@ -66,10 +67,12 @@ export function verifyTotp(secretB32: string, token: string, window = 1): boolea
   const secret = base32Decode(secretB32)
   if (secret.length === 0) return false
   const step = Math.floor(Date.now() / 1000 / 30)
-  const expected = Buffer.from(hotp(secret, step))
+  const tokenBuf = Buffer.from(clean)
   for (let drift = -window; drift <= window; drift++) {
     const candidate = Buffer.from(hotp(secret, step + drift))
-    if (crypto.timingSafeEqual(expected, candidate)) return true
+    if (candidate.length === tokenBuf.length && crypto.timingSafeEqual(candidate, tokenBuf)) {
+      return true
+    }
   }
   return false
 }
