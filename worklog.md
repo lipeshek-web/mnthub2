@@ -1788,3 +1788,18 @@ Work Log:
 Stage Summary:
 - Fluxo do usuário: baixa https://mentorhub.space-z.ai/mentorhub-mobile-snack.zip → extrai → arrasta App.js + src no snack.expo.dev (SDK 54) → adiciona 7 dependências → login ana@demo.com/demo123 funciona sem tocar em nada
 - URL de produção embutida em DEFAULT_SERVER_URL; campo Servidor da API continua como override em runtime
+
+---
+Task ID: W-16
+Agent: Z.ai Code (main)
+Task: Fix Snack — "Unable to resolve module '@react-navigation/native-stack.js'"
+
+Work Log:
+- Diagnóstico: o runtime do Snack não resolve @react-navigation/native-stack (module://); native e bottom-tabs resolveram (erro apontava só a linha do import do native-stack em App.js)
+- Fix conforme pedido do usuário (trocar dependência): @react-navigation/native-stack → @react-navigation/stack (stack JS, amplamente suportado no Snack)
+- App.js: import "react-native-gesture-handler" no topo (requisito do stack JS); createStackNavigator; screenOptions com cardStyle backgroundColor theme.colors.bg (sem flash branco nas transições)
+- README: lista de dependências atualizada (9 itens — stack + gesture-handler + masked-view no lugar de native-stack) + nota explicando erros "module://" e que native-stack não existe no Snack
+- ZIP regenerado (65KB, HTTP 200 em /mentorhub-mobile-snack.zip); esbuild OK; commit 26b346e
+
+Stage Summary:
+- Snack edition agora usa só dependências que resolvem no runtime do Snack; usuário deve adicionar as 9 dependências do README (remover native-stack se tiver adicionado)
