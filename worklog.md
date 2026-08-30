@@ -1424,3 +1424,32 @@ Validation (lint 0/0, tsc limpo em src/, browser E2E real desktop 1440 + mobile 
 
 Stage Summary:
 - Paradigma final da busca: UMA busca só, central no header, sempre visível e prioritária — digitar em qualquer tela leva ao modo resultados ao vivo; o corpo do Explorar não tem mais campo próprio e o hero da home virou CTA; acentos/caixa continuam ignorados; UX consistente em desktop e mobile
+
+---
+Task ID: V-1
+Agent: Z.ai Code (main)
+Task: Landing central com foco em TUDO (não só reuniões) — reformulação completa da home (landing-mentee.tsx)
+
+Work Log:
+- Diagnóstico: a home posicionava a plataforma como só "reunião": badge "Mentorias 1:1 ao vivo", subtítulo de agendamento, mock do produto 100% chamada de vídeo (grid + mic/phone-off), "Três passos até a sua primeira sessão", stats lideradas por "sessões realizadas", FAQ e CTA final girando em torno da sessão 1:1 — nada de cursos/trilhas/biblioteca/IA no discurso principal
+- Hero: badge agora "Mentorias, cursos, trilhas e biblioteca — tudo em um só lugar"; subtítulo cita os 4 formatos + certificado; checklist com 4 pilares (mentorias por vídeo, cursos/trilhas no ritmo, biblioteca, tutor IA + certificados); CTA principal virou "Explorar tudo" (aba Tudo do Explorar); prova social mantida (nota média + avaliações reais)
+- Coluna direita do hero trocada: o mock de videochamada virou um bento de 5 tiles representando a plataforma inteira — (1) Sala de aula com player de curso + progresso 57% (tile principal dark), (2) Mentoria 1:1 ao vivo com avatares reais dos mentores + pulso "ao vivo", (3) Trilha com steps 2/3 concluídos, (4) Biblioteca com capa PDF, (5) Ofensiva/XP com meta semanal; card flutuante de avaliação 5★ mantido; animações suaves preservadas
+- Nova seção "Quatro formas de aprender" (FORMATS): 4 cards (Mentorias 1:1 / Cursos gravados / Trilhas guiadas / Biblioteca) com eyebrow, texto curto e CTA que leva direto à aba correspondente do Explorar (handleFormatTab + setExploreTab)
+- "Como funciona" universalizado e movido para logo após os formatos: "Do descobrimento ao certificado" — passos Descubra (mentores, cursos, trilhas, biblioteca) → Comece (matrícula na hora OU agendamento) → Evolua (vídeo/sala de aula + progresso + certificado)
+- Nova seção "Biblioteca em destaque": fetch preguiçoso (useInView margin 600px, once) de api.listLibrary({sort:'popular'}), 3 itens com card novo (FeaturedLibraryCard: capa foto/gradiente + badge Livro/Artigo + categoria + PDF + autor + tempo de leitura + botão "Ler agora" → reader), CTA "Abrir biblioteca" para a aba library
+- Faixa "A plataforma em números" movida para depois do catálogo e rebalanceada: mentores +8 / cursos publicados +10 / trilhas guiadas +4 / aulas disponíveis +79 (soma lessonCount); os fetches de cursos/trilhas agora também disparam quando a faixa se aproxima (statsInView), eliminando skeletons eternos em saltos de rolagem
+- Grid FEATURES antigo substituído por "Superpoderes em toda a plataforma" (EXTRAS, 6 cards compactos horizontais): Tutor IA e resumos, XP e ofensiva, Certificados, Agenda em tempo real, Pagamento seguro, Mensagens diretas
+- FAQ rebalanceada (6 perguntas): "O que eu encontro na MentorHub?" (visão 360) nova, cursos/trilhas nova, certificado direta; vídeo/pagamentos/mentor mantidas com respostas mais curtas
+- CTA final: "Quero aprender" sem "primeira sessão" (agora cita os 4 formatos, botão "Explorar a plataforma"); "Quero ensinar" cita mentorias+cursos+trilhas+mural; reassurance final trocou "reuniões" por "vídeo, cursos e biblioteca na mesma plataforma" + certificado
+- Limpeza: removidos ícones não usados (Hand, PhoneOff, Quote), stats/fourthStat/totalStudents/previewFillers obsoletos; stats → totalReviews; duplicação de declaração previewMentors eliminada
+
+Validation (lint 0/0; tsc limpo em src/; E2E real desktop 1440 + mobile 390, guest + logado Ana, light + dark):
+- Ordem das seções confirmada no DOM: hero → (logado: continue/feito para você) → Quatro formas → Como funciona → Explore por área → Mentores → Cursos → Trilhas → Biblioteca → Números → Superpoderes → Depoimentos → FAQ → CTA
+- Todos os CTAs testados por clique real: "Explorar tudo"→aba Tudo, "Explorar mentores"→Mentores, "Ver cursos"→Cursos, "Ver trilhas"→Trilhas, "Abrir biblioteca"→Biblioteca, "Ler agora"→reader abrindo o artigo com conteúdo
+- Lazy fetches disparando corretamente (/api/courses, /api/tracks?sort=popular, /api/library?sort=popular); cards da biblioteca com dados reais (30 expressões/Discovery/Arquitetura que Escala) e capas; stats +8/+10/+4/+79 inclusive após salto direto ao fundo (fix statsInView)
+- Mobile 390: varredura de overflow em 10 pontos da página = 0 ocorrências (390=390); hero empilha, cards full-width; dark mode legível em todos os blocos novos
+- dev.log sem erros de runtime (apenas warnings de Fast Refresh durante as edições); dev server não derrubado
+
+Stage Summary:
+- A home agora vende a plataforma INTEIRA: os 4 formatos (mentoria 1:1, cursos, trilhas, biblioteca) ganham peso igual no hero, no fluxo "como funciona", no catálogo em destaque (biblioteca estreou como seção própria), nos números e nos superpoderes (IA, XP, certificados) — a reunião 1:1 continua presente, mas como um dos pilares, não como o único
+- Padrão reutilizável: FORMATS/EXTRAS como constantes declarativas (adicionar um novo formato = 1 objeto), stats resilientes a saltos de rolagem, cards de biblioteca prontos para reuso

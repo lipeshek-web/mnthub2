@@ -11,15 +11,14 @@ import {
   Check,
   CheckCircle2,
   Clock,
+  Flame,
   GraduationCap,
-  Hand,
   Library,
+  MessagesSquare,
   Mic,
   MonitorPlay,
-  PhoneOff,
   PlayCircle,
   Presentation,
-  Quote,
   Route,
   Search,
   ShieldCheck,
@@ -55,6 +54,7 @@ import { useAppStore } from '@/lib/store'
 import type {
   CourseListItemDTO,
   EnrolledCourseDTO,
+  LibraryItemDTO,
   MentorListItemDTO,
   RecommendationDTO,
   TrackListItemDTO,
@@ -66,20 +66,90 @@ const STEPS = [
   {
     number: '01',
     title: 'Descubra',
-    text: 'Explore especialistas por área, leia seus murais de conteúdo e veja avaliações reais de outros mentorados.',
+    text: 'Explore mentores, cursos, trilhas e a biblioteca no Explorar — com uma única busca.',
     icon: Search,
   },
   {
     number: '02',
-    title: 'Agende',
-    text: 'Escolha um horário livre na agenda do mentor, descreva seu objetivo e envie sua solicitação.',
+    title: 'Comece',
+    text: 'Matricule-se num curso na hora ou agende uma mentoria num horário livre do mentor.',
     icon: CalendarClock,
   },
   {
     number: '03',
-    title: 'Conecte-se',
-    text: 'A reunião acontece aqui mesmo, com vídeo integrado. Depois, avalie a sessão e acompanhe sua evolução.',
+    title: 'Evolua',
+    text: 'Aprenda por vídeo ou na sala de aula, acompanhe seu progresso e receba o certificado.',
     icon: Video,
+  },
+]
+
+/** Os 4 formatos de aprendizado — a plataforma inteira em uma olhada */
+const FORMATS = [
+  {
+    icon: Video,
+    eyebrow: 'Ao vivo',
+    title: 'Mentorias 1:1',
+    text: 'Agende com um especialista e encontre-se por vídeo dentro da própria plataforma.',
+    cta: 'Explorar mentores',
+    tab: 'mentors' as const,
+  },
+  {
+    icon: MonitorPlay,
+    eyebrow: 'No seu ritmo',
+    title: 'Cursos gravados',
+    text: 'Aulas em vídeo, leituras, quizzes e resumos — com certificado no final.',
+    cta: 'Ver cursos',
+    tab: 'courses' as const,
+  },
+  {
+    icon: Route,
+    eyebrow: 'Jornadas',
+    title: 'Trilhas guiadas',
+    text: 'Cursos e mentorias combinados em sequência, com progresso automático.',
+    cta: 'Ver trilhas',
+    tab: 'tracks' as const,
+  },
+  {
+    icon: Library,
+    eyebrow: 'Para ler',
+    title: 'Biblioteca',
+    text: 'Artigos e livros dos mentores com leitor integrado, PDF e favoritos.',
+    cta: 'Abrir biblioteca',
+    tab: 'library' as const,
+  },
+]
+
+/** Superpoderes que atravessam todos os formatos */
+const EXTRAS = [
+  {
+    icon: Sparkles,
+    title: 'Tutor IA e resumos',
+    text: 'Tire dúvidas durante a aula e receba o resumo do que assistiu.',
+  },
+  {
+    icon: Trophy,
+    title: 'XP e ofensiva',
+    text: 'Gamificação com metas semanais para manter o ritmo de estudos.',
+  },
+  {
+    icon: BadgeCheck,
+    title: 'Certificados',
+    text: 'Código de verificação único em cada curso concluído.',
+  },
+  {
+    icon: CalendarCheck,
+    title: 'Agenda em tempo real',
+    text: 'Horários livres do mentor visíveis e confirmação em minutos.',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Pagamento seguro',
+    text: 'PIX ou cartão, com recibo, histórico e garantia de 7 dias.',
+  },
+  {
+    icon: MessagesSquare,
+    title: 'Mensagens diretas',
+    text: 'Converse com mentores e mentorados sem sair da plataforma.',
   },
 ]
 
@@ -101,66 +171,39 @@ const TESTIMONIALS = [
   },
 ]
 
-const FEATURES = [
-  {
-    icon: MonitorPlay,
-    title: 'Sala de aula imersiva',
-    text: 'Aulas em vídeo e leituras em tela cheia, com perguntas para o mentor e anotações salvas automaticamente.',
-  },
-  {
-    icon: Library,
-    title: 'Biblioteca de conhecimento',
-    text: 'Artigos e livros dos mentores com leitor de PDF integrado e favoritos para ler depois.',
-  },
-  {
-    icon: Route,
-    title: 'Trilhas guiadas',
-    text: 'Cursos e mentorias 1:1 combinados em jornadas com progresso acompanhado automaticamente.',
-  },
-  {
-    icon: CalendarCheck,
-    title: 'Agendamento simples',
-    text: 'Você vê os horários livres da agenda do mentor e confirma sua sessão em poucos minutos.',
-  },
-  {
-    icon: Star,
-    title: 'Avaliações reais',
-    text: 'Só quem participou da sessão avalia: notas e comentários que você pode confiar de verdade.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Pagamento seguro',
-    text: 'PIX e cartão processados pela plataforma, com recibo, histórico e garantia de 7 dias.',
-  },
-]
+
 
 const FAQS = [
   {
-    q: 'Como funciona uma mentoria 1:1 na prática?',
-    a: 'Você escolhe um mentor, descreve seu objetivo no momento do agendamento e se reúne com ele por vídeo aqui mesmo, dentro da plataforma. Cada sessão dura, em média, 60 minutos e fica registrada no seu histórico para consulta futura.',
+    q: 'O que eu encontro na MentorHub?',
+    a: 'Mentorias 1:1 por vídeo, cursos gravados, trilhas guiadas e uma biblioteca com artigos e livros dos mentores. Tudo em uma conta só, com IA de estudos, gamificação e certificados.',
   },
   {
     q: 'Preciso instalar algo para a reunião por vídeo?',
-    a: 'Não. A sala de reunião abre direto no navegador, com áudio e vídeo integrados. Basta entrar na tela da sua sessão na hora marcada, com um fone e uma conexão razoável.',
+    a: 'Não. A sala de reunião abre direto no navegador, com áudio e vídeo integrados. Basta entrar na tela da sua sessão na hora marcada.',
+  },
+  {
+    q: 'Como funcionam os cursos e as trilhas?',
+    a: 'Você avança aula a aula, com quizzes e materiais no caminho. Nas trilhas, cursos e mentorias se combinam em sequência — e o progresso aparece no seu painel automaticamente.',
   },
   {
     q: 'Como funcionam os pagamentos?',
-    a: 'Você paga apenas pelo que contratar: sessões avulsas, cursos ou trilhas. Aceitamos PIX e cartão, com processamento seguro pela plataforma, recibo automático e garantia de 7 dias.',
+    a: 'Você paga apenas pelo que contratar: sessões avulsas, cursos, trilhas ou pacotes. PIX e cartão, com recibo automático e garantia de 7 dias.',
   },
   {
-    q: 'Recebo certificado ou comprovação de progresso?',
-    a: 'Seu progresso fica registrado aula a aula em cada curso e trilha, com porcentagem concluída visível no seu painel. As sessões de mentoria também entram no histórico, junto das avaliações que você fez e recebeu.',
+    q: 'Recebo certificado?',
+    a: 'Sim — cada curso concluído gera um certificado com código de verificação único, pronto para compartilhar no LinkedIn ou anexar ao currículo.',
   },
   {
     q: 'Como me tornar um mentor na MentorHub?',
-    a: 'Clique em "Quero ensinar" no fim desta página, complete seu perfil com áreas de atuação, agenda e valores e publique conteúdos no seu mural. Desde a primeira sessão você já recebe avaliações dos mentorados.',
+    a: 'Clique em "Quero ensinar" no fim desta página, complete seu perfil com áreas, agenda e valores e publique mentorias, cursos, trilhas e conteúdos no mural.',
   },
 ]
 
 const FINAL_REASSURANCES = [
   'Pagamento seguro via PIX ou cartão',
-  'Reuniões de vídeo dentro da plataforma',
-  'Avaliações apenas de sessões reais',
+  'Vídeo, cursos e biblioteca na mesma plataforma',
+  'Certificado com verificação incluído',
 ]
 
 export function LandingMenteeView() {
@@ -198,9 +241,12 @@ export function LandingMenteeView() {
     }
   }, [])
 
-  // Cursos para a seção "Cursos em destaque" (disparado quando a seção se aproxima)
+  // Cursos para a seção "Cursos em destaque" (disparado quando a seção ou a faixa de números se aproxima)
+  const statsSectionRef = useRef<HTMLElement | null>(null)
+  const statsInView = useInView(statsSectionRef, { once: true, margin: '600px' })
+
   useEffect(() => {
-    if (!coursesInView) return
+    if (!coursesInView && !statsInView) return
     let active = true
     api
       .listCourses({})
@@ -216,11 +262,11 @@ export function LandingMenteeView() {
     return () => {
       active = false
     }
-  }, [coursesInView])
+  }, [coursesInView, statsInView])
 
-  // Trilhas populares para a seção "Trilhas em destaque" (disparado quando a seção se aproxima)
+  // Trilhas populares para a seção "Trilhas em destaque" (seção ou faixa de números se aproximando)
   useEffect(() => {
-    if (!tracksInView) return
+    if (!tracksInView && !statsInView) return
     let active = true
     api
       .listTracks({ sort: 'popular' })
@@ -236,7 +282,32 @@ export function LandingMenteeView() {
     return () => {
       active = false
     }
-  }, [tracksInView])
+  }, [tracksInView, statsInView])
+
+  // Biblioteca em destaque (disparado quando a seção se aproxima)
+  const librarySectionRef = useRef<HTMLElement | null>(null)
+  const libraryInView = useInView(librarySectionRef, { once: true, margin: '600px' })
+  const [libraryItems, setLibraryItems] = useState<LibraryItemDTO[]>([])
+  const [libraryLoading, setLibraryLoading] = useState(true)
+
+  useEffect(() => {
+    if (!libraryInView) return
+    let active = true
+    api
+      .listLibrary({ sort: 'popular' })
+      .then((data) => {
+        if (active) setLibraryItems(data)
+      })
+      .catch(() => {
+        if (active) setLibraryItems([])
+      })
+      .finally(() => {
+        if (active) setLibraryLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [libraryInView])
 
   // "Continue aprendendo": inscrições do usuário logado (seção oculta para convidados)
   const userId = user?.id
@@ -263,12 +334,8 @@ export function LandingMenteeView() {
     }
   }, [userId])
 
-  const stats = useMemo(
-    () => ({
-      sessions: mentors.reduce((acc, m) => acc + m.totalSessions, 0),
-      reviews: mentors.reduce((acc, m) => acc + m.reviewCount, 0),
-      contents: mentors.reduce((acc, m) => acc + m.contentsCount, 0),
-    }),
+  const totalReviews = useMemo(
+    () => mentors.reduce((acc, m) => acc + m.reviewCount, 0),
     [mentors]
   )
 
@@ -278,11 +345,14 @@ export function LandingMenteeView() {
     return rated.reduce((acc, m) => acc + m.rating, 0) / rated.length
   }, [mentors])
 
-  // Soma de alunos matriculados em cursos (chega junto com o fetch preguiçoso de cursos)
-  const totalStudents = useMemo(
-    () => courses.reduce((acc, c) => acc + c.studentCount, 0),
+  // Números da faixa "A plataforma em números" (chegam junto com os fetches preguiçosos)
+  const totalLessons = useMemo(
+    () => courses.reduce((acc, c) => acc + c.lessonCount, 0),
     [courses]
   )
+
+  // Top 3 itens da biblioteca (a API já devolve ordenada por popularidade)
+  const topLibrary = useMemo(() => libraryItems.slice(0, 3), [libraryItems])
 
   const featured = useMemo(
     () =>
@@ -349,15 +419,8 @@ export function LandingMenteeView() {
     }
   }, [userId])
 
-  // Tiles do mock de vídeo: mentores reais + placeholders para fechar 4
-  const previewMentors = mentors.slice(0, 4)
-  const previewFillers = Array.from({ length: Math.max(0, 4 - previewMentors.length) })
-
-  // 4º número da faixa de stats: alunos (quando cursos já carregaram) ou conteúdos publicados
-  const fourthStat =
-    !coursesLoading && totalStudents > 0
-      ? { value: `+${totalStudents}`, label: 'alunos aprendendo' }
-      : { value: `+${stats.contents}`, label: 'conteúdos publicados' }
+  // Avatares do tile "mentoria ao vivo" (decorativo)
+  const previewMentors = mentors.slice(0, 2)
 
   const handleExploreMentors = () => {
     setExploreTab('mentors')
@@ -374,8 +437,18 @@ export function LandingMenteeView() {
     navigate({ name: 'marketplace' })
   }
 
+  const handleVerBiblioteca = () => {
+    setExploreTab('library')
+    navigate({ name: 'marketplace' })
+  }
+
   const handleExploreArea = () => {
     setExploreTab('all')
+    navigate({ name: 'marketplace' })
+  }
+
+  const handleFormatTab = (tab: (typeof FORMATS)[number]['tab']) => {
+    setExploreTab(tab)
     navigate({ name: 'marketplace' })
   }
 
@@ -413,7 +486,7 @@ export function LandingMenteeView() {
             >
               <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300">
                 <Sparkles aria-hidden className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-300" />
-                Mentorias 1:1 ao vivo, direto na plataforma
+                Mentorias, cursos, trilhas e biblioteca — tudo em um só lugar
               </span>
 
               <h1
@@ -440,17 +513,18 @@ export function LandingMenteeView() {
               </h1>
 
               <p className="mt-5 max-w-xl text-base leading-relaxed text-stone-600 sm:text-lg dark:text-stone-300">
-                Encontre especialistas que viveram o caminho que você quer trilhar. Agende em
-                minutos e encontre-se por vídeo dentro da própria plataforma.
+                Especialistas que viveram o caminho que você quer trilhar — em mentorias 1:1, cursos
+                gravados, trilhas guiadas e uma biblioteca completa. Tudo dentro da plataforma, do
+                primeiro clique ao certificado.
               </p>
 
               {/* CTA: a busca vive na barra central do header — aqui, o convite direto */}
               <div className="mt-8 flex max-w-xl flex-col gap-2.5 sm:flex-row sm:items-center">
                 <Button
-                  onClick={handleExploreMentors}
+                  onClick={handleExploreArea}
                   className="h-13 w-full rounded-full px-8 font-bold shadow-sm shadow-emerald-700/20 sm:w-auto"
                 >
-                  <Search aria-hidden className="h-4.5 w-4.5" /> Explorar mentores
+                  <Search aria-hidden className="h-4.5 w-4.5" /> Explorar tudo
                 </Button>
                 <p className="text-sm text-stone-500 dark:text-stone-400">
                   ou use a busca acima ✨
@@ -483,14 +557,19 @@ export function LandingMenteeView() {
                       <span className="text-xs text-stone-500 dark:text-stone-400">de média</span>
                     </div>
                     <p className="text-xs text-stone-500 dark:text-stone-400">
-                      +{mentors.length} mentores especialistas · {stats.reviews} avaliações reais
+                      +{mentors.length} mentores especialistas · {totalReviews} avaliações reais
                     </p>
                   </div>
                 </div>
               ) : null}
 
               <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2">
-                {['Reunião por vídeo integrada', 'Biblioteca com artigos e livros', 'Agendamento em minutos'].map(
+                {[
+                  'Mentorias 1:1 por vídeo',
+                  'Cursos e trilhas no seu ritmo',
+                  'Biblioteca com artigos e livros',
+                  'Tutor IA e certificados',
+                ].map(
                   (item) => (
                     <li key={item} className="inline-flex items-center gap-1.5 text-sm text-stone-600 dark:text-stone-300">
                       <Check aria-hidden className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
@@ -501,7 +580,7 @@ export function LandingMenteeView() {
               </ul>
             </motion.div>
 
-            {/* Coluna direita: composição de produto (decorativa) */}
+            {/* Coluna direita: bento com os 4 formatos + gamificação (decorativo) */}
             <motion.div
               aria-hidden
               initial={{ opacity: 0, y: 16 }}
@@ -512,110 +591,210 @@ export function LandingMenteeView() {
               {/* Glow esmeralda atrás da composição */}
               <div className="absolute -inset-x-6 -top-6 bottom-8 rounded-[3rem] bg-gradient-to-br from-emerald-200/70 via-emerald-100/40 to-transparent blur-2xl dark:from-emerald-950/60 dark:via-emerald-950/30" />
 
-              {/* Tile principal: chamada de vídeo */}
-              <motion.div
-                animate={{ y: [0, -6, 0] }}
-                transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-                className="relative"
-              >
-                <div className="overflow-hidden rounded-3xl bg-stone-950 shadow-2xl shadow-stone-900/25 ring-1 ring-stone-900/10 dark:ring-white/10">
-                  <div className="flex items-center justify-between px-5 pb-3 pt-4">
-                    <div className="flex items-center gap-2">
-                      <span className="relative flex h-2.5 w-2.5">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
-                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
-                      </span>
-                      <span className="text-xs font-semibold text-white/85">Sessão ao vivo</span>
-                      <span className="text-xs text-white/40">· 24:31</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white/80">
-                        <Mic className="h-3.5 w-3.5" />
-                      </span>
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white/80">
-                        <Video className="h-3.5 w-3.5" />
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 px-3">
-                    {previewMentors.map((m, i) => (
-                      <div
-                        key={m.id}
-                        className={cn(
-                          'relative aspect-[4/3] overflow-hidden rounded-xl',
-                          i === 0 && 'ring-2 ring-emerald-400/80'
-                        )}
-                      >
-                        <div className="absolute inset-0" style={avatarGradient(m.name)} />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Avatar name={m.name} src={m.avatarUrl} size="lg" className="h-12 w-12 shadow-lg" />
-                        </div>
-                        <span className="absolute bottom-1.5 left-1.5 rounded-md bg-black/45 px-1.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
-                          {firstName(m.name)}
+              <div className="relative grid grid-cols-2 gap-3">
+                {/* Tile principal: sala de aula (curso em vídeo) */}
+                <motion.div
+                  animate={{ y: [0, -5, 0] }}
+                  transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
+                  className="col-span-2"
+                >
+                  <div className="overflow-hidden rounded-3xl bg-stone-950 shadow-2xl shadow-stone-900/25 ring-1 ring-stone-900/10 dark:ring-white/10">
+                    <div className="flex items-center justify-between px-5 pb-2.5 pt-4">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-300">
+                          <MonitorPlay className="h-3.5 w-3.5" />
                         </span>
-                        <span className="absolute bottom-2 right-2 text-white/70">
-                          <Mic className="h-3 w-3" />
+                        <span className="text-xs font-semibold text-white/85">
+                          Sala de aula · curso em vídeo
                         </span>
                       </div>
-                    ))}
-                    {previewFillers.map((_, i) => (
-                      <div
-                        key={`preview-placeholder-${i}`}
-                        className={cn(
-                          'relative aspect-[4/3] overflow-hidden rounded-xl bg-white/[0.06]',
-                          loading && 'animate-pulse'
-                        )}
-                      >
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <GraduationCap className="h-7 w-7 text-white/25" />
-                        </div>
-                        <span className="absolute bottom-2 left-2 h-3 w-14 rounded-full bg-white/15" />
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center justify-center gap-2.5 border-t border-white/10 px-5 py-3.5">
-                    {[Mic, Video, Hand].map((Icon, i) => (
-                      <span
-                        key={i}
-                        className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white"
-                      >
-                        <Icon className="h-4 w-4" />
+                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-white/70">
+                        Aula 4 de 7
                       </span>
-                    ))}
-                    <span className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg shadow-rose-500/30">
-                      <PhoneOff className="h-4 w-4" />
-                    </span>
-                  </div>
-                </div>
-              </motion.div>
+                    </div>
 
-              {/* Card flutuante: progresso de curso */}
-              <motion.div
-                animate={{ y: [0, -8, 0] }}
-                transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
-                className="absolute -bottom-8 -left-2 hidden w-52 lg:block xl:-left-10 xl:w-56"
-              >
-                <div className="rounded-2xl border border-stone-200/80 bg-white/95 p-3.5 shadow-xl shadow-stone-900/10 backdrop-blur dark:border-stone-800 dark:bg-stone-900/95">
-                  <div className="flex items-center gap-3">
                     <div
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+                      className="relative mx-3 aspect-[16/7] overflow-hidden rounded-xl"
                       style={avatarGradient('Fundamentos de Gestão de Produto')}
                     >
-                      <PlayCircle className="h-5 w-5 text-white/90" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-bold text-stone-900 dark:text-stone-50">
+                      <div className="absolute inset-0 bg-stone-950/30" />
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/95 text-emerald-800 shadow-lg">
+                          <PlayCircle className="h-6 w-6" />
+                        </span>
+                      </span>
+                      <span className="absolute bottom-2 left-2.5 rounded-md bg-black/45 px-1.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
                         Fundamentos de Gestão de Produto
-                      </p>
-                      <p className="text-[11px] text-stone-500 dark:text-stone-400">Aula 4 de 7 · 12min</p>
+                      </span>
+                    </div>
+
+                    <div className="px-5 pb-4 pt-3">
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/15">
+                        <div className="h-full w-[57%] rounded-full bg-emerald-400" />
+                      </div>
+                      <div className="mt-1.5 flex items-center justify-between">
+                        <span className="text-[11px] text-white/60">12 min restantes</span>
+                        <span className="text-[11px] font-semibold text-emerald-300">
+                          57% concluído
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <Progress value={57} className="mt-3 h-1.5" />
-                  <p className="mt-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">57% concluído</p>
-                </div>
-              </motion.div>
+                </motion.div>
+
+                {/* Tile: mentoria 1:1 ao vivo */}
+                <motion.div
+                  animate={{ y: [0, -6, 0] }}
+                  transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
+                >
+                  <div className="flex h-full flex-col rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xl shadow-stone-900/10 dark:border-stone-800 dark:bg-stone-900">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-rose-500">
+                        <span className="relative flex h-2 w-2">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-rose-500" />
+                        </span>
+                        ao vivo
+                      </span>
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-stone-950 text-white/80 dark:bg-white/10">
+                        <Mic className="h-3.5 w-3.5" />
+                      </span>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2.5">
+                      <div className="flex -space-x-2">
+                        {previewMentors.map((m) => (
+                          <Avatar
+                            key={m.id}
+                            name={m.name}
+                            src={m.avatarUrl}
+                            size="sm"
+                            className="ring-2 ring-white dark:ring-stone-900"
+                          />
+                        ))}
+                        {previewMentors.length < 2 &&
+                          Array.from({ length: 2 - previewMentors.length }).map((_, i) => (
+                            <span
+                              key={`live-filler-${i}`}
+                              className={cn(
+                                'h-8 w-8 rounded-full ring-2 ring-white dark:ring-stone-900',
+                                i === 0 ? 'bg-stone-200 dark:bg-stone-700' : 'bg-stone-300 dark:bg-stone-600'
+                              )}
+                            />
+                          ))}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-bold text-stone-900 dark:text-stone-50">
+                          Mentoria 1:1
+                        </p>
+                        <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                          vídeo na plataforma
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Tile: trilha guiada */}
+                <motion.div
+                  animate={{ y: [0, -6, 0] }}
+                  transition={{ duration: 6.5, repeat: Infinity, ease: 'easeInOut', delay: 1.2 }}
+                >
+                  <div className="flex h-full flex-col rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xl shadow-stone-900/10 dark:border-stone-800 dark:bg-stone-900">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-teal-600 dark:text-teal-300">
+                        <Route className="h-3.5 w-3.5" />
+                        trilha
+                      </span>
+                      <span className="text-[10px] font-semibold text-stone-400 dark:text-stone-500">
+                        4 cursos · 15h
+                      </span>
+                    </div>
+                    <div className="mt-3.5 flex items-center gap-1.5">
+                      {[1, 2, 3].map((s) => (
+                        <span key={s} className="flex flex-1 items-center gap-1.5">
+                          <span
+                            className={cn(
+                              'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-extrabold',
+                              s < 3
+                                ? 'bg-emerald-700 text-white'
+                                : 'border border-stone-300 bg-white text-stone-400 dark:border-stone-600 dark:bg-stone-800'
+                            )}
+                          >
+                            {s < 3 ? <Check className="h-3 w-3" /> : s}
+                          </span>
+                          {s < 3 && <span className="h-px flex-1 bg-emerald-300 dark:bg-emerald-700" />}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="mt-2.5 text-[11px] text-stone-500 dark:text-stone-400">
+                      2 de 3 etapas concluídas
+                    </p>
+                  </div>
+                </motion.div>
+
+                {/* Tile: biblioteca */}
+                <motion.div
+                  animate={{ y: [0, -6, 0] }}
+                  transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut', delay: 1.6 }}
+                >
+                  <div className="flex h-full flex-col rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xl shadow-stone-900/10 dark:border-stone-800 dark:bg-stone-900">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                        <Library className="h-3.5 w-3.5" />
+                        biblioteca
+                      </span>
+                      <span className="rounded-full bg-stone-100 px-1.5 py-0.5 text-[9px] font-bold text-stone-500 dark:bg-stone-800 dark:text-stone-400">
+                        PDF
+                      </span>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2.5">
+                      <span
+                        className="flex h-10 w-8 shrink-0 items-center justify-center rounded-md shadow-sm"
+                        style={avatarGradient('Guia prático de produto')}
+                      >
+                        <BookOpen className="h-4 w-4 text-white/90" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-bold text-stone-900 dark:text-stone-50">
+                          Artigos e livros
+                        </p>
+                        <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                          leitor integrado
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Tile: gamificação (XP + meta) */}
+                <motion.div
+                  animate={{ y: [0, -6, 0] }}
+                  transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+                >
+                  <div className="flex h-full flex-col rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xl shadow-stone-900/10 dark:border-stone-800 dark:bg-stone-900">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+                        <Flame className="h-3.5 w-3.5" />
+                        ofensiva
+                      </span>
+                      <span className="text-[10px] font-bold text-stone-500 dark:text-stone-400">
+                        +120 XP
+                      </span>
+                    </div>
+                    <p className="mt-3 text-xs font-bold text-stone-900 dark:text-stone-50">
+                      5 dias seguidos 🔥
+                    </p>
+                    <div className="mt-2">
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
+                        <div className="h-full w-3/5 rounded-full bg-emerald-500" />
+                      </div>
+                      <p className="mt-1.5 text-[11px] text-stone-500 dark:text-stone-400">
+                        meta semanal: 3 de 5 aulas
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
 
               {/* Card flutuante: avaliação */}
               <motion.div
@@ -740,6 +919,120 @@ export function LandingMenteeView() {
         </section>
       )}
 
+      {/* ---------- QUATRO FORMAS DE APRENDER (a plataforma inteira em uma olhada) ---------- */}
+      <motion.section
+        aria-labelledby="formatos-title"
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-80px' }}
+        transition={{ duration: 0.5 }}
+        className="mx-auto w-full max-w-6xl px-4 py-14 sm:py-20"
+      >
+        <div className="max-w-2xl">
+          <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+            Tudo em um só lugar
+          </p>
+          <h2
+            id="formatos-title"
+            className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
+          >
+            Quatro formas de aprender
+          </h2>
+          <p className="mt-2 text-sm text-stone-500 sm:text-base dark:text-stone-400">
+            Escolha um formato — ou combine todos. O progresso se conecta na mesma conta.
+          </p>
+        </div>
+
+        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {FORMATS.map((format, i) => (
+            <motion.div
+              key={format.title}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-40px' }}
+              transition={{ duration: 0.4, delay: i * 0.07 }}
+              className="min-w-0"
+            >
+              <div className="group flex h-full flex-col rounded-2xl border border-stone-200 bg-white p-5 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md hover:shadow-stone-900/5 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:group-hover:bg-emerald-900/30">
+                  <format.icon aria-hidden className="h-5 w-5" />
+                </span>
+                <p className="mt-4 text-[10px] font-extrabold uppercase tracking-widest text-stone-400 dark:text-stone-500">
+                  {format.eyebrow}
+                </p>
+                <h3 className="mt-1 font-extrabold text-stone-900 dark:text-stone-50">{format.title}</h3>
+                <p className="mt-1.5 flex-1 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
+                  {format.text}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => handleFormatTab(format.tab)}
+                  className="mt-4 inline-flex min-h-11 items-center gap-1.5 text-sm font-bold text-emerald-700 transition hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-emerald-300 dark:hover:text-emerald-200"
+                  aria-label={`${format.cta} — ${format.title}`}
+                >
+                  {format.cta}
+                  <ArrowRight
+                    aria-hidden
+                    className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                  />
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.section>
+
+      {/* ---------- COMO FUNCIONA ---------- */}
+      <motion.section
+        aria-labelledby="como-funciona-title"
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-80px' }}
+        transition={{ duration: 0.5 }}
+        className="mx-auto w-full max-w-6xl px-4 pb-4 pt-14 sm:pt-20"
+      >
+        <div className="max-w-2xl">
+          <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+            Como funciona
+          </p>
+            <h2
+              id="como-funciona-title"
+              className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
+            >
+              Do descobrimento ao certificado
+            </h2>
+          </div>
+
+          <div className="relative mt-12 grid grid-cols-1 gap-10 sm:grid-cols-3 sm:gap-6">
+            {/* Linha tracejada conectando os círculos no desktop */}
+            <div
+              aria-hidden
+              className="absolute left-[16%] right-[16%] top-8 hidden border-t-2 border-dashed border-emerald-200 sm:block dark:border-emerald-900"
+            />
+            {STEPS.map((step, i) => (
+              <motion.div
+                key={step.number}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.4, delay: i * 0.1 }}
+                className="relative flex flex-col items-center"
+              >
+                <div className="relative z-10 flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-sm font-extrabold tracking-wide text-white shadow-lg shadow-emerald-700/25 ring-4 ring-white dark:ring-stone-950">
+                  {step.number}
+                </div>
+                <div className="mt-5 flex w-full min-w-0 flex-1 flex-col items-center rounded-2xl border border-stone-200 bg-white px-5 pb-6 pt-5 text-center transition hover:border-emerald-300 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                    <step.icon aria-hidden className="h-5 w-5" />
+                  </span>
+                  <h3 className="mt-3 font-extrabold text-stone-900 dark:text-stone-50">{step.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-stone-600 dark:text-stone-300">{step.text}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+      </motion.section>
+
       {/* ---------- EXPLORE POR ÁREA (chips de categorias) ---------- */}
       <section
         aria-labelledby="areas-title"
@@ -769,182 +1062,6 @@ export function LandingMenteeView() {
           </div>
         </div>
       </section>
-
-      {/* ---------- STATS (faixa dark emerald-950) ---------- */}
-      <section aria-label="Números da plataforma" className="mx-auto w-full max-w-6xl px-4 py-10 sm:py-12">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.5 }}
-          className="relative overflow-hidden rounded-3xl bg-emerald-950 px-6 py-10 sm:px-12 sm:py-12"
-        >
-          <div
-            aria-hidden
-            className="absolute -left-20 -top-24 h-64 w-64 rounded-full bg-emerald-600/25 blur-3xl"
-          />
-          <div
-            aria-hidden
-            className="absolute -bottom-28 -right-16 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl"
-          />
-
-          <dl className="relative grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-4">
-            <div className="flex flex-col">
-              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
-                mentores especialistas
-              </dt>
-              {loading ? (
-                <dd className="order-1">
-                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
-                </dd>
-              ) : (
-                <dd className="order-1 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-                  +{mentors.length}
-                </dd>
-              )}
-            </div>
-            <div className="flex flex-col">
-              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
-                sessões realizadas
-              </dt>
-              {loading ? (
-                <dd className="order-1">
-                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
-                </dd>
-              ) : (
-                <dd className="order-1 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-                  +{stats.sessions}
-                </dd>
-              )}
-            </div>
-            <div className="flex flex-col">
-              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
-                avaliações reais
-              </dt>
-              {loading ? (
-                <dd className="order-1">
-                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
-                </dd>
-              ) : (
-                <dd className="order-1 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-                  +{stats.reviews}
-                </dd>
-              )}
-            </div>
-            <div className="flex flex-col">
-              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
-                {fourthStat.label}
-              </dt>
-              {loading ? (
-                <dd className="order-1">
-                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
-                </dd>
-              ) : (
-                <dd className="order-1 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-                  {fourthStat.value}
-                </dd>
-              )}
-            </div>
-          </dl>
-        </motion.div>
-      </section>
-
-      {/* ---------- COMO FUNCIONA ---------- */}
-      <motion.section
-        aria-labelledby="como-funciona-title"
-        initial={{ opacity: 0, y: 16 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-80px' }}
-        transition={{ duration: 0.5 }}
-        className="mx-auto w-full max-w-6xl px-4 py-14 sm:py-20"
-      >
-        <div className="max-w-2xl">
-          <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
-            Como funciona
-          </p>
-          <h2
-            id="como-funciona-title"
-            className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
-          >
-            Três passos até a sua primeira sessão
-          </h2>
-        </div>
-
-        <div className="relative mt-12 grid grid-cols-1 gap-10 sm:grid-cols-3 sm:gap-6">
-          {/* Linha tracejada conectando os círculos no desktop */}
-          <div
-            aria-hidden
-            className="absolute left-[16%] right-[16%] top-8 hidden border-t-2 border-dashed border-emerald-200 sm:block dark:border-emerald-900"
-          />
-          {STEPS.map((step, i) => (
-            <motion.div
-              key={step.number}
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.4, delay: i * 0.1 }}
-              className="relative flex flex-col items-center"
-            >
-              <div className="relative z-10 flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-sm font-extrabold tracking-wide text-white shadow-lg shadow-emerald-700/25 ring-4 ring-emerald-100 dark:ring-emerald-900/40">
-                {step.number}
-              </div>
-              <div className="mt-5 flex w-full min-w-0 flex-1 flex-col items-center rounded-2xl border border-stone-200 bg-white px-5 pb-6 pt-5 text-center transition hover:border-emerald-300 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-                  <step.icon aria-hidden className="h-5 w-5" />
-                </span>
-                <h3 className="mt-3 font-extrabold text-stone-900 dark:text-stone-50">{step.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-stone-600 dark:text-stone-300">{step.text}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </motion.section>
-
-      {/* ---------- FEATURES GRID ---------- */}
-      <motion.section
-        aria-labelledby="features-title"
-        initial={{ opacity: 0, y: 16 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-80px' }}
-        transition={{ duration: 0.5 }}
-        className="mx-auto w-full max-w-6xl px-4 py-14 sm:py-20"
-      >
-        <div className="max-w-2xl">
-          <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
-            Plataforma completa
-          </p>
-          <h2
-            id="features-title"
-            className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
-          >
-            Tudo em uma única plataforma
-          </h2>
-          <p className="mt-2 text-sm text-stone-500 sm:text-base dark:text-stone-400">
-            Da descoberta ao certificado — sem sair daqui.
-          </p>
-        </div>
-
-        <ul className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((feature, i) => (
-            <motion.li
-              key={feature.title}
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.4, delay: (i % 3) * 0.07 }}
-              className="min-w-0"
-            >
-              <div className="group flex h-full flex-col rounded-2xl border border-stone-200 bg-white p-6 transition hover:border-emerald-300 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:group-hover:bg-emerald-900/30">
-                  <feature.icon aria-hidden className="h-5 w-5" />
-                </span>
-                <h3 className="mt-4 font-bold text-stone-900 dark:text-stone-50">{feature.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-stone-600 dark:text-stone-300">{feature.text}</p>
-              </div>
-            </motion.li>
-          ))}
-        </ul>
-      </motion.section>
 
       {/* ---------- MENTORES EM DESTAQUE ---------- */}
       <motion.section
@@ -1137,6 +1254,200 @@ export function LandingMenteeView() {
         </motion.section>
       )}
 
+      {/* ---------- BIBLIOTECA EM DESTAQUE ---------- */}
+      {(libraryLoading || topLibrary.length > 0) && (
+        <motion.section
+          ref={librarySectionRef}
+          aria-labelledby="biblioteca-destaque-title"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: 0.5 }}
+          className="mx-auto w-full max-w-6xl px-4 pb-14 sm:pb-20"
+        >
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+                Para ler e reler
+              </p>
+              <h2
+                id="biblioteca-destaque-title"
+                className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
+              >
+                Biblioteca em destaque
+              </h2>
+              <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
+                Artigos e livros publicados pelos nossos mentores, com leitor integrado.
+              </p>
+            </div>
+            <Button
+              variant="link"
+              onClick={handleVerBiblioteca}
+              className="gap-1 px-0 font-semibold text-emerald-700 dark:text-emerald-300"
+            >
+              Abrir biblioteca
+              <ArrowRight aria-hidden className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {libraryLoading
+              ? Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    aria-hidden
+                    className="overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800"
+                  >
+                    <Skeleton className="h-36 w-full rounded-none" />
+                    <div className="space-y-2.5 p-5">
+                      <div className="flex gap-1.5">
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                        <Skeleton className="h-5 w-20 rounded-full" />
+                      </div>
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                      <Skeleton className="mt-3 h-11 w-full rounded-full" />
+                    </div>
+                  </div>
+                ))
+              : topLibrary.map((item) => <FeaturedLibraryCard key={item.id} item={item} />)}
+          </div>
+        </motion.section>
+      )}
+
+      {/* ---------- A PLATAFORMA EM NÚMEROS (faixa dark emerald-950) ---------- */}
+      <section
+        ref={statsSectionRef}
+        aria-label="Números da plataforma"
+        className="mx-auto w-full max-w-6xl px-4 pb-14 sm:pb-20"
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.5 }}
+          className="relative overflow-hidden rounded-3xl bg-emerald-950 px-6 py-10 sm:px-12 sm:py-12"
+        >
+          <div
+            aria-hidden
+            className="absolute -left-20 -top-24 h-64 w-64 rounded-full bg-emerald-600/25 blur-3xl"
+          />
+          <div
+            aria-hidden
+            className="absolute -bottom-28 -right-16 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl"
+          />
+
+          <dl className="relative grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-4">
+            <div className="flex flex-col">
+              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
+                mentores especialistas
+              </dt>
+              {loading ? (
+                <dd className="order-1">
+                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
+                </dd>
+              ) : (
+                <dd className="order-1 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+                  +{mentors.length}
+                </dd>
+              )}
+            </div>
+            <div className="flex flex-col">
+              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
+                cursos publicados
+              </dt>
+              {coursesLoading ? (
+                <dd className="order-1">
+                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
+                </dd>
+              ) : (
+                <dd className="order-1 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+                  +{courses.length}
+                </dd>
+              )}
+            </div>
+            <div className="flex flex-col">
+              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
+                trilhas guiadas
+              </dt>
+              {tracksLoading ? (
+                <dd className="order-1">
+                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
+                </dd>
+              ) : (
+                <dd className="order-1 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+                  +{tracks.length}
+                </dd>
+              )}
+            </div>
+            <div className="flex flex-col">
+              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
+                aulas disponíveis
+              </dt>
+              {coursesLoading ? (
+                <dd className="order-1">
+                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
+                </dd>
+              ) : (
+                <dd className="order-1 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+                  +{totalLessons}
+                </dd>
+              )}
+            </div>
+          </dl>
+        </motion.div>
+      </section>
+
+      {/* ---------- E MUITO MAIS (superpoderes transversais) ---------- */}
+      <motion.section
+        aria-labelledby="extras-title"
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-80px' }}
+        transition={{ duration: 0.5 }}
+        className="border-y border-stone-200/70 bg-stone-50/60 dark:border-stone-800 dark:bg-stone-900/60"
+      >
+        <div className="mx-auto w-full max-w-6xl px-4 py-14 sm:py-16">
+          <div className="max-w-2xl">
+            <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+              E muito mais
+            </p>
+            <h2
+              id="extras-title"
+              className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
+            >
+              Superpoderes em toda a plataforma
+            </h2>
+            <p className="mt-2 text-sm text-stone-500 sm:text-base dark:text-stone-400">
+              Recursos que acompanham mentorias, cursos, trilhas e a biblioteca.
+            </p>
+          </div>
+
+          <ul className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {EXTRAS.map((extra, i) => (
+              <motion.li
+                key={extra.title}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-40px' }}
+                transition={{ duration: 0.4, delay: (i % 3) * 0.07 }}
+                className="min-w-0"
+              >
+                <div className="group flex h-full items-start gap-3.5 rounded-2xl border border-stone-200 bg-white p-4 transition hover:border-emerald-300 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700 sm:p-5">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:group-hover:bg-emerald-900/30">
+                    <extra.icon aria-hidden className="h-4.5 w-4.5" />
+                  </span>
+                  <span className="min-w-0">
+                    <h3 className="font-bold text-stone-900 dark:text-stone-50">{extra.title}</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-stone-600 dark:text-stone-300">{extra.text}</p>
+                  </span>
+                </div>
+              </motion.li>
+            ))}
+          </ul>
+        </div>
+      </motion.section>
+
       {/* ---------- DEPOIMENTOS ---------- */}
       <motion.section
         aria-labelledby="depoimentos-title"
@@ -1285,14 +1596,14 @@ export function LandingMenteeView() {
                 Quero aprender
               </h3>
               <p className="mt-2 max-w-md text-sm leading-relaxed text-emerald-100/85 sm:text-base">
-                Explore mentores, cursos e trilhas e faça a sua primeira sessão acontecer ainda
-                esta semana.
+                Mentorias 1:1, cursos, trilhas e biblioteca — comece hoje pelo formato que combina
+                com você.
               </p>
               <Button
                 onClick={() => navigate({ name: 'marketplace' })}
                 className="mt-7 h-12 rounded-full bg-white px-7 font-bold text-emerald-950 hover:bg-emerald-50"
               >
-                Explorar mentores agora
+                Explorar a plataforma
                 <ArrowRight aria-hidden className="ml-1 h-4 w-4" />
               </Button>
             </div>
@@ -1312,8 +1623,8 @@ export function LandingMenteeView() {
                 Quero ensinar
               </h3>
               <p className="mt-2 max-w-md text-sm leading-relaxed text-stone-600 sm:text-base dark:text-stone-300">
-                Publique seus conteúdos, abra a sua agenda e receba mentorados — a plataforma
-                cuida do vídeo, dos pagamentos e das avaliações.
+                Publique mentorias 1:1, cursos, trilhas e conteúdos no mural — a plataforma cuida
+                do vídeo, dos pagamentos e das avaliações.
               </p>
               <Button
                 variant="outline"
@@ -1579,6 +1890,99 @@ function FeaturedTrackCard({ track }: { track: TrackListItemDTO }) {
             aria-label={`Ver trilha ${track.title}`}
           >
             Ver trilha
+          </Button>
+        </div>
+      </div>
+    </article>
+  )
+}
+
+// ---------- Card de item da Biblioteca para "Biblioteca em destaque" ----------
+function FeaturedLibraryCard({ item }: { item: LibraryItemDTO }) {
+  const navigate = useAppStore((s) => s.navigate)
+  const isBook = item.kind === 'BOOK'
+
+  return (
+    <article
+      className="group flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg hover:shadow-stone-900/5 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700"
+      onClick={() => navigate({ name: 'reader', itemId: item.id })}
+    >
+      {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
+      <div className="relative h-36 w-full shrink-0 bg-stone-100 dark:bg-stone-800">
+        {item.coverUrl ? (
+          <img
+            src={item.coverUrl}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover"
+            loading="lazy"
+            decoding="async"
+          />
+        ) : (
+          <div aria-hidden className="absolute inset-0" style={avatarGradient(item.title)}>
+            {isBook ? (
+              <BookOpen className="pointer-events-none absolute -bottom-2 right-2 h-16 w-16 text-white/20" />
+            ) : (
+              <Library className="pointer-events-none absolute -bottom-2 right-2 h-16 w-16 text-white/20" />
+            )}
+          </div>
+        )}
+        <Badge className="absolute right-2 top-2 rounded-full border-white/40 bg-stone-950/55 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm dark:border-white/20">
+          {isBook ? 'Livro' : 'Artigo'}
+        </Badge>
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col p-5">
+        <div className="flex flex-wrap gap-1.5">
+          <Badge className="rounded-full bg-emerald-50 text-[11px] text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+            {item.category}
+          </Badge>
+          {item.hasPdf && (
+            <Badge className="rounded-full bg-stone-100 text-[11px] text-stone-600 dark:bg-stone-800 dark:text-stone-300">
+              PDF
+            </Badge>
+          )}
+        </div>
+
+        <p className="mt-2.5 line-clamp-2 min-h-10 font-bold leading-snug text-stone-900 dark:text-stone-50">
+          {item.title}
+        </p>
+
+        <div className="mt-2 flex items-center gap-3 text-xs text-stone-400 dark:text-stone-500">
+          <span className="inline-flex items-center gap-1">
+            <Clock aria-hidden className="h-3.5 w-3.5" />
+            {item.readingMin} min de leitura
+          </span>
+          {item.hasPdf && (
+            <span className="inline-flex items-center gap-1">
+              <BookOpen aria-hidden className="h-3.5 w-3.5" />
+              PDF
+            </span>
+          )}
+        </div>
+
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-3 dark:border-stone-800">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Avatar
+              name={item.author.name}
+              src={item.author.avatarUrl}
+              size="sm"
+              className="h-6 w-6 text-[9px] ring-0"
+            />
+            <span className="truncate text-xs font-medium text-stone-600 dark:text-stone-300">
+              {item.author.name}
+            </span>
+          </div>
+          <Button
+            size="sm"
+            className="h-11 shrink-0 rounded-full px-5 font-semibold"
+            onClick={(e) => {
+              e.stopPropagation()
+              navigate({ name: 'reader', itemId: item.id })
+            }}
+            aria-label={`Ler ${item.title}`}
+          >
+            Ler agora
           </Button>
         </div>
       </div>
