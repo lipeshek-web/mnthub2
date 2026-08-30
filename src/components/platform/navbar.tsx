@@ -546,7 +546,7 @@ export function Navbar() {
     /* Estático no topo do shell (fora do container de rolagem): o corpo da
        página rola no <main> e NUNCA passa por baixo do header. */
     <header className="shrink-0 border-b border-stone-200/70 bg-white dark:border-stone-800 dark:bg-stone-950">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4">
+      <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-4 sm:px-6">
         <button
           className="flex items-center gap-2.5"
           onClick={() => navigate({ name: 'home' })}
@@ -555,7 +555,7 @@ export function Navbar() {
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-700 text-white transition-transform duration-200 hover:scale-[1.02]">
             <GraduationCap className="h-4.5 w-4.5" />
           </span>
-          <span className="text-base font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+          <span className="text-base font-semibold tracking-tight text-stone-900 dark:text-stone-50">
             Mentor<span className="text-emerald-700 dark:text-emerald-400">Hub</span>
           </span>
         </button>

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-motion'
 import {
-  ArrowRight,
+  ChevronRight,
   BadgeCheck,
   BookOpen,
   CalendarCheck,
@@ -451,13 +451,7 @@ export function LandingMenteeView() {
     <div className="flex flex-col bg-white dark:bg-stone-950">
       {/* ---------- HERO (split com carrossel leve dos formatos) ---------- */}
       <section aria-labelledby="hero-title" className="relative overflow-hidden">
-        {/* Decoração de fundo: um único brilho suave — leve, sem ruído */}
-        <div
-          aria-hidden
-          className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-emerald-100/60 blur-3xl dark:bg-emerald-950/40"
-        />
-
-        <div className="relative mx-auto max-w-6xl px-4 pb-16 pt-12 sm:pt-16 lg:pb-24">
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pb-20 pt-14 sm:pb-28 sm:pt-20">
           <div className="grid grid-cols-1 items-center gap-14 lg:grid-cols-2 lg:gap-12">
             {/* Coluna esquerda: mensagem + busca + prova social */}
             <motion.div
@@ -466,20 +460,19 @@ export function LandingMenteeView() {
               transition={{ duration: 0.5 }}
               className="min-w-0"
             >
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300">
-                <Sparkles aria-hidden className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-300" />
+              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
                 Mentorias, cursos, trilhas e biblioteca — tudo em um só lugar
-              </span>
+              </p>
 
               <h1
                 id="hero-title"
-                className="mt-5 text-4xl font-extrabold leading-[1.08] tracking-tight text-stone-900 sm:text-5xl xl:text-6xl dark:text-stone-50"
+                className="mt-4 bg-gradient-to-b from-stone-900 via-stone-900 to-stone-600 bg-clip-text text-5xl font-semibold leading-[1.05] tracking-[-0.03em] text-transparent sm:text-6xl xl:text-7xl dark:from-stone-50 dark:via-stone-100 dark:to-stone-400"
               >
                 {user ? (
                   <>
                     Olá, <span className="text-emerald-700 dark:text-emerald-300">{firstName(user.name)}</span>! Pronto
                     para{' '}
-                    <span className="underline decoration-emerald-400/60 decoration-[0.12em] underline-offset-[0.16em]">
+                    <span className="text-emerald-700 dark:text-emerald-300">
                       continuar aprendendo
                     </span>
                     ?
@@ -487,35 +480,40 @@ export function LandingMenteeView() {
                 ) : (
                   <>
                     Aprenda com quem{' '}
-                    <span className="text-emerald-700 underline decoration-emerald-400/60 decoration-[0.12em] underline-offset-[0.16em] dark:text-emerald-300">
+                    <span className="text-emerald-700 dark:text-emerald-300">
                       vive o que ensina
                     </span>
                   </>
                 )}
               </h1>
 
-              <p className="mt-5 max-w-xl text-base leading-relaxed text-stone-600 sm:text-lg dark:text-stone-300">
+              <p className="mt-5 max-w-xl text-lg leading-relaxed text-stone-500 sm:text-xl dark:text-stone-400">
                 Especialistas que viveram o caminho que você quer trilhar — em mentorias 1:1, cursos
                 gravados, trilhas guiadas e uma biblioteca completa. Tudo dentro da plataforma, do
                 primeiro clique ao certificado.
               </p>
 
-              {/* CTA: a busca vive na barra central do header — aqui, o convite direto */}
-              <div className="mt-8 flex max-w-xl flex-col gap-2.5 sm:flex-row sm:items-center">
+              {/* CTA estilo Apple: pill sólida + link secundário com chevron */}
+              <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
                 <Button
                   onClick={handleExploreArea}
-                  className="h-13 w-full rounded-full px-8 font-bold shadow-sm shadow-emerald-700/20 sm:w-auto"
+                  className="h-12 w-full rounded-full bg-stone-950 px-7 text-base font-medium text-white shadow-none hover:bg-stone-800 sm:w-auto dark:bg-white dark:text-stone-950 dark:hover:bg-stone-200"
                 >
-                  <Search aria-hidden className="h-4.5 w-4.5" /> Explorar tudo
+                  Explorar a plataforma
                 </Button>
-                <p className="text-sm text-stone-500 dark:text-stone-400">
-                  ou use a busca acima ✨
-                </p>
+                <button
+                  type="button"
+                  onClick={handleVerCursos}
+                  className="inline-flex min-h-11 items-center gap-1 rounded-full text-base font-medium text-emerald-700 transition-colors hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-emerald-300 dark:hover:text-emerald-200"
+                >
+                  Ver cursos
+                  <ChevronRight aria-hidden className="h-4 w-4" />
+                </button>
               </div>
 
               {/* Prova social: avatares + nota média + avaliações reais */}
               {loading ? (
-                <div className="mt-7 flex items-center gap-3">
+                <div className="mt-9 flex items-center gap-3">
                   <div className="flex -space-x-2.5">
                     {Array.from({ length: 5 }).map((_, i) => (
                       <Skeleton key={i} className="h-8 w-8 rounded-full" />
@@ -524,7 +522,7 @@ export function LandingMenteeView() {
                   <Skeleton className="h-4 w-44" />
                 </div>
               ) : mentors.length > 0 ? (
-                <div className="mt-7 flex flex-wrap items-center gap-x-4 gap-y-3">
+                <div className="mt-9 flex flex-wrap items-center gap-x-4 gap-y-3">
                   <div className="flex -space-x-2.5">
                     {mentors.slice(0, 5).map((m) => (
                       <Avatar key={m.id} name={m.name} src={m.avatarUrl} size="sm" />
@@ -533,7 +531,7 @@ export function LandingMenteeView() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
                       <Stars rating={avgRating ?? 5} size={14} />
-                      <span className="text-sm font-bold text-stone-800 dark:text-stone-200">
+                      <span className="text-sm font-semibold text-stone-800 dark:text-stone-200">
                         {avgRating ? avgRating.toFixed(1).replace('.', ',') : '—'}
                       </span>
                       <span className="text-xs text-stone-500 dark:text-stone-400">de média</span>
@@ -566,10 +564,10 @@ export function LandingMenteeView() {
           aria-labelledby="continue-title"
           className="border-y border-stone-200/70 bg-stone-50/50 py-8 sm:py-10 dark:border-stone-800 dark:bg-stone-900/60"
         >
-          <div className="mx-auto max-w-6xl px-4">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6">
             <h2
               id="continue-title"
-              className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400"
+              className="text-sm font-semibold text-stone-500 dark:text-stone-400"
             >
               Continue aprendendo
             </h2>
@@ -594,9 +592,9 @@ export function LandingMenteeView() {
                 >
                   <Library className="h-4 w-4" />
                 </span>
-                <span className="mt-1.5 inline-flex items-center gap-1.5 text-sm font-bold text-stone-700 transition group-hover:text-emerald-800 dark:text-stone-200 dark:group-hover:text-emerald-300">
+                <span className="mt-1.5 inline-flex items-center gap-1.5 text-sm font-semibold text-stone-700 transition group-hover:text-emerald-800 dark:text-stone-200 dark:group-hover:text-emerald-300">
                   Explorar mais cursos
-                  <ArrowRight
+                  <ChevronRight
                     aria-hidden
                     className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
                   />
@@ -619,7 +617,7 @@ export function LandingMenteeView() {
           aria-labelledby="foryou-title"
           className="py-8 sm:py-10"
         >
-          <div className="mx-auto max-w-6xl px-4">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6">
             <div className="flex flex-wrap items-center gap-2">
               <span
                 aria-hidden
@@ -629,12 +627,12 @@ export function LandingMenteeView() {
               </span>
               <h2
                 id="foryou-title"
-                className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400"
+                className="text-sm font-semibold text-stone-500 dark:text-stone-400"
               >
                 Feito para você
               </h2>
               {recsGenerated && (
-                <Badge className="rounded-full border-emerald-200 bg-emerald-50 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <Badge className="rounded-full border-emerald-200 bg-emerald-50 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
                   IA personalizada
                 </Badge>
               )}
@@ -661,15 +659,15 @@ export function LandingMenteeView() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-80px' }}
         transition={{ duration: 0.5 }}
-        className="mx-auto w-full max-w-6xl px-4 py-14 sm:py-20"
+        className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-16 sm:py-24"
       >
         <div className="max-w-2xl">
-          <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+          <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
             Tudo em um só lugar
           </p>
           <h2
             id="formatos-title"
-            className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
+            className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl dark:text-stone-50"
           >
             Quatro formas de aprender
           </h2>
@@ -688,25 +686,25 @@ export function LandingMenteeView() {
               transition={{ duration: 0.4, delay: i * 0.07 }}
               className="min-w-0"
             >
-              <div className="group flex h-full flex-col rounded-2xl border border-stone-200 bg-white p-5 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md hover:shadow-stone-900/5 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
+              <div className="group flex h-full flex-col rounded-2xl border border-stone-200 bg-white p-5 transition hover:border-emerald-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:group-hover:bg-emerald-900/30">
                   <format.icon aria-hidden className="h-5 w-5" />
                 </span>
-                <p className="mt-4 text-[10px] font-extrabold uppercase tracking-widest text-stone-400 dark:text-stone-500">
+                <p className="mt-4 text-[10px] font-semibold uppercase tracking-widest text-stone-400 dark:text-stone-500">
                   {format.eyebrow}
                 </p>
-                <h3 className="mt-1 font-extrabold text-stone-900 dark:text-stone-50">{format.title}</h3>
+                <h3 className="mt-1 font-semibold text-stone-900 dark:text-stone-50">{format.title}</h3>
                 <p className="mt-1.5 flex-1 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
                   {format.text}
                 </p>
                 <button
                   type="button"
                   onClick={() => handleFormatTab(format.tab)}
-                  className="mt-4 inline-flex min-h-11 items-center gap-1.5 text-sm font-bold text-emerald-700 transition hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-emerald-300 dark:hover:text-emerald-200"
+                  className="mt-4 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-emerald-700 transition hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-emerald-300 dark:hover:text-emerald-200"
                   aria-label={`${format.cta} — ${format.title}`}
                 >
                   {format.cta}
-                  <ArrowRight
+                  <ChevronRight
                     aria-hidden
                     className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
                   />
@@ -724,26 +722,21 @@ export function LandingMenteeView() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-80px' }}
         transition={{ duration: 0.5 }}
-        className="mx-auto w-full max-w-6xl px-4 pb-4 pt-14 sm:pt-20"
+        className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-4 pt-14 sm:pt-20"
       >
         <div className="max-w-2xl">
-          <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+          <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
             Como funciona
           </p>
             <h2
               id="como-funciona-title"
-              className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
+              className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl dark:text-stone-50"
             >
               Do descobrimento ao certificado
             </h2>
           </div>
 
           <div className="relative mt-12 grid grid-cols-1 gap-10 sm:grid-cols-3 sm:gap-6">
-            {/* Linha tracejada conectando os círculos no desktop */}
-            <div
-              aria-hidden
-              className="absolute left-[16%] right-[16%] top-8 hidden border-t-2 border-dashed border-emerald-200 sm:block dark:border-emerald-900"
-            />
             {STEPS.map((step, i) => (
               <motion.div
                 key={step.number}
@@ -753,14 +746,14 @@ export function LandingMenteeView() {
                 transition={{ duration: 0.4, delay: i * 0.1 }}
                 className="relative flex flex-col items-center"
               >
-                <div className="relative z-10 flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-sm font-extrabold tracking-wide text-white shadow-lg shadow-emerald-700/25 ring-4 ring-white dark:ring-stone-950">
+                <div className="relative z-10 flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-stone-950 text-sm font-semibold tracking-wide text-white ring-4 ring-white dark:bg-white dark:text-stone-950 dark:ring-stone-950">
                   {step.number}
                 </div>
                 <div className="mt-5 flex w-full min-w-0 flex-1 flex-col items-center rounded-2xl border border-stone-200 bg-white px-5 pb-6 pt-5 text-center transition hover:border-emerald-300 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
                     <step.icon aria-hidden className="h-5 w-5" />
                   </span>
-                  <h3 className="mt-3 font-extrabold text-stone-900 dark:text-stone-50">{step.title}</h3>
+                  <h3 className="mt-3 font-semibold text-stone-900 dark:text-stone-50">{step.title}</h3>
                   <p className="mt-1.5 text-sm leading-relaxed text-stone-600 dark:text-stone-300">{step.text}</p>
                 </div>
               </motion.div>
@@ -773,11 +766,11 @@ export function LandingMenteeView() {
         aria-labelledby="areas-title"
         className="border-y border-stone-200/70 bg-stone-50/60 py-8 sm:py-10 dark:border-stone-800 dark:bg-stone-900/60"
       >
-        <div className="mx-auto max-w-6xl px-4">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-8">
             <h2
               id="areas-title"
-              className="shrink-0 text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400"
+              className="shrink-0 text-sm font-semibold text-stone-500 dark:text-stone-400"
             >
               Explore por área
             </h2>
@@ -805,16 +798,16 @@ export function LandingMenteeView() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-80px' }}
         transition={{ duration: 0.5 }}
-        className="mx-auto w-full max-w-6xl px-4 pb-14 sm:pb-20"
+        className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24"
       >
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
               Aprenda ao vivo
             </p>
             <h2
               id="destaque-title"
-              className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
+              className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl dark:text-stone-50"
             >
               Mentores em destaque
             </h2>
@@ -828,7 +821,7 @@ export function LandingMenteeView() {
             className="gap-1 px-0 font-semibold text-emerald-700 dark:text-emerald-300"
           >
             Ver todos
-            <ArrowRight aria-hidden className="h-4 w-4" />
+            <ChevronRight aria-hidden className="h-4 w-4" />
           </Button>
         </div>
 
@@ -874,16 +867,16 @@ export function LandingMenteeView() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.5 }}
-          className="mx-auto w-full max-w-6xl px-4 pb-14 sm:pb-20"
+          className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24"
         >
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
                 No seu ritmo
               </p>
               <h2
                 id="cursos-destaque-title"
-                className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
+                className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl dark:text-stone-50"
               >
                 Cursos em destaque
               </h2>
@@ -897,7 +890,7 @@ export function LandingMenteeView() {
               className="gap-1 px-0 font-semibold text-emerald-700 dark:text-emerald-300"
             >
               Ver todos os cursos
-              <ArrowRight aria-hidden className="h-4 w-4" />
+              <ChevronRight aria-hidden className="h-4 w-4" />
             </Button>
           </div>
 
@@ -936,16 +929,16 @@ export function LandingMenteeView() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.5 }}
-          className="mx-auto w-full max-w-6xl px-4 pb-14 sm:pb-20"
+          className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24"
         >
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
                 Jornadas guiadas
               </p>
               <h2
                 id="trilhas-destaque-title"
-                className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
+                className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl dark:text-stone-50"
               >
                 Trilhas em destaque
               </h2>
@@ -959,7 +952,7 @@ export function LandingMenteeView() {
               className="gap-1 px-0 font-semibold text-emerald-700 dark:text-emerald-300"
             >
               Ver todas as trilhas
-              <ArrowRight aria-hidden className="h-4 w-4" />
+              <ChevronRight aria-hidden className="h-4 w-4" />
             </Button>
           </div>
 
@@ -998,16 +991,16 @@ export function LandingMenteeView() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.5 }}
-          className="mx-auto w-full max-w-6xl px-4 pb-14 sm:pb-20"
+          className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24"
         >
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
                 Para ler e reler
               </p>
               <h2
                 id="biblioteca-destaque-title"
-                className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
+                className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl dark:text-stone-50"
               >
                 Biblioteca em destaque
               </h2>
@@ -1021,7 +1014,7 @@ export function LandingMenteeView() {
               className="gap-1 px-0 font-semibold text-emerald-700 dark:text-emerald-300"
             >
               Abrir biblioteca
-              <ArrowRight aria-hidden className="h-4 w-4" />
+              <ChevronRight aria-hidden className="h-4 w-4" />
             </Button>
           </div>
 
@@ -1054,23 +1047,15 @@ export function LandingMenteeView() {
       <section
         ref={statsSectionRef}
         aria-label="Números da plataforma"
-        className="mx-auto w-full max-w-6xl px-4 pb-14 sm:pb-20"
+        className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24"
       >
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-60px' }}
           transition={{ duration: 0.5 }}
-          className="relative overflow-hidden rounded-3xl bg-emerald-950 px-6 py-10 sm:px-12 sm:py-12"
+          className="relative overflow-hidden rounded-3xl bg-emerald-950 px-6 py-12 sm:px-12 sm:py-14"
         >
-          <div
-            aria-hidden
-            className="absolute -left-20 -top-24 h-64 w-64 rounded-full bg-emerald-600/25 blur-3xl"
-          />
-          <div
-            aria-hidden
-            className="absolute -bottom-28 -right-16 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl"
-          />
 
           <dl className="relative grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-4">
             <div className="flex flex-col">
@@ -1082,7 +1067,7 @@ export function LandingMenteeView() {
                   <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
                 </dd>
               ) : (
-                <dd className="order-1 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+                <dd className="order-1 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
                   +{mentors.length}
                 </dd>
               )}
@@ -1096,7 +1081,7 @@ export function LandingMenteeView() {
                   <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
                 </dd>
               ) : (
-                <dd className="order-1 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+                <dd className="order-1 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
                   +{courses.length}
                 </dd>
               )}
@@ -1110,7 +1095,7 @@ export function LandingMenteeView() {
                   <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
                 </dd>
               ) : (
-                <dd className="order-1 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+                <dd className="order-1 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
                   +{tracks.length}
                 </dd>
               )}
@@ -1124,7 +1109,7 @@ export function LandingMenteeView() {
                   <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
                 </dd>
               ) : (
-                <dd className="order-1 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+                <dd className="order-1 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
                   +{totalLessons}
                 </dd>
               )}
@@ -1142,14 +1127,14 @@ export function LandingMenteeView() {
         transition={{ duration: 0.5 }}
         className="border-y border-stone-200/70 bg-stone-50/60 dark:border-stone-800 dark:bg-stone-900/60"
       >
-        <div className="mx-auto w-full max-w-6xl px-4 py-14 sm:py-16">
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-16 sm:py-20">
           <div className="max-w-2xl">
-            <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
               E muito mais
             </p>
             <h2
               id="extras-title"
-              className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
+              className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl dark:text-stone-50"
             >
               Superpoderes em toda a plataforma
             </h2>
@@ -1173,7 +1158,7 @@ export function LandingMenteeView() {
                     <extra.icon aria-hidden className="h-4.5 w-4.5" />
                   </span>
                   <span className="min-w-0">
-                    <h3 className="font-bold text-stone-900 dark:text-stone-50">{extra.title}</h3>
+                    <h3 className="font-semibold text-stone-900 dark:text-stone-50">{extra.title}</h3>
                     <p className="mt-1 text-sm leading-relaxed text-stone-600 dark:text-stone-300">{extra.text}</p>
                   </span>
                 </div>
@@ -1192,14 +1177,14 @@ export function LandingMenteeView() {
         transition={{ duration: 0.5 }}
         className="border-y border-stone-200/70 bg-stone-50/60 dark:border-stone-800 dark:bg-stone-900/60"
       >
-        <div className="mx-auto max-w-6xl px-4 py-14 sm:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-24">
           <div className="max-w-2xl">
-            <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
               Depoimentos
             </p>
             <h2
               id="depoimentos-title"
-              className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
+              className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl dark:text-stone-50"
             >
               Depoimentos de mentorados
             </h2>
@@ -1214,7 +1199,7 @@ export function LandingMenteeView() {
               return (
                 <figure
                   key={t.author}
-                  className="flex h-full min-w-0 flex-col rounded-2xl border border-stone-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-stone-800 dark:bg-stone-900"
+                  className="flex h-full min-w-0 flex-col rounded-2xl border border-stone-200 bg-white p-6 transition dark:border-stone-800 dark:bg-stone-900"
                 >
                   <Stars rating={5} size={14} />
                   <blockquote className="mt-3 flex-1 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
@@ -1223,13 +1208,13 @@ export function LandingMenteeView() {
                   <figcaption className="mt-5 flex items-center gap-2.5 border-t border-stone-100 pt-4 dark:border-stone-800">
                     <span
                       aria-hidden
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold text-white"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white"
                       style={avatarGradient(t.author)}
                     >
                       {initials(namePart ?? t.author)}
                     </span>
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-bold text-stone-800 dark:text-stone-200">
+                      <span className="block truncate text-sm font-semibold text-stone-800 dark:text-stone-200">
                         {namePart?.trim() ?? t.author}
                       </span>
                       {rolePart && (
@@ -1251,16 +1236,16 @@ export function LandingMenteeView() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-80px' }}
         transition={{ duration: 0.5 }}
-        className="mx-auto w-full max-w-6xl px-4 py-14 sm:py-20"
+        className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-16 sm:py-24"
       >
         <div className="mx-auto max-w-3xl">
           <div className="text-center">
-            <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
               Perguntas frequentes
             </p>
             <h2
               id="faq-title"
-              className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
+              className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl dark:text-stone-50"
             >
               Tudo o que você precisa saber
             </h2>
@@ -1272,11 +1257,11 @@ export function LandingMenteeView() {
           <Accordion
             type="single"
             collapsible
-            className="mt-8 rounded-2xl border border-stone-200 bg-white px-5 shadow-sm sm:px-6 dark:border-stone-800 dark:bg-stone-900"
+            className="mt-8 rounded-2xl border border-stone-200 bg-white px-5 sm:px-6 dark:border-stone-800 dark:bg-stone-900"
           >
             {FAQS.map((faq, i) => (
               <AccordionItem key={faq.q} value={`faq-${i}`} className="border-stone-100 dark:border-stone-800">
-                <AccordionTrigger className="py-5 text-left text-sm font-bold text-stone-900 hover:no-underline sm:text-base dark:text-stone-50">
+                <AccordionTrigger className="py-5 text-left text-sm font-semibold text-stone-900 hover:no-underline sm:text-base dark:text-stone-50">
                   {faq.q}
                 </AccordionTrigger>
                 <AccordionContent className="pb-5 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
@@ -1295,15 +1280,15 @@ export function LandingMenteeView() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-80px' }}
         transition={{ duration: 0.5 }}
-        className="mx-auto w-full max-w-6xl px-4 pb-16 pt-2 sm:pb-24"
+        className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 pt-2 sm:pb-24"
       >
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+          <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
             Comece agora
           </p>
           <h2
             id="cta-title"
-            className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50"
+            className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl dark:text-stone-50"
           >
             Pronto para dar o próximo passo?
           </h2>
@@ -1315,19 +1300,11 @@ export function LandingMenteeView() {
         <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-2">
           {/* Card escuro: quero aprender */}
           <div className="relative overflow-hidden rounded-3xl bg-emerald-950 p-8 text-white sm:p-10">
-            <div
-              aria-hidden
-              className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl"
-            />
-            <div
-              aria-hidden
-              className="absolute -bottom-20 -left-10 h-48 w-48 rounded-full bg-emerald-400/10 blur-3xl"
-            />
             <div className="relative flex h-full flex-col items-start">
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-white ring-1 ring-white/15">
                 <GraduationCap aria-hidden className="h-6 w-6" />
               </span>
-              <h3 className="mt-5 text-2xl font-extrabold tracking-tight sm:text-3xl">
+              <h3 className="mt-5 text-2xl font-semibold tracking-tight sm:text-3xl">
                 Quero aprender
               </h3>
               <p className="mt-2 max-w-md text-sm leading-relaxed text-emerald-100/85 sm:text-base">
@@ -1336,25 +1313,21 @@ export function LandingMenteeView() {
               </p>
               <Button
                 onClick={() => navigate({ name: 'marketplace' })}
-                className="mt-7 h-12 rounded-full bg-white px-7 font-bold text-emerald-950 hover:bg-emerald-50"
+                className="mt-7 h-12 rounded-full bg-white px-7 font-semibold text-emerald-950 hover:bg-emerald-50"
               >
                 Explorar a plataforma
-                <ArrowRight aria-hidden className="ml-1 h-4 w-4" />
+                <ChevronRight aria-hidden className="ml-1 h-4 w-4" />
               </Button>
             </div>
           </div>
 
           {/* Card claro: quero ensinar */}
           <div className="relative overflow-hidden rounded-3xl border border-stone-200 bg-white p-8 sm:p-10 dark:border-stone-800 dark:bg-stone-900">
-            <div
-              aria-hidden
-              className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-emerald-100/70 blur-3xl dark:bg-emerald-950/50"
-            />
             <div className="relative flex h-full flex-col items-start">
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/40">
                 <Presentation aria-hidden className="h-6 w-6" />
               </span>
-              <h3 className="mt-5 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50">
+              <h3 className="mt-5 text-2xl font-semibold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50">
                 Quero ensinar
               </h3>
               <p className="mt-2 max-w-md text-sm leading-relaxed text-stone-600 sm:text-base dark:text-stone-300">
@@ -1364,10 +1337,10 @@ export function LandingMenteeView() {
               <Button
                 variant="outline"
                 onClick={() => navigate({ name: 'for-mentors' })}
-                className="mt-7 h-12 rounded-full border-stone-300 px-7 font-bold text-stone-900 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-800 dark:border-stone-700 dark:text-stone-50 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300"
+                className="mt-7 h-12 rounded-full border-stone-300 px-7 font-semibold text-stone-900 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-800 dark:border-stone-700 dark:text-stone-50 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300"
               >
                 Começar a ensinar
-                <ArrowRight aria-hidden className="ml-1 h-4 w-4" />
+                <ChevronRight aria-hidden className="ml-1 h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -1422,11 +1395,7 @@ function HeroRotator({
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
     >
-      <div className="overflow-hidden rounded-3xl border border-stone-200/80 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900">
-        <div
-          aria-hidden
-          className="h-1 w-full bg-gradient-to-r from-emerald-600/70 via-teal-400/50 to-amber-300/60"
-        />
+      <div className="overflow-hidden rounded-[1.75rem] border border-stone-200/70 bg-white dark:border-stone-800 dark:bg-stone-900">
 
         <div className="px-6 pb-4 pt-6 sm:px-8 sm:pt-8">
           <AnimatePresence mode="wait" initial={false}>
@@ -1442,12 +1411,12 @@ function HeroRotator({
                 <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 dark:ring-emerald-900">
                   <slide.icon aria-hidden className="h-5 w-5" />
                 </span>
-                <span className="rounded-full bg-stone-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-stone-500 dark:bg-stone-800 dark:text-stone-400">
+                <span className="text-xs font-semibold uppercase tracking-widest text-stone-400 dark:text-stone-500">
                   {slide.eyebrow}
                 </span>
               </div>
 
-              <h2 className="mt-4 text-2xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+              <h2 className="mt-4 text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
                 {slide.title}
               </h2>
               <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
@@ -1486,7 +1455,7 @@ function HeroRotator({
                       <span className="text-stone-500 dark:text-stone-400">
                         Progresso salvo automaticamente
                       </span>
-                      <span className="font-bold text-emerald-700 dark:text-emerald-300">57%</span>
+                      <span className="font-semibold text-emerald-700 dark:text-emerald-300">57%</span>
                     </div>
                     <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
                       <div className="h-full w-[57%] rounded-full bg-emerald-500" />
@@ -1498,7 +1467,7 @@ function HeroRotator({
                       <span key={s} className="flex flex-1 items-center gap-2">
                         <span
                           className={cn(
-                            'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-extrabold',
+                            'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold',
                             s <= 2
                               ? 'bg-emerald-700 text-white'
                               : 'border border-stone-300 bg-white text-stone-400 dark:border-stone-600 dark:bg-stone-800'
@@ -1543,10 +1512,10 @@ function HeroRotator({
               <button
                 type="button"
                 onClick={() => onOpen(slide.tab)}
-                className="mt-6 inline-flex items-center gap-1.5 text-sm font-bold text-emerald-700 transition-all hover:gap-2.5 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-emerald-300 dark:hover:text-emerald-200"
+                className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700 transition-all hover:gap-2.5 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-emerald-300 dark:hover:text-emerald-200"
               >
                 {slide.cta}
-                <ArrowRight aria-hidden className="h-4 w-4" />
+                <ChevronRight aria-hidden className="h-4 w-4" />
               </button>
             </motion.div>
           </AnimatePresence>
@@ -1579,7 +1548,7 @@ function FeaturedMentorCard({ mentor }: { mentor: MentorListItemDTO }) {
   const navigate = useAppStore((s) => s.navigate)
 
   return (
-    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg hover:shadow-stone-900/5 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
+    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:border-emerald-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
       {/* Capa: gradiente determinístico do nome + avatar sobreposto */}
       <div aria-hidden className="relative h-14 w-full shrink-0" style={avatarGradient(mentor.name)}>
         <div className="absolute inset-0 bg-gradient-to-t from-black/15 to-white/10" />
@@ -1588,13 +1557,13 @@ function FeaturedMentorCard({ mentor }: { mentor: MentorListItemDTO }) {
       <div className="flex min-w-0 flex-1 flex-col p-5 pt-0">
         <div className="-mt-8 mb-3 flex items-end justify-between gap-2">
           <Avatar name={mentor.name} src={mentor.avatarUrl} size="lg" className="ring-4 ring-white dark:ring-stone-900" />
-          <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-stone-800 shadow-sm ring-1 ring-stone-200 dark:bg-stone-900 dark:text-stone-200 dark:ring-stone-800">
+          <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-stone-800 shadow-sm ring-1 ring-stone-200 dark:bg-stone-900 dark:text-stone-200 dark:ring-stone-800">
             <Star aria-hidden className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
             {mentor.rating.toFixed(1).replace('.', ',')}
           </span>
         </div>
 
-        <p className="flex items-center gap-1.5 truncate font-bold text-stone-900 dark:text-stone-50">
+        <p className="flex items-center gap-1.5 truncate font-semibold text-stone-900 dark:text-stone-50">
           {mentor.name}
           {mentor.rating >= 4.5 && mentor.reviewCount >= 3 && (
             <BadgeCheck
@@ -1624,7 +1593,7 @@ function FeaturedMentorCard({ mentor }: { mentor: MentorListItemDTO }) {
         </div>
 
         <div className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-3 dark:border-stone-800">
-          <p className="font-extrabold text-stone-900 dark:text-stone-50">
+          <p className="font-semibold text-stone-900 dark:text-stone-50">
             {currencyBRL(mentor.hourlyRate)}
             <span className="text-xs font-medium text-stone-500 dark:text-stone-400">/h</span>
           </p>
@@ -1646,7 +1615,7 @@ function FeaturedCourseCard({ course }: { course: CourseListItemDTO }) {
   const navigate = useAppStore((s) => s.navigate)
 
   return (
-    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg hover:shadow-stone-900/5 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
+    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:border-emerald-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
       {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
       <div className="relative h-36 w-full shrink-0 bg-stone-100 dark:bg-stone-800">
         {course.coverUrl ? (
@@ -1679,7 +1648,7 @@ function FeaturedCourseCard({ course }: { course: CourseListItemDTO }) {
           </Badge>
         </div>
 
-        <p className="mt-2.5 line-clamp-2 min-h-10 font-bold leading-snug text-stone-900 dark:text-stone-50">
+        <p className="mt-2.5 line-clamp-2 min-h-10 font-semibold leading-snug text-stone-900 dark:text-stone-50">
           {course.title}
         </p>
         <p className="mt-1 truncate text-xs text-stone-500 dark:text-stone-400">por {course.mentor.name}</p>
@@ -1702,7 +1671,7 @@ function FeaturedCourseCard({ course }: { course: CourseListItemDTO }) {
         <div className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-3 dark:border-stone-800">
           <p
             className={cn(
-              'text-sm font-extrabold',
+              'text-sm font-semibold',
               course.price === 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-stone-900 dark:text-stone-50'
             )}
           >
@@ -1762,7 +1731,7 @@ function FeaturedTrackCard({ track }: { track: TrackListItemDTO }) {
           </Badge>
         </div>
 
-        <p className="mt-2.5 line-clamp-2 min-h-10 font-bold leading-snug text-stone-900 dark:text-stone-50">
+        <p className="mt-2.5 line-clamp-2 min-h-10 font-semibold leading-snug text-stone-900 dark:text-stone-50">
           {track.title}
         </p>
 
@@ -1797,7 +1766,7 @@ function FeaturedTrackCard({ track }: { track: TrackListItemDTO }) {
         <div className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-3 dark:border-stone-800">
           <p
             className={cn(
-              'text-sm font-extrabold',
+              'text-sm font-semibold',
               track.price === 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-stone-900 dark:text-stone-50'
             )}
           >
@@ -1850,7 +1819,7 @@ function FeaturedLibraryCard({ item }: { item: LibraryItemDTO }) {
             )}
           </div>
         )}
-        <Badge className="absolute right-2 top-2 rounded-full border-white/40 bg-stone-950/55 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm dark:border-white/20">
+        <Badge className="absolute right-2 top-2 rounded-full border-white/40 bg-stone-950/55 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm dark:border-white/20">
           {isBook ? 'Livro' : 'Artigo'}
         </Badge>
       </div>
@@ -1867,7 +1836,7 @@ function FeaturedLibraryCard({ item }: { item: LibraryItemDTO }) {
           )}
         </div>
 
-        <p className="mt-2.5 line-clamp-2 min-h-10 font-bold leading-snug text-stone-900 dark:text-stone-50">
+        <p className="mt-2.5 line-clamp-2 min-h-10 font-semibold leading-snug text-stone-900 dark:text-stone-50">
           {item.title}
         </p>
 
@@ -1924,7 +1893,7 @@ function ContinueCourseCard({ enrollment }: { enrollment: EnrolledCourseDTO }) {
   const isDone = completed >= course.lessonCount && course.lessonCount > 0
 
   return (
-    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg hover:shadow-stone-900/5 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
+    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:border-emerald-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
       {/* Capa: foto quando disponível; gradiente determinístico como fallback (padrão FeaturedCourseCard) */}
       <div className="relative h-16 w-full shrink-0 bg-stone-100 dark:bg-stone-800">
         {course.coverUrl ? (
@@ -1945,7 +1914,7 @@ function ContinueCourseCard({ enrollment }: { enrollment: EnrolledCourseDTO }) {
 
       <div className="flex min-w-0 flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="min-h-10 line-clamp-2 min-w-0 text-sm font-bold leading-snug text-stone-900 dark:text-stone-50">
+          <h3 className="min-h-10 line-clamp-2 min-w-0 text-sm font-semibold leading-snug text-stone-900 dark:text-stone-50">
             {course.title}
           </h3>
           {isDone && (
@@ -1969,7 +1938,7 @@ function ContinueCourseCard({ enrollment }: { enrollment: EnrolledCourseDTO }) {
         <div className="mt-auto pt-3.5">
           <Button
             size="sm"
-            className="h-11 w-full rounded-full font-bold"
+            className="h-11 w-full rounded-full font-semibold"
             onClick={() => navigate({ name: 'course', courseId: enrollment.courseId })}
             aria-label={`Continuar curso ${course.title}`}
           >
@@ -1989,7 +1958,7 @@ function RecommendationCard({ rec }: { rec: RecommendationDTO }) {
   const isFree = course.price <= 0
 
   return (
-    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg hover:shadow-stone-900/5 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
+    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:border-emerald-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
       {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
       <div className="relative h-16 w-full shrink-0 bg-stone-100 dark:bg-stone-800">
         {course.coverUrl ? (
@@ -2006,13 +1975,13 @@ function RecommendationCard({ rec }: { rec: RecommendationDTO }) {
             <Library className="pointer-events-none absolute -bottom-1 right-1.5 h-10 w-10 text-white/20" />
           </div>
         )}
-        <Badge className="absolute right-2 top-2 rounded-full border-white/40 bg-stone-950/55 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm dark:border-white/20">
+        <Badge className="absolute right-2 top-2 rounded-full border-white/40 bg-stone-950/55 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm dark:border-white/20">
           {course.category}
         </Badge>
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col p-4">
-        <h3 className="min-h-10 line-clamp-2 text-sm font-bold leading-snug text-stone-900 dark:text-stone-50">
+        <h3 className="min-h-10 line-clamp-2 text-sm font-semibold leading-snug text-stone-900 dark:text-stone-50">
           {course.title}
         </h3>
         <p className="mt-1 truncate text-xs text-stone-500 dark:text-stone-400">
@@ -2028,7 +1997,7 @@ function RecommendationCard({ rec }: { rec: RecommendationDTO }) {
         <div className="mt-auto flex items-center justify-between gap-2 pt-3.5">
           <span
             className={cn(
-              'text-sm font-extrabold',
+              'text-sm font-semibold',
               isFree
                 ? 'text-emerald-700 dark:text-emerald-300'
                 : 'text-stone-900 dark:text-stone-50'
@@ -2039,12 +2008,12 @@ function RecommendationCard({ rec }: { rec: RecommendationDTO }) {
           <Button
             size="sm"
             variant="outline"
-            className="h-10 rounded-full border-emerald-200 px-4 text-xs font-bold text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-900/30"
+            className="h-10 rounded-full border-emerald-200 px-4 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-900/30"
             onClick={() => navigate({ name: 'course', courseId: course.id })}
             aria-label={`Ver curso ${course.title}`}
           >
             Ver curso
-            <ArrowRight aria-hidden className="h-3.5 w-3.5" />
+            <ChevronRight aria-hidden className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
@@ -2104,7 +2073,7 @@ function WeeklyGoalCard({ userId }: { userId: string }) {
   if (!goal) {
     return (
       <section aria-label="Meta semanal de estudos" className="py-8 sm:py-10">
-        <div className="mx-auto max-w-6xl px-4">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div
             aria-hidden
             className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6 dark:border-stone-800 dark:bg-stone-900"
@@ -2135,7 +2104,7 @@ function WeeklyGoalCard({ userId }: { userId: string }) {
 
   return (
     <section aria-label="Meta semanal de estudos" className="py-8 sm:py-10">
-      <div className="mx-auto max-w-6xl px-4">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6 dark:border-stone-800 dark:bg-stone-900">
           {/* Cabeçalho: ícone + título + subtítulo + badge de meta batida */}
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2147,7 +2116,7 @@ function WeeklyGoalCard({ userId }: { userId: string }) {
                 <Target className="h-5 w-5" />
               </span>
               <div className="min-w-0">
-                <h3 className="font-extrabold text-stone-900 dark:text-stone-50">Meta semanal</h3>
+                <h3 className="font-semibold text-stone-900 dark:text-stone-50">Meta semanal</h3>
                 <p className="text-sm text-stone-500 dark:text-stone-400">
                   {completed} de {target} {target === 1 ? 'aula' : 'aulas'} nesta semana
                 </p>
@@ -2181,7 +2150,7 @@ function WeeklyGoalCard({ userId }: { userId: string }) {
 
           {/* Editor: chips 2 · 3 · 5 · 7 (toque ≥44px, ativo emerald sólido) */}
           <div className="mt-5 border-t border-stone-100 pt-4 dark:border-stone-800">
-            <p className="text-[11px] font-extrabold uppercase tracking-widest text-stone-400 dark:text-stone-500">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-stone-400 dark:text-stone-500">
               Aulas por semana
             </p>
             <div className="mt-2.5 flex flex-wrap items-center gap-2">
@@ -2196,7 +2165,7 @@ function WeeklyGoalCard({ userId }: { userId: string }) {
                     aria-pressed={isActive}
                     aria-label={`Definir meta de ${chipTarget} ${chipTarget === 1 ? 'aula' : 'aulas'} por semana`}
                     className={cn(
-                      'flex h-11 w-11 items-center justify-center rounded-full border text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40',
+                      'flex h-11 w-11 items-center justify-center rounded-full border text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40',
                       isActive
                         ? 'border-emerald-700 bg-emerald-700 text-white shadow-sm shadow-emerald-700/25 dark:border-emerald-500 dark:bg-emerald-600'
                         : 'border-stone-200 bg-white text-stone-700 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-800 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-emerald-500 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300',

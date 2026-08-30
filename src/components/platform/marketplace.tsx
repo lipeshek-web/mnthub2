@@ -504,7 +504,7 @@ export function MarketplaceView() {
     <div>
       {/* ---------- BARRA SUPERIOR: título, ordenação, busca e categorias ---------- */}
       <section className="border-b border-stone-200/70 dark:border-stone-800 bg-white dark:bg-stone-950">
-        <div className="mx-auto max-w-6xl px-4 py-7 sm:py-9">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-7 sm:py-9">
           {/* Controle segmentado: Tudo | Mentores | Cursos | Trilhas | Biblioteca */}
           <div
             role="tablist"
@@ -793,14 +793,14 @@ export function MarketplaceView() {
       </section>
 
       {tab === 'bundles' ? (
-        <section aria-labelledby="resultado-title" className="mx-auto w-full max-w-6xl px-4 pb-12 pt-8">
+        <section aria-labelledby="resultado-title" className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-12 pt-8">
           <MarketplaceBundles search={search} />
         </section>
       ) : tab !== 'all' && (
         <>
           {/* ---------- BENTO: destaque + estatísticas (por aba) — oculto no modo busca ---------- */}
           {!searching && (
-          <section aria-label="Destaques e estatísticas" className="mx-auto w-full max-w-6xl px-4 pt-6">
+          <section aria-label="Destaques e estatísticas" className="mx-auto w-full max-w-7xl px-4 sm:px-6 pt-6">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {/* Spotlight */}
           <div className="lg:col-span-2">
@@ -872,7 +872,7 @@ export function MarketplaceView() {
       )}
 
       {/* ---------- RESULTADOS ---------- */}
-      <section aria-labelledby="resultado-title" className="mx-auto w-full max-w-6xl px-4 pb-12 pt-8">
+      <section aria-labelledby="resultado-title" className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-12 pt-8">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <h2 id="resultado-title" className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
             {searching
@@ -1090,7 +1090,7 @@ export function MarketplaceView() {
         <>
           {/* ---------- HERO BENTO (aba Tudo): título editorial + stats globais + destaques — oculto no modo busca ---------- */}
           {!searching && (
-          <section aria-label="Visão geral do Explorar" className="mx-auto w-full max-w-6xl px-4 pt-8">
+          <section aria-label="Visão geral do Explorar" className="mx-auto w-full max-w-7xl px-4 sm:px-6 pt-8">
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1155,7 +1155,7 @@ export function MarketplaceView() {
           {/* ---------- SEÇÕES EM GRADE + ÁREAS + AUTORES (aba Tudo) ---------- */}
           <section
             aria-label="Conteúdos em destaque do Explorar"
-            className="mx-auto w-full max-w-6xl px-4 pb-12 pt-10"
+            className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-12 pt-10"
           >
             {allView.filtering && allView.total === 0 ? (
               <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 dark:border-stone-700 px-6 py-14 text-center">

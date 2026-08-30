@@ -1559,3 +1559,24 @@ Stage Summary:
 - Webhook corrigido: e-mail de contato obrigatório agora é enviado (padrão = e-mail do admin) e há campo editável no formulário
 - Bloqueio real está na CHAVE: o teste de conexão deu 401 "chave inválida" — usuário deve copiar a chave do SANDBOX (sandbox.asaas.com → Configurações → Integrações → Chave de API), colar no painel, salvar e "Testar conexão" até ok; chaves de produção NÃO valem no sandbox
 - Gateway atualmente em modo demonstração (settings vazias); MFA desativado — reativar em Segurança
+
+---
+Task ID: W-5
+Agent: Z.ai Code (main)
+Task: Redesign visual "Apple-like" da plataforma (piloto na landing) + reduzir margens laterais do header e do corpo
+
+Work Log:
+- Landing (landing-mentee.tsx, 31 edições): hero sem blob decorativo; eyebrow pill → texto emerald simples; H1 text-4xl/extrabold → text-5xl/6xl/7xl font-semibold tracking-[-0.03em] com gradiente estilo Apple (bg-gradient-to-b stone-900→stone-600 bg-clip-text, dark: stone-50→stone-400); subhead maior em stone-500; CTA trocado por pill sólida preta (dark: branca) + link "Ver cursos ›" com ChevronRight (sem "ou use a busca acima ✨")
+- Tipografia global da landing: TODOS font-extrabold/font-bold → font-semibold; títulos de seção text-2xl sm:text-3xl → text-3xl sm:text-4xl; eyebrows uppercase-widest → text-sm semibold lowercase
+- Efeitos removidos: 6 blobs blur (hero, faixa de números ×2, CTA escuro ×2, CTA claro), linha tracejada dos passos, barra gradiente arco-íris do rotator, shadows de cards (hover:shadow-lg/md → border apenas, sem translate); círculos dos passos emerald → preto (dark: branco)
+- HeroRotator: card rounded-[1.75rem] flat sem shadow, chip de eyebrow → texto simples; indicadores mantidos
+- Espaçamento: seções py-14 sm:py-20 → py-16 sm:py-24; hero pb-20 pt-14 sm:pb-28 sm:pt-20; prova social mt-9
+- Setas: ArrowRight → ChevronRight (›) em todos os links/botões da landing (replace_all, inclui import)
+- Margens laterais (header + corpo): max-w-6xl → max-w-7xl e px-4 → +sm:px-6 em navbar, footer e TODAS as views (landing-mentee, landing-mentor, marketplace, mentor-profile, course-view, track-view, reader-view, admin-panel, messages-view, meeting-room) — 12 arquivos, zero max-w-6xl restante
+- Navbar: logo font-extrabold → font-semibold (footer idem)
+- Verificação: lint 0/0; tsc limpo; E2E agent-browser — desktop 1440 guest (hero, seções, stats, CTA duplo, footer sticky), dark mode (gradiente claro no título, pill branca), mobile 390 (docOverflow=0, mainOverflow=0), logado carlos@demo.com (hero "Olá, Carlos!", Continue aprendendo, Meta semanal, Feito para você, Quatro formas), marketplace; console/erros vazio; dev.log sem erros
+
+Stage Summary:
+- Plataforma com cara Apple: tipografia grande semibold com tracking apertado, gradientes sutis apenas no título hero, pills sólidas pretas/brancas, chevrons ›, cards flat com hairline border, zero blobs/sombras pesadas, mais respiro vertical
+- Corpo mais largo: container global max-w-7xl (1280px) com px-6 no desktop — margens laterais reduzidas em todas as telas
+- Modelo replicável: o mesmo vocabulário (pill preta, chevron, semibold+tracking-tight, hairline) pode ser aplicado às demais páginas nas próximas iterações

@@ -189,7 +189,7 @@ export default function LandingMentor() {
     <div className="bg-white dark:bg-stone-950">
       {/* ============ 1. Hero ============ */}
       <section aria-labelledby="mentor-hero-title" className="py-14 sm:py-20">
-        <div className="mx-auto max-w-6xl px-4">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="items-center lg:grid lg:grid-cols-2 lg:gap-12">
             <motion.div
               initial={{ opacity: 0, y: 24 }}
@@ -304,7 +304,7 @@ export default function LandingMentor() {
 
       {/* ============ 2. Calculadora de ganhos ============ */}
       <section id="calculadora" aria-labelledby="calculadora-title" className="scroll-mt-24 py-14 sm:py-20">
-        <div className="mx-auto max-w-6xl px-4">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <Card className="gap-0 rounded-2xl border-stone-200 p-6 shadow-none sm:p-8 dark:border-stone-800">
             <SectionHeading
               id="calculadora-title"
@@ -375,7 +375,7 @@ export default function LandingMentor() {
 
       {/* ============ 3. Como funciona ============ */}
       <section aria-labelledby="como-funciona-title" className="py-14 sm:py-20">
-        <div className="mx-auto max-w-6xl px-4">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <SectionHeading
             id="como-funciona-title"
             eyebrow="Como funciona"
@@ -395,7 +395,7 @@ export default function LandingMentor() {
 
       {/* ============ 4. Benefícios ============ */}
       <section aria-labelledby="beneficios-title" className="py-14 sm:py-20">
-        <div className="mx-auto max-w-6xl px-4">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <SectionHeading
             id="beneficios-title"
             eyebrow="Por que mentorar aqui"
@@ -417,7 +417,7 @@ export default function LandingMentor() {
 
       {/* ============ 5. Depoimento ============ */}
       <section aria-labelledby="depoimento-title" className="py-14 sm:py-20">
-        <div className="mx-auto max-w-6xl px-4">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <Rise className="mx-auto max-w-2xl text-center">
             <h2 id="depoimento-title" className="sr-only">
               Depoimento de mentor
@@ -440,7 +440,7 @@ export default function LandingMentor() {
 
       {/* ============ 6. FAQ ============ */}
       <section aria-labelledby="faq-title" className="py-14 sm:py-20">
-        <div className="mx-auto max-w-6xl px-4">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <SectionHeading id="faq-title" eyebrow="Dúvidas frequentes" title="Perguntas de quem quer começar" align="center" />
           <Rise className="mx-auto mt-10 max-w-3xl">
             <Accordion type="single" collapsible>
@@ -465,7 +465,7 @@ export default function LandingMentor() {
 
       {/* ============ 7. CTA final ============ */}
       <section aria-labelledby="cta-final-title" className="py-14 sm:py-20">
-        <div className="mx-auto max-w-6xl px-4">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <Rise className="relative overflow-hidden rounded-3xl bg-emerald-950 px-6 py-14 text-center text-white sm:py-16">
             <div
               className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-emerald-500/20 blur-3xl"

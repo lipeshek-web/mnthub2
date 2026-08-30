@@ -48,7 +48,7 @@ export function PlatformFooter() {
 
   return (
     <footer className="mt-auto shrink-0 border-t border-stone-200/70 bg-stone-50 pb-[env(safe-area-inset-bottom)] dark:border-stone-800 dark:bg-stone-950">
-      <div className="mx-auto max-w-6xl px-4 py-10 sm:py-12">
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12">
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr]">
           {/* Marca */}
           <div className="flex flex-col items-start gap-3">
@@ -60,7 +60,7 @@ export function PlatformFooter() {
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-700 text-white">
                 <GraduationCap className="h-5 w-5" />
               </span>
-              <span className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+              <span className="text-lg font-semibold tracking-tight text-stone-900 dark:text-stone-50">
                 Mentor<span className="text-emerald-700">Hub</span>
               </span>
             </button>

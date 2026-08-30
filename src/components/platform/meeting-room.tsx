@@ -112,7 +112,7 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
 
   if (!user) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-16">
+      <div className="mx-auto max-w-7xl px-4 py-16">
         <Card className="mx-auto max-w-md border-dashed">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
             <Video className="h-10 w-10 text-stone-400 dark:text-stone-500" />
@@ -129,7 +129,7 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-6xl space-y-5 px-4 py-8">
+      <div className="mx-auto max-w-7xl space-y-5 px-4 py-8">
         <Skeleton className="h-8 w-52" />
         <Skeleton className="h-[56vh] w-full rounded-2xl" />
         <div className="grid gap-5 lg:grid-cols-3">
@@ -142,7 +142,7 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
 
   if (notFound || !booking) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-16">
+      <div className="mx-auto max-w-7xl px-4 py-16">
         <Card className="mx-auto max-w-md border-dashed">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
             <Video className="h-10 w-10 text-stone-400 dark:text-stone-500" />
@@ -162,7 +162,7 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
   const blocked = booking.status === 'CANCELLED' || booking.status === 'COMPLETED'
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-14 pt-6">
+    <div className="mx-auto max-w-7xl px-4 pb-14 pt-6">
       <button
         onClick={() => navigate({ name: 'dashboard' })}
         className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 transition-colors hover:text-emerald-700 dark:text-stone-400 dark:hover:text-emerald-300"

@@ -181,7 +181,7 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
   const peerMeta = activeThread?.peer
 
   return (
-    <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-5 sm:px-6">
+    <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-5 sm:px-6">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50 sm:text-2xl">

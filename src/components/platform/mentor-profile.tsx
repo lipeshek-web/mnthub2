@@ -118,7 +118,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-8">
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-72 w-full rounded-2xl" />
         <div className="grid gap-6 lg:grid-cols-3">
@@ -131,7 +131,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
 
   if (error || !mentor) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-16">
+      <div className="mx-auto max-w-7xl px-4 py-16">
         <Card className="mx-auto max-w-md border-dashed">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
             <CalendarOff className="h-10 w-10 text-stone-400 dark:text-stone-500" />
@@ -148,7 +148,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
   const bodyStyle = bodyFontStyle(mentor.fontBody)
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-16 pt-6">
+    <div className="mx-auto max-w-7xl px-4 pb-16 pt-6">
       <button
         onClick={() => navigate({ name: 'marketplace' })}
         className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 transition-colors hover:text-emerald-700 dark:text-stone-400 dark:hover:text-emerald-300"

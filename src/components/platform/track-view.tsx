@@ -164,7 +164,7 @@ export function TrackView({ trackId }: { trackId: string }) {
 
   if (loading) {
     return (
-      <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8" aria-busy="true">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-6 sm:py-8" aria-busy="true">
         <Skeleton className="h-9 w-24 rounded-full" />
         <Skeleton className="mt-4 h-52 w-full rounded-2xl" />
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -181,7 +181,7 @@ export function TrackView({ trackId }: { trackId: string }) {
 
   if (!track) {
     return (
-      <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-6 sm:py-8">
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 dark:border-stone-700 px-6 py-14 text-center">
           <span className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 dark:bg-rose-950/50">
             <AlertCircle aria-hidden className="h-7 w-7 text-rose-500" />
@@ -207,7 +207,7 @@ export function TrackView({ trackId }: { trackId: string }) {
         : 'Comprar trilha'
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
+    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-6 sm:py-8">
       <Button
         variant="ghost"
         onClick={() => navigate({ name: 'marketplace' })}

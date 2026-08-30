@@ -270,7 +270,7 @@ export function ReaderView({ itemId }: { itemId: string }) {
     <div className="flex h-full flex-col bg-stone-50 dark:bg-stone-950">
       {/* ---------- TOP BAR IMERSIVA ---------- */}
       <header className="shrink-0 border-b border-emerald-400/15 bg-emerald-950 text-white">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-2 px-4 sm:gap-3">
+        <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-2 px-4 sm:gap-3 sm:px-6">
           <Button
             variant="ghost"
             size="icon"

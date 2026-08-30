@@ -412,7 +412,7 @@ export function AdminPanel() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
+    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
       {/* Cabeçalho */}
       <div className="flex flex-wrap items-center gap-3">
         <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-950 text-emerald-300 dark:bg-emerald-950/60">
