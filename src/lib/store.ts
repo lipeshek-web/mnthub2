@@ -22,6 +22,7 @@ export type AppView =
   | { name: 'certificate'; code: string } // certificado público verificável (?cert=CODE)
   | { name: 'messages'; peerId?: string } // chat direto aluno ↔ mentor (mensagens); peerId = conversa a abrir
   | { name: 'referrals' } // programa de indicação (convite + créditos)
+  | { name: 'admin' } // painel de administração da plataforma (só role=ADMIN)
 
 /** Aba ativa do Explorar: visão geral (tudo), mentores, cursos, trilhas, pacotes ou biblioteca */
 export type ExploreTab = 'all' | 'mentors' | 'courses' | 'tracks' | 'bundles' | 'library'

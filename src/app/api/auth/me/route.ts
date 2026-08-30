@@ -19,6 +19,9 @@ export async function GET(req: NextRequest) {
         bio: true,
         avatarUrl: true,
         creditCents: true,
+        role: true,
+        blocked: true,
+        mfaEnabled: true,
         mentorProfile: { select: { id: true } },
       },
     })

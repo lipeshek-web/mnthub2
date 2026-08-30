@@ -22,6 +22,7 @@ import {
   Moon,
   PlusCircle,
   Search,
+  ShieldCheck,
   ShoppingBag,
   Star,
   Sun,
@@ -640,6 +641,11 @@ export function Navbar() {
                 ) : (
                   <DropdownMenuItem onClick={() => navigate({ name: 'onboarding' })}>
                     <PlusCircle className="h-4 w-4" /> Criar perfil de mentor
+                  </DropdownMenuItem>
+                )}
+                {user.role === 'ADMIN' && (
+                  <DropdownMenuItem onClick={() => navigate({ name: 'admin' })}>
+                    <ShieldCheck className="h-4 w-4" /> Administração
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />

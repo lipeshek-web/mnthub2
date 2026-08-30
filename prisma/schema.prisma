@@ -46,6 +46,18 @@ model User {
   // Assinaturas de membrosia do mentor + meta semanal de estudos
   membershipSubscriptions MembershipSubscription[]
   weeklyGoal              WeeklyGoal?
+  // ==================== ADMINISTRAÇÃO DA PLATAFORMA ====================
+  role          String  @default("USER") // USER | ADMIN
+  blocked       Boolean @default(false) // bloqueado não faz login nem consome a plataforma
+  // MFA (TOTP RFC 6238, obrigatório para admins)
+  mfaSecret     String? // segredo base32 (só persistido quando o MFA é confirmado)
+  mfaEnabled    Boolean @default(false)
+  // Pagamentos (gateway Asaas)
+  cpfCnpj        String? // documento do pagador (coletado no checkout)
+  asaasCustomerId String? // id do cliente no Asaas (reutilizado entre compras)
+  adminSessions  AdminSession[]
+  auditLogs      AuditLog[]
+  payments       Payment[]
 }
 
 model MentorProfile {
@@ -376,7 +388,7 @@ model TrackEnrollment {
 
 // ==================== CHECKOUT & TRACKING (tráfego pago) ====================
 
-/// Pedido de curso, trilha ou pacote (checkout demonstrativo — pagamentos simulados)
+/// Pedido de curso, trilha ou pacote (checkout via Asaas ou demonstrativo)
 model Order {
   id            String            @id @default(cuid())
   courseId      String?
@@ -392,11 +404,13 @@ model Order {
   mentorId      String
   mentor        MentorProfile     @relation(fields: [mentorId], references: [id], onDelete: Cascade)
   amount        Float
-  paymentMethod String            @default("PIX") // PIX | CREDIT_CARD
-  status        String            @default("PAID") // PAID | REFUNDED
+  paymentMethod String            @default("PIX") // PIX | CREDIT_CARD | BOLETO
+  status        String            @default("PAID") // PENDING (aguardando gateway) | PAID | REFUNDED | CANCELED
   couponCode    String? // cupom aplicado (se houve)
   discount      Float             @default(0) // valor descontado em R$ (cupom)
   creditsUsed   Float             @default(0) // créditos de indicação usados em R$
+
+  payments Payment[]
 
   // Atribuição de tráfego (last-touch) — segregada por origem
   utmSource   String?
@@ -619,4 +633,64 @@ model DirectMessage {
 
   @@index([recipientId, readAt])
   @@index([senderId, recipientId, createdAt])
+}
+
+// ==================== PAGAMENTOS (GATEWAY ASAAS) ====================
+
+/// Cobrança vinculada a um pedido. Com chave Asaas configurada, o dinheiro real
+/// passa pelo gateway (sandbox em testes); sem chave, o pedido é marcado como
+/// SIMULADO para o modo demonstração.
+model Payment {
+  id                String    @id @default(cuid())
+  orderId           String    @unique
+  order             Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gateway           String    @default("SIMULATED") // ASAAS | SIMULATED
+  gatewayPaymentId  String?   @unique // id da cobrança no Asaas (pay_xxx)
+  billingType       String    @default("PIX") // PIX | CREDIT_CARD | BOLETO
+  status            String    @default("PENDING") // PENDING | RECEIVED | CONFIRMED | OVERDUE | REFUNDED | CANCELED
+  value             Float // valor cobrado no gateway (R$)
+  invoiceUrl        String? // fatura hospedada do Asaas (checkout hosted)
+  externalReference String? // externalReference enviada ao Asaas (= id do Order)
+  lastEvent         String? // último evento de webhook/processamento
+  lastEventAt       DateTime?
+  confirmedAt       DateTime? // momento em que o pagamento caiu (RECEIVED/CONFIRMED)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+}
+
+/// Configuração da plataforma (chave/vault leve): chave API do Asaas, ambiente,
+/// token do webhook etc. Editável apenas pelo painel admin.
+model PlatformSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+/// Sessão administrativa: token emitido APÓS login com senha (+ MFA quando
+/// ativo). Todo endpoint admin exige o header x-admin-token.
+model AdminSession {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+/// Trilha de auditoria das ações administrativas (quem fez o quê, quando)
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String? // null = sistema (webhook)
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorName String   @default("")
+  action    String // ex: asaas.settings_update | user.promote | payment.confirm
+  meta      String   @default("") // JSON curto com contexto
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

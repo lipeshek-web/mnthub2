@@ -1,79 +1,65 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { notify } from '@/lib/notify'
+import { getAsaasConfig, ensureAsaasCustomer, createAsaasPayment, getPixQrCode, type AsaasBillingType } from '@/lib/asaas'
+import { resolveCoupon, fulfillOrder } from '@/lib/fulfillment'
 
 export const dynamic = 'force-dynamic'
 
-/** Crédito do indicador por conversão (R$ 20 em centavos) */
-const REFERRAL_REWARD_CENTS = 2000
+// ==================== CHECKOUT ====================
+// Com chave do Asaas configurada (painel admin): cria o pedido PENDING + a
+// cobrança real no gateway (sandbox em testes) e devolve a fatura/PIX. A
+// liberação do acesso acontece quando o pagamento cai (webhook, confirmação
+// manual no sandbox ou ação do admin).
+// Sem chave: modo demonstração — pedido é pago na hora (igual a antes), com
+// registro Payment marcado como SIMULADO.
 
-/** Valida o cupom do mentor para o item informado; retorna dados para o pedido */
-async function resolveCoupon(rawCode: string, mentorId: string, price: number) {
-  const code = rawCode.trim().toUpperCase()
-  if (!code) return { error: null as string | null, coupon: null, discount: 0 }
-  const coupon = await db.coupon.findUnique({
-    where: { mentorId_code: { mentorId, code } },
-  })
-  if (!coupon || coupon.mentorId !== mentorId) {
-    return { error: 'Cupom inválido.', coupon: null, discount: 0 }
+/** Valida CPF (11 dígitos) ou CNPJ (14) pelos dígitos verificadores */
+function isValidCpfCnpj(raw: string): boolean {
+  const v = raw.replace(/\D/g, '')
+  if (v.length === 11) {
+    if (/^(\d)\1{10}$/.test(v)) return false
+    const calc = (len: number) => {
+      let sum = 0
+      for (let i = 0; i < len; i++) sum += Number(v[i]) * (len + 1 - i)
+      const rest = (sum * 10) % 11
+      return rest === 10 ? 0 : rest
+    }
+    return calc(9) === Number(v[9]) && calc(10) === Number(v[10])
   }
-  if (!coupon.isActive) return { error: 'Este cupom está desativado.', coupon: null, discount: 0 }
-  if (coupon.expiresAt && coupon.expiresAt.getTime() < Date.now()) {
-    return { error: 'Este cupom expirou.', coupon: null, discount: 0 }
+  if (v.length === 14) {
+    if (/^(\d)\1{13}$/.test(v)) return false
+    const calc = (len: number) => {
+      let sum = 0
+      let weight = len - 7
+      for (let i = 0; i < len; i++) {
+        sum += Number(v[i]) * weight--
+        if (weight < 2) weight = 9
+      }
+      const rest = sum % 11
+      return rest < 2 ? 0 : 11 - rest
+    }
+    return calc(12) === Number(v[12]) && calc(13) === Number(v[13])
   }
-  if (coupon.maxUses !== null && coupon.uses >= coupon.maxUses) {
-    return { error: 'Este cupom esgotou o número de usos.', coupon: null, discount: 0 }
-  }
-  let discount = 0
-  if (coupon.percentOff !== null) {
-    discount = Math.round(price * (coupon.percentOff / 100) * 100) / 100
-  } else if (coupon.amountOff !== null) {
-    discount = Math.min(coupon.amountOff, price)
-  }
-  return { error: null, coupon, discount }
+  return false
 }
 
-/**
- * Recompensa a indicação pendente do comprador: 1ª compra paga libera
- * R$ 20 em créditos para quem convidou (PENDING → REWARDED).
- * Falha silenciosamente — nunca deve quebrar o checkout.
- */
-async function rewardPendingReferral(buyerId: string, buyerName: string) {
-  try {
-    const referral = await db.referral.findFirst({
-      where: { referredId: buyerId, status: 'PENDING' },
-      include: { referrer: { select: { id: true, name: true } } },
-    })
-    if (!referral) return
-
-    await db.$transaction([
-      db.referral.update({
-        where: { id: referral.id },
-        data: { status: 'REWARDED', rewardedAt: new Date() },
-      }),
-      db.user.update({
-        where: { id: referral.referrerId },
-        data: { creditCents: { increment: REFERRAL_REWARD_CENTS } },
-      }),
-    ])
-
-    await notify({
-      userId: referral.referrerId,
-      kind: 'referral_rewarded',
-      title: `Ganhou R$ 20,00 com sua indicação 💰`,
-      body: `${buyerName} concluiu a primeira compra. O crédito já está no seu saldo!`,
-      linkView: 'referrals',
-    })
-  } catch (err) {
-    console.error('rewardPendingReferral falhou (silencioso)', err)
-  }
+/** Aplica créditos de indicação (R$) sobre o valor pós-cupom — apenas cálculo */
+async function previewCredits(
+  userId: string,
+  basePrice: number,
+  couponDiscount: number,
+  useCredits: boolean
+): Promise<{ amount: number; creditsUsed: number }> {
+  const afterCoupon = Math.max(0, Math.round((basePrice - couponDiscount) * 100) / 100)
+  if (!useCredits || afterCoupon <= 0) return { amount: afterCoupon, creditsUsed: 0 }
+  const user = await db.user.findUnique({ where: { id: userId }, select: { creditCents: true } })
+  const balance = user?.creditCents ?? 0
+  if (balance <= 0) return { amount: afterCoupon, creditsUsed: 0 }
+  const creditsUsed = Math.min(balance / 100, afterCoupon)
+  const amount = Math.max(0, Math.round((afterCoupon - creditsUsed) * 100) / 100)
+  return { amount, creditsUsed }
 }
 
-/**
- * POST /api/checkout — finaliza a compra de um curso, trilha ou pacote (checkout
- * demonstrativo): cria o pedido + matrícula(s) + evento de conversão (purchase)
- * com atribuição, aplica cupom e créditos de indicação e recompensa quem convidou.
- */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}))
@@ -83,8 +69,14 @@ export async function POST(req: NextRequest) {
     const bundleId = String(body?.bundleId ?? '')
     const membershipId = String(body?.membershipId ?? '')
     const useCredits = body?.useCredits === true
-    const paymentMethod = body?.paymentMethod === 'CREDIT_CARD' ? 'CREDIT_CARD' : 'PIX'
+    const billingType: AsaasBillingType =
+      body?.paymentMethod === 'CREDIT_CARD'
+        ? 'CREDIT_CARD'
+        : body?.paymentMethod === 'BOLETO'
+          ? 'BOLETO'
+          : 'PIX'
     const couponCode = String(body?.couponCode ?? '').trim()
+    const rawCpf = String(body?.cpfCnpj ?? '').trim()
 
     const kindCount = [courseId, trackId, bundleId, membershipId].filter(Boolean).length
     if (!userId || kindCount !== 1) {
@@ -110,479 +102,248 @@ export async function POST(req: NextRequest) {
       landingPage,
     }
 
-    /** Aplica créditos de indicação (R$) sobre o valor pós-cupom */
-    async function applyCredits(
-      basePrice: number,
-      couponDiscount: number
-    ): Promise<{ amount: number; creditsUsed: number; newCreditCents: number }> {
-      const afterCoupon = Math.max(0, Math.round((basePrice - couponDiscount) * 100) / 100)
-      if (!useCredits || afterCoupon <= 0) {
-        return { amount: afterCoupon, creditsUsed: 0, newCreditCents: 0 }
-      }
-      const user = await db.user.findUnique({
-        where: { id: userId },
-        select: { creditCents: true },
-      })
-      const balance = user?.creditCents ?? 0
-      if (balance <= 0) return { amount: afterCoupon, creditsUsed: 0, newCreditCents: 0 }
-      const creditsUsed = Math.min(balance / 100, afterCoupon)
-      const newCreditCents = balance - Math.round(creditsUsed * 100)
-      const amount = Math.max(0, Math.round((afterCoupon - creditsUsed) * 100) / 100)
-      return { amount, creditsUsed, newCreditCents }
-    }
+    const [user, asaas] = await Promise.all([
+      db.user.findUnique({ where: { id: userId } }),
+      getAsaasConfig(),
+    ])
+    if (!user) return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 })
+    if (user.blocked) return NextResponse.json({ error: 'Conta bloqueada.' }, { status: 403 })
 
-    async function spendCredits(creditsUsed: number, newCreditCents: number) {
-      if (creditsUsed <= 0) return
-      await db.user.update({ where: { id: userId }, data: { creditCents: newCreditCents } })
-    }
+    const gatewayActive = asaas.apiKey.length > 0
 
-    // ---------- CHECKOUT DE ASSINATURA (MEMBERSHIP) ----------
+    // Documento obrigatório quando o dinheiro passa pelo gateway
+    if (gatewayActive && !isValidCpfCnpj(rawCpf)) {
+      return NextResponse.json(
+        { error: 'Informe um CPF/CNPJ válido para o pagamento (é exigido pelo gateway).' },
+        { status: 400 }
+      )
+    }
+    const userCpf: string = gatewayActive ? rawCpf.replace(/\D/g, '') : (user.cpfCnpj ?? '')
+
+    // ---------- Resolução do item (comum aos 4 tipos) ----------
+    interface ResolvedItem {
+      kind: 'COURSE' | 'TRACK' | 'BUNDLE' | 'MEMBERSHIP'
+      id: string
+      title: string
+      price: number
+      mentorId: string
+      alreadyOwned: string | null
+    }
+    let item: ResolvedItem | null = null
+
     if (membershipId) {
-      const membership = await db.mentorMembership.findUnique({
-        where: { id: membershipId },
-        include: { mentor: { include: { user: true } } },
-      })
-      const user = await db.user.findUnique({ where: { id: userId } })
-      if (!user) return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 })
+      const membership = await db.mentorMembership.findUnique({ where: { id: membershipId } })
       if (!membership || !membership.isPublished) {
         return NextResponse.json({ error: 'Assinatura não encontrada.' }, { status: 404 })
       }
-
       const existingSub = await db.membershipSubscription.findUnique({
         where: { membershipId_userId: { membershipId, userId } },
       })
-      if (existingSub && existingSub.status === 'ACTIVE') {
-        return NextResponse.json(
-          { error: 'Você já tem esta assinatura ativa.' },
-          { status: 409 }
-        )
+      item = {
+        kind: 'MEMBERSHIP',
+        id: membership.id,
+        title: membership.title,
+        price: membership.price,
+        mentorId: membership.mentorId,
+        alreadyOwned: existingSub && existingSub.status === 'ACTIVE' ? 'Você já tem esta assinatura ativa.' : null,
       }
-
-      const { error: couponError, coupon, discount } = await resolveCoupon(
-        couponCode,
-        membership.mentorId,
-        membership.price
-      )
-      if (couponError) return NextResponse.json({ error: couponError }, { status: 400 })
-
-      const credits = await applyCredits(membership.price, discount)
-      const finalAmount = credits.amount
-
-      const renewsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-      const [order] = await db.$transaction([
-        db.order.create({
-          data: {
-            membershipId,
-            studentId: userId,
-            mentorId: membership.mentorId,
-            amount: finalAmount,
-            paymentMethod,
-            status: 'PAID',
-            couponCode: coupon ? coupon.code : null,
-            discount,
-            creditsUsed: credits.creditsUsed,
-            ...attributionFields,
-          },
-        }),
-        db.trackingEvent.create({
-          data: {
-            name: 'purchase',
-            mentorId: membership.mentorId,
-            userId,
-            valueCents: Math.round(finalAmount * 100),
-            utmSource: attributionFields.utmSource,
-            utmMedium: attributionFields.utmMedium,
-            utmCampaign: attributionFields.utmCampaign,
-            utmContent: attributionFields.utmContent,
-            utmTerm: attributionFields.utmTerm,
-            gclid: attributionFields.gclid,
-            fbclid: attributionFields.fbclid,
-            channel,
-            path: s(body?.path, 300),
-          },
-        }),
-        // (Re)ativa a assinatura — reativação de cancelado também passa aqui
-        db.membershipSubscription.upsert({
-          where: { membershipId_userId: { membershipId, userId } },
-          create: {
-            membershipId,
-            userId,
-            mentorId: membership.mentorId,
-            status: 'ACTIVE',
-            renewsAt,
-          },
-          update: {
-            status: 'ACTIVE',
-            startedAt: new Date(),
-            renewsAt,
-            cancelledAt: null,
-          },
-        }),
-      ])
-
-      // Matricula em TODOS os cursos publicados do mentor (acesso imediato)
-      const courses = await db.course.findMany({
-        where: { mentorId: membership.mentorId, isPublished: true },
-        select: { id: true },
-      })
-      for (const c of courses) {
-        await db.enrollment.upsert({
-          where: { courseId_studentId: { courseId: c.id, studentId: userId } },
-          create: { courseId: c.id, studentId: userId, completedLessonIds: '[]' },
-          update: {},
-        })
-      }
-
-      await spendCredits(credits.creditsUsed, credits.newCreditCents)
-
-      if (coupon) {
-        await db.coupon.update({ where: { id: coupon.id }, data: { uses: { increment: 1 } } })
-      }
-      await notify({
-        userId: membership.mentor.userId,
-        kind: 'membership_new',
-        title: `Nova assinatura: "${membership.title}" 💳`,
-        body: `${user.name} assinou o plano mensal (R$ ${membership.price.toFixed(2).replace('.', ',')}/mês).`,
-        linkView: 'onboarding',
-        refId: membership.id,
-      })
-      await notify({
-        userId,
-        kind: 'membership_subscribed',
-        title: 'Assinatura ativada! 🎉',
-        body: `Todos os cursos de ${membership.mentor.user.name} foram liberados, mais a sessão em grupo mensal.`,
-        linkView: 'dashboard',
-        refId: membership.id,
-      })
-      await rewardPendingReferral(userId, user.name)
-
-      return NextResponse.json({
-        order: {
-          id: order.id,
-          itemKind: 'MEMBERSHIP',
-          itemTitle: membership.title,
-          amount: order.amount,
-          paymentMethod: order.paymentMethod,
-          status: order.status,
-          createdAt: order.createdAt.toISOString(),
-        },
-        alreadyEnrolled: false,
-      })
-    }
-
-    // ---------- CHECKOUT DE PACOTE (BUNDLE) ----------
-    if (bundleId) {
+    } else if (bundleId) {
       const bundle = await db.bundle.findUnique({
         where: { id: bundleId },
-        include: {
-          mentor: { include: { user: true } },
-          items: { select: { courseId: true } },
-        },
+        include: { items: { select: { courseId: true } } },
       })
-      const user = await db.user.findUnique({ where: { id: userId } })
-      if (!user) return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 })
       if (!bundle || !bundle.isPublished) {
         return NextResponse.json({ error: 'Pacote não encontrado.' }, { status: 404 })
       }
       const courseIds = bundle.items.map((i) => i.courseId)
-
-      // Já tem TODOS os cursos? Não há o que comprar.
-      const existingEnrollments = await db.enrollment.findMany({
+      const existing = await db.enrollment.findMany({
         where: { studentId: userId, courseId: { in: courseIds } },
         select: { courseId: true },
       })
-      if (existingEnrollments.length >= courseIds.length && courseIds.length > 0) {
-        return NextResponse.json(
-          { error: 'Você já tem acesso a todos os cursos deste pacote.' },
-          { status: 409 }
-        )
+      item = {
+        kind: 'BUNDLE',
+        id: bundle.id,
+        title: bundle.title,
+        price: bundle.price,
+        mentorId: bundle.mentorId,
+        alreadyOwned:
+          courseIds.length > 0 && existing.length >= courseIds.length
+            ? 'Você já tem acesso a todos os cursos deste pacote.'
+            : null,
       }
-
-      const { error: couponError, coupon, discount } = await resolveCoupon(
-        couponCode,
-        bundle.mentorId,
-        bundle.price
-      )
-      if (couponError) return NextResponse.json({ error: couponError }, { status: 400 })
-
-      const credits = await applyCredits(bundle.price, discount)
-      const finalAmount = credits.amount
-
-      const [order] = await db.$transaction([
-        db.order.create({
-          data: {
-            bundleId,
-            studentId: userId,
-            mentorId: bundle.mentorId,
-            amount: finalAmount,
-            paymentMethod,
-            status: 'PAID',
-            couponCode: coupon ? coupon.code : null,
-            discount,
-            creditsUsed: credits.creditsUsed,
-            ...attributionFields,
-          },
-        }),
-        db.trackingEvent.create({
-          data: {
-            name: 'purchase',
-            mentorId: bundle.mentorId,
-            userId,
-            valueCents: Math.round(finalAmount * 100),
-            utmSource: attributionFields.utmSource,
-            utmMedium: attributionFields.utmMedium,
-            utmCampaign: attributionFields.utmCampaign,
-            utmContent: attributionFields.utmContent,
-            utmTerm: attributionFields.utmTerm,
-            gclid: attributionFields.gclid,
-            fbclid: attributionFields.fbclid,
-            channel,
-            path: s(body?.path, 300),
-          },
-        }),
-      ])
-
-      // Matricula em todos os cursos do pacote que ainda não frequentava
-      for (const cid of courseIds) {
-        await db.enrollment.upsert({
-          where: { courseId_studentId: { courseId: cid, studentId: userId } },
-          create: { courseId: cid, studentId: userId, completedLessonIds: '[]' },
-          update: {},
-        })
-      }
-
-      await spendCredits(credits.creditsUsed, credits.newCreditCents)
-
-      if (coupon) {
-        await db.coupon.update({ where: { id: coupon.id }, data: { uses: { increment: 1 } } })
-      }
-      await notify({
-        userId: bundle.mentor.userId,
-        kind: 'purchase_new',
-        title: `Nova venda: pacote "${bundle.title}" 🤑`,
-        body: `${user.name} comprou o pacote com ${courseIds.length} cursos.`,
-        linkView: 'onboarding',
-        refId: bundle.id,
-      })
-      await rewardPendingReferral(userId, user.name)
-
-      return NextResponse.json({
-        order: {
-          id: order.id,
-          itemKind: 'BUNDLE',
-          itemTitle: bundle.title,
-          amount: order.amount,
-          paymentMethod: order.paymentMethod,
-          status: order.status,
-          createdAt: order.createdAt.toISOString(),
-        },
-        alreadyEnrolled: false,
-      })
-    }
-
-    // ---------- CHECKOUT DE TRILHA ----------
-    if (trackId) {
-      const track = await db.track.findUnique({
-        where: { id: trackId },
-        include: {
-          mentor: { include: { user: true } },
-          items: { where: { type: 'COURSE' }, select: { courseId: true } },
-        },
-      })
-      const user = await db.user.findUnique({ where: { id: userId } })
-      if (!user) return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 })
+    } else if (trackId) {
+      const track = await db.track.findUnique({ where: { id: trackId } })
       if (!track || !track.isPublished) {
         return NextResponse.json({ error: 'Trilha não encontrada.' }, { status: 404 })
       }
-
       const existingTrackEnrollment = await db.trackEnrollment.findUnique({
         where: { trackId_studentId: { trackId, studentId: userId } },
       })
-      if (existingTrackEnrollment) {
-        return NextResponse.json({ error: 'Você já tem acesso a esta trilha.' }, { status: 409 })
+      item = {
+        kind: 'TRACK',
+        id: track.id,
+        title: track.title,
+        price: track.price,
+        mentorId: track.mentorId,
+        alreadyOwned: existingTrackEnrollment ? 'Você já tem acesso a esta trilha.' : null,
       }
-
-      const courseIds = track.items
-        .filter((i): i is { courseId: string } => Boolean(i.courseId))
-        .map((i) => i.courseId)
-
-      // Cupom (do mentor da trilha)
-      const { error: couponError, coupon, discount } = await resolveCoupon(couponCode, track.mentorId, track.price)
-      if (couponError) return NextResponse.json({ error: couponError }, { status: 400 })
-
-      const credits = await applyCredits(track.price, discount)
-      const finalAmount = credits.amount
-
-      const [, order] = await db.$transaction([
-        db.trackEnrollment.create({ data: { trackId, studentId: userId } }),
-        db.order.create({
-          data: {
-            trackId,
-            studentId: userId,
-            mentorId: track.mentorId,
-            amount: finalAmount,
-            paymentMethod,
-            status: 'PAID',
-            couponCode: coupon ? coupon.code : null,
-            discount,
-            creditsUsed: credits.creditsUsed,
-            ...attributionFields,
-          },
-        }),
-        db.trackingEvent.create({
-          data: {
-            name: 'purchase',
-            mentorId: track.mentorId,
-            userId,
-            valueCents: Math.round(finalAmount * 100),
-            utmSource: attributionFields.utmSource,
-            utmMedium: attributionFields.utmMedium,
-            utmCampaign: attributionFields.utmCampaign,
-            utmContent: attributionFields.utmContent,
-            utmTerm: attributionFields.utmTerm,
-            gclid: attributionFields.gclid,
-            fbclid: attributionFields.fbclid,
-            channel,
-            path: s(body?.path, 300),
-          },
-        }),
-      ])
-
-      // Matricula em todos os cursos da trilha que ainda não frequentava
-      for (const cid of courseIds) {
-        await db.enrollment.upsert({
-          where: { courseId_studentId: { courseId: cid, studentId: userId } },
-          create: { courseId: cid, studentId: userId, completedLessonIds: '[]' },
-          update: {},
-        })
+    } else {
+      const course = await db.course.findUnique({ where: { id: courseId } })
+      if (!course || !course.isPublished) {
+        return NextResponse.json({ error: 'Curso não encontrado.' }, { status: 404 })
       }
-
-      // Consome o cupom e notifica o mentor sobre a venda
-      if (coupon) {
-        await db.coupon.update({ where: { id: coupon.id }, data: { uses: { increment: 1 } } })
-      }
-      await spendCredits(credits.creditsUsed, credits.newCreditCents)
-      await notify({
-        userId: track.mentor.userId,
-        kind: 'purchase_new',
-        title: `Nova venda: "${track.title}" 🤑`,
-        body: `${user.name} comprou a trilha${coupon ? ` (cupom ${coupon.code})` : ''}.`,
-        linkView: 'onboarding',
-        refId: track.id,
+      const existing = await db.enrollment.findUnique({
+        where: { courseId_studentId: { courseId, studentId: userId } },
       })
-      await rewardPendingReferral(userId, user.name)
+      item = {
+        kind: 'COURSE',
+        id: course.id,
+        title: course.title,
+        price: course.price,
+        mentorId: course.mentorId,
+        alreadyOwned: existing ? 'Você já tem acesso a este curso.' : null,
+      }
+    }
 
+    if (item.alreadyOwned) {
+      return NextResponse.json({ error: item.alreadyOwned }, { status: 409 })
+    }
+
+    // ---------- Cupom + créditos (cálculo; consumo só quando pagar) ----------
+    const { error: couponError, coupon, discount } = await resolveCoupon(
+      couponCode,
+      item.mentorId,
+      item.price
+    )
+    if (couponError) return NextResponse.json({ error: couponError }, { status: 400 })
+
+    const credits = await previewCredits(userId, item.price, discount, useCredits)
+    const finalAmount = credits.amount
+
+    // ---------- Cria o pedido (PENDING; liberação via fulfillOrder) ----------
+    const order = await db.order.create({
+      data: {
+        courseId: item.kind === 'COURSE' ? item.id : null,
+        trackId: item.kind === 'TRACK' ? item.id : null,
+        bundleId: item.kind === 'BUNDLE' ? item.id : null,
+        membershipId: item.kind === 'MEMBERSHIP' ? item.id : null,
+        studentId: userId,
+        mentorId: item.mentorId,
+        amount: finalAmount,
+        paymentMethod: billingType,
+        status: 'PENDING',
+        couponCode: coupon ? coupon.code : null,
+        discount,
+        creditsUsed: credits.creditsUsed,
+        ...attributionFields,
+      },
+    })
+
+    // ---------- Sem gateway: modo demonstração (paga na hora) ----------
+    if (!gatewayActive) {
+      await db.payment.create({
+        data: {
+          orderId: order.id,
+          userId,
+          gateway: 'SIMULATED',
+          billingType,
+          status: 'PENDING',
+          value: finalAmount,
+          externalReference: order.id,
+          lastEvent: 'checkout_simulado',
+          lastEventAt: new Date(),
+        },
+      })
+      const result = await fulfillOrder(order.id)
+      if (!result.ok) {
+        return NextResponse.json({ error: 'Erro ao liberar o acesso.' }, { status: 500 })
+      }
       return NextResponse.json({
         order: {
           id: order.id,
-          itemKind: 'TRACK',
-          itemTitle: track.title,
-          amount: order.amount,
-          paymentMethod: order.paymentMethod,
-          status: order.status,
+          itemKind: item.kind,
+          itemTitle: item.title,
+          amount: finalAmount,
+          paymentMethod: billingType,
+          status: 'PAID',
           createdAt: order.createdAt.toISOString(),
         },
         alreadyEnrolled: false,
       })
     }
 
-    // ---------- CHECKOUT DE CURSO ----------
-    const [user, course] = await Promise.all([
-      db.user.findUnique({ where: { id: userId } }),
-      db.course.findUnique({
-        where: { id: courseId },
-        include: { mentor: { include: { user: true } } },
-      }),
-    ])
+    // ---------- Gateway real (Asaas, sandbox em testes) ----------
+    try {
+      const customerId = await ensureAsaasCustomer(asaas, user, userCpf)
+      const origin = req.headers.get('origin') || req.nextUrl.origin
+      const asaasPayment = await createAsaasPayment(asaas, {
+        customerId,
+        billingType,
+        value: finalAmount,
+        description: `MentorHub — ${item.kind === 'COURSE' ? 'Curso' : item.kind === 'TRACK' ? 'Trilha' : item.kind === 'BUNDLE' ? 'Pacote' : 'Assinatura'}: ${item.title}`.replace(/[\n\r]+/g, ' '),
+        externalReference: order.id,
+        callbackSuccessUrl: `${origin}/?checkout=obrigado`,
+      })
 
-    if (!user) return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 })
-    if (!course || !course.isPublished) {
-      return NextResponse.json({ error: 'Curso não encontrado.' }, { status: 404 })
-    }
+      let pix: { payload: string; encodedImage: string } | undefined
+      if (billingType === 'PIX') {
+        try {
+          const qr = await getPixQrCode(asaas, asaasPayment.id)
+          pix = { payload: qr.payload, encodedImage: qr.encodedImage }
+        } catch {
+          // Fatura continua utilizável mesmo sem QR inline
+        }
+      }
 
-    const existing = await db.enrollment.findUnique({
-      where: { courseId_studentId: { courseId, studentId: userId } },
-    })
-    if (existing) {
+      const payment = await db.payment.create({
+        data: {
+          orderId: order.id,
+          userId,
+          gateway: 'ASAAS',
+          gatewayPaymentId: asaasPayment.id,
+          billingType,
+          status: 'PENDING',
+          value: finalAmount,
+          invoiceUrl: asaasPayment.invoiceUrl,
+          externalReference: order.id,
+          lastEvent: 'cobranca_criada',
+          lastEventAt: new Date(),
+        },
+      })
+
+      return NextResponse.json({
+        pending: true,
+        order: {
+          id: order.id,
+          itemKind: item.kind,
+          itemTitle: item.title,
+          amount: finalAmount,
+          paymentMethod: billingType,
+          status: 'PENDING',
+          createdAt: order.createdAt.toISOString(),
+        },
+        payment: {
+          id: payment.id,
+          gatewayPaymentId: asaasPayment.id,
+          billingType,
+          status: 'PENDING',
+          value: finalAmount,
+          invoiceUrl: asaasPayment.invoiceUrl,
+          env: asaas.env,
+          pix,
+        },
+      })
+    } catch (asaasErr) {
+      // Gateway falhou: cancela o pedido local e devolve a mensagem real
+      await db.order.update({ where: { id: order.id }, data: { status: 'CANCELED' } }).catch(() => {})
+      const message =
+        asaasErr instanceof Error ? asaasErr.message : 'Falha ao criar a cobrança no Asaas.'
+      console.error('POST /api/checkout (asaas)', asaasErr)
       return NextResponse.json(
-        { error: 'Você já tem acesso a este curso.' },
-        { status: 409 }
+        { error: `O gateway não conseguiu criar a cobrança: ${message}` },
+        { status: 502 }
       )
     }
-
-    // Cupom (do mentor do curso)
-    const { error: couponError, coupon, discount } = await resolveCoupon(couponCode, course.mentorId, course.price)
-    if (couponError) return NextResponse.json({ error: couponError }, { status: 400 })
-
-    const credits = await applyCredits(course.price, discount)
-    const finalAmount = credits.amount
-
-    // Pedido + matrícula + evento de conversão (fonte confiável no servidor)
-    const [order] = await db.$transaction([
-      db.order.create({
-        data: {
-          courseId,
-          studentId: userId,
-          mentorId: course.mentorId,
-          amount: finalAmount,
-          paymentMethod,
-          status: 'PAID',
-          couponCode: coupon ? coupon.code : null,
-          discount,
-          creditsUsed: credits.creditsUsed,
-          ...attributionFields,
-        },
-      }),
-      db.enrollment.create({
-        data: { courseId, studentId: userId, completedLessonIds: '[]' },
-      }),
-      db.trackingEvent.create({
-        data: {
-          name: 'purchase',
-          mentorId: course.mentorId,
-          courseId,
-          userId,
-          valueCents: Math.round(finalAmount * 100),
-          utmSource: attributionFields.utmSource,
-          utmMedium: attributionFields.utmMedium,
-          utmCampaign: attributionFields.utmCampaign,
-          utmContent: attributionFields.utmContent,
-          utmTerm: attributionFields.utmTerm,
-          gclid: attributionFields.gclid,
-          fbclid: attributionFields.fbclid,
-          channel,
-          path: s(body?.path, 300),
-        },
-      }),
-    ])
-
-    // Consome o cupom e notifica o mentor sobre a venda
-    if (coupon) {
-      await db.coupon.update({ where: { id: coupon.id }, data: { uses: { increment: 1 } } })
-    }
-    await spendCredits(credits.creditsUsed, credits.newCreditCents)
-    await notify({
-      userId: course.mentor.userId,
-      kind: 'purchase_new',
-      title: `Nova venda: "${course.title}" 🤑`,
-      body: `${user.name} comprou o curso${coupon ? ` (cupom ${coupon.code})` : ''}.`,
-      linkView: 'onboarding',
-      refId: course.id,
-    })
-    await rewardPendingReferral(userId, user.name)
-
-    return NextResponse.json({
-      order: {
-        id: order.id,
-        itemKind: 'COURSE',
-        itemTitle: course.title,
-        amount: order.amount,
-        paymentMethod: order.paymentMethod,
-        status: order.status,
-        createdAt: order.createdAt.toISOString(),
-      },
-      alreadyEnrolled: false,
-    })
   } catch (err) {
     console.error('POST /api/checkout', err)
     return NextResponse.json({ error: 'Erro ao processar o checkout.' }, { status: 500 })

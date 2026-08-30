@@ -7,6 +7,7 @@ import {
   GraduationCap,
   Library,
   Loader2,
+  ShieldCheck,
   Users,
   Video,
 } from 'lucide-react'
@@ -16,6 +17,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from '@/components/ui/input-otp'
 import { Avatar, Stars } from '@/components/platform/avatar'
 import { api } from '@/lib/api'
 import { firstName } from '@/lib/helpers'
@@ -66,6 +72,12 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
   const [demoLoading, setDemoLoading] = useState(true)
   const [demoBusyId, setDemoBusyId] = useState<string | null>(null)
 
+  // ----- MFA (segundo fator): ativo após senha correta de conta com MFA -----
+  const [mfaTicket, setMfaTicket] = useState<string | null>(null)
+  const [mfaCode, setMfaCode] = useState('')
+  const [mfaLoading, setMfaLoading] = useState(false)
+  const [mfaError, setMfaError] = useState<string | null>(null)
+
   // Sincroniza quando a view chega com outro modo (ex.: clique em "Criar conta" no navbar)
   useEffect(() => {
     if (initialMode) setTab(initialMode)
@@ -112,7 +124,18 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
     setLoginLoading(true)
     setLoginFormError(null)
     try {
-      const user = await api.login({ email: loginEmail.trim(), password: loginPassword })
+      const result = await api.login({ email: loginEmail.trim(), password: loginPassword })
+
+      // Conta com MFA: mostra a etapa do código de 6 dígitos
+      if ('mfaRequired' in result && result.mfaRequired) {
+        setMfaTicket(result.mfaTicket)
+        setMfaCode('')
+        setMfaError(null)
+        toast.info('Confirme com o código do seu app autenticador 🔐')
+        return
+      }
+
+      const user = result as UserDTO
       setUser(user)
       toast.success(`Bem-vindo(a) de volta, ${firstName(user.name)}! 👋`)
       navigate({ name: 'home' })
@@ -122,6 +145,29 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
       setLoginFormError(msg)
     } finally {
       setLoginLoading(false)
+    }
+  }
+
+  // ---------- MFA: verifica o código TOTP ----------
+  const handleMfaVerify = async (code?: string) => {
+    if (!mfaTicket || mfaLoading) return
+    const value = (code ?? mfaCode).replace(/\D/g, '')
+    if (value.length !== 6) return
+    setMfaLoading(true)
+    setMfaError(null)
+    try {
+      const user = await api.verifyMfa({ ticket: mfaTicket, code: value })
+      setUser(user)
+      toast.success(`Bem-vindo(a) de volta, ${firstName(user.name)}! 👋`)
+      setMfaTicket(null)
+      setMfaCode('')
+      navigate({ name: 'home' })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Código inválido.'
+      setMfaError(msg)
+      setMfaCode('')
+    } finally {
+      setMfaLoading(false)
     }
   }
 
@@ -175,7 +221,14 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
     if (demoBusyId) return
     setDemoBusyId(u.id)
     try {
-      const user = await api.login({ email: u.email, password: DEMO_PASSWORD })
+      const result = await api.login({ email: u.email, password: DEMO_PASSWORD })
+      // Contas demo não têm MFA — mas o tipo cobre o caso
+      if ('mfaRequired' in result && result.mfaRequired) {
+        setMfaTicket(result.mfaTicket)
+        toast.info('Confirme com o código do seu app autenticador 🔐')
+        return
+      }
+      const user = result as UserDTO
       setUser(user)
       toast.success(`Entrou como ${user.name}`)
       navigate({ name: 'home' })
@@ -265,6 +318,71 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
 
             {/* ----- Tab Entrar ----- */}
             <TabsContent value="login" className="mt-6">
+              {mfaTicket ? (
+                <div className="flex flex-col items-center text-center">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                    <ShieldCheck className="h-7 w-7" aria-hidden />
+                  </span>
+                  <h2 className="mt-4 text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+                    Verificação em duas etapas
+                  </h2>
+                  <p className="mt-1.5 max-w-xs text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+                    Digite o código de 6 dígitos do seu app autenticador (Google
+                    Authenticator, Authy…).
+                  </p>
+
+                  <div className="mt-6">
+                    <InputOTP
+                      maxLength={6}
+                      value={mfaCode}
+                      onChange={(v) => {
+                        setMfaCode(v)
+                        setMfaError(null)
+                        if (v.length === 6) void handleMfaVerify(v)
+                      }}
+                      disabled={mfaLoading}
+                    >
+                      <InputOTPGroup>
+                        {[0, 1, 2, 3, 4, 5].map((i) => (
+                          <InputOTPSlot key={i} index={i} className="h-12 w-11 rounded-lg border-stone-300 text-lg font-bold dark:border-stone-700" />
+                        ))}
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+
+                  {mfaError && (
+                    <p role="alert" className="mt-4 text-xs font-medium text-rose-600 dark:text-rose-400">
+                      {mfaError}
+                    </p>
+                  )}
+
+                  <Button
+                    onClick={() => void handleMfaVerify()}
+                    disabled={mfaLoading || mfaCode.replace(/\D/g, '').length !== 6}
+                    className="mt-6 h-11 w-full rounded-full text-sm font-bold"
+                  >
+                    {mfaLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                        Verificando…
+                      </>
+                    ) : (
+                      'Confirmar código'
+                    )}
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMfaTicket(null)
+                      setMfaCode('')
+                      setMfaError(null)
+                    }}
+                    className="mt-4 text-xs font-medium text-stone-400 underline-offset-2 transition-colors hover:text-stone-600 hover:underline dark:text-stone-500 dark:hover:text-stone-300"
+                  >
+                    Voltar para o login
+                  </button>
+                </div>
+              ) : (
               <form onSubmit={handleLogin} noValidate className="space-y-4">
                 <div>
                   <h2 className="text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
@@ -372,6 +490,7 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
                   )}
                 </Button>
               </form>
+              )}
             </TabsContent>
 
             {/* ----- Tab Criar conta ----- */}

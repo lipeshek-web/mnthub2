@@ -1,6 +1,11 @@
 import type {
+  AdminPaymentsResponseDTO,
+  AdminStatsDTO,
+  AdminUsersResponseDTO,
   AiLessonSummaryDTO,
   AiTutorChatMessage,
+  AsaasSettingsDTO,
+  AuditLogDTO,
   AvailabilitySlotInput,
   BookingDTO,
   BundleDTO,
@@ -24,6 +29,9 @@ import type {
   LessonQuestionDTO,
   MessageDTO,
   MembershipDTO,
+  PaymentStatusDTO,
+  PaymentsConfigDTO,
+  PendingPaymentDTO,
   ReminderRunDTO,
   WeeklyGoalDTO,
   MessagesResponseDTO,
@@ -83,7 +91,12 @@ export const api = {
       body: JSON.stringify(data),
     }),
   login: (data: { email: string; password: string }) =>
-    request<UserDTO>('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+    request<
+      | UserDTO
+      | { mfaRequired: true; mfaTicket: string; email: string }
+    >('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+  verifyMfa: (data: { ticket: string; code: string }) =>
+    request<UserDTO>('/api/auth/mfa/verify', { method: 'POST', body: JSON.stringify(data) }),
   me: (userId: string) =>
     request<{ user: UserDTO | null }>(`/api/auth/me${qs({ userId })}`),
 
@@ -430,16 +443,29 @@ export const api = {
   // LP pública do mentor (tráfego pago) — por slug
   getMentorBySlug: (slug: string) => request<MentorLpDTO>(`/api/mentors/by-slug/${encodeURIComponent(slug)}`),
 
-  // Checkout (pagamento demonstrativo) — curso, trilha ou pacote, com cupom e créditos
-  checkout: (data: {
-    userId: string
-    courseId?: string
-    trackId?: string
-    bundleId?: string
-    paymentMethod: 'PIX' | 'CREDIT_CARD'
-    couponCode?: string
-    useCredits?: boolean
-  }) => request<CheckoutResultDTO>('/api/checkout', { method: 'POST', body: JSON.stringify(data) }),
+  // Checkout — curso, trilha, pacote ou assinatura (gateway Asaas ou modo demonstração)
+  checkout: (
+    data: {
+      userId: string
+      courseId?: string
+      trackId?: string
+      bundleId?: string
+      membershipId?: string
+      paymentMethod: 'PIX' | 'CREDIT_CARD' | 'BOLETO'
+      couponCode?: string
+      useCredits?: boolean
+      cpfCnpj?: string
+    }
+  ) =>
+    request<CheckoutResultDTO | { pending: true; order: CheckoutResultDTO['order']; payment: PendingPaymentDTO }>(
+      '/api/checkout',
+      { method: 'POST', body: JSON.stringify(data) }
+    ),
+
+  // Pagamentos (config do gateway + status de cobrança pendente)
+  paymentsConfig: () => request<PaymentsConfigDTO>('/api/payments/config'),
+  paymentStatus: (userId: string, paymentId: string) =>
+    request<PaymentStatusDTO>(`/api/payments/status${qs({ userId, paymentId })}`),
 
   // Pacotes de cursos (bundles)
   listBundles: (params: { mentorUserId?: string; courseId?: string; userId?: string }) =>
@@ -600,4 +626,94 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ userId }),
     }),
+
+  // ==================== PAINEL DE ADMINISTRAÇÃO ====================
+  // Todas as chamadas exigem o header x-admin-token (sessão emitida no login)
+  admin: {
+    stats: (token: string) =>
+      request<AdminStatsDTO>('/api/admin/stats', { headers: { 'x-admin-token': token } }),
+
+    users: (token: string, params: { q?: string; page?: number }) =>
+      request<AdminUsersResponseDTO>(`/api/admin/users${qs({ ...params })}`, {
+        headers: { 'x-admin-token': token },
+      }),
+    userAction: (
+      token: string,
+      data: { userId: string; action: 'promote' | 'demote' | 'block' | 'unblock' }
+    ) =>
+      request<{ user: { id: string; role: string; blocked: boolean } }>('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'x-admin-token': token },
+        body: JSON.stringify(data),
+      }),
+
+    settings: (token: string) =>
+      request<{ asaas: AsaasSettingsDTO }>('/api/admin/settings', {
+        headers: { 'x-admin-token': token },
+      }),
+    saveSettings: (token: string, data: { apiKey?: string; env: 'sandbox' | 'production' }) =>
+      request<{ asaas: AsaasSettingsDTO }>('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'x-admin-token': token },
+        body: JSON.stringify(data),
+      }),
+    removeSettings: (token: string) =>
+      request<{ asaas: AsaasSettingsDTO }>('/api/admin/settings', {
+        method: 'DELETE',
+        headers: { 'x-admin-token': token },
+      }),
+    testConnection: (token: string) =>
+      request<{ ok: true; env: string; stats: { received: number; pending: number } } | { ok: false; error: string }>(
+        '/api/admin/settings',
+        { method: 'POST', headers: { 'x-admin-token': token }, body: JSON.stringify({ action: 'test' }) }
+      ),
+    createWebhook: (token: string, url: string) =>
+      request<{ ok: true; asaas: AsaasSettingsDTO } | { ok: false; error: string }>(
+        '/api/admin/settings',
+        { method: 'POST', headers: { 'x-admin-token': token }, body: JSON.stringify({ action: 'webhook', url }) }
+      ),
+
+    payments: (token: string, params: { status?: string; q?: string; page?: number }) =>
+      request<AdminPaymentsResponseDTO>(`/api/admin/payments${qs({ ...params })}`, {
+        headers: { 'x-admin-token': token },
+      }),
+    paymentAction: (
+      token: string,
+      data: { paymentId: string; action: 'confirm_asaas' | 'sync' | 'cancel' }
+    ) =>
+      request<{ ok: boolean } & Record<string, unknown>>('/api/admin/payments', {
+        method: 'POST',
+        headers: { 'x-admin-token': token },
+        body: JSON.stringify(data),
+      }),
+
+    mfaStatus: (token: string) =>
+      request<{ mfaEnabled: boolean }>('/api/admin/mfa', {
+        headers: { 'x-admin-token': token },
+      }),
+    mfaSetup: (token: string) =>
+      request<{ secret: string; uri: string; qrDataUrl: string }>('/api/admin/mfa', {
+        method: 'POST',
+        headers: { 'x-admin-token': token },
+        body: JSON.stringify({ action: 'setup' }),
+      }),
+    mfaEnable: (token: string, code: string) =>
+      request<{ ok: true; mfaEnabled: true }>('/api/admin/mfa', {
+        method: 'POST',
+        headers: { 'x-admin-token': token },
+        body: JSON.stringify({ action: 'enable', code }),
+      }),
+    mfaDisable: (token: string, password: string) =>
+      request<{ ok: true; mfaEnabled: false }>('/api/admin/mfa', {
+        method: 'POST',
+        headers: { 'x-admin-token': token },
+        body: JSON.stringify({ action: 'disable', password }),
+      }),
+
+    audit: (token: string, page = 1) =>
+      request<{ logs: AuditLogDTO[]; total: number; page: number; pages: number }>(
+        `/api/admin/audit${qs({ page })}`,
+        { headers: { 'x-admin-token': token } }
+      ),
+  },
 }

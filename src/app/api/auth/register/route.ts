@@ -15,6 +15,9 @@ const USER_SELECT = {
   bio: true,
   avatarUrl: true,
   creditCents: true,
+  role: true,
+  blocked: true,
+  mfaEnabled: true,
   mentorProfile: { select: { id: true } },
 } as const
 

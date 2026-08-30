@@ -81,14 +81,18 @@ const ReferralsView = dynamic(
   () => import('@/components/platform/referrals-view').then((m) => m.ReferralsView),
   { ssr: false, loading: ViewLoading }
 )
+const AdminPanel = dynamic(
+  () => import('@/components/platform/admin-panel').then((m) => m.AdminPanel),
+  { ssr: false, loading: ViewLoading }
+)
 const LandingMentor = dynamic(() => import('@/components/platform/landing-mentor'), {
   ssr: false,
   loading: ViewLoading,
 })
 
 /** Views que exigem sessão ativa — convidado é levado ao login/cadastro */
-const AUTH_REQUIRED: AppViewNames[] = ['dashboard', 'onboarding', 'checkout', 'meeting', 'messages', 'referrals']
-type AppViewNames = 'dashboard' | 'onboarding' | 'checkout' | 'meeting' | 'messages' | 'referrals'
+const AUTH_REQUIRED: AppViewNames[] = ['dashboard', 'onboarding', 'checkout', 'meeting', 'messages', 'referrals', 'admin']
+type AppViewNames = 'dashboard' | 'onboarding' | 'checkout' | 'meeting' | 'messages' | 'referrals' | 'admin'
 
 /** Título da aba por view — renderizado como <title> hoisted no shell */
 function docTitleFor(viewName: string): string {
@@ -109,6 +113,7 @@ function docTitleFor(viewName: string): string {
     certificate: 'Certificado — MentorHub',
     messages: 'Mensagens — MentorHub',
     referrals: 'Indique e ganhe — MentorHub',
+    admin: 'Administração — MentorHub',
     auth: 'Entrar — MentorHub',
   }
   return titles[viewName] ?? 'MentorHub — Plataforma de Mentorias 1:1'
@@ -289,6 +294,7 @@ export default function Home() {
               {view.name === 'certificate' && <CertificateView code={view.code} />}
               {view.name === 'messages' && <MessagesView initialPeerId={view.peerId} />}
               {view.name === 'referrals' && <ReferralsView />}
+              {view.name === 'admin' && user?.role === 'ADMIN' && <AdminPanel />}
             </>
           )}
 

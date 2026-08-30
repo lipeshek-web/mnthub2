@@ -10,6 +10,13 @@ export interface UserDTO {
   isMentor?: boolean
   /** Saldo de créditos de indicação em centavos (R$ 10 = 1000) */
   creditCents?: number
+  /** Papel na plataforma: USER (padrão) ou ADMIN (painel de administração) */
+  role?: 'USER' | 'ADMIN' | string
+  blocked?: boolean
+  /** Segundo fator (TOTP) ativo nesta conta */
+  mfaEnabled?: boolean
+  /** Token da sessão administrativa (só admins, emitido no login) */
+  adminToken?: string | null
 }
 
 export interface SocialLinksDTO {
@@ -749,4 +756,127 @@ export interface ReminderRunDTO {
   created: number
   /** Kinds criados nesta execução (dedupe no servidor) */
   kinds: string[]
+}
+
+// ==================== PAGAMENTOS (GATEWAY ASAAS) ====================
+
+export interface PaymentsConfigDTO {
+  /** ASAAS = gateway real (sandbox/produção); SIMULADO = modo demonstração */
+  gateway: 'ASAAS' | 'SIMULADO'
+  env: 'sandbox' | 'production' | null
+}
+
+export interface PendingPaymentDTO {
+  id: string
+  gatewayPaymentId?: string | null
+  billingType: 'PIX' | 'CREDIT_CARD' | 'BOLETO' | string
+  status: string
+  value: number
+  invoiceUrl?: string | null
+  env?: 'sandbox' | 'production' | null
+  pix?: { payload: string; encodedImage: string } | null
+}
+
+export interface PaymentStatusDTO {
+  status: string
+  orderStatus: string
+  billingType: string
+  invoiceUrl?: string | null
+}
+
+// ==================== PAINEL ADMIN ====================
+
+export interface AdminStatsDTO {
+  totals: {
+    users: number
+    mentors: number
+    courses: number
+    tracks: number
+    libraryItems: number
+    admins: number
+    bookingsPending: number
+    paymentsPending: number
+  }
+  revenue: {
+    totalCents: number
+    ordersCount: number
+    last30dCents: number
+    last30dOrders: number
+  }
+  asaas: {
+    configured: boolean
+    env: 'sandbox' | 'production'
+    webhookConfigured: boolean
+  }
+  recentPayments: Array<{
+    id: string
+    gateway: string
+    status: string
+    value: number
+    billingType: string
+    createdAt: string
+    userName: string
+    itemTitle: string
+  }>
+}
+
+export interface AdminUserDTO {
+  id: string
+  name: string
+  email: string
+  role: string
+  blocked: boolean
+  mfaEnabled: boolean
+  isMentor: boolean
+  creditCents: number
+  enrollments: number
+  orders: number
+  createdAt: string
+}
+
+export interface AdminUsersResponseDTO {
+  users: AdminUserDTO[]
+  total: number
+  page: number
+  pages: number
+}
+
+export interface AsaasSettingsDTO {
+  configured: boolean
+  env: 'sandbox' | 'production'
+  maskedKey: string
+  webhookConfigured: boolean
+}
+
+export interface AdminPaymentDTO {
+  id: string
+  gateway: string
+  gatewayPaymentId?: string | null
+  billingType: string
+  status: string
+  orderStatus: string
+  value: number
+  invoiceUrl?: string | null
+  lastEvent?: string | null
+  createdAt: string
+  confirmedAt?: string | null
+  userName: string
+  userEmail: string
+  itemTitle: string
+  orderId: string
+}
+
+export interface AdminPaymentsResponseDTO {
+  payments: AdminPaymentDTO[]
+  total: number
+  page: number
+  pages: number
+}
+
+export interface AuditLogDTO {
+  id: string
+  actorName: string
+  action: string
+  meta: string
+  createdAt: string
 }

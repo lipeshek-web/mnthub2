@@ -1,0 +1,1071 @@
+'use client'
+
+// Painel de administração da plataforma — exclusivo para role=ADMIN.
+// Segurança: a sessão admin (x-admin-token) é emitida no login (senha + MFA
+// quando ativo) com validade de 12h. Sem token válido, nenhuma API responde.
+// Abas: Visão geral · Pagamentos (Asaas) · Usuários · Segurança (MFA) · Auditoria
+
+import { useCallback, useEffect, useState } from 'react'
+import {
+  ArrowLeft,
+  BadgeCheck,
+  Ban,
+  BookOpen,
+  Check,
+  CheckCircle2,
+  Clock,
+  Copy,
+  CreditCard,
+  ExternalLink,
+  GraduationCap,
+  KeyRound,
+  Library,
+  Loader2,
+  QrCode,
+  RefreshCw,
+  Route,
+  Search,
+  ShieldAlert,
+  ShieldCheck,
+  ShoppingBag,
+  TrendingUp,
+  UserCog,
+  Users,
+  X,
+} from 'lucide-react'
+import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from '@/components/ui/input-otp'
+import { Avatar } from '@/components/platform/avatar'
+import { api } from '@/lib/api'
+import { currencyBRL } from '@/lib/helpers'
+import { useAppStore } from '@/lib/store'
+import type {
+  AdminPaymentsResponseDTO,
+  AdminStatsDTO,
+  AdminUserDTO,
+  AdminUsersResponseDTO,
+  AsaasSettingsDTO,
+} from '@/lib/types'
+import { cn } from '@/lib/utils'
+
+const PAYMENT_STATUS_META: Record<string, { label: string; cls: string }> = {
+  PENDING: { label: 'Pendente', cls: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-900' },
+  RECEIVED: { label: 'Recebido', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-900' },
+  CONFIRMED: { label: 'Confirmado', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-900' },
+  OVERDUE: { label: 'Vencido', cls: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-900' },
+  REFUNDED: { label: 'Estornado', cls: 'bg-stone-100 text-stone-600 border-stone-200 dark:bg-stone-900 dark:text-stone-300 dark:border-stone-800' },
+  CANCELED: { label: 'Cancelado', cls: 'bg-stone-100 text-stone-500 border-stone-200 dark:bg-stone-900 dark:text-stone-400 dark:border-stone-800' },
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const meta = PAYMENT_STATUS_META[status] ?? { label: status, cls: 'bg-stone-100 text-stone-600 border-stone-200 dark:bg-stone-900 dark:text-stone-300 dark:border-stone-800' }
+  return (
+    <Badge variant="outline" className={cn('rounded-full text-[10px] font-bold', meta.cls)}>
+      {meta.label}
+    </Badge>
+  )
+}
+
+export function AdminPanel() {
+  const user = useAppStore((s) => s.user)
+  const navigate = useAppStore((s) => s.navigate)
+  const token = user?.adminToken ?? ''
+
+  const [tab, setTab] = useState('overview')
+
+  // ---------- Visão geral ----------
+  const [stats, setStats] = useState<AdminStatsDTO | null>(null)
+  const [statsLoading, setStatsLoading] = useState(true)
+
+  // ---------- Pagamentos ----------
+  const [payments, setPayments] = useState<AdminPaymentsResponseDTO | null>(null)
+  const [paymentsLoading, setPaymentsLoading] = useState(true)
+  const [paymentsFilter, setPaymentsFilter] = useState('ALL')
+  const [paymentsQuery, setPaymentsQuery] = useState('')
+  const [busyPayment, setBusyPayment] = useState<string | null>(null)
+
+  // ---------- Configuração do Asaas ----------
+  const [asaas, setAsaas] = useState<AsaasSettingsDTO | null>(null)
+  const [apiKeyInput, setApiKeyInput] = useState('')
+  const [envInput, setEnvInput] = useState<'sandbox' | 'production'>('sandbox')
+  const [savingSettings, setSavingSettings] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [webhookUrl, setWebhookUrl] = useState('')
+  const [creatingWebhook, setCreatingWebhook] = useState(false)
+
+  // ---------- Usuários ----------
+  const [users, setUsers] = useState<AdminUsersResponseDTO | null>(null)
+  const [usersLoading, setUsersLoading] = useState(true)
+  const [usersQuery, setUsersQuery] = useState('')
+  const [busyUser, setBusyUser] = useState<string | null>(null)
+
+  // ---------- Segurança (MFA) ----------
+  const [mfaEnabled, setMfaEnabled] = useState<boolean | null>(null)
+  const [mfaSetup, setMfaSetup] = useState<{ secret: string; uri: string; qrDataUrl: string } | null>(null)
+  const [mfaCode, setMfaCode] = useState('')
+  const [mfaBusy, setMfaBusy] = useState(false)
+  const [disablePassword, setDisablePassword] = useState('')
+
+  // ---------- Auditoria ----------
+  const [auditLogs, setAuditLogs] = useState<{ logs: { id: string; actorName: string; action: string; meta: string; createdAt: string }[]; total: number } | null>(null)
+  const [auditLoading, setAuditLoading] = useState(true)
+
+  /** Sem token de sessão admin (login antigo ou expirado) — pede novo login */
+  const needsRelogin = !token
+
+  // ==================== Cargas ====================
+  const loadStats = useCallback(() => {
+    if (!token) return
+    setStatsLoading(true)
+    api.admin
+      .stats(token)
+      .then(setStats)
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Erro ao carregar números.'))
+      .finally(() => setStatsLoading(false))
+  }, [token])
+
+  const loadPayments = useCallback(
+    (filter = paymentsFilter, q = paymentsQuery) => {
+      if (!token) return
+      setPaymentsLoading(true)
+      api.admin
+        .payments(token, { status: filter, q: q || undefined })
+        .then(setPayments)
+        .catch((err) => toast.error(err instanceof Error ? err.message : 'Erro ao carregar cobranças.'))
+        .finally(() => setPaymentsLoading(false))
+    },
+    [token, paymentsFilter, paymentsQuery]
+  )
+
+  const loadSettings = useCallback(() => {
+    if (!token) return
+    api.admin
+      .settings(token)
+      .then(({ asaas: s }) => {
+        setAsaas(s)
+        setEnvInput(s.env)
+      })
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Erro ao carregar configuração.'))
+  }, [token])
+
+  const loadUsers = useCallback(
+    (q = usersQuery) => {
+      if (!token) return
+      setUsersLoading(true)
+      api.admin
+        .users(token, { q: q || undefined })
+        .then(setUsers)
+        .catch((err) => toast.error(err instanceof Error ? err.message : 'Erro ao carregar usuários.'))
+        .finally(() => setUsersLoading(false))
+    },
+    [token, usersQuery]
+  )
+
+  const loadMfa = useCallback(() => {
+    if (!token) return
+    api.admin
+      .mfaStatus(token)
+      .then(({ mfaEnabled: enabled }) => setMfaEnabled(enabled))
+      .catch(() => setMfaEnabled(null))
+  }, [token])
+
+  const loadAudit = useCallback(() => {
+    if (!token) return
+    setAuditLoading(true)
+    api.admin
+      .audit(token)
+      .then(setAuditLogs)
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Erro ao carregar auditoria.'))
+      .finally(() => setAuditLoading(false))
+  }, [token])
+
+  useEffect(() => {
+    loadStats()
+    loadSettings()
+    loadMfa()
+  }, [loadStats, loadSettings, loadMfa])
+  useEffect(() => {
+    if (tab === 'payments') loadPayments()
+    if (tab === 'users') loadUsers()
+    if (tab === 'security') loadMfa()
+    if (tab === 'audit') loadAudit()
+     
+  }, [tab])
+
+  // ==================== Ações ====================
+  const saveSettings = async () => {
+    setSavingSettings(true)
+    try {
+      const { asaas: updated } = await api.admin.saveSettings(token, {
+        apiKey: apiKeyInput || undefined,
+        env: envInput,
+      })
+      setAsaas(updated)
+      setApiKeyInput('')
+      toast.success(
+        updated.configured
+          ? `Gateway Asaas ativo (${updated.env === 'production' ? 'PRODUÇÃO' : 'sandbox'}) ✅`
+          : 'Configuração removida — modo demonstração ativo.'
+      )
+      loadStats()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao salvar.')
+    } finally {
+      setSavingSettings(false)
+    }
+  }
+
+  const removeSettings = async () => {
+    setSavingSettings(true)
+    try {
+      const { asaas: updated } = await api.admin.removeSettings(token)
+      setAsaas(updated)
+      toast.info('Chave removida. A plataforma voltou ao modo demonstração.')
+      loadStats()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao remover.')
+    } finally {
+      setSavingSettings(false)
+    }
+  }
+
+  const testConnection = async () => {
+    setTesting(true)
+    try {
+      const res = await api.admin.testConnection(token)
+      if (res.ok) {
+        toast.success(`Conectado ao Asaas (${res.env === 'production' ? 'produção' : 'sandbox'}) ✅`)
+      } else {
+        toast.error(`Falhou: ${res.error}`)
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro no teste.')
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  const createWebhook = async () => {
+    setCreatingWebhook(true)
+    try {
+      const res = await api.admin.createWebhook(token, webhookUrl.trim())
+      if (res.ok) {
+        setAsaas(res.asaas)
+        toast.success('Webhook criado no Asaas! Pagamentos cairão automaticamente.')
+      } else {
+        toast.error(res.error)
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao criar o webhook.')
+    } finally {
+      setCreatingWebhook(false)
+    }
+  }
+
+  const paymentAction = async (paymentId: string, action: 'confirm_asaas' | 'sync' | 'cancel') => {
+    setBusyPayment(paymentId + action)
+    try {
+      const res = await api.admin.paymentAction(token, { paymentId, action })
+      if (action === 'confirm_asaas' || (action === 'sync' && res.fulfilled)) {
+        toast.success('Pagamento confirmado e acesso liberado! 🎉')
+      } else if (action === 'sync') {
+        toast.info(`Status sincronizado: ${String(res.status)}`)
+      } else {
+        toast.success('Cobrança cancelada.')
+      }
+      loadPayments()
+      loadStats()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro na ação.')
+    } finally {
+      setBusyPayment(null)
+    }
+  }
+
+  const userAction = async (targetId: string, action: 'promote' | 'demote' | 'block' | 'unblock') => {
+    setBusyUser(targetId + action)
+    try {
+      await api.admin.userAction(token, { userId: targetId, action })
+      toast.success({
+        promote: 'Usuário promovido a ADMIN.',
+        demote: 'Usuário rebaixado para USER.',
+        block: 'Usuário bloqueado.',
+        unblock: 'Usuário desbloqueado.',
+      }[action])
+      loadUsers()
+      loadStats()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro na ação.')
+    } finally {
+      setBusyUser(null)
+    }
+  }
+
+  // ---------- MFA ----------
+  const startMfaSetup = async () => {
+    setMfaBusy(true)
+    try {
+      const setup = await api.admin.mfaSetup(token)
+      setMfaSetup(setup)
+      setMfaCode('')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao gerar o QR.')
+    } finally {
+      setMfaBusy(false)
+    }
+  }
+
+  const confirmMfa = async (code?: string) => {
+    const value = (code ?? mfaCode).replace(/\D/g, '')
+    if (!mfaSetup || value.length !== 6 || mfaBusy) return
+    setMfaBusy(true)
+    try {
+      await api.admin.mfaEnable(token, value)
+      setMfaEnabled(true)
+      setMfaSetup(null)
+      setMfaCode('')
+      toast.success('MFA ativado! Seu próximo login pedirá o código 🔐')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Código inválido.')
+      setMfaCode('')
+    } finally {
+      setMfaBusy(false)
+    }
+  }
+
+  const disableMfa = async () => {
+    if (!disablePassword || mfaBusy) return
+    setMfaBusy(true)
+    try {
+      await api.admin.mfaDisable(token, disablePassword)
+      setMfaEnabled(false)
+      setDisablePassword('')
+      toast.info('MFA desativado. Recomendamos reativar o quanto antes.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Senha incorreta.')
+    } finally {
+      setMfaBusy(false)
+    }
+  }
+
+  // ---------- Sem sessão admin ----------
+  if (needsRelogin) {
+    return (
+      <div className="mx-auto w-full max-w-md px-4 py-16">
+        <Card className="rounded-2xl">
+          <CardContent className="flex flex-col items-center p-8 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300">
+              <ShieldAlert className="h-7 w-7" aria-hidden />
+            </span>
+            <h1 className="mt-4 text-lg font-extrabold text-stone-900 dark:text-stone-50">
+              Sessão administrativa necessária
+            </h1>
+            <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+              Faça login novamente com a sua conta admin para acessar o painel. Se o MFA estiver
+              ativo, o código será pedido na hora.
+            </p>
+            <Button onClick={() => navigate({ name: 'auth', mode: 'login' })} className="mt-6 h-11 rounded-full px-8 font-bold">
+              Ir para o login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
+      {/* Cabeçalho */}
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-950 text-emerald-300 dark:bg-emerald-950/60">
+          <ShieldCheck className="h-5.5 w-5.5" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+            Administração da plataforma
+          </h1>
+          <p className="text-xs text-stone-500 dark:text-stone-400">
+            Logado como {user?.name} · sessão segura de 12h
+            {mfaEnabled === false && (
+              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+                <ShieldAlert className="h-3 w-3" aria-hidden /> MFA inativo
+              </span>
+            )}
+          </p>
+        </div>
+        <Button variant="ghost" onClick={() => navigate({ name: 'home' })} className="rounded-full">
+          <ArrowLeft aria-hidden className="h-4 w-4" /> Voltar
+        </Button>
+      </div>
+
+      {/* Aviso de MFA inativo */}
+      {mfaEnabled === false && (
+        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+          <ShieldAlert aria-hidden className="h-4 w-4 shrink-0" />
+          <span className="flex-1">
+            Sua conta admin está <strong>sem MFA</strong>. Ative o segundo fator na aba Segurança — é
+            o que protege o dinheiro da plataforma.
+          </span>
+          <Button size="sm" variant="outline" className="rounded-full" onClick={() => setTab('security')}>
+            Ativar agora
+          </Button>
+        </div>
+      )}
+
+      <Tabs value={tab} onValueChange={setTab} className="mt-6">
+        <TabsList className="flex h-auto w-full flex-wrap gap-1 rounded-2xl bg-stone-100 dark:bg-stone-800 p-1 sm:grid sm:grid-cols-5">
+          <TabsTrigger value="overview" className="rounded-xl text-xs font-bold sm:text-sm">
+            <TrendingUp className="h-4 w-4" aria-hidden /> Visão geral
+          </TabsTrigger>
+          <TabsTrigger value="payments" className="rounded-xl text-xs font-bold sm:text-sm">
+            <CreditCard className="h-4 w-4" aria-hidden /> Pagamentos
+          </TabsTrigger>
+          <TabsTrigger value="users" className="rounded-xl text-xs font-bold sm:text-sm">
+            <Users className="h-4 w-4" aria-hidden /> Usuários
+          </TabsTrigger>
+          <TabsTrigger value="security" className="rounded-xl text-xs font-bold sm:text-sm">
+            <KeyRound className="h-4 w-4" aria-hidden /> Segurança
+          </TabsTrigger>
+          <TabsTrigger value="audit" className="rounded-xl text-xs font-bold sm:text-sm">
+            <BadgeCheck className="h-4 w-4" aria-hidden /> Auditoria
+          </TabsTrigger>
+        </TabsList>
+
+        {/* ==================== VISÃO GERAL ==================== */}
+        <TabsContent value="overview" className="mt-5">
+          {statsLoading || !stats ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Skeleton key={i} className="h-24 rounded-2xl" />
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {[
+                  { label: 'Usuários', value: String(stats.totals.users), icon: Users },
+                  { label: 'Mentores', value: String(stats.totals.mentors), icon: GraduationCap },
+                  { label: 'Cursos', value: String(stats.totals.courses), icon: BookOpen },
+                  { label: 'Trilhas', value: String(stats.totals.tracks), icon: Route },
+                  {
+                    label: 'Receita (paga)',
+                    value: currencyBRL(stats.revenue.totalCents / 100),
+                    icon: ShoppingBag,
+                  },
+                  {
+                    label: 'Últimos 30 dias',
+                    value: currencyBRL(stats.revenue.last30dCents / 100),
+                    icon: TrendingUp,
+                  },
+                  { label: 'Cobranças pendentes', value: String(stats.totals.paymentsPending), icon: Clock },
+                  { label: 'Biblioteca', value: String(stats.totals.libraryItems), icon: Library },
+                ].map(({ label, value, icon: Icon }) => (
+                  <Card key={label} className="rounded-2xl">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 text-stone-400 dark:text-stone-500">
+                        <Icon aria-hidden className="h-4 w-4" />
+                        <span className="truncate text-[11px] font-bold uppercase tracking-wide">{label}</span>
+                      </div>
+                      <p className="mt-1.5 truncate text-xl font-extrabold text-stone-900 dark:text-stone-50">
+                        {value}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Status do gateway + últimas cobranças */}
+              <Card className="mt-5 rounded-2xl">
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                      Gateway de pagamentos
+                    </h2>
+                    {stats.asaas.configured ? (
+                      <Badge className="rounded-full bg-emerald-100 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300">
+                        Asaas · {stats.asaas.env === 'production' ? 'PRODUÇÃO' : 'SANDBOX'}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="rounded-full border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300">
+                        Modo demonstração
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+                    {stats.asaas.configured
+                      ? `Cobranças reais ativas via Asaas${stats.asaas.webhookConfigured ? ' · webhook configurado (confirmação automática)' : ' · webhook não configurado (use "Verificar status" / confirmação manual)'}.`
+                      : 'Nenhuma chave configurada — os pedidos são marcados como SIMULADO e aprovados na hora. Configure na aba Pagamentos.'}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="mt-4 rounded-2xl">
+                <CardContent className="p-4 sm:p-5">
+                  <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                    Últimas cobranças
+                  </h2>
+                  <ul className="mt-3 divide-y divide-stone-100 dark:divide-stone-800">
+                    {stats.recentPayments.map((p) => (
+                      <li key={p.id} className="flex items-center gap-3 py-2.5">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-stone-800 dark:text-stone-100">
+                            {p.itemTitle}
+                          </p>
+                          <p className="truncate text-xs text-stone-400 dark:text-stone-500">
+                            {p.userName} · {new Date(p.createdAt).toLocaleDateString('pt-BR')} ·{' '}
+                            {p.gateway === 'ASAAS' ? 'Asaas' : 'Simulado'}
+                          </p>
+                        </div>
+                        <StatusBadge status={p.status} />
+                        <span className="text-sm font-bold text-stone-800 dark:text-stone-100">
+                          {currencyBRL(p.value)}
+                        </span>
+                      </li>
+                    ))}
+                    {stats.recentPayments.length === 0 && (
+                      <li className="py-6 text-center text-sm text-stone-400 dark:text-stone-500">
+                        Nenhuma cobrança ainda.
+                      </li>
+                    )}
+                  </ul>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </TabsContent>
+
+        {/* ==================== PAGAMENTOS ==================== */}
+        <TabsContent value="payments" className="mt-5 space-y-4">
+          {/* Configuração do Asaas */}
+          <Card className="rounded-2xl">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                  Configuração do Asaas
+                </h2>
+                {asaas?.configured && (
+                  <Badge className="rounded-full bg-emerald-100 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300">
+                    {asaas.env === 'production' ? 'PRODUÇÃO' : 'SANDBOX'} · {asaas.maskedKey}
+                  </Badge>
+                )}
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <Label htmlFor="asaas-key" className="text-xs font-semibold text-stone-600 dark:text-stone-300">
+                    Chave de API {asaas?.configured ? '(deixe vazio para manter a atual)' : 'do sandbox'}
+                  </Label>
+                  <Input
+                    id="asaas-key"
+                    type="password"
+                    value={apiKeyInput}
+                    onChange={(e) => setApiKeyInput(e.target.value)}
+                    placeholder={asaas?.configured ? `Atual: ${asaas.maskedKey}` : 'Cole aqui a chave do sandbox…'}
+                    autoComplete="off"
+                    className="mt-1.5 h-10 rounded-xl font-mono"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-stone-600 dark:text-stone-300">Ambiente</Label>
+                  <div className="mt-1.5 grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant={envInput === 'sandbox' ? 'default' : 'outline'}
+                      onClick={() => setEnvInput('sandbox')}
+                      className="h-10 rounded-xl font-bold"
+                    >
+                      Sandbox
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={envInput === 'production' ? 'default' : 'outline'}
+                      onClick={() => setEnvInput('production')}
+                      className="h-10 rounded-xl font-bold"
+                    >
+                      Produção
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex items-end gap-2">
+                  <Button onClick={() => void saveSettings()} disabled={savingSettings} className="h-10 flex-1 rounded-xl font-bold">
+                    {savingSettings ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : 'Salvar'}
+                  </Button>
+                  <Button onClick={() => void testConnection()} disabled={testing || !asaas?.configured} variant="outline" className="h-10 flex-1 rounded-xl font-bold">
+                    {testing ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : 'Testar conexão'}
+                  </Button>
+                  {asaas?.configured && (
+                    <Button onClick={() => void removeSettings()} disabled={savingSettings} variant="ghost" className="h-10 rounded-xl text-rose-600 dark:text-rose-400">
+                      <X aria-hidden className="h-4 w-4" />
+                      <span className="sr-only">Remover configuração</span>
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Webhook */}
+              <div className="mt-4 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-950/50 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs font-bold text-stone-600 dark:text-stone-300">
+                    Webhook de confirmação automática{' '}
+                    {asaas?.webhookConfigured ? (
+                      <CheckCircle2 aria-hidden className="inline h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    ) : (
+                      <span className="font-normal text-stone-400 dark:text-stone-500">(não configurado)</span>
+                    )}
+                  </p>
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-stone-400 dark:text-stone-500">
+                  Cole a URL pública da plataforma (ex.: <code>https://seudominio.com/api/webhooks/asaas</code>).
+                  Em ambiente local o Asaas não alcança o servidor — use &quot;Verificar status&quot; ou a
+                  confirmação manual abaixo. Em produção o webhook confirma tudo sozinho.
+                </p>
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    value={webhookUrl}
+                    onChange={(e) => setWebhookUrl(e.target.value)}
+                    placeholder="https://…/api/webhooks/asaas"
+                    type="url"
+                    className="h-10 flex-1 rounded-xl"
+                  />
+                  <Button onClick={() => void createWebhook()} disabled={creatingWebhook || !webhookUrl.trim()} className="h-10 rounded-xl font-bold">
+                    {creatingWebhook ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : 'Criar webhook'}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Lista de cobranças */}
+          <Card className="rounded-2xl">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                  Cobranças {payments ? `(${payments.total})` : ''}
+                </h2>
+                <div className="ml-auto flex flex-1 flex-wrap items-center gap-2 sm:flex-none">
+                  <div className="relative min-w-44 flex-1 sm:w-56">
+                    <Search aria-hidden className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                    <Input
+                      value={paymentsQuery}
+                      onChange={(e) => setPaymentsQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && loadPayments(paymentsFilter, paymentsQuery)}
+                      placeholder="Buscar aluno ou id…"
+                      className="h-9 rounded-full pl-9"
+                    />
+                  </div>
+                  <select
+                    value={paymentsFilter}
+                    onChange={(e) => {
+                      setPaymentsFilter(e.target.value)
+                      loadPayments(e.target.value, paymentsQuery)
+                    }}
+                    aria-label="Filtrar por status"
+                    className="h-9 rounded-full border border-stone-200 bg-white px-3 text-xs font-semibold text-stone-600 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300"
+                  >
+                    <option value="ALL">Todos</option>
+                    <option value="PENDING">Pendentes</option>
+                    <option value="RECEIVED">Recebidos</option>
+                    <option value="CONFIRMED">Confirmados</option>
+                    <option value="OVERDUE">Vencidos</option>
+                  </select>
+                  <Button variant="ghost" size="sm" className="h-9 rounded-full" onClick={() => loadPayments()} aria-label="Recarregar">
+                    <RefreshCw className={cn('h-4 w-4', paymentsLoading && 'animate-spin')} aria-hidden />
+                  </Button>
+                </div>
+              </div>
+
+              {paymentsLoading ? (
+                <div className="mt-4 space-y-2">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-16 rounded-xl" />
+                  ))}
+                </div>
+              ) : (
+                <ul className="mt-3 divide-y divide-stone-100 dark:divide-stone-800">
+                  {payments?.payments.map((p) => (
+                    <li key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
+                      <div className="min-w-0 flex-1 basis-56">
+                        <p className="truncate text-sm font-semibold text-stone-800 dark:text-stone-100">
+                          {p.itemTitle}
+                        </p>
+                        <p className="truncate text-xs text-stone-400 dark:text-stone-500">
+                          {p.userName} · {new Date(p.createdAt).toLocaleDateString('pt-BR')}{' '}
+                          {new Date(p.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ·{' '}
+                          {p.gateway === 'ASAAS' ? `Asaas ${p.billingType}` : 'Simulado'}
+                          {p.lastEvent ? ` · ${p.lastEvent}` : ''}
+                        </p>
+                      </div>
+                      <StatusBadge status={p.status} />
+                      <span className="text-sm font-bold text-stone-800 dark:text-stone-100">
+                        {currencyBRL(p.value)}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {p.invoiceUrl && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 rounded-full"
+                            onClick={() => window.open(p.invoiceUrl!, '_blank', 'noopener')}
+                            aria-label="Abrir fatura no Asaas"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                          </Button>
+                        )}
+                        {p.gateway === 'ASAAS' && p.status === 'PENDING' && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 rounded-full text-xs font-bold"
+                              disabled={busyPayment !== null}
+                              onClick={() => void paymentAction(p.id, 'confirm_asaas')}
+                            >
+                              {busyPayment === p.id + 'confirm_asaas' ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                              ) : (
+                                'Confirmar'
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 rounded-full text-xs font-bold"
+                              disabled={busyPayment !== null}
+                              onClick={() => void paymentAction(p.id, 'sync')}
+                            >
+                              {busyPayment === p.id + 'sync' ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                              ) : (
+                                'Verificar status'
+                              )}
+                            </Button>
+                          </>
+                        )}
+                        {p.status === 'PENDING' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 rounded-full text-rose-600 dark:text-rose-400"
+                            disabled={busyPayment !== null}
+                            onClick={() => void paymentAction(p.id, 'cancel')}
+                            aria-label="Cancelar cobrança"
+                          >
+                            <X className="h-3.5 w-3.5" aria-hidden />
+                          </Button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                  {payments?.payments.length === 0 && (
+                    <li className="py-8 text-center text-sm text-stone-400 dark:text-stone-500">
+                      Nenhuma cobrança encontrada com esse filtro.
+                    </li>
+                  )}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ==================== USUÁRIOS ==================== */}
+        <TabsContent value="users" className="mt-5">
+          <Card className="rounded-2xl">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                  Usuários {users ? `(${users.total})` : ''}
+                </h2>
+                <div className="relative ml-auto w-full sm:w-64">
+                  <Search aria-hidden className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                  <Input
+                    value={usersQuery}
+                    onChange={(e) => setUsersQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && loadUsers(usersQuery)}
+                    placeholder="Buscar por nome ou e-mail…"
+                    className="h-9 rounded-full pl-9"
+                  />
+                </div>
+              </div>
+
+              {usersLoading ? (
+                <div className="mt-4 space-y-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-16 rounded-xl" />
+                  ))}
+                </div>
+              ) : (
+                <ul className="mt-3 divide-y divide-stone-100 dark:divide-stone-800">
+                  {users?.users.map((u) => (
+                    <li key={u.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
+                      <Avatar name={u.name} src={undefined} size="sm" className="ring-0" />
+                      <div className="min-w-0 flex-1 basis-52">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <p className="truncate text-sm font-semibold text-stone-800 dark:text-stone-100">
+                            {u.name}
+                          </p>
+                          {u.role === 'ADMIN' && (
+                            <Badge className="rounded-full bg-stone-950 text-emerald-300 hover:bg-stone-950 dark:bg-emerald-950/60 dark:text-emerald-300">
+                              ADMIN
+                            </Badge>
+                          )}
+                          {u.blocked && (
+                            <Badge variant="outline" className="rounded-full border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-300">
+                              Bloqueado
+                            </Badge>
+                          )}
+                          {u.isMentor && (
+                            <Badge variant="secondary" className="rounded-full text-[10px]">
+                              Mentor
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="truncate text-xs text-stone-400 dark:text-stone-500">
+                          {u.email} · {u.enrollments} matrículas · {u.orders} pedidos · desde{' '}
+                          {new Date(u.createdAt).toLocaleDateString('pt-BR')}
+                        </p>
+                      </div>
+                      {u.id !== user?.id && (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {u.role === 'ADMIN' ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 rounded-full text-xs font-bold"
+                              disabled={busyUser !== null}
+                              onClick={() => void userAction(u.id, 'demote')}
+                            >
+                              {busyUser === u.id + 'demote' ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : 'Rebaixar'}
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 rounded-full text-xs font-bold"
+                              disabled={busyUser !== null}
+                              onClick={() => void userAction(u.id, 'promote')}
+                            >
+                              <UserCog className="h-3.5 w-3.5" aria-hidden />
+                              Promover a admin
+                            </Button>
+                          )}
+                          {u.blocked ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 rounded-full text-xs font-bold"
+                              disabled={busyUser !== null}
+                              onClick={() => void userAction(u.id, 'unblock')}
+                            >
+                              <Check className="h-3.5 w-3.5" aria-hidden />
+                              Desbloquear
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 rounded-full text-rose-600 dark:text-rose-400"
+                              disabled={busyUser !== null}
+                              onClick={() => void userAction(u.id, 'block')}
+                            >
+                              <Ban className="h-3.5 w-3.5" aria-hidden />
+                              Bloquear
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                  {users?.users.length === 0 && (
+                    <li className="py-8 text-center text-sm text-stone-400 dark:text-stone-500">
+                      Nenhum usuário encontrado.
+                    </li>
+                  )}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ==================== SEGURANÇA (MFA) ==================== */}
+        <TabsContent value="security" className="mt-5">
+          <Card className="rounded-2xl">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center gap-2">
+                <ShieldCheck aria-hidden className="h-5 w-5 text-emerald-700 dark:text-emerald-300" />
+                <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                  Autenticação em duas etapas (TOTP)
+                </h2>
+              </div>
+
+              {mfaEnabled === null ? (
+                <Skeleton className="mt-4 h-24 rounded-2xl" />
+              ) : mfaEnabled ? (
+                <div className="mt-4 space-y-4">
+                  <div className="flex items-center gap-2 rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/50 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200">
+                    <CheckCircle2 aria-hidden className="h-4 w-4 shrink-0" />
+                    MFA <strong>ativo</strong> — todo login desta conta pede o código do app
+                    autenticador. Sessões administrativas duram 12h.
+                  </div>
+                  <div className="max-w-sm">
+                    <Label htmlFor="mfa-disable-pass" className="text-xs font-semibold text-stone-600 dark:text-stone-300">
+                      Desativar MFA (exige sua senha)
+                    </Label>
+                    <div className="mt-1.5 flex gap-2">
+                      <Input
+                        id="mfa-disable-pass"
+                        type="password"
+                        value={disablePassword}
+                        onChange={(e) => setDisablePassword(e.target.value)}
+                        placeholder="Sua senha"
+                        autoComplete="current-password"
+                        className="h-10 flex-1 rounded-xl"
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={() => void disableMfa()}
+                        disabled={mfaBusy || !disablePassword}
+                        className="h-10 rounded-xl font-bold text-rose-600 dark:text-rose-400"
+                      >
+                        {mfaBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : 'Desativar'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : mfaSetup ? (
+                <div className="mt-4 grid grid-cols-1 items-start gap-5 sm:grid-cols-2">
+                  <div className="space-y-3">
+                    <p className="text-sm leading-relaxed text-stone-600 dark:text-stone-300">
+                      <strong>1.</strong> Abra o app autenticador (Google Authenticator, Authy,
+                      Microsoft Authenticator…) e escaneie o QR Code.
+                    </p>
+                    <p className="text-sm leading-relaxed text-stone-600 dark:text-stone-300">
+                      <strong>2.</strong> Digite o código de 6 dígitos que aparece no app para
+                      confirmar e ativar.
+                    </p>
+                    <div>
+                      <InputOTP
+                        maxLength={6}
+                        value={mfaCode}
+                        onChange={(v) => {
+                          setMfaCode(v)
+                          if (v.length === 6) void confirmMfa(v)
+                        }}
+                        disabled={mfaBusy}
+                      >
+                        <InputOTPGroup>
+                          {[0, 1, 2, 3, 4, 5].map((i) => (
+                            <InputOTPSlot key={i} index={i} className="h-12 w-11 rounded-lg border-stone-300 text-lg font-bold dark:border-stone-700" />
+                          ))}
+                        </InputOTPGroup>
+                      </InputOTP>
+                    </div>
+                    {mfaBusy && <Loader2 className="h-4 w-4 animate-spin text-stone-400" aria-hidden />}
+                    <button
+                      type="button"
+                      onClick={() => setMfaSetup(null)}
+                      className="block text-xs font-medium text-stone-400 underline-offset-2 hover:text-stone-600 hover:underline dark:text-stone-500"
+                    >
+                      Cancelar configuração
+                    </button>
+                  </div>
+                  <div className="flex flex-col items-center gap-2 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4">
+                    { }
+                    <img src={mfaSetup.qrDataUrl} alt="QR Code de configuração do MFA" className="h-44 w-44" />
+                    <p className="text-[11px] leading-relaxed text-stone-400 dark:text-stone-500">
+                      Não dá para escanear? Use a chave no app:
+                    </p>
+                    <div className="flex w-full items-center gap-1.5">
+                      <code className="min-w-0 flex-1 truncate rounded-md border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-950/60 px-2 py-1 font-mono text-[10px] text-stone-600 dark:text-stone-300">
+                        {mfaSetup.secret}
+                      </code>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 shrink-0 rounded-md p-0"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(mfaSetup.secret)
+                          toast.success('Chave copiada!')
+                        }}
+                        aria-label="Copiar chave secreta"
+                      >
+                        <Copy className="h-3.5 w-3.5" aria-hidden />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 space-y-4">
+                  <p className="max-w-xl text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+                    O MFA protege o painel que controla pagamentos e usuários: mesmo com a senha
+                    vazada, o invasor precisaria do código do seu app autenticador. A ativação leva
+                    menos de um minuto.
+                  </p>
+                  <Button onClick={() => void startMfaSetup()} disabled={mfaBusy} className="h-11 rounded-full px-6 font-bold">
+                    {mfaBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <QrCode className="h-4 w-4" aria-hidden />}
+                    Ativar MFA agora
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ==================== AUDITORIA ==================== */}
+        <TabsContent value="audit" className="mt-5">
+          <Card className="rounded-2xl">
+            <CardContent className="p-4 sm:p-5">
+              <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                Trilha de auditoria {auditLogs ? `(${auditLogs.total})` : ''}
+              </h2>
+              {auditLoading ? (
+                <div className="mt-4 space-y-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-12 rounded-xl" />
+                  ))}
+                </div>
+              ) : (
+                <ul className="mt-3 max-h-[28rem] divide-y divide-stone-100 overflow-y-auto pr-1 dark:divide-stone-800 [scrollbar-width:thin]">
+                  {auditLogs?.logs.map((l) => (
+                    <li key={l.id} className="flex items-center gap-3 py-2.5">
+                      <span className="rounded-md bg-stone-100 px-2 py-0.5 font-mono text-[10px] font-bold text-stone-600 dark:bg-stone-800 dark:text-stone-300">
+                        {l.action}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-semibold text-stone-700 dark:text-stone-200">
+                          {l.actorName}
+                        </p>
+                        {l.meta && l.meta !== '{}' && (
+                          <p className="truncate text-[11px] text-stone-400 dark:text-stone-500">{l.meta}</p>
+                        )}
+                      </div>
+                      <span className="shrink-0 text-[11px] text-stone-400 dark:text-stone-500">
+                        {new Date(l.createdAt).toLocaleDateString('pt-BR')}{' '}
+                        {new Date(l.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </li>
+                  ))}
+                  {auditLogs?.logs.length === 0 && (
+                    <li className="py-8 text-center text-sm text-stone-400 dark:text-stone-500">
+                      Nenhuma ação registrada ainda.
+                    </li>
+                  )}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
+}
