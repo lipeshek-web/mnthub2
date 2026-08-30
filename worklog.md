@@ -1836,3 +1836,19 @@ Work Log:
 Stage Summary:
 - Tudo pronto para push: falta o usuário gerar um Personal Access Token (repo scope) e colar no chat
 - Comando pendente: git push -u origin main (com token que o usuário fornecer)
+
+---
+Task ID: W-19
+Agent: Z.ai Code (main)
+Task: Executar o push para GitHub (conclusão do W-18)
+
+Work Log:
+- Snapshot final do db commitado pré-push (2782f5b)
+- Push via URL temporária com token; remote resetado para URL limpa logo em seguida (token NÃO persistido em .git/config, sem credential helper)
+- Resultado: main -> main (novo branch), upstream tracking configurado
+- Verificação: origin/main = 2782f5b; 32 commits no histórico; 723 arquivos; grep -x ".env" vazio no tree remoto (segredo não vazou)
+
+Stage Summary:
+- Backup completo no GitHub: https://github.com/lipeshek-web/mnthub2 (histórico W-1→W-19)
+- Token usado uma única vez em memória; recomendado ao usuário revogá-lo no GitHub (foi colado no chat)
+- Próximos pushes exigirão novo token (ou o usuário configurar credencial local)
