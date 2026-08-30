@@ -1,0 +1,22 @@
+# Dependências
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts.bak
+
+# Builds nativos gerados (prebuild/EAS)
+ios/
+android/
+
+# Ambiente
+.env
+.env.local
+.env*.local
+
+# Sistema / editor
+.DS_Store
+*.log
+*.tsbuildinfo

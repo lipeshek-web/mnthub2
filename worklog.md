@@ -1712,3 +1712,24 @@ Stage Summary:
 - Imagens 88% mais leves em todo o catálogo (seed 6.4MB → 778KB) com qualidade visual preservada (WebP q82-84, LANCZOS)
 - A capa do mentor Gustavo Novaes Cruz agora é a arte real que ele produziu (banner completo com logo), não mais o recorte escuro antigo
 - Backup do banco em db/custom.backup-w11.db + PNGs originais preservados + checkpoint git (reversível)
+
+---
+Task ID: W-12
+Agent: Z.ai Code (main) + subagentes (geração do app Expo)
+Task: API REST pública v1 (JWT Bearer) para consumo mobile + app Expo completo em mobile-app/
+
+Work Log:
+- Contrato fechado em docs/api-v1.md: 17 endpoints sob /api/v1, JWT HS256 Bearer (30 dias), erros { error } em pt-BR, CORS liberado, todas as URLs de mídia retornam ABSOLUTAS (DB guarda caminhos relativos)
+- src/lib/mobile-auth.ts: JWT assinado com node:crypto (zero deps novas); secret = MOBILE_JWT_SECRET (adicionado ao .env com valor aleatório) → fallback NEXTAUTH_SECRET → dev; requireMobileUser recusa token inválido e conta bloqueada; streak exibido passa por activeStreak()
+- src/lib/api-v1.ts (respostas CORS, absolutize, paginação, avgRating) + api-v1-serialize.ts (serializadores estáveis de library/courses/lessons/mentors/bookings) + src/middleware.ts (preflight OPTIONS só no matcher /api/v1/:path*)
+- Rotas: auth/login (recusa 2FA com mensagem clara — v1 não faz TOTP), auth/me, library (lista+detalhe), courses (lista com flag enrolled; detalhe agrupa aulas por tema e ZERA videoUrl/content/meetingUrl/attachments quando não inscrito → locked:true), courses/[id]/enroll POST (gratuito inscreve e notifica mentor; pago → 402 { error, price }) e PATCH (toggle aula com a MESMA gamificação do site: awardXp anti-farm + bônus 100%), mentors (lista ordenada por nota), mentors/[id] (perfil+avaliações), mentors/[id]/slots (janelas de 30min/60min cruzando Availability × bookings ativos × horários passados), bookings GET/POST (validações idênticas ao site: agenda, conflito, auto-agendamento) + PATCH cancel, dashboard (progresso %, próximas sessões, novos livros, recomendados por popularidade, meta semanal via XpEvent), notifications GET + read-all
+- mobile-app/ (Expo SDK 54 + expo-router 6 + TS): login com SecureStore e logout automático em 401; 5 tabs (Início c/ dashboard, Livros, Cursos, Mentorias c/ agendamento em 3 passos, Perfil c/ notificações); detalhes livro (PDF via expo-web-browser / artigo legível), curso (progresso, concluir aula com +XP, 402 → direciona pro site) e mentor (slots → agendar); lib/api.ts tipa os 17 endpoints; ~3.400 linhas; README.md com tabela de EXPO_PUBLIC_API_URL (web/emulador/celular físico) + eas build
+- mobile-app/ excluído do tsconfig e ESLint da raiz (não poluem o build do site)
+- Bugs corrigidos durante E2E: (1) comparação de assinatura JWT com encodings divergentes (utf8 vs base64url) → 401 em toda rota autenticada; (2) orderBy createdAt em CourseTheme (não existe) → 500 no detalhe do curso; (3) select de headline em User (campo é de MentorProfile) → 500 em mentors/[id] e library/[id]; (4) avatarUrl relativa no login/me → absolutize aplicado
+- Verificação: lint 0 erros; tsc limpo (só pré-existentes em examples/); E2E curl completo: login ok/401/403, me, library lista+detalhe (PDF absoluto), courses lista+detalhe (locked correto, 4 temas), enroll grátis idempotente, 402 pago com price, toggle aula (XP 10 na 1ª vez, 0 no re-complete), mentors por nota, slots com padrão semanal (domingo vazio), booking 201 → listado → cancelado (some do dashboard), notifications+read-all, OPTIONS 204 com CORS, token adulterado → 401; smoke pós-restart do dev server: 9/9 endpoints 200; fluxo completo reexecutado DE DENTRO do browser (CORS real) com sucesso; homepage renderiza normal (middleware não afeta rotas fora de /api/v1)
+
+Stage Summary:
+- O sistema agora expõe uma API pública completa e autenticada (Bearer JWT) — base pronta para qualquer cliente externo (mobile, integrações, futuras parcerias); contrato documentado em docs/api-v1.md
+- App Expo completo em mobile-app/ pronto para: npm install → .env com EXPO_PUBLIC_API_URL → npx expo start no Expo Go (Android/iPhone); binários de loja via eas build; alunos consomem livros (PDF/artigo), cursos (vídeo/texto/ao vivo com progresso e XP) e mentorias (agendar/cancelar) pelo celular
+- Contas com 2FA ativo não entram no app v1 (usar site) — comportamento documentado no login da API
+- DB intocado: nenhuma migração de schema foi necessária (API lógica sobre o modelo existente); único registro de teste criado (booking) foi cancelado na sequência
