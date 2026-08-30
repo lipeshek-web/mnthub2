@@ -224,10 +224,15 @@ export function confirmAsaasPaymentInCash(
 
 // ---------- Webhooks ----------
 
-/** Cria o webhook de pagamentos no Asaas apontando para a plataforma */
+/**
+ * Cria o webhook de pagamentos no Asaas apontando para a plataforma.
+ * O Asaas EXIGE um `email` de contato do webhook (usado para comunicações de
+ * falha) — sem ele a API responde "email não pode ser vazio".
+ */
 export async function createPaymentWebhook(
   config: AsaasConfig,
-  targetUrl: string
+  targetUrl: string,
+  email: string
 ): Promise<{ id: string; token: string }> {
   // Token de 48 hex chars (>= 32, sem espaços, forte e aleatório)
   const token = crypto.randomBytes(24).toString('hex')
@@ -236,7 +241,7 @@ export async function createPaymentWebhook(
     body: {
       name: 'MentorHub — pagamentos',
       url: targetUrl,
-      email: '',
+      email,
       enabled: true,
       interrupted: false,
       apiVersion: 3,

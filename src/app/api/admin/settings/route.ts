@@ -114,15 +114,20 @@ export async function POST(req: NextRequest) {
       if (!/^https?:\/\/.+/i.test(rawUrl)) {
         return NextResponse.json({ error: 'Informe a URL pública do webhook (https://…).' }, { status: 400 })
       }
+      // O Asaas exige um e-mail de contato do webhook — padrão: e-mail do admin
+      const email = (String(body?.email ?? '').trim() || actor.email).toLowerCase()
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return NextResponse.json({ error: 'Informe um e-mail de contato válido para o webhook.' }, { status: 400 })
+      }
       try {
         // Substitui o webhook anterior (máx. 10 por conta no Asaas)
         if (config.webhookId) {
           await deletePaymentWebhook(config, config.webhookId).catch(() => {})
         }
-        const { id, token } = await createPaymentWebhook(config, rawUrl)
+        const { id, token } = await createPaymentWebhook(config, rawUrl, email)
         await setSetting(SETTING_KEYS.asaasWebhookId, id)
         await setSetting(SETTING_KEYS.asaasWebhookToken, token)
-        await audit(actor, 'asaas.webhook_created', { url: rawUrl, env: config.env })
+        await audit(actor, 'asaas.webhook_created', { url: rawUrl, email, env: config.env })
         return NextResponse.json({ ok: true, asaas: await publicState() })
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Falha ao criar o webhook.'

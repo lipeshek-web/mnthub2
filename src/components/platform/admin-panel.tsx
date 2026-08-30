@@ -102,6 +102,7 @@ export function AdminPanel() {
   const [savingSettings, setSavingSettings] = useState(false)
   const [testing, setTesting] = useState(false)
   const [webhookUrl, setWebhookUrl] = useState('')
+  const [webhookEmail, setWebhookEmail] = useState(user?.email ?? '')
   const [creatingWebhook, setCreatingWebhook] = useState(false)
 
   // ---------- Usuários ----------
@@ -266,7 +267,7 @@ export function AdminPanel() {
   const createWebhook = async () => {
     setCreatingWebhook(true)
     try {
-      const res = await api.admin.createWebhook(token, webhookUrl.trim())
+      const res = await api.admin.createWebhook(token, webhookUrl.trim(), webhookEmail.trim())
       if (res.ok) {
         setAsaas(res.asaas)
         toast.success('Webhook criado no Asaas! Pagamentos cairão automaticamente.')
@@ -667,6 +668,19 @@ export function AdminPanel() {
                   <Button onClick={() => void createWebhook()} disabled={creatingWebhook || !webhookUrl.trim()} className="h-10 rounded-xl font-bold">
                     {creatingWebhook ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : 'Criar webhook'}
                   </Button>
+                </div>
+                <div className="mt-2">
+                  <Input
+                    value={webhookEmail}
+                    onChange={(e) => setWebhookEmail(e.target.value)}
+                    placeholder="E-mail de contato do webhook"
+                    type="email"
+                    aria-label="E-mail de contato do webhook"
+                    className="h-10 rounded-xl"
+                  />
+                  <p className="mt-1 text-[11px] leading-relaxed text-stone-400 dark:text-stone-500">
+                    O Asaas exige um e-mail de contato do webhook (comunicações de falha) — já preenchemos com o seu e-mail de admin.
+                  </p>
                 </div>
               </div>
             </CardContent>

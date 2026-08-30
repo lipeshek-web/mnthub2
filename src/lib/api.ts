@@ -669,10 +669,10 @@ export const api = {
         '/api/admin/settings',
         { method: 'POST', headers: { 'x-admin-token': token }, body: JSON.stringify({ action: 'test' }) }
       ),
-    createWebhook: (token: string, url: string) =>
+    createWebhook: (token: string, url: string, email: string) =>
       request<{ ok: true; asaas: AsaasSettingsDTO } | { ok: false; error: string }>(
         '/api/admin/settings',
-        { method: 'POST', headers: { 'x-admin-token': token }, body: JSON.stringify({ action: 'webhook', url }) }
+        { method: 'POST', headers: { 'x-admin-token': token }, body: JSON.stringify({ action: 'webhook', url, email }) }
       ),
 
     payments: (token: string, params: { status?: string; q?: string; page?: number }) =>

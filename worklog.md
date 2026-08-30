@@ -1539,3 +1539,23 @@ Stage Summary:
 - MFA agora é seguro de verdade: só o código certo (ou recovery de uso único) passa; tudo auditado
 - Fluxo para o usuário: Entrar → menu → Administração → Segurança → "Ativar MFA agora" → escanear QR no app → digitar código → GUARDAR os 10 códigos de recuperação
 - Lição de infra: tickets de segurança em memória não sobrevivem a HMR/restart — persistir em banco (feito); mudanças de schema exigem restart do dev server (Prisma client cacheado)
+
+---
+Task ID: W-4
+Agent: Z.ai Code (main)
+Task: Corrigir erro "email não pode ser vazio" ao criar o webhook do Asaas (relato do usuário após configurar MFA e API key)
+
+Work Log:
+- Diagnóstico: POST /v3/webhooks do Asaas EXIGE o campo `email` (e-mail de contato/comunicações de falha do webhook); src/lib/asaas.ts createPaymentWebhook enviava `email: ''` → Asaas rejeita com 400 "email não pode ser vazio" (validação de corpo roda antes da checagem de auth, por isso apareceu mesmo com a chave inválida)
+- Fix backend: createPaymentWebhook(config, targetUrl, email) agora recebe email obrigatório e o envia no payload (doc /tmp/asaas-wh.md confirma o contrato)
+- Fix API route (admin/settings action=webhook): lê `email` do body, default = e-mail do admin logado (actor.email), valida formato com regex, inclui email no audit asaas.webhook_created
+- Fix client api.ts: createWebhook(token, url, email)
+- Fix UI admin-panel: novo Input "E-mail de contato do webhook" (type=email, aria-label, pré-preenchido com user.email do store) abaixo da URL, com hint explicando a exigência do Asaas
+- Auditoria do banco revelou 2 fatos importantes: (1) a chave salva às 06:15:46 FALHOU no teste às 06:15:56 com "A chave de API fornecida é inválida" — a chave colada não é válida no sandbox do Asaas; (2) PlatformSetting está VAZIA agora (nenhuma asaas.settings_remove auditada — chave sumiu sem trilha; estado atual: sem gateway configurado)
+- MFA: ciclos enable/disable no audit 06:56–07:10 eram do E2E do W-3; estado atual do banco = mfaEnabled FALSE (usuário precisa reativar)
+- Script one-off de contrato contra o sandbox não pôde rodar (sem chave válida no banco) — removido; lint 0/0; tsc limpo; dev.log sem erros de runtime
+
+Stage Summary:
+- Webhook corrigido: e-mail de contato obrigatório agora é enviado (padrão = e-mail do admin) e há campo editável no formulário
+- Bloqueio real está na CHAVE: o teste de conexão deu 401 "chave inválida" — usuário deve copiar a chave do SANDBOX (sandbox.asaas.com → Configurações → Integrações → Chave de API), colar no painel, salvar e "Testar conexão" até ok; chaves de produção NÃO valem no sandbox
+- Gateway atualmente em modo demonstração (settings vazias); MFA desativado — reativar em Segurança
