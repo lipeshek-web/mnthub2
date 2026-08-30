@@ -14,12 +14,11 @@ import * as SecureStore from "expo-secure-store";
 /* ------------------------------------------------------------------ */
 
 /**
- * ⚠️ URL pública do seu servidor MentorHub (sem /api/v1 no final).
- * No Snack não existe .env — troque aqui OU no campo "Servidor da API"
- * da tela de login (o valor digitado lá fica salvo no aparelho).
- * Ex.: "https://seu-mentorhub.vercel.app"
+ * ✅ URL de produção do MentorHub (sem /api/v1 no final).
+ * Já vem configurada — se um dia mudar, troque aqui OU no campo
+ * “Servidor da API” da tela de login (o valor digitado lá fica salvo no aparelho).
  */
-export const DEFAULT_SERVER_URL = "https://seu-mentorhub.example.com";
+export const DEFAULT_SERVER_URL = "https://mentorhub.space-z.ai";
 
 const TOKEN_KEY = "mentorhub.auth.token";
 const SERVER_KEY = "mentorhub.server.url";

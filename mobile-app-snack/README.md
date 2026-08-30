@@ -2,14 +2,17 @@
 
 Versão do app de alunos adaptada para rodar direto no **[Expo Snack](https://snack.expo.dev)** — sem instalar nada no computador. Mesmo visual, mesmas telas e mesma API (`/api/v1` com JWT Bearer) da versão completa em `mobile-app/`.
 
-> **Por que uma pasta separada?** O Snack **não suporta `expo-router`** (rotas por arquivos). Esta edição troca as rotas por **React Navigation** (`@react-navigation/bottom-tabs` + `native-stack`) e centraliza tudo num único `App.tsx`, que é a entrada que o Snack espera. Além disso, como o Snack não tem `.env`, a URL do servidor virou um campo na tela de login.
+> **Por que uma pasta separada?** O Snack **não suporta `expo-router`** (rotas por arquivos). Esta edição troca as rotas por **React Navigation** (`@react-navigation/bottom-tabs` + `native-stack`) e centraliza tudo num único `App.js`, que é a entrada que o Snack espera. Como o Snack não tem `.env`, a URL do servidor já vem configurada no código (`https://mentorhub.space-z.ai`) e pode ser trocada no campo “Servidor da API” do login.
 
-## 🚀 Como colocar no Snack (2 minutos)
+## 🚀 Como colocar no Snack (1 minuto)
+
+**Opção A — ZIP pronto:** baixe `mentorhub-mobile-snack.zip` (disponível em `https://mentorhub.space-z.ai/mentorhub-mobile-snack.zip`), extraia e arraste `App.js` + pasta `src` para o editor do Snack (substitua o `App.js` de exemplo).
+
+**Opção B — copiar e colar:**
 
 1. Abra **https://snack.expo.dev** → escolha o SDK **54** (menu suspenso no topo; se não aparecer, use o 53 — o código é compatível).
-2. Copie os arquivos desta pasta para o editor do Snack, mantendo a mesma estrutura (`App.tsx` na raiz, pastas `src/…`):
+2. Copie os arquivos desta pasta para o editor do Snack, mantendo a mesma estrutura (`App.js` na raiz, pastas `src/…`) — ele substitui o `App.js` de exemplo:
    - No painel esquerdo, use o **＋ (New File)** para criar cada arquivo e cole o conteúdo (ou arraste a pasta inteira se estiver no seu computador — o Snack aceita drag & drop).
-   - Apague o `App.js` de exemplo que o Snack cria (o nosso `App.tsx` assume a entrada).
 3. Adicione as dependências (painel direito → **Dependencies** / ícone de +):
    - `@react-navigation/native`
    - `@react-navigation/bottom-tabs`
@@ -24,14 +27,12 @@ Versão do app de alunos adaptada para rodar direto no **[Expo Snack](https://sn
 
 `expo`, `react`, `react-native`, `@expo/vector-icons`, `expo-status-bar`, `react-native-screens`.
 
-## 🔗 Apontando para o seu servidor MentorHub
+## 🔗 Servidor MentorHub (já configurado)
 
-O app precisa de uma **URL pública** do MentorHub (o celular do aluno não alcança `localhost`). Duas opções:
+O app já aponta para a produção: **`https://mentorhub.space-z.ai`** (constante `DEFAULT_SERVER_URL` em `src/lib/api.ts` — testada: login e catálogo respondem). O celular do aluno não alcança `localhost`, então mantenha a produção ou:
 
-- **No código**: edite `src/lib/api.ts` → constante `DEFAULT_SERVER_URL`.
-- **No app**: preencha o campo **“Servidor da API”** na tela de login (fica salvo no aparelho via SecureStore). Essa opção é a mais prática no Snack, pois não exige editar código.
-
-Se estiver rodando o MentorHub deste projeto, use a URL pública do preview (botão **“Open in New Tab”**) — por exemplo `https://seu-projeto.space.z.ai`. Se o backend estiver publicado em outro lugar (Vercel, VPS…), use essa URL.
+- **No app**: preencha o campo **“Servidor da API”** na tela de login (fica salvo no aparelho via SecureStore) — útil para testar local/tunnel.
+- **No código**: edite a constante `DEFAULT_SERVER_URL`.
 
 > Detalhe: no Snack **web** o SecureStore funciona via localStorage; no **Expo Go** é criptografado no aparelho. Nos dois casos funciona.
 

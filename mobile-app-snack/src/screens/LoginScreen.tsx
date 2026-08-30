@@ -129,7 +129,7 @@ export default function LoginScreen() {
                 style={styles.serverInput}
                 value={serverUrl}
                 onChangeText={setServerUrlState}
-                placeholder="https://seu-mentorhub.example.com"
+                placeholder="https://mentorhub.space-z.ai"
                 placeholderTextColor={theme.colors.textFaint}
                 autoCapitalize="none"
                 autoCorrect={false}

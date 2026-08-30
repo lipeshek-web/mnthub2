@@ -1,14 +1,14 @@
 /**
  * MentorHub Mobile — edição Expo Snack.
  *
- * Entrada única (o Snack não suporta expo-router): navegação via React
+ * Entrada única App.js (o Snack não suporta expo-router): navegação via React
  * Navigation com bottom-tabs + native-stack, mesma identidade visual e
  * mesmas telas da versão local (mobile-app/).
  *
  * Estrutura:
  *   SafeAreaProvider → AuthProvider → gate de sessão
- *     - loading      → splash
- *     - anonymous    → LoginScreen (com campo "Servidor da API")
+ *     - loading       → splash
+ *     - anonymous     → LoginScreen (com campo "Servidor da API")
  *     - authenticated → NavigationContainer
  *         RootStack (headerShown: false)
  *           ├─ Main (BottomTabs): Início · Livros · Cursos · Mentorias · Perfil
@@ -20,11 +20,7 @@ import React from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import {
-  DefaultTheme,
-  NavigationContainer,
-  type NavigationTheme,
-} from "@react-navigation/native";
+import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
@@ -43,7 +39,7 @@ import MentorScreen from "./src/screens/MentorScreen";
 
 /* ----------------------------- Tema de navegação ---------------------------- */
 
-const NavTheme: NavigationTheme = {
+const NavTheme = {
   ...DefaultTheme,
   dark: true,
   colors: {
