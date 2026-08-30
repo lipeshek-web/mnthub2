@@ -1647,3 +1647,25 @@ Stage Summary:
 - Estante compacta: livros e artigos em cards pequenos (3/4/6 colunas) na landing e em todo o Explorar — nada gigante
 - Artigos com identidade própria: papel de revista tipográfico, proporcionalmente do mesmo tamanho dos livros, só mudando o formato
 - 3 publicações com capas reais no ar (Inovação, Gestão Financeira para Jovens, Como Estudar com Pomodoro) abrindo PDFs placeholder que o usuário troca depois pelo painel do mentor; capas novas futuras bastam reenviar no formulário da Biblioteca
+
+---
+Task ID: W-9
+Agent: Z.ai Code (main)
+Task: Restauração completa do ambiente após downgrade — código + banco voltaram ao estado de produção (W-1..W-8) sem perder dados
+
+Work Log:
+- Diagnóstico: rollback do ambiente revertou código (components de W-2..W-8 sumiram: sem admin-panel, promo-bar, messages-view etc.), worklog (terminava na era task-12), banco (db/custom.db 368KB, schema antigo — sem Coupon/User.role/Payment/AuditLog, 6 itens de biblioteca) e .next (recompilado com código velho); git HEAD também parava na era task-12 (13 commits, fsck sem objetos soltos, sem stash)
+- Fonte da restauração encontrada: /tmp/my-project — snapshot COMPLETO de 30/Ago 09:57 (momento pré-downgrade): worklog até W-8, 32 components (admin-panel, ai-tutor, ai-lesson-summary, bundles/membership managers, promo-bar, pwa-register, referrals, certificate, messages-view, theme-provider...), 32 grupos de rotas API, DB de 823KB íntegro (PRAGMA integrity_check ok) e uploads do usuário em upload/ (montagem ossfs que sobreviveu ao rollback)
+- DB do snapshot verificado antes de restaurar: 38 tabelas (AdminSession, AiLessonSummary, AuditLog, Bundle, Certificate, Coupon, CourseReview, DirectMessage, MfaChallenge, MembershipSubscription, Notification, Payment, PlatformSetting, Referral, WeeklyGoal...), admin gustavonv@yandex.com (ADMIN), cupons BEMVINDO10 (SITE_WIDE, na barra) e ESCOLA50 (NEW_ACCOUNTS, na barra), 9 itens de biblioteca com os 3 livros de capa real, 1 Payment, 29 AuditLogs
+- Cópia de segurança do snapshot em /home/z/restore-snapshot-0830 (51MB) antes de qualquer operação
+- Restauração: dev server antigo morto (pkill), rsync -rt --delete do snapshot sobre /home/z/my-project excluindo .git/node_modules/.next/upload/db (upload é FUSE ossfs — chgrp falha esperada, arquivos intactos); dry-run limpo = alvo idêntico ao snapshot; .next removido para recompilação limpa
+- bun install (26 pacotes novos: qrcode etc.), prisma generate
+- Instabilidade descoberta: dev servers iniciados manualmente (setsid nohup bun run dev) morrem em segundos sem trace — cgroup sem OOM (failcnt 0, limite 4GB); solução: usar o launcher oficial do ambiente .zscripts/dev.sh (bun install → db:push no-op → bun run dev → mini-services), mesma via usada pela plataforma; servidor estável desde então
+- Verificação E2E: GET / 200; /api/promo-bar serve ESCOLA50 + BEMVINDO10; /api/library?sort=recent devolve 9 itens com Pomodoro/Gestão/Inovação primeiro; capa e PDF placeholder servidos (200); landing 1440 com estante W-8 (3 capas reais + 2 papéis de revista + livro gradiente); navbar visitante sem "Minhas mentorias"; login carlos@demo.com → "Minhas mentorias" + dashboard "Olá, Carlos!" + badge de notificações; dev.log sem erros
+- Checkpoint de segurança: git commit a5cef7a "restore: full recovery of latest production state (W-1..W-8 + DB)" — próximo downgrade pode ser revertido com git checkout
+
+Stage Summary:
+- Ambiente 100% restaurado ao estado de produção de 30/Ago manhã: todo o código W-1..W-8 (Apple redesign, promo bar com cupons, ESG, estante de livros/papéis, Asaas + MFA no admin, chat, PWA, trilhas, quizzes/XP, bundles, memberships, referrals, certificados, AI tutor/summary)
+- Banco de dados intacto com dados reais do usuário: conta ADMIN, cupons, publicações com capas reais, histórico de pagamentos/auditoria
+- Redundância: cópia do snapshot em /home/z/restore-snapshot-0830 + commit a5cef7a no git
+- Aprendizado operacional: iniciar o dev server SEMPRE via .zscripts/dev.sh (servidores manuais são mortos pelo ambiente); snapshot /tmp/my-project é volátil — manter commits git frequentes como política
