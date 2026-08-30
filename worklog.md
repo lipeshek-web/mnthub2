@@ -1690,3 +1690,25 @@ Stage Summary:
 - Contas demo escondidas atrás de um menu retraído no login; admin fecha com um X circular; criar curso e gerenciar aulas viraram sheets Apple com topo fixo, corpo centralizado e rodapé de ações
 - Dois bugs de layout do auth aproveitados e corrigidos: overflow horizontal de 25px no mobile (min-w-0) e painel esmeralda não esticando até o fim da tela (min-h-dvh)
 - Checkpoint git 3c2b271 (próximo downgrade → git checkout)
+---
+Task ID: W-11
+Agent: Z.ai Code (main)
+Task: Performance da landing/explorar (PageSpeed ~60) + capas dos mentores mostrando imagem errada
+
+Work Log:
+- Diagnóstico com performance API: landing tinha 30 <link rel=preload as=font> no head (~943KB de woff2 em toda página) — os 24 loaders next/font/google do catálogo de fontes de mentor (lib/fonts.ts) usavam preload default true, mesmo sem a página usar nenhuma delas
+- Fix nº 1: preload: false nas 24 fontes (continuam self-hosted e funcionam nas LPs de mentor — baixam sob demanda via @font-face). Preloads caíram 30 → 2 (só Geist Sans/Mono latin); fontes de 943KB → 79KB por página
+- Fix nº 2 (imagens): script PIL one-off converteu tudo para WebP — 3 capas de livro 1500×2250 (972/1586/933KB) → 800px webp (64/30/42KB); 13 avatares 1024² (~100KB) → 320² (8-21KB); 9 capas de curso + 7 capas de mentor + 1 trilha 1344×768 → 800px (12-53KB); pasta seed: 6.4MB → 778KB (−88%)
+- Fix nº 3 (a capa do mentor): a arte real do Gustavo (a8909600-….jpg 1584×672 "CIBERSEGURANÇA & DIREITO DIGITAL | FUSÃO PRÁTICA" com logo MentorHub) estava enviada em public/uploads mas ÓRFÃ — o banco apontava para uma imagem antiga 1400×350 que exibia só um canto escuro cortado. Convertida (728KB → 86KB webp) e MentorProfile.coverUrl atualizado para /uploads/mentor-capa-gustavo.webp; avatar do Gustavo otimizado (196KB PNG → 6KB webp, mesma foto)
+- Migração de banco idempotente (bun:sqlite, backup prévio em db/custom.backup-w11.db): 37 linhas — User.avatarUrl ×14, MentorProfile.coverUrl ×8, Course.coverUrl ×9, Track.coverUrl ×1, LibraryItem.coverUrl ×5; 0 referências .png restantes (verificado por query); PNGs originais mantidos no disco como rede de segurança
+- seed.ts: 28 referências /uploads/seed/*.png → *.webp (0 png restantes) — instalações novas já nascem otimizadas
+- Avatar component: decoding="async" adicionado ao <img>; capas de livro/curso/trilha/artigo em landing e marketplace JÁ tinham loading=lazy + decoding=async (conferido tag por tag)
+- Verificação: lint 0/0; tsc limpo; E2E — landing 1440: 44 requests, preloads 2, fontes 79KB, página inteira rolada = imagens 294KB (as 3 capas reais em 65/42/31KB); explorar: 0 imagens quebradas, 0 .png, imagens 460KB; LP do Gustavo exibe o banner completo correto (screenshot); biblioteca com capas webp nítidas (screenshot); dev.log sem 404/500
+- INFRA: dev server tinha morrido de novo — subido via .zscripts/dev.sh (launcher oficial, estável)
+- OBS: oscore do PageSpeed real de produção não é medível daqui (sem bun run build por política), mas os dois maiores custos por página (fontes pré-carregadas e PNGs gigantes) foram eliminados; em dev a landing caiu de 1.96MB para 1.54MB rolada inteira — em produção a diferença é maior ainda (sem chunks de dev)
+
+Stage Summary:
+- Toda página do site deixou de pré-carregar ~900KB de fontes que não usava — agora só Geist (79KB) vem de fábrica; fontes de mentor baixam apenas quando uma LP personalizada as usa
+- Imagens 88% mais leves em todo o catálogo (seed 6.4MB → 778KB) com qualidade visual preservada (WebP q82-84, LANCZOS)
+- A capa do mentor Gustavo Novaes Cruz agora é a arte real que ele produziu (banner completo com logo), não mais o recorte escuro antigo
+- Backup do banco em db/custom.backup-w11.db + PNGs originais preservados + checkpoint git (reversível)
