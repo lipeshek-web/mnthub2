@@ -4,6 +4,7 @@ import { useCallback, useEffect, useSyncExternalStore, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { GraduationCap } from 'lucide-react'
 import { Navbar } from '@/components/platform/navbar'
+import { PromoBar } from '@/components/platform/promo-bar'
 import { PlatformFooter } from '@/components/platform/footer'
 import { MarketplaceView } from '@/components/platform/marketplace'
 import { AuthView } from '@/components/platform/auth-view'
@@ -259,6 +260,8 @@ export default function Home() {
     /* Shell tipo app: header e rodapé fora do fluxo de rolagem. O <main> é o
        ÚNICO container de rolagem — o corpo nunca entra por baixo do header. */
     <div className="flex h-dvh flex-col overflow-hidden bg-white dark:bg-stone-950">
+      {!immersive && <PromoBar />}
+
       {!immersive && <Navbar />}
 
       <main

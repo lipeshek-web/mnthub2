@@ -10,31 +10,8 @@ import { notify } from '@/lib/notify'
 /** Crédito do indicador por conversão (R$ 20 em centavos) */
 export const REFERRAL_REWARD_CENTS = 2000
 
-/** Valida o cupom do mentor para o item informado; retorna dados para o pedido */
-export async function resolveCoupon(rawCode: string, mentorId: string, price: number) {
-  const code = rawCode.trim().toUpperCase()
-  if (!code) return { error: null as string | null, coupon: null, discount: 0 }
-  const coupon = await db.coupon.findUnique({
-    where: { mentorId_code: { mentorId, code } },
-  })
-  if (!coupon || coupon.mentorId !== mentorId) {
-    return { error: 'Cupom inválido.', coupon: null, discount: 0 }
-  }
-  if (!coupon.isActive) return { error: 'Este cupom está desativado.', coupon: null, discount: 0 }
-  if (coupon.expiresAt && coupon.expiresAt.getTime() < Date.now()) {
-    return { error: 'Este cupom expirou.', coupon: null, discount: 0 }
-  }
-  if (coupon.maxUses !== null && coupon.uses >= coupon.maxUses) {
-    return { error: 'Este cupom esgotou o número de usos.', coupon: null, discount: 0 }
-  }
-  let discount = 0
-  if (coupon.percentOff !== null) {
-    discount = Math.round(price * (coupon.percentOff / 100) * 100) / 100
-  } else if (coupon.amountOff !== null) {
-    discount = Math.min(coupon.amountOff, price)
-  }
-  return { error: null, coupon, discount }
-}
+/** Validação de cupons (mentor + plataforma) vive em lib/coupons.ts — reexportado */
+export { resolveCoupon } from '@/lib/coupons'
 
 /**
  * Recompensa a indicação pendente do comprador: 1ª compra paga libera

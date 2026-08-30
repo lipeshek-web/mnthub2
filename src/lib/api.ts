@@ -7,6 +7,7 @@ import type {
   AsaasSettingsDTO,
   AuditLogDTO,
   AvailabilitySlotInput,
+  AdminCouponsResponseDTO,
   BookingDTO,
   BundleDTO,
   BundleDetailDTO,
@@ -32,6 +33,8 @@ import type {
   PaymentStatusDTO,
   PaymentsConfigDTO,
   PendingPaymentDTO,
+  PlatformCouponDTO,
+  PromoBarItemDTO,
   ReminderRunDTO,
   WeeklyGoalDTO,
   MessagesResponseDTO,
@@ -553,11 +556,14 @@ export const api = {
     }),
   deleteCoupon: (id: string, userId: string) =>
     request<{ ok: boolean }>(`/api/coupons${qs({ userId, id })}`, { method: 'DELETE' }),
-  validateCoupon: (data: { code: string; courseId?: string; trackId?: string; bundleId?: string; membershipId?: string }) =>
+  validateCoupon: (data: { code: string; userId?: string; courseId?: string; trackId?: string; bundleId?: string; membershipId?: string }) =>
     request<CouponValidationDTO>('/api/coupons/validate', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  // Barra promocional (público): cupons ativos em rotação acima do header
+  promoBar: () => request<{ items: PromoBarItemDTO[] }>('/api/promo-bar'),
 
   // Financeiro do mentor
   finance: (userId: string) => request<FinanceDTO>(`/api/mentors/finance${qs({ userId })}`),
@@ -647,6 +653,46 @@ export const api = {
         method: 'PATCH',
         headers: { 'x-admin-token': token },
         body: JSON.stringify(data),
+      }),
+
+    // Cupons de plataforma (barra promocional / descontos globais)
+    coupons: (token: string) =>
+      request<AdminCouponsResponseDTO>('/api/admin/coupons', {
+        headers: { 'x-admin-token': token },
+      }),
+    createCoupon: (
+      token: string,
+      data: {
+        code: string
+        percentOff?: number | null
+        amountOff?: number | null
+        scope: 'SITE_WIDE' | 'NEW_ACCOUNTS' | 'CATEGORY' | 'MENTOR'
+        category?: string
+        mentorId?: string
+        maxUses?: number | null
+        expiresAt?: string | null
+        showInPromoBar?: boolean
+        promoMessage?: string | null
+      }
+    ) =>
+      request<{ coupon: PlatformCouponDTO }>('/api/admin/coupons', {
+        method: 'POST',
+        headers: { 'x-admin-token': token },
+        body: JSON.stringify(data),
+      }),
+    updateCoupon: (
+      token: string,
+      data: { id: string; isActive?: boolean; showInPromoBar?: boolean; promoMessage?: string | null }
+    ) =>
+      request<{ coupon: PlatformCouponDTO }>('/api/admin/coupons', {
+        method: 'PATCH',
+        headers: { 'x-admin-token': token },
+        body: JSON.stringify(data),
+      }),
+    deleteCoupon: (token: string, id: string) =>
+      request<{ ok: boolean }>(`/api/admin/coupons${qs({ id })}`, {
+        method: 'DELETE',
+        headers: { 'x-admin-token': token },
       }),
 
     settings: (token: string) =>

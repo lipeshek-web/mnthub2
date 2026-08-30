@@ -13,11 +13,13 @@ import {
   Clock,
   FileText,
   GraduationCap,
+  HeartHandshake,
   Library,
   MessagesSquare,
   MonitorPlay,
   Presentation,
   Route,
+  School,
   Search,
   ShieldCheck,
   Sparkles,
@@ -1272,6 +1274,91 @@ export function LandingMenteeView() {
           </Accordion>
         </div>
       </motion.section>
+
+      {/* ---------- ACESSIBILIDADE À EDUCAÇÃO (impacto social / ESG) ---------- */}
+      <section aria-labelledby="impacto-title" className="mt-4 bg-emerald-950 py-16 text-white sm:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold text-emerald-300">
+              Acessibilidade à educação · Impacto social (ESG)
+            </p>
+            <h2
+              id="impacto-title"
+              className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl"
+            >
+              Educação que alcança todo mundo
+            </h2>
+            <p className="mt-3 text-base leading-relaxed text-emerald-100/85 sm:text-lg">
+              Somos abertos a projetos com escolas públicas e privadas: palestras, cursos e trilhas
+              pensados para a realidade de cada turma. E sempre damos um jeitinho de presentear
+              todos os participantes.
+            </p>
+          </div>
+
+          <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {[
+              {
+                icon: School,
+                title: 'Escolas públicas e privadas',
+                text: 'Projetos sob medida para cada turma, do fundamental ao superior — planejados junto com a escola.',
+              },
+              {
+                icon: Presentation,
+                title: 'Palestras e cursos',
+                text: 'Encontros ao vivo e conteúdo gravado conduzidos pelos nossos mentores especialistas.',
+              },
+              {
+                icon: HeartHandshake,
+                title: 'Bolsas e descontos',
+                text: 'Descontos acima de 50% para todos os participantes — e bolsas completas para quem não pode pagar.',
+              },
+            ].map((pillar) => (
+              <div
+                key={pillar.title}
+                className="rounded-2xl bg-white/5 p-6 ring-1 ring-white/10"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-emerald-300 ring-1 ring-white/15">
+                  <pillar.icon aria-hidden className="h-5 w-5" />
+                </span>
+                <h3 className="mt-4 text-lg font-semibold tracking-tight">{pillar.title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-emerald-100/80">{pillar.text}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-10 flex flex-wrap items-end gap-x-10 gap-y-6">
+            <div>
+              <p className="text-4xl font-semibold tracking-tight sm:text-5xl">50%+</p>
+              <p className="mt-1 text-sm text-emerald-200/75">
+                de desconto para todos em projetos educacionais
+              </p>
+            </div>
+            <div>
+              <p className="text-4xl font-semibold tracking-tight sm:text-5xl">100%</p>
+              <p className="mt-1 text-sm text-emerald-200/75">
+                de cobertura nas bolsas integrais — custo zero para o aluno
+              </p>
+            </div>
+            <div>
+              <p className="text-4xl font-semibold tracking-tight sm:text-5xl">Públicas e privadas</p>
+              <p className="mt-1 text-sm text-emerald-200/75">escolas e instituições parceiras</p>
+            </div>
+          </div>
+
+          <div className="mt-10">
+            <a
+              href="mailto:projetos@mentorhub.com.br?subject=Projeto%20educacional%20—%20MentorHub"
+              className="inline-flex min-h-12 items-center rounded-full bg-white px-7 text-base font-medium text-emerald-950 transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+            >
+              Quero um projeto na minha escola
+              <ChevronRight aria-hidden className="ml-1 h-4 w-4" />
+            </a>
+            <p className="mt-3 text-xs text-emerald-200/60">
+              Conte um pouco da sua instituição — respondemos com uma proposta.
+            </p>
+          </div>
+        </div>
+      </section>
 
       {/* ---------- CTA DUPLO FINAL ---------- */}
       <motion.section

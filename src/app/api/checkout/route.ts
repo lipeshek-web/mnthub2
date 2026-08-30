@@ -210,11 +210,10 @@ export async function POST(req: NextRequest) {
     }
 
     // ---------- Cupom + créditos (cálculo; consumo só quando pagar) ----------
-    const { error: couponError, coupon, discount } = await resolveCoupon(
-      couponCode,
-      item.mentorId,
-      item.price
-    )
+    const { error: couponError, coupon, discount } = await resolveCoupon(couponCode, {
+      userId,
+      item: { kind: item.kind, id: item.id, mentorId: item.mentorId, price: item.price },
+    })
     if (couponError) return NextResponse.json({ error: couponError }, { status: 400 })
 
     const credits = await previewCredits(userId, item.price, discount, useCredits)

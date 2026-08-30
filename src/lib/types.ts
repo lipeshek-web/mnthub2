@@ -848,6 +848,39 @@ export interface AsaasSettingsDTO {
   webhookConfigured: boolean
 }
 
+// ==================== CUPONS DE PLATAFORMA + BARRA PROMOCIONAL ====================
+
+export interface PlatformCouponDTO {
+  id: string
+  code: string
+  percentOff: number | null
+  amountOff: number | null
+  scope: 'SITE_WIDE' | 'NEW_ACCOUNTS' | 'CATEGORY' | 'MENTOR'
+  category: string | null
+  mentorId: string | null
+  mentorName: string | null
+  maxUses: number | null
+  uses: number
+  expiresAt: string | null
+  isActive: boolean
+  showInPromoBar: boolean
+  promoMessage: string | null
+  createdAt: string
+}
+
+export interface AdminCouponsResponseDTO {
+  coupons: PlatformCouponDTO[]
+  mentors: { id: string; name: string }[]
+}
+
+export interface PromoBarItemDTO {
+  id: string
+  code: string
+  message: string
+  discountLabel: string
+  scopeLabel: string
+}
+
 export interface AdminPaymentDTO {
   id: string
   gateway: string

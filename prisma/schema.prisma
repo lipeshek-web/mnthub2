@@ -506,19 +506,28 @@ model Certificate {
 
 // ==================== CUPONS DE DESCONTO ====================
 
-/// Cupom criado pelo mentor (aplicável aos próprios cursos/trilhas no checkout)
+/// Cupom do mentor (escopo MENTOR, aplicável aos próprios itens) OU da
+/// plataforma (mentorId null, criado no painel admin): site inteiro, apenas
+/// contas novas (1ª compra), categoria ou mentor específico — com opção de
+/// exibição na barra promocional rotativa acima do header.
 model Coupon {
-  id         String        @id @default(cuid())
-  mentorId   String
-  mentor     MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
-  code       String // único por mentor, uppercase sem espaços
+  id         String         @id @default(cuid())
+  mentorId   String?
+  mentor     MentorProfile? @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  code       String // uppercase sem espaços (único por mentor; plataforma: checagem no app)
   percentOff Int? // 1..100 (alternativa 1)
   amountOff  Float? // valor fixo em R$ (alternativa 2)
   maxUses    Int? // null = ilimitado
-  uses       Int           @default(0)
+  uses       Int            @default(0)
   expiresAt  DateTime?
-  isActive   Boolean       @default(true)
-  createdAt  DateTime      @default(now())
+  isActive   Boolean        @default(true)
+  createdAt  DateTime       @default(now())
+
+  // ---- Cupons de plataforma (mentorId null) ----
+  scope          String  @default("MENTOR") // MENTOR | SITE_WIDE | NEW_ACCOUNTS | CATEGORY
+  category       String? // alvo quando scope = CATEGORY
+  showInPromoBar Boolean @default(false) // aparece na barra rotativa acima do header
+  promoMessage   String? // texto custom da barra (default gerado do desconto)
 
   @@unique([mentorId, code])
 }

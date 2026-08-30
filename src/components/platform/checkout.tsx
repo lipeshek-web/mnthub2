@@ -314,6 +314,7 @@ export function CheckoutView({
     try {
       const result = await api.validateCoupon({
         code,
+        userId: user?.id,
         courseId: item.kind === 'course' ? item.id : undefined,
         trackId: item.kind === 'track' ? item.id : undefined,
         bundleId: item.kind === 'bundle' ? item.id : undefined,

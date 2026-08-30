@@ -1580,3 +1580,29 @@ Stage Summary:
 - Plataforma com cara Apple: tipografia grande semibold com tracking apertado, gradientes sutis apenas no título hero, pills sólidas pretas/brancas, chevrons ›, cards flat com hairline border, zero blobs/sombras pesadas, mais respiro vertical
 - Corpo mais largo: container global max-w-7xl (1280px) com px-6 no desktop — margens laterais reduzidas em todas as telas
 - Modelo replicável: o mesmo vocabulário (pill preta, chevron, semibold+tracking-tight, hairline) pode ser aplicado às demais páginas nas próximas iterações
+
+---
+Task ID: W-6
+Agent: Z.ai Code (main)
+Task: Barra promocional rotativa com cupons gerenciáveis no admin (site inteiro / contas novas / categoria / mentor) + seção "Acessibilidade à educação" (ESG) na landing
+
+Work Log:
+- Schema: Coupon estendido — mentorId agora OPCIONAL (null = cupom de PLATAFORMA), + scope (MENTOR|SITE_WIDE|NEW_ACCOUNTS|CATEGORY), category, showInPromoBar, promoMessage; db push + generate ( cupcakes de mentor legados intactos, scope default MENTOR)
+- src/lib/coupons.ts: resolução UNIFICADA resolveCoupon(rawCode, { userId, item }) — primeiro cupons de plataforma (checa escopo: NEW_ACCOUNTS = 0 pedidos não cancelados do usuário; CATEGORY = curso/trilha direto, bundle via categorias dos cursos internos, membership via categories do mentor; MENTOR = mentorId alvo; SITE_WIDE = sempre), depois cupons do mentor (mentorId_code). Checagens comuns: ativo/não expirado/não esgotado
+- fulfillment.ts: resolveCoupon antigo removido → re-export de lib/coupons; checkout route atualizado para nova assinatura (passa userId + contexto completo do item)
+- /api/coupons/validate: reescrita sobre a lib; body ganhou userId (checkout.tsx envia user.id) p/ escopo contas novas
+- Nova API /api/admin/coupons (GET lista plataforma + mentores p/ select; POST cria com validações de escopo/código-duplicado; PATCH ativa/promoBar/promoMessage; DELETE) — requireAdmin + auditoria (platform_coupon.*)
+- Nova API pública /api/promo-bar: cupons ativos, válidos (expiração/uses) e marcados → { code, message (custom ou auto), discountLabel, scopeLabel }
+- PromoBar (novo componente no shell acima do header): faixa stone-950 fina estilo Apple, rotação 5.2s com AnimatePresence (pausa hover/foco, reduced-motion), pill do código copiável (clipboard + toast + check verde), X com dismissal persistido (assinatura dos ids — volta quando o conteúdo muda), indicadores; some quando não há cupons; imersivos (classroom/reader) não mostram
+- Admin panel: nova aba CUPONS (grid 6) — form completo (código normalizado, % ou R$, escopo com campos condicionais categoria/mentor, usos máx, validade, toggle barra + mensagem custom) + lista com status (Ativo/Pausado/Expirado/Esgotado), usos X/Y, ações Pôr/Tirar da barra · Pausar/Ativar · Remover; load lazy ao entrar na aba
+- Checkout: campo de cupom JÁ EXISTIA — agora valida cupons de plataforma também (testado: ESCOLA50 50% conta nova e BEMVINDO10 10% site inteiro aplicaram com totais corretos)
+- Landing: nova seção dark emerald-950 "Educação que alcança todo mundo" (entre FAQ e CTA final) — pilares Escolas públicas e privadas / Palestras e cursos / Bolsas e descontos, números 50%+ e 100% bolsas integrais, CTA mailto projetos@mentorhub.com.br
+- Seed: cupom BEMVINDO10 (10% SITE_WIDE, na barra) criado no banco
+- INFRA: dev server NÃO pega Prisma client novo sem restart — e o restart falhou 1x por EADDRINUSE (processo antigo vivo): matar com kill -9 via lsof + pkill next antes de subir; catch silencioso na API mascarava o erro (return items: [])
+- E2E browser: barra render/copy(toast+check)/dismiss(persistência + volta em reload); rotação entre 2 cupons confirmada (5.2s); admin criou ESCOLA50 via UI (toast + lista com badge contas novas 0/100); checkout conta nova aplicou ambos os cupons com valores exatos (94,50 / 170,10); ESG renderizada; mobile 390 zero overflow; lint 0/0; tsc limpo
+
+Stage Summary:
+- Plataforma com marketing próprio: cupons de plataforma com 4 escopos (site inteiro, contas novas/1ª compra, categoria, mentor) + limite de usos + validade, exibíveis na barra promocional rotativa acima do header com código copiável — tudo criado em segundos no painel admin (aba Cupons)
+- Barra some quando não há cupom ativo; dismissal respeita o usuário e reaparece quando o conteúdo muda
+- Mensagem de impacto social/ESG na landing com CTA institucional (mailto placeholder projetos@mentorhub.com.br — trocar pelo e-mail real)
+- Cupons de mentores seguem funcionando exatamente como antes (escopo MENTOR legado)
