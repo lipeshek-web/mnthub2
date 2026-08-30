@@ -2,8 +2,9 @@
  * MentorHub Mobile — edição Expo Snack.
  *
  * Entrada única App.js (o Snack não suporta expo-router): navegação via React
- * Navigation com bottom-tabs + native-stack, mesma identidade visual e
- * mesmas telas da versão local (mobile-app/).
+ * Navigation com bottom-tabs + STACK JS (@react-navigation/stack — o native-stack
+ * não resolve no runtime do Snack), mesma identidade visual e mesmas telas da
+ * versão local (mobile-app/).
  *
  * Estrutura:
  *   SafeAreaProvider → AuthProvider → gate de sessão
@@ -16,13 +17,14 @@
  *           ├─ Curso  (params: { id })
  *           └─ Mentor (params: { id })
  */
+import "react-native-gesture-handler";
 import React from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createStackNavigator } from "@react-navigation/stack";
 import { Ionicons } from "@expo/vector-icons";
 
 import { AuthProvider, useAuth } from "./src/lib/auth";
@@ -116,11 +118,17 @@ function MainTabs() {
 
 /* ------------------------------ Stack principal ----------------------------- */
 
-const Stack = createNativeStackNavigator();
+const Stack = createStackNavigator();
 
 function RootNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        // Fundo escuro do tema também na animação de transição (sem flash branco).
+        cardStyle: { backgroundColor: theme.colors.bg },
+      }}
+    >
       <Stack.Screen name="Main" component={MainTabs} />
       <Stack.Screen name="Livro" component={LivroScreen} />
       <Stack.Screen name="Curso" component={CursoScreen} />

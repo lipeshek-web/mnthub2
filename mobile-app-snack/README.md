@@ -16,7 +16,9 @@ Versão do app de alunos adaptada para rodar direto no **[Expo Snack](https://sn
 3. Adicione as dependências (painel direito → **Dependencies** / ícone de +):
    - `@react-navigation/native`
    - `@react-navigation/bottom-tabs`
-   - `@react-navigation/native-stack`
+   - `@react-navigation/stack` ⚠️ (o `native-stack` **não resolve no Snack** — usar o stack JS)
+   - `react-native-gesture-handler`
+   - `@react-native-masked-view/masked-view`
    - `expo-image`
    - `expo-web-browser`
    - `expo-secure-store`
@@ -26,6 +28,8 @@ Versão do app de alunos adaptada para rodar direto no **[Expo Snack](https://sn
 ### Dependências que o Snack já embute (não precisa adicionar)
 
 `expo`, `react`, `react-native`, `@expo/vector-icons`, `expo-status-bar`, `react-native-screens`.
+
+> Se algo falhar com `Unable to resolve module 'module://…'`, é dependência que faltou no painel — confira a lista acima (o `@react-navigation/native-stack` em especial NÃO existe no runtime do Snack; o projeto usa o `@react-navigation/stack`).
 
 ## 🔗 Servidor MentorHub (já configurado)
 
