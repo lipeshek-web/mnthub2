@@ -788,7 +788,7 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
         </Button>
         <p className="-mt-2 text-center text-[11px] leading-relaxed text-muted-foreground">
           A sessão nasce como solicitação e é confirmada pelo mentor. Acompanhe tudo em{' '}
-          <strong>Minhas sessões</strong>.
+          <strong>Minhas mentorias</strong>.
         </p>
       </CardContent>
 

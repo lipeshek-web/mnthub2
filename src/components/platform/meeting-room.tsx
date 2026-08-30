@@ -150,7 +150,7 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
             <p className="text-sm text-muted-foreground">
               Ela pode ter sido removida ou você não tem acesso a ela.
             </p>
-            <Button onClick={() => navigate({ name: 'dashboard' })}>Ver minhas sessões</Button>
+            <Button onClick={() => navigate({ name: 'dashboard' })}>Ver minhas mentorias</Button>
           </CardContent>
         </Card>
       </div>
@@ -167,7 +167,7 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
         onClick={() => navigate({ name: 'dashboard' })}
         className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 transition-colors hover:text-emerald-700 dark:text-stone-400 dark:hover:text-emerald-300"
       >
-        <ArrowLeft className="h-4 w-4" /> Voltar para minhas sessões
+        <ArrowLeft className="h-4 w-4" /> Voltar para minhas mentorias
       </button>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -203,11 +203,11 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
             </p>
             <p className="max-w-sm text-sm text-muted-foreground">
               {booking.status === 'COMPLETED'
-                ? 'A sala de vídeo é encerrada após a conclusão. Avalie a sessão em Minhas sessões.'
+                ? 'A sala de vídeo é encerrada após a conclusão. Avalie a sessão em Minhas mentorias.'
                 : 'Se algo mudou, combine uma nova data com a outra pessoa.'}
             </p>
             <Button variant="outline" onClick={() => navigate({ name: 'dashboard' })}>
-              Ir para minhas sessões
+              Ir para minhas mentorias
             </Button>
           </div>
         ) : (

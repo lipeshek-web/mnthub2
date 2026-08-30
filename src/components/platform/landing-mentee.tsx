@@ -1020,23 +1020,15 @@ export function LandingMenteeView() {
             </Button>
           </div>
 
-          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Estante: capas em retrato lado a lado */}
+          <div className="mt-8 grid grid-cols-2 items-start gap-x-4 gap-y-7 sm:grid-cols-3 sm:gap-x-6">
             {libraryLoading
               ? Array.from({ length: 3 }).map((_, i) => (
-                  <div
-                    key={i}
-                    aria-hidden
-                    className="overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800"
-                  >
-                    <Skeleton className="h-36 w-full rounded-none" />
-                    <div className="space-y-2.5 p-5">
-                      <div className="flex gap-1.5">
-                        <Skeleton className="h-5 w-16 rounded-full" />
-                        <Skeleton className="h-5 w-20 rounded-full" />
-                      </div>
-                      <Skeleton className="h-4 w-3/4" />
-                      <Skeleton className="h-3 w-1/2" />
-                      <Skeleton className="mt-3 h-11 w-full rounded-full" />
+                  <div key={i} aria-hidden>
+                    <Skeleton className="aspect-[2/3] w-full rounded-xl" />
+                    <div className="space-y-2 pt-3">
+                      <Skeleton className="h-3.5 w-4/5" />
+                      <Skeleton className="h-3 w-3/5" />
                     </div>
                   </div>
                 ))
@@ -1289,28 +1281,29 @@ export function LandingMenteeView() {
               Educação que alcança todo mundo
             </h2>
             <p className="mt-3 text-base leading-relaxed text-emerald-100/85 sm:text-lg">
-              Somos abertos a projetos com escolas públicas e privadas: palestras, cursos e trilhas
-              pensados para a realidade de cada turma. E sempre damos um jeitinho de presentear
-              todos os participantes.
+              Levamos palestras sobre temas que importam — cyberbullying, crimes digitais, segurança
+              online e outros — a escolas públicas e privadas, com mentores especialistas. Todo
+              participante ganha bolsa parcial, e os alunos mais esforçados sem condições de pagar
+              concorrem a bolsas integrais.
             </p>
           </div>
 
           <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
             {[
               {
-                icon: School,
-                title: 'Escolas públicas e privadas',
-                text: 'Projetos sob medida para cada turma, do fundamental ao superior — planejados junto com a escola.',
+                icon: Presentation,
+                title: 'Palestras que abrem a conversa',
+                text: 'Cyberbullying, crimes digitais e outros temas urgentes, apresentados nas escolas pelos nossos mentores.',
               },
               {
-                icon: Presentation,
-                title: 'Palestras e cursos',
-                text: 'Encontros ao vivo e conteúdo gravado conduzidos pelos nossos mentores especialistas.',
+                icon: School,
+                title: 'Públicas e privadas',
+                text: 'Do projeto aberto à turma inteira ao programa personalizado sob medida para colégios particulares.',
               },
               {
                 icon: HeartHandshake,
-                title: 'Bolsas e descontos',
-                text: 'Descontos acima de 50% para todos os participantes — e bolsas completas para quem não pode pagar.',
+                title: 'Bolsas para todos',
+                text: 'Bolsas parciais para todos os participantes — e integrais para os mais esforçados que não têm condições.',
               },
             ].map((pillar) => (
               <div
@@ -1328,20 +1321,22 @@ export function LandingMenteeView() {
 
           <div className="mt-10 flex flex-wrap items-end gap-x-10 gap-y-6">
             <div>
-              <p className="text-4xl font-semibold tracking-tight sm:text-5xl">50%+</p>
-              <p className="mt-1 text-sm text-emerald-200/75">
-                de desconto para todos em projetos educacionais
-              </p>
-            </div>
-            <div>
               <p className="text-4xl font-semibold tracking-tight sm:text-5xl">100%</p>
               <p className="mt-1 text-sm text-emerald-200/75">
-                de cobertura nas bolsas integrais — custo zero para o aluno
+                dos participantes ganham bolsa parcial em projetos escolares
               </p>
             </div>
             <div>
-              <p className="text-4xl font-semibold tracking-tight sm:text-5xl">Públicas e privadas</p>
-              <p className="mt-1 text-sm text-emerald-200/75">escolas e instituições parceiras</p>
+              <p className="text-4xl font-semibold tracking-tight sm:text-5xl">Integrais</p>
+              <p className="mt-1 text-sm text-emerald-200/75">
+                para os alunos mais esforçados sem condições de pagar — custo zero
+              </p>
+            </div>
+            <div>
+              <p className="text-4xl font-semibold tracking-tight sm:text-5xl">Sob medida</p>
+              <p className="mt-1 text-sm text-emerald-200/75">
+                programas personalizados para colégios públicos e particulares
+              </p>
             </div>
           </div>
 
@@ -1876,97 +1871,123 @@ function FeaturedTrackCard({ track }: { track: TrackListItemDTO }) {
   )
 }
 
-// ---------- Card de item da Biblioteca para "Biblioteca em destaque" ----------
-function FeaturedLibraryCard({ item }: { item: LibraryItemDTO }) {
+// ---------- Cards de item da Biblioteca para "Biblioteca em destaque" ----------
+// Livro → capa em retrato com lombada (estante); Artigo → card tipográfico flat
+
+function FeaturedBookCard({ item }: { item: LibraryItemDTO }) {
   const navigate = useAppStore((s) => s.navigate)
-  const isBook = item.kind === 'BOOK'
 
   return (
     <article
-      className="group flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg hover:shadow-stone-900/5 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700"
+      className="group min-w-0 cursor-pointer"
       onClick={() => navigate({ name: 'reader', itemId: item.id })}
+      aria-label={`Ler o livro ${item.title}, ${item.readingMin} minutos, por ${item.author.name}`}
     >
-      {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
-      <div className="relative h-36 w-full shrink-0 bg-stone-100 dark:bg-stone-800">
+      {/* O livro: capa retrato 2:3, lombada à esquerda, cantos retos na lombada e arredondados nas páginas */}
+      <div
+        className={cn(
+          'relative aspect-[2/3] overflow-hidden rounded-l-[5px] rounded-r-xl bg-stone-100 dark:bg-stone-800',
+          'shadow-[0_1px_2px_rgba(0,0,0,0.06),0_10px_28px_-14px_rgba(0,0,0,0.30)]',
+          'transition-[box-shadow,transform] duration-300',
+          'group-hover:-translate-y-1 group-hover:shadow-[0_2px_6px_rgba(0,0,0,0.08),0_22px_44px_-18px_rgba(0,0,0,0.38)]',
+          'dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_10px_28px_-14px_rgba(0,0,0,0.7)]'
+        )}
+      >
         {item.coverUrl ? (
           <img
             src={item.coverUrl}
             alt=""
             aria-hidden
-            className="absolute inset-0 h-full w-full object-cover"
             loading="lazy"
             decoding="async"
+            className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
           <div aria-hidden className="absolute inset-0" style={avatarGradient(item.title)}>
-            {isBook ? (
-              <BookOpen className="pointer-events-none absolute -bottom-2 right-2 h-16 w-16 text-white/20" />
-            ) : (
-              <Library className="pointer-events-none absolute -bottom-2 right-2 h-16 w-16 text-white/20" />
-            )}
+            <BookOpen className="pointer-events-none absolute -bottom-4 right-2 h-24 w-24 text-white/15" />
           </div>
         )}
-        <Badge className="absolute right-2 top-2 rounded-full border-white/40 bg-stone-950/55 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm dark:border-white/20">
-          {isBook ? 'Livro' : 'Artigo'}
-        </Badge>
+        {/* Lombada: sombra interna + fio de luz na dobra */}
+        <div aria-hidden className="absolute inset-y-0 left-0 w-[11px] bg-gradient-to-r from-black/30 via-black/10 to-transparent" />
+        <div aria-hidden className="absolute inset-y-0 left-[10px] w-px bg-white/25" />
+        {/* Brilho de papel no topo */}
+        <div aria-hidden className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white/10 to-transparent" />
+        <span className="absolute right-2 top-2 rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+          Livro
+        </span>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col p-5">
-        <div className="flex flex-wrap gap-1.5">
-          <Badge className="rounded-full bg-emerald-50 text-[11px] text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-            {item.category}
-          </Badge>
-          {item.hasPdf && (
-            <Badge className="rounded-full bg-stone-100 text-[11px] text-stone-600 dark:bg-stone-800 dark:text-stone-300">
-              PDF
-            </Badge>
-          )}
-        </div>
-
-        <p className="mt-2.5 line-clamp-2 min-h-10 font-semibold leading-snug text-stone-900 dark:text-stone-50">
+      {/* Legenda sob a capa */}
+      <div className="pt-3">
+        <p className="line-clamp-2 text-sm font-semibold leading-snug tracking-tight text-stone-900 dark:text-stone-50">
           {item.title}
         </p>
-
-        <div className="mt-2 flex items-center gap-3 text-xs text-stone-400 dark:text-stone-500">
-          <span className="inline-flex items-center gap-1">
-            <Clock aria-hidden className="h-3.5 w-3.5" />
-            {item.readingMin} min de leitura
-          </span>
-          {item.hasPdf && (
-            <span className="inline-flex items-center gap-1">
-              <BookOpen aria-hidden className="h-3.5 w-3.5" />
-              PDF
-            </span>
-          )}
-        </div>
-
-        <div className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-3 dark:border-stone-800">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <Avatar
-              name={item.author.name}
-              src={item.author.avatarUrl}
-              size="sm"
-              className="h-6 w-6 text-[9px] ring-0"
-            />
-            <span className="truncate text-xs font-medium text-stone-600 dark:text-stone-300">
-              {item.author.name}
-            </span>
-          </div>
-          <Button
+        <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400">
+          <Avatar
+            name={item.author.name}
+            src={item.author.avatarUrl}
             size="sm"
-            className="h-11 shrink-0 rounded-full px-5 font-semibold"
-            onClick={(e) => {
-              e.stopPropagation()
-              navigate({ name: 'reader', itemId: item.id })
-            }}
-            aria-label={`Ler ${item.title}`}
-          >
-            Ler agora
-          </Button>
+            className="h-4.5 w-4.5 shrink-0 text-[8px] ring-0"
+          />
+          <span className="truncate">
+            {item.author.name} · {item.readingMin} min
+          </span>
         </div>
       </div>
     </article>
   )
+}
+
+function FeaturedArticleCard({ item }: { item: LibraryItemDTO }) {
+  const navigate = useAppStore((s) => s.navigate)
+
+  return (
+    <article
+      className="flex min-w-0 cursor-pointer flex-col rounded-2xl border border-stone-200 bg-white p-4 transition-colors hover:border-emerald-300 sm:p-5 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700"
+      onClick={() => navigate({ name: 'reader', itemId: item.id })}
+    >
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Badge className="rounded-full border border-emerald-200 bg-emerald-50 text-[11px] text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-950/50">
+          Artigo
+        </Badge>
+        <span className="truncate text-xs font-medium text-stone-400 dark:text-stone-500">
+          {item.category}
+        </span>
+      </div>
+
+      <p className="mt-2.5 line-clamp-2 text-sm font-semibold leading-snug tracking-tight text-stone-900 dark:text-stone-50">
+        {item.title}
+      </p>
+
+      {item.description && (
+        <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+          {item.description}
+        </p>
+      )}
+
+      <div className="mt-auto flex items-center justify-between gap-3 pt-4">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <Avatar
+            name={item.author.name}
+            src={item.author.avatarUrl}
+            size="sm"
+            className="h-5 w-5 shrink-0 text-[8px] ring-0"
+          />
+          <span className="truncate text-xs font-medium text-stone-600 dark:text-stone-300">
+            {item.author.name}
+          </span>
+        </div>
+        <span className="inline-flex shrink-0 items-center gap-1 text-xs text-stone-400 dark:text-stone-500">
+          <Clock aria-hidden className="h-3.5 w-3.5" />
+          {item.readingMin} min
+        </span>
+      </div>
+    </article>
+  )
+}
+
+function FeaturedLibraryCard({ item }: { item: LibraryItemDTO }) {
+  return item.kind === 'BOOK' ? <FeaturedBookCard item={item} /> : <FeaturedArticleCard item={item} />
 }
 
 // ---------- Card de matrícula para "Continue aprendendo" ----------

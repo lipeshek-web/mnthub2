@@ -1606,3 +1606,25 @@ Stage Summary:
 - Barra some quando não há cupom ativo; dismissal respeita o usuário e reaparece quando o conteúdo muda
 - Mensagem de impacto social/ESG na landing com CTA institucional (mailto placeholder projetos@mentorhub.com.br — trocar pelo e-mail real)
 - Cupons de mentores seguem funcionando exatamente como antes (escopo MENTOR legado)
+---
+Task ID: W-7
+Agent: Z.ai Code (main)
+Task: Header "Minhas sessões" só p/ logado + renomear para "Minhas mentorias"; ESG com palestras escolares (cyberbullying, crimes digitais) e bolsas parciais/integrais; cards de LIVRO em formato de livro (retrato com lombada) no explorar e landing; restyle Apple na Biblioteca e no Explorar
+
+Work Log:
+- Renome: "Minhas sessões" → "Minhas mentorias" em 8 pontos (navbar nav+dropdown, footer, dashboard h1, page.tsx docTitle, meeting-room ×3, mentor-profile)
+- Navbar: item "Minhas mentorias" agora renderiza apenas com `user` logado — visitante vê só "Explorar" (verificado via snapshot: guest sem o item; logado carlos@demo.com com o item ativo)
+- ESG (landing): novo parágrafo com palestras em escolas sobre cyberbullying, crimes digitais e segurança online; pilares "Palestras que abrem a conversa" / "Públicas e privadas" (programas sob medida p/ colégios particulares) / "Bolsas para todos" (parciais p/ todos, integrais p/ os mais esforçados sem condições); stats 100% parciais · Integrais · Sob medida
+- Novo BookCoverCard/FeaturedBookCard: capa retrato aspect-[2/3], lombada com gradiente preto + fio de luz, cantos arredondados só do lado das páginas, chip "Livro", sombra de profundidade com hover-lift (pegar o livro da estante), legenda título+autor·min abaixo
+- Artigos: card tipográfico flat (chip Artigo + categoria, título semibold, meta) sem esticamento (h-full removido — sem vão vazio ao lado de livros altos)
+- LibraryCard/FeaturedLibraryCard viraram dispatchers por kind (BOOK → estante; ARTICLE → tipográfico)
+- Grids de biblioteca viraram "estante": 2 colunas mobile / 3-4 desktop com items-start (landing Biblioteca em destaque, aba Biblioteca, seção Artigos & livros da aba Tudo); skeletons em formato de capa
+- Restyle Apple no marketplace: todos os spotlights (mentor/curso/trilhas/biblioteca) sem blobs blur e sem ping (ponto estático), preços/títulos font-extrabold/bold → semibold + tracking-tight, setas → chevrons ›, cards (mentor/curso/trilha/autor) sem hover-translate/shadow (só hairline border), StatTile sem shadow-lg, h1/h2/h3 dos títulos font-semibold
+- Fix de acessibilidade: legenda do livro usava <p> com Avatar (div) dentro → DOM nesting error; trocado para <div> nos 2 arquivos
+- Verificação: lint 0/0; tsc limpo (excl. examples/skills); E2E agent-browser — guest 1440 (header só Explorar; biblioteca com livro+artigos; ESG nova), dark mode desktop, mobile 390 (docOverflow=0, mainOverflow=0, estante 2 col), login carlos@demo.com (nav "Minhas mentorias" ativa + dashboard h1 ok), zero erros de console após fix do <p>; dev.log sem erros
+
+Stage Summary:
+- Header limpo para visitantes: só "Explorar" — área pessoal ("Minhas mentorias") aparece exclusivamente logado, com nome mais abrangente (cobre sessões + cursos)
+- ESG agora conta a história real: palestras de cyberbullying/crimes digitais em escolas públicas e privadas, bolsa parcial para 100% dos participantes, integrais para os mais esforçados sem condições, e programas sob medida para colégios particulares
+- Livros têm cara de livro: capa em retrato com lombada, profundidade e hover-lift — no landing e em todo o Explorar; artigos viraram cards tipográficos enxutos
+- Vocabulário Apple estendido ao Explorar inteiro: flat, hairline, semibold+tracking-tight, chevrons ›, zero blobs/ping/sombras pesadas

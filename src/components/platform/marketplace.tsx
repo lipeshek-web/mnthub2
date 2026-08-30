@@ -3,12 +3,12 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
-  ArrowRight,
   BadgeCheck,
   BookMarked,
   BookOpen,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Clock,
   Globe2,
   GraduationCap,
@@ -597,7 +597,7 @@ export function MarketplaceView() {
                 /* Modo busca: título compacto com o termo + limpar (a busca é a do header) */
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="min-w-0 text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50 sm:text-xl">
+                    <h1 className="min-w-0 text-lg font-semibold tracking-tight text-stone-900 dark:text-stone-50 sm:text-xl">
                       <span className="sm:hidden">Resultados: </span>
                       <span className="hidden sm:inline">Resultados para </span>
                       <span className="text-emerald-700 dark:text-emerald-400">“{search.trim()}”</span>
@@ -617,7 +617,7 @@ export function MarketplaceView() {
                 </div>
               ) : (
                 <>
-                  <h1 className="text-2xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50 sm:text-3xl">
+                  <h1 className="text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-50 sm:text-3xl">
                     {tabTitle}
                   </h1>
                   <p className="mt-1 text-sm text-stone-500 dark:text-stone-400" aria-live="polite">
@@ -874,7 +874,7 @@ export function MarketplaceView() {
       {/* ---------- RESULTADOS ---------- */}
       <section aria-labelledby="resultado-title" className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-12 pt-8">
         <div className="flex flex-wrap items-end justify-between gap-2">
-          <h2 id="resultado-title" className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+          <h2 id="resultado-title" className="text-lg font-semibold tracking-tight text-stone-900 dark:text-stone-50">
             {searching
               ? 'Resultados'
               : tab === 'mentors'
@@ -1035,26 +1035,15 @@ export function MarketplaceView() {
           </>
         ) : (
           <>
-            <div className="mt-5 grid min-w-0 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Estante: 2 colunas no mobile (capas em retrato), 4 no desktop */}
+            <div className="mt-5 grid min-w-0 grid-cols-2 items-start gap-x-4 gap-y-7 sm:grid-cols-3 lg:grid-cols-4">
               {libLoading
-                ? Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800">
-                      <Skeleton className="h-36 w-full rounded-none" />
-                      <div className="space-y-3 p-4">
-                        <div className="flex gap-1.5">
-                          <Skeleton className="h-5 w-16 rounded-full" />
-                          <Skeleton className="h-5 w-20 rounded-full" />
-                        </div>
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-3 w-full" />
-                        <Skeleton className="h-3 w-5/6" />
-                        <div className="mt-3 flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <Skeleton className="h-6 w-6 rounded-full" />
-                            <Skeleton className="h-3 w-24" />
-                          </div>
-                          <Skeleton className="h-3 w-14" />
-                        </div>
+                ? Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i}>
+                      <Skeleton className="aspect-[2/3] w-full rounded-xl" />
+                      <div className="space-y-2 pt-3">
+                        <Skeleton className="h-3.5 w-4/5" />
+                        <Skeleton className="h-3 w-3/5" />
                       </div>
                     </div>
                   ))
@@ -1097,7 +1086,7 @@ export function MarketplaceView() {
               transition={{ duration: 0.4, ease: 'easeOut' }}
             >
               <div className="max-w-2xl">
-                <h2 className="text-2xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50 sm:text-3xl">
+                <h2 className="text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-50 sm:text-3xl">
                   Tudo em um só lugar
                 </h2>
                 <p className="mt-1.5 text-sm leading-relaxed text-stone-500 dark:text-stone-400 sm:text-[15px]">
@@ -1272,6 +1261,8 @@ export function MarketplaceView() {
                       expanded={expanded.lib}
                       onToggleExpand={() => toggleExpanded('lib')}
                       moreLabel="leituras"
+                      gridClassName="grid grid-cols-2 items-start gap-x-4 gap-y-7 sm:grid-cols-3 xl:grid-cols-4"
+                      skeletonClassName="h-64 rounded-2xl"
                     >
                       {visibleSlice(allView.lib, 'lib').map((item) => (
                         <LibraryCard key={item.id} item={item} />
@@ -1294,7 +1285,7 @@ export function MarketplaceView() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2
                   id="explore-areas-title"
-                  className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50"
+                  className="text-lg font-semibold tracking-tight text-stone-900 dark:text-stone-50"
                 >
                   Explore por área
                 </h2>
@@ -1317,7 +1308,7 @@ export function MarketplaceView() {
                       className="h-8 rounded-full"
                       onClick={() => setTab('mentors')}
                     >
-                      Ver mentores de {category} <ArrowRight aria-hidden className="h-3.5 w-3.5" />
+                      Ver mentores de {category} <ChevronRight aria-hidden className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 )}
@@ -1404,21 +1395,10 @@ function SpotlightCard({
 
   return (
     <div className="relative flex h-full min-h-56 flex-col overflow-hidden rounded-2xl bg-emerald-950 p-5 text-white sm:p-6">
-      <div
-        aria-hidden
-        className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="absolute -bottom-24 left-10 h-48 w-48 rounded-full bg-teal-400/10 blur-3xl"
-      />
 
       <div className="relative flex items-center justify-between gap-3">
         <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-300" />
-          </span>
+          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
           Mentor em destaque
         </span>
         {total > 1 && (
@@ -1452,7 +1432,7 @@ function SpotlightCard({
           <div className="flex items-center gap-4">
             <Avatar name={mentor.name} src={mentor.avatarUrl} size="xl" />
             <div className="min-w-0">
-              <p className="flex items-center gap-1.5 truncate text-lg font-bold">
+              <p className="flex items-center gap-1.5 truncate text-lg font-semibold tracking-tight">
                 {mentor.name}
                 {mentor.reviewCount >= 3 && mentor.rating >= 4.5 && (
                   <BadgeCheck className="h-4.5 w-4.5 shrink-0 text-emerald-300" aria-label="Mentor bem avaliado" />
@@ -1488,7 +1468,7 @@ function SpotlightCard({
       </AnimatePresence>
 
       <div className="relative mt-5 flex items-center justify-between gap-3 border-t border-emerald-400/15 pt-4">
-        <p className="text-xl font-extrabold tracking-tight">
+        <p className="text-xl font-semibold tracking-tight">
           {currencyBRL(mentor.hourlyRate)}
           <span className="text-xs font-medium text-emerald-200/70">/h</span>
         </p>
@@ -1498,7 +1478,7 @@ function SpotlightCard({
           aria-label={`Ver perfil de ${mentor.name}`}
           className="rounded-full bg-white font-bold text-emerald-950 hover:bg-emerald-100"
         >
-          Ver perfil <ArrowRight className="h-4 w-4" />
+          Ver perfil <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
     </div>
@@ -1523,7 +1503,7 @@ function StatTile({
       className={cn(
         'flex flex-col justify-center rounded-2xl border p-4 sm:p-5',
         dark
-          ? 'border-emerald-400/20 bg-emerald-950 text-white shadow-lg shadow-emerald-950/20'
+          ? 'border-emerald-400/20 bg-emerald-950 text-white'
           : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900'
       )}
     >
@@ -1537,7 +1517,7 @@ function StatTile({
       </span>
       <p
         className={cn(
-          'mt-3 text-2xl font-extrabold tracking-tight',
+          'mt-3 text-2xl font-semibold tracking-tight',
           dark ? 'text-white' : 'text-stone-900 dark:text-stone-50'
         )}
       >
@@ -1561,11 +1541,11 @@ const MentorCard = memo(function MentorCard({ mentor }: { mentor: MentorListItem
   const navigate = useAppStore((s) => s.navigate)
 
   return (
-    <article className="group flex h-full flex-col rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 transition-all hover:-translate-y-0.5 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md">
+    <article className="group flex h-full flex-col rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 transition-colors hover:border-emerald-300 dark:hover:border-emerald-700">
       <div className="flex items-start gap-3.5">
         <Avatar name={mentor.name} src={mentor.avatarUrl} size="lg" />
         <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1.5 truncate font-bold text-stone-900 dark:text-stone-50">
+          <p className="flex items-center gap-1.5 truncate font-semibold tracking-tight text-stone-900 dark:text-stone-50">
             {mentor.name}
             {mentor.reviewCount >= 3 && mentor.rating >= 4.5 && (
               <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-label="Mentor bem avaliado" />
@@ -1608,7 +1588,7 @@ const MentorCard = memo(function MentorCard({ mentor }: { mentor: MentorListItem
             <Globe2 className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{mentor.languages.split(',')[0]}</span>
           </span>
         </div>
-        <p className="text-sm font-extrabold text-stone-900 dark:text-stone-50">
+        <p className="text-sm font-semibold text-stone-900 dark:text-stone-50">
           {currencyBRL(mentor.hourlyRate)}
           <span className="text-xs font-medium text-stone-400 dark:text-stone-500">/h</span>
         </p>
@@ -1643,20 +1623,9 @@ function CourseSpotlightCard({ course }: { course: CourseListItemDTO }) {
         />
       )}
       {course.coverUrl && <div aria-hidden className="absolute inset-0 bg-emerald-950/40" />}
-      <div
-        aria-hidden
-        className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="absolute -bottom-24 left-10 h-48 w-48 rounded-full bg-teal-400/10 blur-3xl"
-      />
 
       <span className="relative inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-300" />
-        </span>
+        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
         Curso em destaque
       </span>
 
@@ -1677,7 +1646,7 @@ function CourseSpotlightCard({ course }: { course: CourseListItemDTO }) {
             </span>
           </span>
           <div className="min-w-0">
-            <p className="truncate text-lg font-bold">{course.title}</p>
+            <p className="truncate text-lg font-semibold tracking-tight">{course.title}</p>
             <div className="mt-0.5 flex items-center gap-1.5">
               <span className="truncate text-xs text-emerald-100/80">por {course.mentor.name}</span>
               <Stars rating={course.mentor.rating} size={12} />
@@ -1718,7 +1687,7 @@ function CourseSpotlightCard({ course }: { course: CourseListItemDTO }) {
       </div>
 
       <div className="relative mt-5 flex items-center justify-between gap-3 border-t border-emerald-400/15 pt-4">
-        <p className="text-xl font-extrabold tracking-tight">
+        <p className="text-xl font-semibold tracking-tight">
           {course.price === 0 ? (
             <span className="text-emerald-300">Grátis</span>
           ) : (
@@ -1731,7 +1700,7 @@ function CourseSpotlightCard({ course }: { course: CourseListItemDTO }) {
           aria-label={`Ver curso ${course.title}`}
           className="rounded-full bg-white font-bold text-emerald-950 hover:bg-emerald-100"
         >
-          Ver curso <ArrowRight className="h-4 w-4" />
+          Ver curso <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
     </div>
@@ -1744,7 +1713,7 @@ const CourseCard = memo(function CourseCard({ course }: { course: CourseListItem
   const navigate = useAppStore((s) => s.navigate)
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-0 transition-all hover:-translate-y-0.5 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md">
+    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-0 transition-colors hover:border-emerald-300 dark:hover:border-emerald-700">
       {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
       <div className="relative h-28 w-full bg-stone-100 dark:bg-stone-800">
         {course.coverUrl ? (
@@ -1780,7 +1749,7 @@ const CourseCard = memo(function CourseCard({ course }: { course: CourseListItem
       </div>
 
       <div className="flex flex-1 flex-col p-5">
-        <p className="line-clamp-1 font-bold text-stone-900 dark:text-stone-50">{course.title}</p>
+        <p className="line-clamp-1 font-semibold tracking-tight text-stone-900 dark:text-stone-50">{course.title}</p>
         <div className="mt-1 flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400">
           <Avatar
             name={course.mentor.name}
@@ -1847,20 +1816,9 @@ function TrackSpotlightCard({ track }: { track: TrackListItemDTO }) {
         />
       )}
       {track.coverUrl && <div aria-hidden className="absolute inset-0 bg-emerald-950/40" />}
-      <div
-        aria-hidden
-        className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="absolute -bottom-24 left-10 h-48 w-48 rounded-full bg-teal-400/10 blur-3xl"
-      />
 
       <span className="relative inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-300" />
-        </span>
+        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
         Trilha em destaque
       </span>
 
@@ -1881,7 +1839,7 @@ function TrackSpotlightCard({ track }: { track: TrackListItemDTO }) {
             </span>
           </span>
           <div className="min-w-0">
-            <p className="truncate text-lg font-bold">{track.title}</p>
+            <p className="truncate text-lg font-semibold tracking-tight">{track.title}</p>
             <div className="mt-0.5 flex items-center gap-1.5">
               <span className="truncate text-xs text-emerald-100/80">por {track.mentor.name}</span>
               <Stars rating={track.mentor.rating} size={12} />
@@ -1913,7 +1871,7 @@ function TrackSpotlightCard({ track }: { track: TrackListItemDTO }) {
       </div>
 
       <div className="relative mt-5 flex items-center justify-between gap-3 border-t border-emerald-400/15 pt-4">
-        <p className="text-xl font-extrabold tracking-tight">
+        <p className="text-xl font-semibold tracking-tight">
           {track.price === 0 ? (
             <span className="text-emerald-300">Grátis</span>
           ) : (
@@ -1926,7 +1884,7 @@ function TrackSpotlightCard({ track }: { track: TrackListItemDTO }) {
           aria-label={`Ver trilha ${track.title}`}
           className="rounded-full bg-white font-bold text-emerald-950 hover:bg-emerald-100"
         >
-          Ver trilha <ArrowRight className="h-4 w-4" />
+          Ver trilha <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
     </div>
@@ -1940,7 +1898,7 @@ const TrackCard = memo(function TrackCard({ track }: { track: TrackListItemDTO }
 
   return (
     <article
-      className="group flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-0 transition-all hover:-translate-y-0.5 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md"
+      className="group flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-0 transition-colors hover:border-emerald-300 dark:hover:border-emerald-700"
       onClick={() => navigate({ name: 'track', trackId: track.id })}
     >
       {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
@@ -1987,7 +1945,7 @@ const TrackCard = memo(function TrackCard({ track }: { track: TrackListItemDTO }
           </Badge>
         </div>
 
-        <p className="mt-2 line-clamp-1 font-bold text-stone-900 dark:text-stone-50">{track.title}</p>
+        <p className="mt-2 line-clamp-1 font-semibold tracking-tight text-stone-900 dark:text-stone-50">{track.title}</p>
 
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-500 dark:text-stone-400">
           <span className="inline-flex items-center gap-1">
@@ -2058,20 +2016,9 @@ function LibrarySpotlightCard({ item }: { item: LibraryItemDTO }) {
         />
       )}
       {item.coverUrl && <div aria-hidden className="absolute inset-0 bg-emerald-950/40" />}
-      <div
-        aria-hidden
-        className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="absolute -bottom-24 left-10 h-48 w-48 rounded-full bg-teal-400/10 blur-3xl"
-      />
 
       <span className="relative inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-300" />
-        </span>
+        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
         Mais lido
       </span>
 
@@ -2094,7 +2041,7 @@ function LibrarySpotlightCard({ item }: { item: LibraryItemDTO }) {
             </span>
           </span>
           <div className="min-w-0">
-            <p className="truncate text-lg font-bold">{item.title}</p>
+            <p className="truncate text-lg font-semibold tracking-tight">{item.title}</p>
             <p className="mt-0.5 truncate text-xs text-emerald-100/80">por {item.author.name}</p>
           </div>
         </div>
@@ -2132,25 +2079,34 @@ function LibrarySpotlightCard({ item }: { item: LibraryItemDTO }) {
           aria-label={`Ler agora ${item.title}`}
           className="rounded-full bg-white font-bold text-emerald-950 hover:bg-emerald-100"
         >
-          Ler agora <ArrowRight className="h-4 w-4" />
+          Ler agora <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
     </div>
   )
 }
 
-/* ---------- Card da Biblioteca (grade da aba Biblioteca) ---------- */
+/* ---------- Card-livro: capa em retrato com lombada (estante) ---------- */
 
-const LibraryCard = memo(function LibraryCard({ item }: { item: LibraryItemDTO }) {
+const BookCoverCard = memo(function BookCoverCard({ item }: { item: LibraryItemDTO }) {
   const navigate = useAppStore((s) => s.navigate)
 
   return (
     <article
-      className="group flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-0 transition-all hover:-translate-y-0.5 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md"
+      className="group min-w-0 cursor-pointer"
       onClick={() => navigate({ name: 'reader', itemId: item.id })}
+      aria-label={`Ler o livro ${item.title}, ${item.readingMin} minutos, por ${item.author.name}`}
     >
-      {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
-      <div className="relative h-36 w-full bg-stone-100 dark:bg-stone-800">
+      {/* O livro: capa retrato 2:3, lombada à esquerda, cantos retos na lombada e arredondados nas páginas */}
+      <div
+        className={cn(
+          'relative aspect-[2/3] overflow-hidden rounded-l-[5px] rounded-r-xl bg-stone-100 dark:bg-stone-800',
+          'shadow-[0_1px_2px_rgba(0,0,0,0.06),0_10px_28px_-14px_rgba(0,0,0,0.30)]',
+          'transition-[box-shadow,transform] duration-300',
+          'group-hover:-translate-y-1 group-hover:shadow-[0_2px_6px_rgba(0,0,0,0.08),0_22px_44px_-18px_rgba(0,0,0,0.38)]',
+          'dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_10px_28px_-14px_rgba(0,0,0,0.7)]'
+        )}
+      >
         {item.coverUrl ? (
           <img
             src={item.coverUrl}
@@ -2161,68 +2117,95 @@ const LibraryCard = memo(function LibraryCard({ item }: { item: LibraryItemDTO }
             className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
-          <div
-            aria-hidden
-            className="absolute inset-0"
-            style={avatarGradient(item.title)}
-          >
-            {item.kind === 'BOOK' ? (
-              <BookMarked className="pointer-events-none absolute -bottom-3 right-3 h-20 w-20 text-white/20" />
-            ) : (
-              <BookOpen className="pointer-events-none absolute -bottom-3 right-3 h-20 w-20 text-white/20" />
-            )}
+          <div aria-hidden className="absolute inset-0" style={avatarGradient(item.title)}>
+            <BookMarked className="pointer-events-none absolute -bottom-4 right-2 h-24 w-24 text-white/15" />
           </div>
         )}
-        <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-0.5 text-[11px] font-semibold text-stone-700">
-          {LEVEL_LABELS[item.level] ?? item.level}
+        {/* Lombada: sombra interna + fio de luz na dobra */}
+        <div aria-hidden className="absolute inset-y-0 left-0 w-[11px] bg-gradient-to-r from-black/30 via-black/10 to-transparent" />
+        <div aria-hidden className="absolute inset-y-0 left-[10px] w-px bg-white/25" />
+        {/* Brilho de papel no topo */}
+        <div aria-hidden className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white/10 to-transparent" />
+        <span className="absolute right-2 top-2 rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+          Livro
         </span>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col p-4">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Badge
-            className={cn(
-              'rounded-full border',
-              item.kind === 'BOOK'
-                ? 'border-amber-200 dark:border-amber-900 bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/50'
-                : 'border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
-            )}
-          >
-            {item.kind === 'BOOK' ? 'Livro' : 'Artigo'}
-          </Badge>
-          <Badge variant="outline" className="rounded-full border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300">
-            {item.category}
-          </Badge>
-        </div>
-
-        <p className="mt-2 line-clamp-1 font-bold text-stone-900 dark:text-stone-50">{item.title}</p>
-
-        {item.description && (
-          <p className="mt-1.5 line-clamp-2 min-h-10 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
-            {item.description}
-          </p>
-        )}
-
-        <div className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 dark:border-stone-800 pt-3.5">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <Avatar
-              name={item.author.name}
-              src={item.author.avatarUrl}
-              size="sm"
-              className="h-6 w-6 text-[9px] ring-0"
-            />
-            <span className="truncate text-xs font-medium text-stone-600 dark:text-stone-300">
-              {item.author.name}
-            </span>
-          </div>
-          <span className="inline-flex shrink-0 items-center gap-1 text-xs text-stone-400 dark:text-stone-500">
-            <Clock aria-hidden className="h-3.5 w-3.5" />
-            {item.readingMin} min
+      {/* Legenda sob a capa */}
+      <div className="pt-3">
+        <p className="line-clamp-2 text-sm font-semibold leading-snug tracking-tight text-stone-900 dark:text-stone-50">
+          {item.title}
+        </p>
+        <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400">
+          <Avatar
+            name={item.author.name}
+            src={item.author.avatarUrl}
+            size="sm"
+            className="h-4.5 w-4.5 shrink-0 text-[8px] ring-0"
+          />
+          <span className="truncate">
+            {item.author.name} · {item.readingMin} min
           </span>
         </div>
       </div>
     </article>
   )
+})
+
+/* ---------- Card de artigo: tipográfico, flat (Apple) ---------- */
+
+const ArticleCard = memo(function ArticleCard({ item }: { item: LibraryItemDTO }) {
+  const navigate = useAppStore((s) => s.navigate)
+
+  return (
+    <article
+      className="group flex min-w-0 cursor-pointer flex-col rounded-2xl border border-stone-200 bg-white p-4 transition-colors hover:border-emerald-300 sm:p-5 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700"
+      onClick={() => navigate({ name: 'reader', itemId: item.id })}
+    >
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Badge className="rounded-full border border-emerald-200 bg-emerald-50 text-[11px] text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-950/50">
+          Artigo
+        </Badge>
+        <span className="truncate text-xs font-medium text-stone-400 dark:text-stone-500">
+          {item.category}
+        </span>
+      </div>
+
+      <p className="mt-2.5 line-clamp-2 text-sm font-semibold leading-snug tracking-tight text-stone-900 dark:text-stone-50">
+        {item.title}
+      </p>
+
+      {item.description && (
+        <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+          {item.description}
+        </p>
+      )}
+
+      <div className="mt-auto flex items-center justify-between gap-3 pt-4">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <Avatar
+            name={item.author.name}
+            src={item.author.avatarUrl}
+            size="sm"
+            className="h-5 w-5 shrink-0 text-[8px] ring-0"
+          />
+          <span className="truncate text-xs font-medium text-stone-600 dark:text-stone-300">
+            {item.author.name}
+          </span>
+        </div>
+        <span className="inline-flex shrink-0 items-center gap-1 text-xs text-stone-400 dark:text-stone-500">
+          <Clock aria-hidden className="h-3.5 w-3.5" />
+          {item.readingMin} min
+        </span>
+      </div>
+    </article>
+  )
+})
+
+/* ---------- Card da Biblioteca (livro → estante; artigo → tipográfico) ---------- */
+
+const LibraryCard = memo(function LibraryCard({ item }: { item: LibraryItemDTO }) {
+  return item.kind === 'BOOK' ? <BookCoverCard item={item} /> : <ArticleCard item={item} />
 })
 
 /* ---------- Seção em grade organizada (aba Tudo) ---------- */
@@ -2260,7 +2243,7 @@ function GridSection({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-baseline gap-2.5">
-          <h3 className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">{title}</h3>
+          <h3 className="text-lg font-semibold tracking-tight text-stone-900 dark:text-stone-50">{title}</h3>
           <span className="text-xs font-medium text-stone-400 dark:text-stone-500">{countText}</span>
         </div>
         <button
@@ -2269,7 +2252,7 @@ function GridSection({
           className="group inline-flex items-center gap-1 text-sm font-bold text-emerald-700 dark:text-emerald-300 transition-colors hover:text-emerald-800 dark:hover:text-emerald-200"
         >
           {seeAllLabel}
-          <ArrowRight
+          <ChevronRight
             aria-hidden
             className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
           />
@@ -2321,10 +2304,10 @@ const AuthorMiniCard = memo(function AuthorMiniCard({ mentor }: { mentor: Mentor
       type="button"
       onClick={() => navigate({ name: 'mentor', mentorId: mentor.id })}
       aria-label={`Ver perfil de ${mentor.name}`}
-      className="flex h-full w-full flex-col items-start rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md"
+      className="flex h-full w-full flex-col items-start rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 text-left transition-colors hover:border-emerald-300 dark:hover:border-emerald-700"
     >
       <Avatar name={mentor.name} src={mentor.avatarUrl} size="xl" />
-      <p className="mt-3 w-full truncate text-sm font-bold text-stone-900 dark:text-stone-50">{mentor.name}</p>
+      <p className="mt-3 w-full truncate text-sm font-semibold tracking-tight text-stone-900 dark:text-stone-50">{mentor.name}</p>
       <p className="mt-0.5 w-full line-clamp-1 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
         {mentor.headline}
       </p>
@@ -2334,8 +2317,8 @@ const AuthorMiniCard = memo(function AuthorMiniCard({ mentor }: { mentor: Mentor
           {mentor.rating > 0 ? mentor.rating.toFixed(1) : 'Novo'}
         </span>
       </div>
-      <span className="mt-auto inline-flex items-center gap-1 pt-3 text-xs font-bold text-emerald-700 dark:text-emerald-300">
-        Ver perfil <ArrowRight aria-hidden className="h-3.5 w-3.5" />
+      <span className="mt-auto inline-flex items-center gap-1 pt-3 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+        Ver perfil <ChevronRight aria-hidden className="h-3.5 w-3.5" />
       </span>
     </button>
   )

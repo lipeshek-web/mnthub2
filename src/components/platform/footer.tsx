@@ -31,7 +31,7 @@ export function PlatformFooter() {
   ]
 
   const accountLinks = [
-    { label: 'Minhas sessões', icon: <CalendarDays className="h-3.5 w-3.5" />, onClick: () => navigate({ name: 'dashboard' }) },
+    { label: 'Minhas mentorias', icon: <CalendarDays className="h-3.5 w-3.5" />, onClick: () => navigate({ name: 'dashboard' }) },
     { label: 'Para mentores', icon: <Sparkles className="h-3.5 w-3.5" />, onClick: () => navigate({ name: 'for-mentors' }) },
     user
       ? {

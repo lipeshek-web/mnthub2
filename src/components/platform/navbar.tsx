@@ -562,7 +562,8 @@ export function Navbar() {
 
         <nav aria-label="Navegação principal" className="ml-4 hidden items-center gap-1 sm:flex">
           {navItem({ name: 'marketplace' }, 'Explorar', <Compass className="h-4 w-4" />)}
-          {navItem({ name: 'dashboard' }, 'Minhas sessões', <CalendarDays className="h-4 w-4" />)}
+          {/* "Minhas mentorias" só faz sentido para quem está logado — some para visitantes */}
+          {user && navItem({ name: 'dashboard' }, 'Minhas mentorias', <CalendarDays className="h-4 w-4" />)}
         </nav>
 
         {/* Busca principal (desktop): sempre visível, centralizada no header */}
@@ -623,7 +624,7 @@ export function Navbar() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate({ name: 'dashboard' })}>
-                  <CalendarDays className="h-4 w-4" /> Minhas sessões
+                  <CalendarDays className="h-4 w-4" /> Minhas mentorias
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate({ name: 'messages' })}>
                   <MessageCircle className="h-4 w-4" /> Mensagens

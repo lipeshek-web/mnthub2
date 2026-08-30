@@ -106,7 +106,7 @@ function docTitleFor(viewName: string): string {
     classroom: 'Sala de aula — MentorHub',
     track: 'Trilha de aprendizado — MentorHub',
     reader: 'Leitor — MentorHub',
-    dashboard: 'Minhas sessões — MentorHub',
+    dashboard: 'Minhas mentorias — MentorHub',
     meeting: 'Sala de reunião — MentorHub',
     onboarding: 'Painel do mentor — MentorHub',
     'mentor-lp': 'MentorHub',
