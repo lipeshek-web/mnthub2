@@ -7,13 +7,16 @@ export const dynamic = 'force-dynamic'
 const KINDS = ['ARTICLE', 'BOOK']
 const LEVELS = ['INICIANTE', 'INTERMEDIARIO', 'AVANCADO']
 
-/** GET /api/library/[id]?userId= — detalhe do artigo/livro.
+/** GET /api/library/[id] — detalhe do artigo/livro.
  *  canRead: publicado OU autor OU inscrito em qualquer curso que use o item em uma aula.
- *  pdfUrl/content só vêm preenchidos quando canRead. */
+ *  pdfUrl/content só vêm preenchidos quando canRead.
+ *  Identidade SEMPRE pela sessão — userId por query deixava qualquer um ler
+ *  PDF/texto restrito passando o id de um aluno inscrito (IDOR de conteúdo). */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
+    const session = await resolveUser(req)
+    const userId = session?.id ?? ''
 
     const item = await db.libraryItem.findUnique({
       where: { id },

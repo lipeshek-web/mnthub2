@@ -1,20 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { resolveCoupon, type CouponKind } from '@/lib/coupons'
+import { resolveUser } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/coupons/validate — valida um cupom para curso, trilha, pacote OU assinatura (antes do checkout).
- * body: { code, userId?, courseId?, trackId?, bundleId?, membershipId? }
- * userId habilita o escopo NEW_ACCOUNTS (cupom só na 1ª compra).
+ * body: { code, courseId?, trackId?, bundleId?, membershipId? }
+ * Escopo NEW_ACCOUNTS (cupom só na 1ª compra) usa a identidade da SESSÃO;
+ * userId do body só vale para anônimo (e o checkout real revalida com sessão).
  * → { ok, code, label, discount, finalPrice }
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}))
     const rawCode = String(body?.code ?? '').trim()
-    const userId = String(body?.userId ?? '').trim()
+    // Sessão primeiro — NEW_ACCOUNTS julgado pelo id forjado do body dava
+    // resposta errada de preview (o checkout real já usa sessão)
+    const session = await resolveUser(req)
+    const userId = session?.id || String(body?.userId ?? '').trim()
     const courseId = String(body?.courseId ?? '').trim()
     const trackId = String(body?.trackId ?? '').trim()
     const bundleId = String(body?.bundleId ?? '').trim()

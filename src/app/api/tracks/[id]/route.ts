@@ -12,11 +12,15 @@ export const dynamic = 'force-dynamic'
 
 const LEVELS = ['INICIANTE', 'INTERMEDIARIO', 'AVANCADO']
 
-/** GET /api/tracks/[id]?userId= — detalhe da trilha (+ progresso do usuário) */
+/** GET /api/tracks/[id] — detalhe da trilha (+ progresso do usuário logado).
+ *  Sessão primeiro: progresso é dado pessoal — logado, não aceitar userId
+ *  arbitrário da query; anônimo (LP pública) segue sem progresso. */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
+    const session = await resolveUser(req)
+    const userId =
+      session?.id || (req.nextUrl.searchParams.get('userId') || '').trim()
 
     const track = (await db.track.findUnique({
       where: { id },

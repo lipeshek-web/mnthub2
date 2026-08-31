@@ -5,11 +5,14 @@ import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
-/** GET /api/bundles/[id]?userId= — detalhe do pacote (checkout) */
+/** GET /api/bundles/[id] — detalhe do pacote (checkout).
+ *  Sessão primeiro: "já inscrito" é dado pessoal — logado, ignorar userId da query. */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
+    const session = await resolveUser(req)
+    const userId =
+      session?.id || (req.nextUrl.searchParams.get('userId') || '').trim()
 
     const bundle = await db.bundle.findUnique({
       where: { id },

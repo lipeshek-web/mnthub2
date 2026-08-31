@@ -5,14 +5,17 @@ import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
-/** GET /api/memberships/[id]?userId= — plano único (checkout, perfil público) */
+/** GET /api/memberships/[id] — plano único (checkout, perfil público).
+ *  Sessão primeiro: status de assinatura é dado pessoal — logado, ignorar userId da query. */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
+    const session = await resolveUser(req)
+    const userId =
+      session?.id || (req.nextUrl.searchParams.get('userId') || '').trim()
     const membership = await db.mentorMembership.findUnique({
       where: { id },
       include: {

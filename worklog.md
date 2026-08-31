@@ -1813,3 +1813,24 @@ Work Log:
 Stage Summary:
 - Sprint 1 fechado: buracos de receita (enroll pago), de fraude (quiz, referral R$ 0) e de privacidade/dinheiro (finance, pagamentos, calendário, financeiro do mentor) fechados; sala de reunião volta a ter áudio/vídeo; ~30 handlers agora derivam identidade da sessão assinada
 - Backlog observado no E2E: relabel do CTA de curso pago ("Inscrever-se" → compra) e catálogo com só 1 curso grátis
+
+---
+Task ID: W-29b (Sprint 1 — fechar o aceite P2 do W-29)
+Agent: Z.ai Code (main)
+Task: Eliminar a exceção documentada no W-29 ("userId OPCIONAL em GETs públicos de estado") — migrar a identidade desses GETs para a sessão assinada
+
+Work Log:
+- Verificação prévia (pedido do usuário: "algumas coisas ja tem"): confirmado que W-29 (commit 66dc50c) já fez Permissions-Policy, enroll 402, quiz, referral R$0 e rate limits — nada refeito; restava exatamente o aceite P2 do W-29
+- CORREÇÃO DE MAIOR IMPACTO — library/[id] GET: a avaliação do W-29 dizia "só expõem booleanos", mas canRead LIBERA pdfUrl/content reais; anonâmio com ?userId=<aluno inscrito> lia o PDF/texto restrito (IDOR de conteúdo); agora a identidade vem SEMPRE de resolveUser (sessão), query ignorada; teste: item não publicado criado + curl com userId forjado → canRead=false, pdfUrl=null, content=null (item removido após o teste)
+- tracks/[id] GET: sessão primeiro, query só para anônimo (LP pública) — logado não enxerga mais progresso de terceiro via ?userId=
+- bundles/[id] GET: mesmo padrão ("já inscrito" é dado pessoal)
+- memberships/[id] GET: mesmo padrão (status de assinatura)
+- coupons/validate POST: escopo NEW_ACCOUNTS julgado pela SESSÃO (userId do body só para anônimo); checkout real já revalidava com sessão, aqui era inconsistência de preview
+- Compatibilidade preservada: src/lib/api.ts anexa Authorization: Bearer automaticamente (authHeaders()), então o cliente logado não muda nada; chamadas anônimas seguem funcionando (canRead só para publicado)
+- REGRESSÃO — scripts/smoke-w29.ts (bun, contra :3000): login ana@demo.com, library gate (anônimo + userId forjado), track progresso (sessão vence query), enroll curso pago → 402, referrals por sessão; resultado 4/4 ok (após corrigir shape do login: sessionToken flat, não login.token)
+- Quiz re-verificado com dados reais (script descartável): aluno inscrito no GET /api/lessons/[lessonId]/quizzes recebe correctIndex=null e explanation=null — gabarito não vaza
+- VALIDAÇÃO: lint 0/0; dev.log limpo (enroll 402, referrals 200, library 200 sem vazamento; nenhum 500)
+
+Stage Summary:
+- Aceite P2 do W-29 eliminado: nenhum GET decide acesso/estado pessoal por userId de query quando há sessão; vazamento de conteúdo da biblioteca (pdfUrl/content) fechado — era o único do grupo que expunha conteúdo real, não booleano
+- Smoke suite de regressão permanente em scripts/smoke-w29.ts (rodar: bun scripts/smoke-w29.ts)
