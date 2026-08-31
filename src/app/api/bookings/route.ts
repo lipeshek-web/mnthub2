@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { nowNaive, parseNaive } from '@/lib/helpers'
 import { formatWhen, notify } from '@/lib/notify'
 import { resolveUser, unauthorized } from '@/lib/session'
+import { rateLimit, tooMany } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,6 +56,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await resolveUser(req)
   if (!session) return unauthorized()
+  // Evita flood de agendamentos/notificações por conta
+  const gate = rateLimit(`booking:${session.id}`, 10, 5 * 60_000)
+  if (!gate.ok) return tooMany(gate.retryAfterSec)
   try {
     const body = await req.json()
     const menteeId = session.id

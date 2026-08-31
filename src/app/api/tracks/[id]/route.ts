@@ -6,6 +6,7 @@ import {
   trackBaseInclude,
   type TrackRow,
 } from '@/lib/tracks-serialize'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -131,10 +132,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 /** PATCH /api/tracks/[id] — atualiza trilha (somente dono) */
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    // Sessão em vez de userId do body — editar trilha de outro mentor (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente para salvar.')
     const { id } = await ctx.params
     const body = await req.json()
-    const userId = String(body?.userId ?? '')
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const userId = session.id
 
     const track = await db.track.findUnique({ where: { id }, include: { mentor: true } })
     if (!track) return NextResponse.json({ error: 'Trilha não encontrada.' }, { status: 404 })
@@ -206,12 +209,14 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
 }
 
-/** DELETE /api/tracks/[id]?userId= — remove trilha (somente dono) */
+/** DELETE /api/tracks/[id] — remove trilha (somente dono) */
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    // Sessão em vez de userId da query — excluir trilha de outro mentor (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente para excluir.')
     const { id } = await ctx.params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const userId = session.id
 
     const track = await db.track.findUnique({ where: { id }, include: { mentor: true } })
     if (!track) return NextResponse.json({ error: 'Trilha não encontrada.' }, { status: 404 })

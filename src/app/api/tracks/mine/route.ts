@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { serializeTrack, trackBaseInclude, type TrackRow } from '@/lib/tracks-serialize'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
-/** GET /api/tracks/mine?userId= — trilhas em que o usuário está inscrito, com progresso */
+/** GET /api/tracks/mine — trilhas em que o usuário da SESSÃO está inscrito, com progresso */
 export async function GET(req: NextRequest) {
   try {
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    // Sessão em vez de userId da query — histórico de matrículas de outro usuário
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente.')
+    const userId = session.id
 
     const enrollments = await db.trackEnrollment.findMany({
       where: { studentId: userId },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { membershipBaseInclude, serializeMembership } from '@/lib/membership-serialize'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,17 +45,17 @@ export async function GET(
   }
 }
 
-/** DELETE /api/memberships/[id]?userId= — remove o plano do próprio mentor (cascade nos vínculos) */
+/** DELETE /api/memberships/[id] — remove o plano do próprio mentor da SESSÃO (cascade nos vínculos) */
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Sessão em vez de userId da query — apagar plano alheio via IDOR
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente.')
     const { id } = await params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
-    if (!userId) {
-      return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
-    }
+    const userId = session.id
     const profile = await db.mentorProfile.findUnique({ where: { userId } })
     if (!profile) {
       return NextResponse.json({ error: 'Perfil de mentor não encontrado.' }, { status: 403 })

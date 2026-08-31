@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { bundleBaseInclude, serializeBundle, serializeBundleDetail } from '@/lib/bundle-serialize'
-import { resolveUser } from '@/lib/session'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,14 +69,17 @@ async function resolveOwner(userId: string) {
 }
 
 /**
- * POST /api/bundles — cria ou atualiza um pacote do mentor.
- * Body: { userId, id?, title, description?, price, courseIds[], isPublished? }
+ * POST /api/bundles — cria ou atualiza um pacote do mentor da SESSÃO.
+ * Body: { id?, title, description?, price, courseIds[], isPublished? }
  * Regras: dono do perfil · 2+ cursos próprios · price ≥ 0.
  */
 export async function POST(req: NextRequest) {
   try {
+    // Sessão em vez de userId do body — montar pacote no perfil de outro mentor (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente para salvar o pacote.')
     const body = await req.json().catch(() => ({}))
-    const userId = String(body?.userId ?? '').trim()
+    const userId = session.id
     const id = String(body?.id ?? '').trim()
     const title = String(body?.title ?? '').trim()
     const description = String(body?.description ?? '').trim().slice(0, 500)
@@ -86,7 +89,7 @@ export async function POST(req: NextRequest) {
       ? Array.from(new Set<string>(body.courseIds.map((c: unknown) => String(c)).filter(Boolean)))
       : []
 
-    if (!userId || !title) {
+    if (!title) {
       return NextResponse.json({ error: 'Dados incompletos.' }, { status: 400 })
     }
     if (courseIds.length < 2) {

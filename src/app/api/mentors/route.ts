@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 import { MENTOR_FONT_IDS } from '@/lib/fonts'
 import { normalizeText, slugify } from '@/lib/helpers'
 
@@ -105,12 +106,14 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/** POST /api/mentors — cria/atualiza perfil de mentor do usuário */
+/** POST /api/mentors — cria/atualiza perfil de mentor do usuário da SESSÃO */
 export async function POST(req: NextRequest) {
   try {
+    // Sessão em vez de userId do body — o userId de mentor é público (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente para salvar o perfil.')
     const body = await req.json()
-    const userId = String(body?.userId ?? '')
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const userId = session.id
 
     const user = await db.user.findUnique({ where: { id: userId } })
     if (!user) return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 })

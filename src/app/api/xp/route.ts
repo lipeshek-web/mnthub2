@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { activeStreak, studyDay } from '@/lib/xp'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
-/** GET /api/xp?userId= — XP, ofensiva atual e recorde do usuário */
+/** GET /api/xp — XP, ofensiva atual e recorde do usuário da SESSÃO */
 export async function GET(req: NextRequest) {
   try {
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    // Sessão em vez de userId da query — dados de gamificação de outro usuário
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente.')
+    const userId = session.id
 
     const user = await db.user.findUnique({
       where: { id: userId },

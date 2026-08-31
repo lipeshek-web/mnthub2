@@ -14,8 +14,11 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
+            // camera/microphone precisam de (self): a sala de reunião (Jitsi em
+            // iframe) não pode re-conceder permissão que o documento pai negou.
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+            value:
+              "camera=(self), microphone=(self), geolocation=(), interest-cohort=()",
           },
         ],
       },

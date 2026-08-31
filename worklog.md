@@ -1792,3 +1792,24 @@ Stage Summary:
 - Polling de badges 2x→1x com pausa em aba oculta, índices novos no SQLite, re-renders do header reduzidos
 - Telas de aprendizado (sala de aula, curso, leitor) com visual mais imersivo e feedback de XP comemorativo
 - Custos da mudança: contas antigas sem token são deslogadas 1x (fluxo com toast e re-login); seletor demo agora usa /api/auth/demo-accounts
+
+---
+Task ID: W-29 (Sprint 1 — frear os buracos)
+Agent: Z.ai Code (main) + general-purpose (E2E browser)
+Task: Sprint 1 da análise de auditoria — Permissions-Policy da sala de reunião, enroll pago, quiz, referral, rate limits e IDOR em lote (~30 handlers)
+
+Work Log:
+- PERMISSÕES DA SALA (regressão do W-28): next.config.ts com camera=(self), microphone=(self) — o Permissions-Policy anterior (camera=(), microphone=()) impedia o Jitsi (iframe) de acessar áudio/vídeo, pois allow do iframe não re-concede permissão negada pelo pai; confirmado no header via curl e E2E
+- ENROLL PAGO FECHADO: POST /api/courses/[id]/enroll agora devolve 402 quando course.price > 0 (espelha tracks/[id]/enroll); verificado que a UI só chama enroll direto quando price===0 (course-view:209) e que fulfillment concede matrícula paga por upsert próprio (4 pontos) — nenhum fluxo legítimo quebrado; curl com Ana em curso R$189 → 402
+- QUIZ BLINDADO (4 rotas): GET /api/lessons/[lessonId]/quizzes (gabarito vazava passando mentor.userId público na query), POST da mesma rota (criar quiz como outro mentor), PATCH+DELETE /api/quizzes/[id] (editar/apagar quiz alheio) e POST /api/quizzes/[id]/attempt (responder como outro aluno + XP creditado a ele) — todos migrados para resolveUser; attempt também valida selectedIndex < options.length
+- REFERRAL ANTI-FRAUDE: rewardPendingReferral(buyerId, buyerName, orderAmount) só recompensa com order.amount > 0 — pedido de R$ 0 (cupom 100% + créditos, gateway SIMULATED) não paga mais R$ 20 ao referrer
+- RATE LIMITS NOVOS (src/lib/rate-limit.ts, janela deslizante): messages POST 30/min/usuário (cada msg gera notificação), track POST 60/min/IP (INSERT anônimo ilimitado → 429 confirmado na 61ª chamada com Retry-After), ai-summary 10/min/usuário, bookings POST 10/5min, reviews POST 10/10min, questions POST 10/5min
+- IDOR EM LOTE PARA SESSÃO (padrão resolveUser/unauthorized, mesmo do W-28): mentors POST (perfil), mentors/availability PUT (+ deleteMany/createMany agora em $transaction), memberships POST + [id] DELETE + cancel POST, courses POST + [id] PATCH/DELETE, courses/[id]/lessons POST/PATCH/DELETE, courses/[id]/themes POST/PATCH/DELETE, courses/[id]/duplicate POST, library POST + [id] PATCH/DELETE, tracks POST + [id] PATCH/DELETE, bundles POST + [id] DELETE, tracks/[id]/enroll POST, questions/[id] PATCH+DELETE, reviews POST, courses/[id]/reviews POST
+- IDOR DE LEITURA: mentors/finance (receita do mentor legível por query!), payments/status (status de cobrança), xp, referrals, tracks/mine, ai/tutor (conversar como outro aluno com custo de LLM; rate limit agora por usuário+IP), ai/recommendations (gerar recomendação para qualquer userId; rate limit por usuário+IP), lessons/[lessonId]/questions GET, calendar/export
+- CALENDÁRIO (.ics): rota agora exige sessão e o botão "Exportar .ics" do dashboard foi convertido de <a href> (não anexa Authorization) para api.exportCalendar() — fetch autenticado + blob download; E2E confirmou 200 + Content-Disposition correto e sem 401 no fluxo real
+- VALIDAÇÃO: lint 0/0; tsc 0 erros em src/ (restantes são pré-existentes em mobile-app-snack/ e skills/); bateria curl: 8/8 testes de abuso (401/402 esperados), flood track 429 na 61ª, regressões 200 (badges/enrollments/xp/referrals/tracks-mine/recommendations com sessão); E2E browser APROVADO 8/8 (login demo, dashboard, .ics sem erro, curso pago → checkout, sala de aula + Q&A, console 0 erros, mobile 390 sem overflow)
+- Aceite documentado (P2, baixo risco): userId OPCIONAL em GETs públicos de estado (tracks/[id], bundles/[id], memberships/[id], library/[id], auth/me, coupons/validate) — só expõem booleanos de matrícula/inscrição; admin/users segue com guard admin
+
+Stage Summary:
+- Sprint 1 fechado: buracos de receita (enroll pago), de fraude (quiz, referral R$ 0) e de privacidade/dinheiro (finance, pagamentos, calendário, financeiro do mentor) fechados; sala de reunião volta a ter áudio/vídeo; ~30 handlers agora derivam identidade da sessão assinada
+- Backlog observado no E2E: relabel do CTA de curso pago ("Inscrever-se" → compra) e catálogo com só 1 curso grátis

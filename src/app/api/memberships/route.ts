@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { membershipBaseInclude, serializeMembership } from '@/lib/membership-serialize'
-import { resolveUser } from '@/lib/session'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -118,14 +118,18 @@ export async function GET(req: NextRequest) {
 const TIME_RE = /^([01]?\d|2[0-3]):[0-5]\d$/
 
 /**
- * POST /api/memberships — cria ou atualiza o plano do mentor (1 por mentor).
- * Body: { userId, id?, title, description?, price, groupSessionDay?, groupSessionTime?, isPublished? }
+ * POST /api/memberships — cria ou atualiza o plano do mentor da SESSÃO (1 por mentor).
+ * Body: { id?, title, description?, price, groupSessionDay?, groupSessionTime?, isPublished? }
  * Sem id: se já existe plano do mentor, atualiza (upsert de fato).
  */
 export async function POST(req: NextRequest) {
   try {
+    // Sessão em vez de userId do body — sem isso qualquer um sobrescreve o
+    // plano (e as mensalidades) de outro mentor.
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente para salvar o plano.')
     const body = await req.json().catch(() => ({}))
-    const userId = String(body?.userId ?? '').trim()
+    const userId = session.id
     const id = String(body?.id ?? '').trim()
     const title = String(body?.title ?? '').trim()
     const description = String(body?.description ?? '').trim().slice(0, 500)
@@ -134,7 +138,7 @@ export async function POST(req: NextRequest) {
     const groupSessionTime = String(body?.groupSessionTime ?? '19:00').trim()
     const isPublished = body?.isPublished !== false
 
-    if (!userId || !title) {
+    if (!title) {
       return NextResponse.json({ error: 'Dados incompletos.' }, { status: 400 })
     }
     if (!Number.isFinite(price) || price <= 0) {

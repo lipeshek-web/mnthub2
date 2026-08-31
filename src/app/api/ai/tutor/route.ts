@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import ZAI from 'z-ai-web-dev-sdk'
 import { clientIp, rateLimit, tooMany } from '@/lib/rate-limit'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,23 +40,21 @@ function sanitizeHistory(value: unknown): ChatMessage[] {
  */
 export async function POST(req: NextRequest) {
   try {
-    // Rate limit: 20 mensagens/min por IP (cada resposta custa LLM)
-    const gate = rateLimit(`ai-tutor:${clientIp(req)}`, 20, 60_000)
+    // Sessão — conversar como outro aluno no Tutor IA era IDOR com custo de LLM
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Entre com sua conta para conversar com o Tutor IA.')
+
+    // Rate limit: 20 mensagens/min por IP+usuário (cada resposta custa LLM)
+    const gate = rateLimit(`ai-tutor:${session.id}:${clientIp(req)}`, 20, 60_000)
     if (!gate.ok) return tooMany(gate.retryAfterSec)
 
     const body = await req.json().catch(() => ({}))
-    const userId = String(body?.userId ?? '').trim()
+    const userId = session.id
     const courseId = String(body?.courseId ?? '').trim()
     const lessonId = String(body?.lessonId ?? '').trim()
     const message = String(body?.message ?? '').trim().slice(0, MESSAGE_LIMIT)
     const history = sanitizeHistory(body?.history)
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Entre com sua conta para conversar com o Tutor IA.' },
-        { status: 401 }
-      )
-    }
     if (!courseId) return NextResponse.json({ error: 'Curso não informado.' }, { status: 400 })
     if (!message) {
       return NextResponse.json({ error: 'Escreva sua dúvida antes de enviar.' }, { status: 400 })

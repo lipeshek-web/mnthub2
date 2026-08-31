@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 /** POST /api/courses/[id]/lessons — adiciona aula ao curso (somente dono) */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    // Sessão em vez de userId do body — adicionar aula em curso alheio (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente.')
     const { id } = await ctx.params
     const body = await req.json()
-    const userId = String(body?.userId ?? '')
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const userId = session.id
 
     const course = await db.course.findUnique({ where: { id }, include: { mentor: true } })
     if (!course) return NextResponse.json({ error: 'Curso não encontrado.' }, { status: 404 })
@@ -185,15 +188,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
 }
 
-/** PATCH /api/courses/[id]/lessons — move/edita aula (somente dono): {userId, lessonId, themeId?, title?, description?, order?} */
+/** PATCH /api/courses/[id]/lessons — move/edita aula (somente dono): {lessonId, themeId?, title?, description?, order?} */
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    // Sessão em vez de userId do body — editar aula de curso alheio (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente.')
     const { id } = await ctx.params
     const body = await req.json()
-    const userId = String(body?.userId ?? '')
+    const userId = session.id
     const lessonId = String(body?.lessonId ?? '')
-    if (!userId || !lessonId) {
-      return NextResponse.json({ error: 'Usuário ou aula não informados.' }, { status: 400 })
+    if (!lessonId) {
+      return NextResponse.json({ error: 'Aula não informada.' }, { status: 400 })
     }
 
     const course = await db.course.findUnique({ where: { id }, include: { mentor: true } })
@@ -245,15 +251,18 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
 }
 
-/** DELETE /api/courses/[id]/lessons?userId=&lessonId= — remove aula (somente dono) */
+/** DELETE /api/courses/[id]/lessons?lessonId= — remove aula (somente dono) */
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    // Sessão em vez de userId da query — remover aula de curso alheio (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente.')
     const { id } = await ctx.params
     const sp = req.nextUrl.searchParams
-    const userId = (sp.get('userId') || '').trim()
+    const userId = session.id
     const lessonId = (sp.get('lessonId') || '').trim()
-    if (!userId || !lessonId) {
-      return NextResponse.json({ error: 'Usuário ou aula não informados.' }, { status: 400 })
+    if (!lessonId) {
+      return NextResponse.json({ error: 'Aula não informada.' }, { status: 400 })
     }
 
     const course = await db.course.findUnique({ where: { id }, include: { mentor: true } })

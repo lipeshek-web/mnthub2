@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,10 +34,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 /** POST /api/courses/[id]/themes — cria tema (somente dono), order = max + 1 */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    // Sessão em vez de userId do body — criar tema em curso alheio (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente.')
     const { id } = await ctx.params
     const body = await req.json()
-    const userId = String(body?.userId ?? '')
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const userId = session.id
 
     const course = await db.course.findUnique({ where: { id }, include: { mentor: true } })
     if (!course) return NextResponse.json({ error: 'Curso não encontrado.' }, { status: 404 })
@@ -77,9 +80,11 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     const themeId = (req.nextUrl.searchParams.get('themeId') || '').trim()
     if (!themeId) return NextResponse.json({ error: 'Tema não informado.' }, { status: 400 })
 
+    // Sessão em vez de userId do body — editar tema de curso alheio (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente.')
     const body = await req.json()
-    const userId = String(body?.userId ?? '')
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const userId = session.id
 
     const course = await db.course.findUnique({ where: { id }, include: { mentor: true } })
     if (!course) return NextResponse.json({ error: 'Curso não encontrado.' }, { status: 404 })
@@ -119,15 +124,18 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
 }
 
-/** DELETE /api/courses/[id]/themes?themeId=&userId= — remove tema (somente dono); aulas ficam sem tema (SetNull) */
+/** DELETE /api/courses/[id]/themes?themeId= — remove tema (somente dono); aulas ficam sem tema (SetNull) */
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    // Sessão em vez de userId da query — remover tema de curso alheio (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente.')
     const { id } = await ctx.params
     const sp = req.nextUrl.searchParams
     const themeId = (sp.get('themeId') || '').trim()
-    const userId = (sp.get('userId') || '').trim()
-    if (!themeId || !userId) {
-      return NextResponse.json({ error: 'Tema ou usuário não informados.' }, { status: 400 })
+    const userId = session.id
+    if (!themeId) {
+      return NextResponse.json({ error: 'Tema não informado.' }, { status: 400 })
     }
 
     const course = await db.course.findUnique({ where: { id }, include: { mentor: true } })

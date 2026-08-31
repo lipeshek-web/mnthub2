@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { courseBaseInclude, serializeCourse } from '@/lib/course-serialize'
 import { normalizeText } from '@/lib/helpers'
-import { resolveUser } from '@/lib/session'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -80,12 +80,14 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/** POST /api/courses — cria curso para o mentor do usuário informado */
+/** POST /api/courses — cria curso para o mentor da SESSÃO */
 export async function POST(req: NextRequest) {
   try {
+    // Sessão em vez de userId do body — criar curso no perfil de outro mentor
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente para criar o curso.')
     const body = await req.json()
-    const userId = String(body?.userId ?? '')
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const userId = session.id
 
     const mentor = await db.mentorProfile.findUnique({ where: { userId } })
     if (!mentor) {

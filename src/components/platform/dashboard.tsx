@@ -833,16 +833,21 @@ export default function DashboardView() {
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2 self-start sm:self-auto">
-          {/* #8: exporta sessões + aulas ao vivo em .ics (toque ≥44px no mobile) */}
-          <Button asChild variant="outline" className="h-11 px-3 sm:h-9">
-            <a
-              href={`/api/calendar/export?userId=${user.id}`}
-              download="mentorhub.ics"
-              aria-label="Baixar sessões e aulas ao vivo em arquivo .ics para importar no seu calendário"
-            >
-              <Download className="size-4" aria-hidden />
-              <span className="hidden sm:inline">Exportar .ics</span>
-            </a>
+          {/* #8: exporta sessões + aulas ao vivo em .ics via fetch autenticado (toque ≥44px no mobile) */}
+          <Button
+            variant="outline"
+            className="h-11 px-3 sm:h-9"
+            aria-label="Baixar sessões e aulas ao vivo em arquivo .ics para importar no seu calendário"
+            onClick={async () => {
+              try {
+                await api.exportCalendar()
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : 'Falha ao exportar o calendário.')
+              }
+            }}
+          >
+            <Download className="size-4" aria-hidden />
+            <span className="hidden sm:inline">Exportar .ics</span>
           </Button>
           <Button
             variant="outline"

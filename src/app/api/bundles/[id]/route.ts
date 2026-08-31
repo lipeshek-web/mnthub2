@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { bundleBaseInclude, serializeBundle, serializeBundleDetail } from '@/lib/bundle-serialize'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,11 +34,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   }
 }
 
-/** DELETE /api/bundles/[id]?userId= — remove pacote do próprio mentor */
+/** DELETE /api/bundles/[id] — remove pacote do próprio mentor da SESSÃO */
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    // Sessão em vez de userId da query — excluir pacote de outro mentor (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente.')
     const { id } = await ctx.params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
+    const userId = session.id
 
     const profile = await db.mentorProfile.findUnique({ where: { userId } })
     if (!profile) return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 403 })

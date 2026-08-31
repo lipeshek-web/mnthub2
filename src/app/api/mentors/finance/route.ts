@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * GET /api/mentors/finance?userId= — resumo financeiro do mentor:
+ * GET /api/mentors/finance — resumo financeiro do mentor da SESSÃO:
  * receita de cursos/trilhas (Orders PAID), receita de sessões (Bookings COMPLETED),
  * série mensal (6 meses), por produto e pedidos recentes.
  */
 export async function GET(req: NextRequest) {
   try {
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    // Sessão — receita de outro mentor era legível com o userId público (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente.')
+    const userId = session.id
 
     const mentor = await db.mentorProfile.findUnique({ where: { userId } })
     if (!mentor) return NextResponse.json({ error: 'Perfil de mentor não encontrado.' }, { status: 404 })

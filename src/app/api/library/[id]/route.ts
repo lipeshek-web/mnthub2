@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -92,10 +93,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 /** PATCH /api/library/[id] — atualiza item (somente o autor/mentor dono) */
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    // Sessão em vez de userId do body — editar conteúdo de outro mentor (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente para salvar.')
     const { id } = await ctx.params
     const body = await req.json()
-    const userId = String(body?.userId ?? '')
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const userId = session.id
 
     const item = await db.libraryItem.findUnique({ where: { id }, include: { mentor: true } })
     if (!item) return NextResponse.json({ error: 'Conteúdo não encontrado.' }, { status: 404 })
@@ -161,12 +164,14 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
 }
 
-/** DELETE /api/library/[id]?userId= — remove item (somente dono); aulas ficam com libraryItemId null (SetNull) */
+/** DELETE /api/library/[id] — remove item (somente dono); aulas ficam com libraryItemId null (SetNull) */
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    // Sessão em vez de userId da query — excluir conteúdo de outro mentor (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente para excluir.')
     const { id } = await ctx.params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const userId = session.id
 
     const item = await db.libraryItem.findUnique({ where: { id }, include: { mentor: true } })
     if (!item) return NextResponse.json({ error: 'Conteúdo não encontrado.' }, { status: 404 })

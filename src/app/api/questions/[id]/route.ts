@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 /** PATCH /api/questions/[id] — mentor dono responde a pergunta */
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    // Sessão em vez de userId do body — responder pergunta como outro mentor (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente para responder.')
     const { id } = await ctx.params
     const body = await req.json()
-    const userId = String(body?.userId ?? '')
+    const userId = session.id
     const answer = String(body?.answer ?? '').trim()
-
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
 
     const question = await db.lessonQuestion.findUnique({
       where: { id },
@@ -43,11 +45,14 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
 }
 
-/** DELETE /api/questions/[id]?userId= — autor remove a própria pergunta (sem resposta) */
+/** DELETE /api/questions/[id] — autor remove a própria pergunta (sem resposta) */
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    // Sessão em vez de userId da query — remover pergunta de outro autor (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente.')
     const { id } = await ctx.params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
+    const userId = session.id
 
     const question = await db.lessonQuestion.findUnique({ where: { id } })
     if (!question) return NextResponse.json({ error: 'Pergunta não encontrada.' }, { status: 404 })

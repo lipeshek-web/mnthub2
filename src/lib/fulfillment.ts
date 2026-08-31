@@ -16,10 +16,14 @@ export { resolveCoupon } from '@/lib/coupons'
 /**
  * Recompensa a indicação pendente do comprador: 1ª compra paga libera
  * R$ 20 em créditos para quem convidou (PENDING → REWARDED).
+ * Pedido de R$ 0 (cupom 100% + créditos, gateway SIMULATED) NÃO conta como
+ * compra — fecha a fraude de fazenda de contas que gerava código e "comprava"
+ * grátis para imprimir recompensa.
  * Falha silenciosamente — nunca deve quebrar o checkout.
  */
-export async function rewardPendingReferral(buyerId: string, buyerName: string) {
+export async function rewardPendingReferral(buyerId: string, buyerName: string, orderAmount = 0) {
   try {
+    if (!(orderAmount > 0)) return
     const referral = await db.referral.findFirst({
       where: { referredId: buyerId, status: 'PENDING' },
       include: { referrer: { select: { id: true, name: true } } },
@@ -250,8 +254,8 @@ export async function fulfillOrder(orderId: string): Promise<FulfillResult> {
     })
   }
 
-  // ---------- Indicação: 1ª compra paga recompensa quem convidou ----------
-  await rewardPendingReferral(userId, studentName)
+  // ---------- Indicação: 1ª compra paga (valor > 0) recompensa quem convidou ----------
+  await rewardPendingReferral(userId, studentName, order.amount)
 
   return { ok: true, alreadyFulfilled: false, orderStatus: 'PAID' }
 }

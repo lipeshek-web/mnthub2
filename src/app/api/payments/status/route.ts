@@ -2,18 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAsaasConfig, getAsaasPayment, mapAsaasStatus } from '@/lib/asaas'
 import { fulfillOrder } from '@/lib/fulfillment'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
-// GET /api/payments/status?userId=&paymentId=
-// Consulta o estado de uma cobrança do próprio usuário. Quando a cobrança é
+// GET /api/payments/status?paymentId=
+// Consulta o estado de uma cobrança do usuário da SESSÃO. Quando a cobrança é
 // do Asaas, sincroniza com o gateway — se já caiu lá, libera o acesso aqui
 // (cobre o caso do webhook não alcançável em ambiente local).
 export async function GET(req: NextRequest) {
   try {
-    const userId = req.nextUrl.searchParams.get('userId')?.trim() ?? ''
+    // Sessão — status de cobrança de outro usuário era legível por query (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente.')
+    const userId = session.id
     const paymentId = req.nextUrl.searchParams.get('paymentId')?.trim() ?? ''
-    if (!userId || !paymentId) {
+    if (!paymentId) {
       return NextResponse.json({ error: 'Dados incompletos.' }, { status: 400 })
     }
 

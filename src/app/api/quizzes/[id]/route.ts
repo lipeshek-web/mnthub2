@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 /** PATCH /api/quizzes/[id] — mentor dono edita pergunta do quiz */
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    // Sessão em vez de userId do body (mentor.userId é público — IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized()
     const { id } = await ctx.params
     const body = await req.json()
-    const userId = String(body?.userId ?? '')
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const userId = session.id
 
     const quiz = await db.quiz.findUnique({
       where: { id },
@@ -65,12 +68,14 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
 }
 
-/** DELETE /api/quizzes/[id]?userId= — mentor dono remove pergunta */
+/** DELETE /api/quizzes/[id] — mentor dono remove pergunta */
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    // Sessão em vez de userId da query (mentor.userId é público — IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized()
     const { id } = await ctx.params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const userId = session.id
 
     const quiz = await db.quiz.findUnique({
       where: { id },

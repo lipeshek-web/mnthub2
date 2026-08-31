@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,11 +13,15 @@ function parseOptions(raw: string): string[] {
   }
 }
 
-/** GET /api/lessons/[lessonId]/quizzes?userId= — quizzes da aula (dono vê gabarito; aluno vê tentativas) */
+/** GET /api/lessons/[lessonId]/quizzes — quizzes da aula (dono vê gabarito; aluno vê tentativas) */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ lessonId: string }> }) {
   try {
+    // Identidade SEMPRE pela sessão — userId por query vazava o gabarito
+    // (basta passar o mentor.userId, que é público, para virar "dono").
+    const session = await resolveUser(req)
+    if (!session) return unauthorized()
     const { lessonId } = await ctx.params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
+    const userId = session.id
 
     const lesson = await db.lesson.findUnique({
       where: { id: lessonId },
@@ -71,17 +76,17 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ lessonId: s
 /** POST /api/lessons/[lessonId]/quizzes — mentor dono cria pergunta de quiz */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ lessonId: string }> }) {
   try {
+    const session = await resolveUser(req)
+    if (!session) return unauthorized()
     const { lessonId } = await ctx.params
     const body = await req.json()
-    const userId = String(body?.userId ?? '')
+    const userId = session.id
     const prompt = String(body?.prompt ?? '').trim()
     const explanation = String(body?.explanation ?? '').trim()
     const options = Array.isArray(body?.options)
       ? body.options.map((o: unknown) => String(o ?? '').trim())
       : []
     const correctIndex = Number(body?.correctIndex)
-
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
 
     const lesson = await db.lesson.findUnique({
       where: { id: lessonId },

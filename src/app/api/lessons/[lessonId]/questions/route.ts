@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
+import { rateLimit, tooMany } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
-/** GET /api/lessons/[lessonId]/questions?userId= — Q&A da aula (inscrito ou dono) */
+/** GET /api/lessons/[lessonId]/questions — Q&A da aula (inscrito ou dono, via SESSÃO) */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ lessonId: string }> }) {
   try {
+    // Sessão em vez de userId da query (qualquer um se passava por matriculado)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized()
     const { lessonId } = await ctx.params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
+    const userId = session.id
 
     const lesson = await db.lesson.findUnique({
       where: { id: lessonId },
@@ -53,12 +58,17 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ lessonId: s
 /** POST /api/lessons/[lessonId]/questions — aluno inscrito pergunta */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ lessonId: string }> }) {
   try {
+    // Sessão em vez de userId do body — pergunta em nome de outro aluno
+    const session = await resolveUser(req)
+    if (!session) return unauthorized()
+    const gate = rateLimit(`question:${session.id}`, 10, 5 * 60_000)
+    if (!gate.ok) return tooMany(gate.retryAfterSec)
+
     const { lessonId } = await ctx.params
     const body = await req.json()
-    const userId = String(body?.userId ?? '')
+    const userId = session.id
     const text = String(body?.body ?? '').trim()
 
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
     if (text.length < 5) {
       return NextResponse.json({ error: 'Escreva sua pergunta (mín. 5 caracteres).' }, { status: 400 })
     }

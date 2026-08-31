@@ -1,19 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { notify } from '@/lib/notify'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * POST /api/memberships/cancel — cancela a assinatura do usuário.
+ * POST /api/memberships/cancel — cancela a assinatura do usuário da SESSÃO.
  * O acesso permanece até o fim do ciclo pago (renewsAt) — status CANCELLED.
  */
 export async function POST(req: NextRequest) {
   try {
+    // Sessão em vez de userId do body — sem isso qualquer um cancela a
+    // assinatura de outro aluno (IDOR).
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente para cancelar.')
     const body = await req.json().catch(() => ({}))
-    const userId = String(body?.userId ?? '').trim()
+    const userId = session.id
     const membershipId = String(body?.membershipId ?? '').trim()
-    if (!userId || !membershipId) {
+    if (!membershipId) {
       return NextResponse.json({ error: 'Dados incompletos.' }, { status: 400 })
     }
 

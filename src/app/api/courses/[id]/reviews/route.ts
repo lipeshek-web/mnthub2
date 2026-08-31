@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { notify } from '@/lib/notify'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,13 +53,14 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    // Sessão em vez de userId do body — avaliação forjada em nome de outro aluno (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Entre com sua conta para avaliar o curso.')
     const { id } = await ctx.params
     const body = await req.json()
-    const userId = String(body?.userId ?? '').trim()
+    const userId = session.id
     const rating = Number(body?.rating ?? 0)
     const comment = String(body?.comment ?? '').trim()
-
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
       return NextResponse.json({ error: 'Escolha uma nota de 1 a 5 estrelas.' }, { status: 400 })
     }

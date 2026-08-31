@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { rateLimit, clientIp, tooMany } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -7,6 +8,9 @@ const EVENT_NAMES = ['page_view', 'view_item', 'begin_checkout', 'purchase', 'le
 
 /** POST /api/track — registra evento de rastreamento com atribuição de tráfego */
 export async function POST(req: NextRequest) {
+  // Rota anônima e com INSERT a cada chamada — sem limite vira flood no SQLite
+  const gate = rateLimit(`track:${clientIp(req)}`, 60, 60_000)
+  if (!gate.ok) return tooMany(gate.retryAfterSec)
   try {
     const body = await req.json().catch(() => ({}))
     const name = String(body?.name ?? '')

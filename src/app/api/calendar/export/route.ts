@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { parseNaive } from '@/lib/helpers'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 /**
  * #8 Exportar calendário (.ics) — montagem manual, sem bibliotecas.
  *
- * GET /api/calendar/export?userId=X
+ * GET /api/calendar/export
  * → text/calendar (attachment; filename="mentorhub.ics")
  *
  * Eventos:
@@ -46,8 +47,11 @@ type IcsEvent = { start: string; lines: string[] }
 
 export async function GET(req: NextRequest) {
   try {
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    // Sessão — a agenda completa (sessões + aulas) de outro usuário era baixável
+    // com o userId público via query (IDOR).
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente para exportar.')
+    const userId = session.id
 
     const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } })
     if (!user) return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 })

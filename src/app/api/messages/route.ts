@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { notify } from '@/lib/notify'
 import { resolveUser, unauthorized } from '@/lib/session'
+import { rateLimit, tooMany } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -92,6 +93,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await resolveUser(req)
   if (!session) return unauthorized()
+  // Spam de mensagens gera 1 notificação por envio — limita o cadência
+  const gate = rateLimit(`msg:${session.id}`, 30, 60_000)
+  if (!gate.ok) {
+    return tooMany(gate.retryAfterSec, 'Você está enviando mensagens rápido demais. Aguarde alguns segundos.')
+  }
   try {
     const payload = await req.json().catch(() => ({}))
     const userId = session.id

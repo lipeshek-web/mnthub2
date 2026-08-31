@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/courses/[id]/duplicate — cria uma cópia do curso (rascunho, sem alunos).
- * body: { userId }
  * Clona temas, aulas (vídeo/texto/leitura/live, anexos e ordem) e os quizzes das aulas.
  * Matrículas e progresso NÃO são copiados.
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    // Sessão em vez de userId do body — clonar curso de outro mentor (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente para duplicar.')
     const { id } = await ctx.params
-    const body = await req.json().catch(() => ({}))
-    const userId = String(body?.userId ?? '').trim()
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    await req.json().catch(() => ({}))
+    const userId = session.id
 
     const course = await db.course.findUnique({
       where: { id },

@@ -1,19 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { notify } from '@/lib/notify'
+import { resolveUser, unauthorized } from '@/lib/session'
+import { rateLimit, tooMany } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
-/** POST /api/reviews — mentorado avalia uma sessão concluída */
+/** POST /api/reviews — mentorado avalia uma sessão concluída (autor = usuário da SESSÃO) */
 export async function POST(req: NextRequest) {
   try {
+    // Sessão em vez de userId do body — avaliação forjada em nome de outro aluno
+    const session = await resolveUser(req)
+    if (!session) return unauthorized()
+    const gate = rateLimit(`review:${session.id}`, 10, 10 * 60_000)
+    if (!gate.ok) return tooMany(gate.retryAfterSec)
+
     const body = await req.json()
     const bookingId = String(body?.bookingId ?? '')
-    const userId = String(body?.userId ?? '')
+    const userId = session.id
     const rating = Number(body?.rating ?? 0)
     const comment = String(body?.comment ?? '').trim()
 
-    if (!bookingId || !userId) return NextResponse.json({ error: 'Dados incompletos.' }, { status: 400 })
+    if (!bookingId) return NextResponse.json({ error: 'Dados incompletos.' }, { status: 400 })
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
       return NextResponse.json({ error: 'Escolha uma nota de 1 a 5 estrelas.' }, { status: 400 })
     }

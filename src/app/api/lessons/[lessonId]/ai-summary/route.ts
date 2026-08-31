@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import ZAI from 'z-ai-web-dev-sdk'
+import { resolveUser, unauthorized } from '@/lib/session'
+import { rateLimit, tooMany } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,15 +37,15 @@ function normalizeKeyPoints(value: unknown): string[] {
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ lessonId: string }> }) {
   try {
+    // Sessão em vez de userId do body + rate limit (chama LLM = custo real)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized()
+    const gate = rateLimit(`ai-summary:${session.id}`, 10, 60_000)
+    if (!gate.ok) return tooMany(gate.retryAfterSec)
+
     const { lessonId } = await ctx.params
     const body = await req.json().catch(() => ({}))
-    const userId = String(body?.userId ?? '').trim()
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Entre com sua conta para usar o resumo com IA.' },
-        { status: 401 }
-      )
-    }
+    const userId = session.id
 
     const lesson = await db.lesson.findUnique({
       where: { id: lessonId },

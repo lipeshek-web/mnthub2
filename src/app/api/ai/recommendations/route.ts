@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import ZAI from 'z-ai-web-dev-sdk'
 import { courseBaseInclude, serializeCourse } from '@/lib/course-serialize'
 import { clientIp, rateLimit, tooMany } from '@/lib/rate-limit'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,19 +44,19 @@ function parseCompletedIds(json: string): string[] {
 }
 
 /**
- * GET /api/ai/recommendations?userId=
+ * GET /api/ai/recommendations
  * "Feito para você": a IA cruza o histórico do aluno com o catálogo e escolhe
  * até 4 cursos com um motivo curto. Sem histórico (ou se a IA falhar),
  * cai para os cursos mais populares da plataforma.
  */
 export async function GET(req: NextRequest) {
   try {
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
-    if (!userId) {
-      return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
-    }
-    // Rate limit: 12 recomendações/min por IP (chamada custa LLM)
-    const gate = rateLimit(`ai-rec:${clientIp(req)}`, 12, 60_000)
+    // Sessão — recomendações (custo de LLM) eram geradas para qualquer userId
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Entre com sua conta para ver recomendações.')
+    const userId = session.id
+    // Rate limit: 12 recomendações/min por usuário+IP (chamada custa LLM)
+    const gate = rateLimit(`ai-rec:${userId}:${clientIp(req)}`, 12, 60_000)
     if (!gate.ok) return tooMany(gate.retryAfterSec)
 
     sweepCache() // varre entradas expiradas (Map não cresce sem limite)

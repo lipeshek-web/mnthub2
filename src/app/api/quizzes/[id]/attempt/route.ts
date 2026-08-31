@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { awardXp, XP_QUIZ } from '@/lib/xp'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,12 +12,15 @@ export const dynamic = 'force-dynamic'
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    // Sessão em vez de userId do body — tentativa forjada creditava XP a
+    // qualquer aluno e permitia responder no lugar de outro.
+    const session = await resolveUser(req)
+    if (!session) return unauthorized()
     const { id } = await ctx.params
     const body = await req.json()
-    const userId = String(body?.userId ?? '')
+    const userId = session.id
     const selectedIndex = Number(body?.selectedIndex)
 
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
     if (!Number.isInteger(selectedIndex) || selectedIndex < 0) {
       return NextResponse.json({ error: 'Selecione uma alternativa.' }, { status: 400 })
     }
@@ -35,6 +39,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     })
     if (!enr) {
       return NextResponse.json({ error: 'Inscreva-se no curso para responder o quiz.' }, { status: 403 })
+    }
+
+    let optionCount = 0
+    try {
+      const parsed = JSON.parse(quiz.options || '[]')
+      optionCount = Array.isArray(parsed) ? parsed.length : 0
+    } catch {
+      optionCount = 0
+    }
+    if (optionCount > 0 && selectedIndex >= optionCount) {
+      return NextResponse.json({ error: 'Alternativa inválida.' }, { status: 400 })
     }
 
     const correct = selectedIndex === quiz.correctIndex

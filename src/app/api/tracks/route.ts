@@ -7,7 +7,7 @@ import {
   type TrackRow,
 } from '@/lib/tracks-serialize'
 import { normalizeText } from '@/lib/helpers'
-import { resolveUser } from '@/lib/session'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -77,9 +77,11 @@ export async function GET(req: NextRequest) {
 /** POST /api/tracks — cria trilha com itens (cursos do próprio mentor + blocos de mentoria) */
 export async function POST(req: NextRequest) {
   try {
+    // Sessão em vez de userId do body — criar trilha no perfil de outro mentor (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente para criar a trilha.')
     const body = await req.json()
-    const userId = String(body?.userId ?? '')
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const userId = session.id
 
     const mentor = await db.mentorProfile.findUnique({ where: { userId } })
     if (!mentor) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,8 +46,10 @@ async function ensureReferralCode(userId: string): Promise<string> {
  */
 export async function GET(req: NextRequest) {
   try {
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
-    if (!userId) return NextResponse.json({ error: 'Sessão necessária.' }, { status: 401 })
+    // Sessão — códigos/créditos de indicação de outro usuário eram legíveis (IDOR)
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão necessária.')
+    const userId = session.id
 
     const user = await db.user.findUnique({ where: { id: userId } })
     if (!user) return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 })

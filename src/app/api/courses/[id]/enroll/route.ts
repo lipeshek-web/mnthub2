@@ -22,6 +22,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (!course.isPublished) {
       return NextResponse.json({ error: 'Este curso ainda não está publicado.' }, { status: 400 })
     }
+    // Curso pago exige checkout: matrícula só chega por fulfillment (Order PAID).
+    if (course.price > 0) {
+      return NextResponse.json(
+        { error: 'Este curso é pago — finalize o checkout para ter acesso.' },
+        { status: 402 }
+      )
+    }
 
     const user = await db.user.findUnique({ where: { id: userId } })
     if (!user) return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 })

@@ -212,6 +212,34 @@ export const api = {
   updateBooking: (id: string, data: { userId: string; action: 'confirm' | 'cancel' | 'complete' }) =>
     request<BookingDTO>(`/api/bookings/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
+  // Baixa o .ics via fetch autenticado (a rota exige sessão — <a href> não
+  // anexa Authorization) e dispara o download no browser.
+  exportCalendar: async () => {
+    const res = await fetch('/api/calendar/export', {
+      cache: 'no-store',
+      headers: authHeaders(),
+      signal: AbortSignal.timeout(15_000),
+    })
+    if (!res.ok) {
+      let msg = 'Não foi possível exportar o calendário.'
+      try {
+        msg = ((await res.json()) as { error?: string })?.error || msg
+      } catch {
+        /* resposta não-JSON */
+      }
+      throw new Error(msg)
+    }
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'mentorhub.ics'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  },
+
   // Avaliações
   createReview: (data: { bookingId: string; userId: string; rating: number; comment: string }) =>
     request<ReviewDTO>('/api/reviews', { method: 'POST', body: JSON.stringify(data) }),

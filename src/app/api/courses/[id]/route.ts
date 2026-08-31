@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { resolveUser } from '@/lib/session'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -196,10 +196,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 /** PATCH /api/courses/[id] — atualiza curso (somente dono) */
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    // Sessão em vez de userId do body — editar curso de outro mentor via IDOR
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente para salvar.')
     const { id } = await ctx.params
     const body = await req.json()
-    const userId = String(body?.userId ?? '')
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const userId = session.id
 
     const course = await db.course.findUnique({ where: { id }, include: { mentor: true } })
     if (!course) return NextResponse.json({ error: 'Curso não encontrado.' }, { status: 404 })
@@ -260,12 +262,14 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
 }
 
-/** DELETE /api/courses/[id]?userId= — remove curso (somente dono) */
+/** DELETE /api/courses/[id] — remove curso (somente dono) */
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    // Sessão em vez de userId da query — excluir curso de outro mentor via IDOR
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Sessão expirada. Entre novamente para excluir.')
     const { id } = await ctx.params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const userId = session.id
 
     const course = await db.course.findUnique({ where: { id }, include: { mentor: true } })
     if (!course) return NextResponse.json({ error: 'Curso não encontrado.' }, { status: 404 })
