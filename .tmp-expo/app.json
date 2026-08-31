@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "MentorHub",
+    "slug": "mentorhub-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "output": "single",
+      "name": "MentorHub"
+    },
+    "experiments": {
+      "baseUrl": "/app-mobile"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-web-browser"
+    ]
+  }
+}
