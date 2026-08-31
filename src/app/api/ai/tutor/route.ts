@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import ZAI from 'z-ai-web-dev-sdk'
+import { clientIp, rateLimit, tooMany } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,6 +39,10 @@ function sanitizeHistory(value: unknown): ChatMessage[] {
  */
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit: 20 mensagens/min por IP (cada resposta custa LLM)
+    const gate = rateLimit(`ai-tutor:${clientIp(req)}`, 20, 60_000)
+    if (!gate.ok) return tooMany(gate.retryAfterSec)
+
     const body = await req.json().catch(() => ({}))
     const userId = String(body?.userId ?? '').trim()
     const courseId = String(body?.courseId ?? '').trim()

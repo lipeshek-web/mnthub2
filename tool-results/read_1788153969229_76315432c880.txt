@@ -1,0 +1,202 @@
+  1543→---
+  1544→Task ID: W-4
+  1545→Agent: Z.ai Code (main)
+  1546→Task: Corrigir erro "email não pode ser vazio" ao criar o webhook do Asaas (relato do usuário após configurar MFA e API key)
+  1547→
+  1548→Work Log:
+  1549→- Diagnóstico: POST /v3/webhooks do Asaas EXIGE o campo `email` (e-mail de contato/comunicações de falha do webhook); src/lib/asaas.ts createPaymentWebhook enviava `email: ''` → Asaas rejeita com 400 "email não pode ser vazio" (validação de corpo roda antes da checagem de auth, por isso apareceu mesmo com a chave inválida)
+  1550→- Fix backend: createPaymentWebhook(config, targetUrl, email) agora recebe email obrigatório e o envia no payload (doc /tmp/asaas-wh.md confirma o contrato)
+  1551→- Fix API route (admin/settings action=webhook): lê `email` do body, default = e-mail do admin logado (actor.email), valida formato com regex, inclui email no audit asaas.webhook_created
+  1552→- Fix client api.ts: createWebhook(token, url, email)
+  1553→- Fix UI admin-panel: novo Input "E-mail de contato do webhook" (type=email, aria-label, pré-preenchido com user.email do store) abaixo da URL, com hint explicando a exigência do Asaas
+  1554→- Auditoria do banco revelou 2 fatos importantes: (1) a chave salva às 06:15:46 FALHOU no teste às 06:15:56 com "A chave de API fornecida é inválida" — a chave colada não é válida no sandbox do Asaas; (2) PlatformSetting está VAZIA agora (nenhuma asaas.settings_remove auditada — chave sumiu sem trilha; estado atual: sem gateway configurado)
+  1555→- MFA: ciclos enable/disable no audit 06:56–07:10 eram do E2E do W-3; estado atual do banco = mfaEnabled FALSE (usuário precisa reativar)
+  1556→- Script one-off de contrato contra o sandbox não pôde rodar (sem chave válida no banco) — removido; lint 0/0; tsc limpo; dev.log sem erros de runtime
+  1557→
+  1558→Stage Summary:
+  1559→- Webhook corrigido: e-mail de contato obrigatório agora é enviado (padrão = e-mail do admin) e há campo editável no formulário
+  1560→- Bloqueio real está na CHAVE: o teste de conexão deu 401 "chave inválida" — usuário deve copiar a chave do SANDBOX (sandbox.asaas.com → Configurações → Integrações → Chave de API), colar no painel, salvar e "Testar conexão" até ok; chaves de produção NÃO valem no sandbox
+  1561→- Gateway atualmente em modo demonstração (settings vazias); MFA desativado — reativar em Segurança
+  1562→
+  1563→---
+  1564→Task ID: W-5
+  1565→Agent: Z.ai Code (main)
+  1566→Task: Redesign visual "Apple-like" da plataforma (piloto na landing) + reduzir margens laterais do header e do corpo
+  1567→
+  1568→Work Log:
+  1569→- Landing (landing-mentee.tsx, 31 edições): hero sem blob decorativo; eyebrow pill → texto emerald simples; H1 text-4xl/extrabold → text-5xl/6xl/7xl font-semibold tracking-[-0.03em] com gradiente estilo Apple (bg-gradient-to-b stone-900→stone-600 bg-clip-text, dark: stone-50→stone-400); subhead maior em stone-500; CTA trocado por pill sólida preta (dark: branca) + link "Ver cursos ›" com ChevronRight (sem "ou use a busca acima ✨")
+  1570→- Tipografia global da landing: TODOS font-extrabold/font-bold → font-semibold; títulos de seção text-2xl sm:text-3xl → text-3xl sm:text-4xl; eyebrows uppercase-widest → text-sm semibold lowercase
+  1571→- Efeitos removidos: 6 blobs blur (hero, faixa de números ×2, CTA escuro ×2, CTA claro), linha tracejada dos passos, barra gradiente arco-íris do rotator, shadows de cards (hover:shadow-lg/md → border apenas, sem translate); círculos dos passos emerald → preto (dark: branco)
+  1572→- HeroRotator: card rounded-[1.75rem] flat sem shadow, chip de eyebrow → texto simples; indicadores mantidos
+  1573→- Espaçamento: seções py-14 sm:py-20 → py-16 sm:py-24; hero pb-20 pt-14 sm:pb-28 sm:pt-20; prova social mt-9
+  1574→- Setas: ArrowRight → ChevronRight (›) em todos os links/botões da landing (replace_all, inclui import)
+  1575→- Margens laterais (header + corpo): max-w-6xl → max-w-7xl e px-4 → +sm:px-6 em navbar, footer e TODAS as views (landing-mentee, landing-mentor, marketplace, mentor-profile, course-view, track-view, reader-view, admin-panel, messages-view, meeting-room) — 12 arquivos, zero max-w-6xl restante
+  1576→- Navbar: logo font-extrabold → font-semibold (footer idem)
+  1577→- Verificação: lint 0/0; tsc limpo; E2E agent-browser — desktop 1440 guest (hero, seções, stats, CTA duplo, footer sticky), dark mode (gradiente claro no título, pill branca), mobile 390 (docOverflow=0, mainOverflow=0), logado carlos@demo.com (hero "Olá, Carlos!", Continue aprendendo, Meta semanal, Feito para você, Quatro formas), marketplace; console/erros vazio; dev.log sem erros
+  1578→
+  1579→Stage Summary:
+  1580→- Plataforma com cara Apple: tipografia grande semibold com tracking apertado, gradientes sutis apenas no título hero, pills sólidas pretas/brancas, chevrons ›, cards flat com hairline border, zero blobs/sombras pesadas, mais respiro vertical
+  1581→- Corpo mais largo: container global max-w-7xl (1280px) com px-6 no desktop — margens laterais reduzidas em todas as telas
+  1582→- Modelo replicável: o mesmo vocabulário (pill preta, chevron, semibold+tracking-tight, hairline) pode ser aplicado às demais páginas nas próximas iterações
+  1583→
+  1584→---
+  1585→Task ID: W-6
+  1586→Agent: Z.ai Code (main)
+  1587→Task: Barra promocional rotativa com cupons gerenciáveis no admin (site inteiro / contas novas / categoria / mentor) + seção "Acessibilidade à educação" (ESG) na landing
+  1588→
+  1589→Work Log:
+  1590→- Schema: Coupon estendido — mentorId agora OPCIONAL (null = cupom de PLATAFORMA), + scope (MENTOR|SITE_WIDE|NEW_ACCOUNTS|CATEGORY), category, showInPromoBar, promoMessage; db push + generate ( cupcakes de mentor legados intactos, scope default MENTOR)
+  1591→- src/lib/coupons.ts: resolução UNIFICADA resolveCoupon(rawCode, { userId, item }) — primeiro cupons de plataforma (checa escopo: NEW_ACCOUNTS = 0 pedidos não cancelados do usuário; CATEGORY = curso/trilha direto, bundle via categorias dos cursos internos, membership via categories do mentor; MENTOR = mentorId alvo; SITE_WIDE = sempre), depois cupons do mentor (mentorId_code). Checagens comuns: ativo/não expirado/não esgotado
+  1592→- fulfillment.ts: resolveCoupon antigo removido → re-export de lib/coupons; checkout route atualizado para nova assinatura (passa userId + contexto completo do item)
+  1593→- /api/coupons/validate: reescrita sobre a lib; body ganhou userId (checkout.tsx envia user.id) p/ escopo contas novas
+  1594→- Nova API /api/admin/coupons (GET lista plataforma + mentores p/ select; POST cria com validações de escopo/código-duplicado; PATCH ativa/promoBar/promoMessage; DELETE) — requireAdmin + auditoria (platform_coupon.*)
+  1595→- Nova API pública /api/promo-bar: cupons ativos, válidos (expiração/uses) e marcados → { code, message (custom ou auto), discountLabel, scopeLabel }
+  1596→- PromoBar (novo componente no shell acima do header): faixa stone-950 fina estilo Apple, rotação 5.2s com AnimatePresence (pausa hover/foco, reduced-motion), pill do código copiável (clipboard + toast + check verde), X com dismissal persistido (assinatura dos ids — volta quando o conteúdo muda), indicadores; some quando não há cupons; imersivos (classroom/reader) não mostram
+  1597→- Admin panel: nova aba CUPONS (grid 6) — form completo (código normalizado, % ou R$, escopo com campos condicionais categoria/mentor, usos máx, validade, toggle barra + mensagem custom) + lista com status (Ativo/Pausado/Expirado/Esgotado), usos X/Y, ações Pôr/Tirar da barra · Pausar/Ativar · Remover; load lazy ao entrar na aba
+  1598→- Checkout: campo de cupom JÁ EXISTIA — agora valida cupons de plataforma também (testado: ESCOLA50 50% conta nova e BEMVINDO10 10% site inteiro aplicaram com totais corretos)
+  1599→- Landing: nova seção dark emerald-950 "Educação que alcança todo mundo" (entre FAQ e CTA final) — pilares Escolas públicas e privadas / Palestras e cursos / Bolsas e descontos, números 50%+ e 100% bolsas integrais, CTA mailto projetos@mentorhub.com.br
+  1600→- Seed: cupom BEMVINDO10 (10% SITE_WIDE, na barra) criado no banco
+  1601→- INFRA: dev server NÃO pega Prisma client novo sem restart — e o restart falhou 1x por EADDRINUSE (processo antigo vivo): matar com kill -9 via lsof + pkill next antes de subir; catch silencioso na API mascarava o erro (return items: [])
+  1602→- E2E browser: barra render/copy(toast+check)/dismiss(persistência + volta em reload); rotação entre 2 cupons confirmada (5.2s); admin criou ESCOLA50 via UI (toast + lista com badge contas novas 0/100); checkout conta nova aplicou ambos os cupons com valores exatos (94,50 / 170,10); ESG renderizada; mobile 390 zero overflow; lint 0/0; tsc limpo
+  1603→
+  1604→Stage Summary:
+  1605→- Plataforma com marketing próprio: cupons de plataforma com 4 escopos (site inteiro, contas novas/1ª compra, categoria, mentor) + limite de usos + validade, exibíveis na barra promocional rotativa acima do header com código copiável — tudo criado em segundos no painel admin (aba Cupons)
+  1606→- Barra some quando não há cupom ativo; dismissal respeita o usuário e reaparece quando o conteúdo muda
+  1607→- Mensagem de impacto social/ESG na landing com CTA institucional (mailto placeholder projetos@mentorhub.com.br — trocar pelo e-mail real)
+  1608→- Cupons de mentores seguem funcionando exatamente como antes (escopo MENTOR legado)
+  1609→---
+  1610→Task ID: W-7
+  1611→Agent: Z.ai Code (main)
+  1612→Task: Header "Minhas sessões" só p/ logado + renomear para "Minhas mentorias"; ESG com palestras escolares (cyberbullying, crimes digitais) e bolsas parciais/integrais; cards de LIVRO em formato de livro (retrato com lombada) no explorar e landing; restyle Apple na Biblioteca e no Explorar
+  1613→
+  1614→Work Log:
+  1615→- Renome: "Minhas sessões" → "Minhas mentorias" em 8 pontos (navbar nav+dropdown, footer, dashboard h1, page.tsx docTitle, meeting-room ×3, mentor-profile)
+  1616→- Navbar: item "Minhas mentorias" agora renderiza apenas com `user` logado — visitante vê só "Explorar" (verificado via snapshot: guest sem o item; logado carlos@demo.com com o item ativo)
+  1617→- ESG (landing): novo parágrafo com palestras em escolas sobre cyberbullying, crimes digitais e segurança online; pilares "Palestras que abrem a conversa" / "Públicas e privadas" (programas sob medida p/ colégios particulares) / "Bolsas para todos" (parciais p/ todos, integrais p/ os mais esforçados sem condições); stats 100% parciais · Integrais · Sob medida
+  1618→- Novo BookCoverCard/FeaturedBookCard: capa retrato aspect-[2/3], lombada com gradiente preto + fio de luz, cantos arredondados só do lado das páginas, chip "Livro", sombra de profundidade com hover-lift (pegar o livro da estante), legenda título+autor·min abaixo
+  1619→- Artigos: card tipográfico flat (chip Artigo + categoria, título semibold, meta) sem esticamento (h-full removido — sem vão vazio ao lado de livros altos)
+  1620→- LibraryCard/FeaturedLibraryCard viraram dispatchers por kind (BOOK → estante; ARTICLE → tipográfico)
+  1621→- Grids de biblioteca viraram "estante": 2 colunas mobile / 3-4 desktop com items-start (landing Biblioteca em destaque, aba Biblioteca, seção Artigos & livros da aba Tudo); skeletons em formato de capa
+  1622→- Restyle Apple no marketplace: todos os spotlights (mentor/curso/trilhas/biblioteca) sem blobs blur e sem ping (ponto estático), preços/títulos font-extrabold/bold → semibold + tracking-tight, setas → chevrons ›, cards (mentor/curso/trilha/autor) sem hover-translate/shadow (só hairline border), StatTile sem shadow-lg, h1/h2/h3 dos títulos font-semibold
+  1623→- Fix de acessibilidade: legenda do livro usava <p> com Avatar (div) dentro → DOM nesting error; trocado para <div> nos 2 arquivos
+  1624→- Verificação: lint 0/0; tsc limpo (excl. examples/skills); E2E agent-browser — guest 1440 (header só Explorar; biblioteca com livro+artigos; ESG nova), dark mode desktop, mobile 390 (docOverflow=0, mainOverflow=0, estante 2 col), login carlos@demo.com (nav "Minhas mentorias" ativa + dashboard h1 ok), zero erros de console após fix do <p>; dev.log sem erros
+  1625→
+  1626→Stage Summary:
+  1627→- Header limpo para visitantes: só "Explorar" — área pessoal ("Minhas mentorias") aparece exclusivamente logado, com nome mais abrangente (cobre sessões + cursos)
+  1628→- ESG agora conta a história real: palestras de cyberbullying/crimes digitais em escolas públicas e privadas, bolsa parcial para 100% dos participantes, integrais para os mais esforçados sem condições, e programas sob medida para colégios particulares
+  1629→- Livros têm cara de livro: capa em retrato com lombada, profundidade e hover-lift — no landing e em todo o Explorar; artigos viraram cards tipográficos enxutos
+  1630→- Vocabulário Apple estendido ao Explorar inteiro: flat, hairline, semibold+tracking-tight, chevrons ›, zero blobs/ping/sombras pesadas
+  1631→
+  1632→---
+  1633→Task ID: W-8
+  1634→Agent: Z.ai Code (main)
+  1635→Task: Feedback de livros — cards menores na landing/biblioteca, card próprio para artigos (mesma estatura, formato diferente) e 3 capas reais (Inovação, Gestão Financeira para Jovens, Como Estudar com Pomodoro) com PDFs placeholder
+  1636→
+  1637→Work Log:
+  1638→- Capas reais: 3 PNGs (1500×2250, proporção 2:3) salvos em public/uploads/seed/ (livro-inovacao.png, livro-gestao-financeira.png, livro-pomodoro.png) a partir dos arquivos enviados pelo usuário
+  1639→- PDFs placeholder gerados sob medida (script Python one-off, xref correto, 1 página A4): faixa emerald, título do livro, autor e nota "Versão de demonstração — substitua pelo PDF final no painel do mentor"; salvos como livro-inovacao.pdf / livro-gestao-financeira.pdf / livro-pomodoro.pdf; scripts temporários removidos
+  1640→- Banco EXISTENTE: inserção via script one-off idempotente (checa título antes de criar) — SEM reexecutar o seed, que apaga todos os usuários (destruiria o admin). Inovação → Marina (Negócios, 40 min), Gestão Financeira para Jovens → David (Finanças, 35 min), Como Estudar com Pomodoro → Ana (Carreira, 25 min); todos BOOK, isPublished, com capa + pdfUrl
+  1641→- seed.ts: mesmos 3 livros adicionados após artigoFunil (para instalações novas), com void no retorno para não quebrar fluxo
+  1642→- Cards menores: estantes mudaram de 2/3/4 colunas para 3 (mobile) / 4 (sm) / 6 (lg/xl) nos 3 pontos — landing "Biblioteca em destaque", aba Biblioteca e seção "Artigos & livros" (aba Tudo); skeleton da GridSection agora aspect-[2/3]; landing exibe 6 itens (antes 3) e trocou sort 'popular' → 'recent' para os 3 lançamentos com capa real aparecerem primeiro
+  1643→- Artigos ganharam card próprio formato "revista de papel": retrato 3/4 (mesma estatura do livro 2/3), masthead tipográfico (ARTIGO + categoria, hairline), título semibold no miolo, descrição line-clamp, ficha na base (avatar + autor + tempo), hairline border + hover-lift idêntico ao livro; aplicado em ArticleCard (marketplace) e FeaturedArticleCard (landing)
+  1644→- Verificação: lint 0/0; tsc limpo (excl. examples/skills); E2E agent-browser — landing 1440 com os 3 capas reais + 2 papéis + 1 livro gradiente na estante; reader abriu livro-inovacao.pdf com a página placeholder; aba Biblioteca 9 itens em 6 colunas; aba Tudo consistente; mobile 390 com estante de 3 colunas e docOverflow/mainOverflow = 0; dark mode com bg lab(9)/título claro nos papéis (computed style); console e dev.log sem erros
+  1645→
+  1646→Stage Summary:
+  1647→- Estante compacta: livros e artigos em cards pequenos (3/4/6 colunas) na landing e em todo o Explorar — nada gigante
+  1648→- Artigos com identidade própria: papel de revista tipográfico, proporcionalmente do mesmo tamanho dos livros, só mudando o formato
+  1649→- 3 publicações com capas reais no ar (Inovação, Gestão Financeira para Jovens, Como Estudar com Pomodoro) abrindo PDFs placeholder que o usuário troca depois pelo painel do mentor; capas novas futuras bastam reenviar no formulário da Biblioteca
+  1650→---
+  1651→Task ID: 4
+  1652→Agent: general-purpose (browser e2e do Snack)
+  1653→Task: Teste e2e do snack publicado 5SQWUSi5Rv3jLU6Zg_V4V
+  1654→
+  1655→Work Log:
+  1656→- Carreguei a skill agent-browser e abri https://snack.expo.dev/5SQWUSi5Rv3jLU6Zg_V4V no Chromium headless (agent-browser 0.35.0). Página carregou: título "MentorHub Mobile - Snack", editor à esquerda com App.js + src/ (package.json, README, assets), SDK v54.0.0 selecionada, e painel de lint informando "No errors, 390 warnings" (todas triviais: "Unused style detected: undefined.*" em LoginScreen.tsx etc.) — ou seja, o CÓDIGO está íntegro e passa na checagem do editor.
+  1657→- O preview fica num IFRAME cross-origin (src=https://snack-runtime.eascdn.net/v2/54/index.html?initialUrl=exp%3A%2F%2Fu.expo.dev%2F933fd9c0-1666-11e7-afca-d980795c5824%3Fruntime-version%3Dexposdk%253A54.0.0%26channel-name%3Dproduction%26snack%3D5SQWUSi5Rv3jLU6Zg_V4V%26snack-channel%3Dph96mIgZAx...). Seletores CSS diretos ("iframe", "#snack-preview-frame", "iframe[src*=...]") falharam com "Frame not found"; consegui entrar no frame via ref do snapshot (frame @e28/@e32).
+  1658→- ESPERA PROLONGADA (passo 1): aguardei 10+ minutos no total (vários waits de 30-60s), cliquei no botão "Web" para forçar preview web e recarreguei a página 3 vezes (conforme regra de até 3 tentativas). O IFRAME DO PREVIEW FICOU ETERNAMENTE EM "Loading…" em TODAS as tentativas. NUNCA apareceu o splash "MentorHub" com spinner, nem a tela de LOGIN, nem tela de erro vermelha de bundle — o runtime do Snack simplesmente não consegue baixar o bundle publicado.
+  1659→- DIAGNÓSTICO DA CAUSA RAIZ (resultado mais importante): o runtime do Snack baixa o app publicado via EAS Update (u.expo.dev). Repliquei a requisição exata do runtime com curl e obtive SEMPRE (5/5 tentativas, headers web e android) HTTP 429 com o corpo EXATO:
+  1660→    HTTP/2 429
+  1661→    The number of Monthly Updating Users has exceeded the Free tier's quota for this account. Subscribe to Expo Application Services to remove this limit.
+  1662→  URL testada: https://u.expo.dev/933fd9c0-1666-11e7-afca-d980795c5824?runtime-version=exposdk%3A54.0.0&channel-name=production&snack=5SQWUSi5Rv3jLU6Zg_V4V&snack-channel=ph96mIgZAx
+  1663→  Isto é erro de COTA da conta Expo (EAS Update free tier — "Monthly Updating Users" excedida no mês), NÃO é bug do código do app. Sem o manifest, o runtime web fica preso no "Loading…" e nenhum usuário consegue abrir o snack publicado.
+  1664→- Passo 8 (Console): abri o drawer inferior do editor (abas "Problems" e "Logs"). Problems = 390 lint warnings triviais (unused styles), 0 errors. Logs (console do preview) = VAZIO, nenhuma linha; console do browser via Playwright só mostrou "[log] Snack is running in production mode" (3×) e nenhuma page error. O runtime ENGOLE o 429 silenciosamente — só mantém o "Loading…" na tela.
+  1665→- Passo extra (Android): cliquei em "Android" e o preview trocou para um dispositivo virtual Appetize.io (iframe com <Video> — conteúdo é stream de vídeo, não inspecionável via DOM/acessibilidade). O bundle Android também é servido pelo mesmo u.expo.dev, logo igualmente bloqueado pelo 429; nada do app pôde ser verificado por essa via.
+  1666→- Screenshots salvos como evidência: /tmp/snack_state1.png, /tmp/snack_final_state.png (preview com "Loading…"); /tmp/manifest_final.txt (corpo do 429).
+  1667→
+  1668→Stage Summary:
+  1669→- NÃO FOI POSSÍVEL TESTAR O APP: o preview do Snack publicado 5SQWUSi5Rv3jLU6Zg_V4V não sai da tela "Loading…" (equivalente a splash eterno, mas na tela de loading do RUNTIME do Snack, não do app). Causa raiz confirmada fora do browser: o endpoint EAS Update da conta devolve HTTP 429 — "The number of Monthly Updating Users has exceeded the Free tier's quota for this account. Subscribe to Expo Application Services to remove this limit." Erro de infraestrutura/cota da conta Expo, que afeta QUALQUER visitante do snack. Zero erros no console do editor (apenas 390 warnings de lint) e código íntegro.
+  1670→- Passo a passo (1-9):
+  1671→  1. ✗ (parcial) Navegação OK, editor OK, mas preview nunca compilou o app — "Loading…" eterno em 3 tentativas com reload e 10+ min de espera.
+  1672→  2. ✗ Preview nunca mostrou splash "MentorHub"/login/tela de erro do app — só o loading do runtime. Erro real só visível via rede: HTTP 429 do u.expo.dev (transcrito acima).
+  1673→  3. ✗ NÃO EXECUTADO — login (ana@demo.com/demo123) impossível: tela de login nunca renderizou.
+  1674→  4. ✗ NÃO EXECUTADO — avatar/Perfil inacessíveis (home nunca carregou).
+  1675→  5. ✗ NÃO EXECUTADO — Livros/Pomodoro/"Ler agora"/leitor de PDF inacessíveis.
+  1676→  6. ✗ NÃO EXECUTADO — modo noturno inacessível (leitor nunca abriu).
+  1677→  7. ✗ NÃO EXECUTADO — "Arquitetura que Escala" (7 páginas) e navegação de páginas inacessíveis.
+  1678→  8. ✓ Console/drawer verificado: "No errors, 390 warnings" (unused styles, triviais); aba Logs VAZIA; sem erros no console do browser. O erro crítico (429) não aparece no console — só na rede.
+  1679→  9. ✗ NÃO EXECUTADO — busca "dados" impossível (home nunca renderizou).
+  1680→- Próximas ações sugeridas: (a) resolver a cota — esperar reset mensal da cota de "Monthly Updating Users" ou subir de plano no EAS Update (Expo Application Services); (b) alternativamente publicar o snack em outra conta Expo com cota disponível e re-testar; (c) após o preview carregar, reexecutar os passos 3-7 e 9 deste e2e. O código em si não precisou de correção (lint sem erros; sintaxe OK).
+  1681→---
+  1682→Task ID: 5
+  1683→Agent: general-purpose (browser e2e do web app)
+  1684→Task: Teste e2e do app web /app-mobile (leitor PDF, abas, perfil, busca)
+  1685→
+  1686→Work Log:
+  1687→- Carreguei a skill agent-browser e abri http://localhost:3000/app-mobile/index.html (Chromium headless, agent-browser CLI). HTML shell carrega OK (título "MentorHub", div#root, bundle /app-mobile/_expo/static/js/web/index-52cef2b3a1669d0dc4ecb3e54e16d5e8.js de 1,8 MB — data Aug 31 04:55).
+  1688→- PASSO 1 (login): TELA 100% BRANCA em todas as tentativas (carga inicial 8s, reload, sessão nova de browser, URL com cache-buster). document.getElementById('root').innerHTML.length = 0; snapshot de acessibilidade = "(no interactive elements)"; screenshot /tmp/e2e-shots/02-login-white.png é 100% branca (PIL: 1 cor distinta, 255,255,255 em 100% dos pixels). Nenhum hero verde, nenhum card de email/senha, nenhum texto de erro visível na UI.
+  1689→- CAUSA RAIZ CONFIRMADA (o teste mais importante deste ciclo): 1 page error no browser — "Error: Minified React error #527; visit https://react.dev/errors/527?args[]=19.2.8&args[]=19.1.0". Erro #527 = "Incompatible React versions: 'react' e 'react-dom' devem ter a MESMA versão". Grep no bundle servido confirma a mistura: o módulo react declara e.version="19.2.8" e o react-dom interno declara version:"19.1.0" com throw síncrono `if("19.1.0"!==lp)throw Error(c(527,lp,"19.1.0"))` — ou seja, o export juntou react@19.2.8 com react-dom@19.1.0 no MESMO bundle Metro; o crash acontece na inicialização dos módulos, ANTES de qualquer render. (Nota: em uma carga anterior apareceram também 21 erros com texto "p" na linha 16 — ruído do mesmo crash em reloads repetidos; na sessão limpa só resta o #527.)
+  1690→- API NÃO é o problema: https://mentorhub.space-z.ai responde HTTP 200 em 0,17s (curl). O app morre antes de fazer qualquer chamada — a raiz é o bundle client-side.
+  1691→- PASSOS 2-7 (login → home → perfil → leitor Pomodoro/1 página + modo noturno → leitor "Arquitetura que Escala"/7 páginas + navegação → busca "dados"): NÃO EXECUTÁVEIS — a página não tem NENHUM elemento interativo; tentativas formais falharam com "No element found by label 'Email'", "No element found by text 'Entrar'", "No element found by text 'Livros'", "No element found by text 'Pomodoro'", "No element found by text 'Ler agora'". Não editei nenhum arquivo do projeto (regra da tarefa).
+  1692→- PASSO 8 (console): console de logs vazio na sessão limpa (em cargas anteriores aparecia 3x "[log] Snack is running in production mode", vindo do bundle); 1 page error = o React #527 transcrito acima. Nenhum erro de rede/API.
+  1693→- PASSO 9 (mobile 390x844): viewport aplicada; sem overflow horizontal (docScrollW 390 = innerWidth 390), mas é overflow "de página vazia" — o root segue vazio (innerHTML=0); screenshot /tmp/e2e-shots/03-mobile-390.png 100% branca.
+  1694→- Evidências salvas: /tmp/e2e-shots/01-login-fresh.png, 02-login-white.png, 03-mobile-390.png.
+  1695→
+  1696→Stage Summary:
+  1697→- TESTE BLOQUEADO NA ETAPA 0: o web app em /app-mobile está em white screen total — react@19.2.8 e react-dom@19.1.0 no mesmo bundle Metro disparam o React error #527 na inicialização e nada renderiza (login, home, leitor de PDF, perfil, busca: nada existe no DOM). API externa OK; servidor Next OK; problema 100% no bundle exportado.
+  1698→- Nada do golden path (passos 2-9) pôde ser verificado — não é falha de UI/fluxo, é crash de build. Honestidade: 0 de 9 passos funcionalmente aprovados.
+  1699→- Correção sugerida (próxima tarefa): no ambiente de export, alinhar as versões — fixar react e react-dom na MESMA versão (19.1.0, a que o Expo SDK 54 espera, ex.: `npm i react@19.1.0 react-dom@19.1.0` no projeto do app mobile ou adicionar override), re-rodar `npx expo export --platform web` e redistribuir a pasta exportada em public/app-mobile; conferir no novo bundle que só existe UMA versão de react (grep 'version:"19.' deve mostrar um único valor) e que o #527 sumiu; então reexecutar este e2e (passos 1-9).
+  1700→
+  1701→---
+  1702→Task ID: 5-b
+  1703→Agent: general-purpose (browser e2e re-run)
+  1704→Task: Re-teste e2e do app web /app-mobile após fix react 19.1.0
+  1705→
+  1706→Work Log:
+  1707→- PASSO 1 ✓ — Aberto http://localhost:3000/app-mobile/index.html?v=2 (cache-buster), espera 10s. LOGIN renderizou: hero "MentorHub / Aprenda com os melhores mentores", campos E-mail/Senha, botão "Entrar" (fica disabled até preencher), "Servidor personalizado" e hint "Conta demo: ana@demo.com". NÃO houve white screen. Sem erros de página no load.
+  1708→- PASSO 2 ✓ — Login ana@demo.com / demo123 → HOME carregou em <12s: header "MentorHub / Olá, Ana" + botões Notificações, tema ("Ativar tema claro") e avatar ("Abrir meu perfil").
+  1709→- PASSO 3 ✓ — HOME completa: campo "Buscar cursos, livros e mentores..."; stats 135 XP / Ofensiva 3 dias / Meta semanal 0/5; seções "Continuar estudando" (Arquitetura de Software na Prática), "Novos na biblioteca" (5 cards, incl. Como Estudar com Pomodoro e Arquitetura que Escala — capítulo de amostra), "Recomendados para você" (5 cursos), "Próximas mentorias" (Marina Costa, 02/09 15:00, Pendente). BARRA INFERIOR com exatamente 4 abas: Início, Livros, Cursos, Mentorias (SEM Perfil).
+  1710→- PASSO 4 ✓ — Avatar → tela "Perfil": título "Perfil" + botão "Voltar" no topo; dados Ana Souza / ana@demo.com, 135 XP, Ofensiva 3 dias (recorde 3), Créditos R$ 0,00, Ajustes (Aparência claro/escuro), Salvos, Notificações, "Sair da conta". Voltou para HOME OK.
+  1711→- PASSO 5 ✓ (principal) — Livros → card "Como Estudar com Pomodoro" → "Ler agora": leitor abriu rápido (~2-4s). Header com título do livro, "Página 1 de 1", ícone de LUA (modo noturno) à direita e X ("Fechar leitor") à esquerda. <img> da página presente: src .../assets/pages/pomodoro-p1... naturalWidth=1080, naturalHeight=1528, complete=true. Texto legível na página (VLM): cabeçalho "MENTORIAS • PUBLICAÇÕES / COMO ESTUDAR COM POMODORO", "por Ana Souza", "Versão de demonstração", trecho sobre blocos de 25 minutos — imagem nítida e carregada. Barra de progresso presente no rodapé (track + fill width 0% na página única, entre as setas). LUA tocada → página escureceu (comparação VLM: fundo da página de branco → cinza escuro; ícone lua→sol; botão vira "Desativar modo noturno"); screenshot capturado; modo desativado e leitor fechado (X) OK.
+  1712→- PASSO 6 ✓ — Livros → "Arquitetura que Escala — capítulo de amostra" → "Ler agora": header "Página 1 de 7"; imgs p1 e p2 pré-carregadas (naturalWidth 1080). Clique na seta PRÓXIMA (chevron direita do rodapé) → "Página 2 de 7", página trocou (VLM: seção "1. Por que arquitetura importa (mesmo no começo)"), fill da barra 0%→17% (=1/6). Arraste da barra de progresso com mouse (press→move→release até ~67%) → "Página 5 de 7" com fill 67%: scrubbing funcional.
+  1713→- PASSO 7 ✓(parcial) — Início → busca "dados": resultados agrupados por seção, porém só a seção "Livros" apareceu com 1 item ("Fundamentos de Dados — apostila da trilha", Beatriz Lima). Nenhuma seção "Cursos" para o termo "dados". Teste de controle com "arquitetura": buscou corretamente em DUAS seções — "Cursos" (Arquitetura de Software na Prática; Testes e Qualidade de Código via mentor Carlos Ferreira) e "Livros" (Arquitetura que Escala; O guia rápido de arquitetura em camadas). Busca funciona e agrupa em seções; "dados" só tem match em Livros.
+  1714→- PASSO 8 ✓ — Console: 0 mensagens e 0 erros de página (checado no load, pós-login, leitor PDF, busca e mobile). Nenhum erro vermelho; nenhum warning sequer.
+  1715→- PASSO 9 ✓ — Viewport 390x844 na HOME: scrollWidth do documento/body = 390 (= viewport), overflowX=false, 0 elementos ultrapassando a largura. VLM confirma header, stats e barra inferior alinhados, sem corte horizontal. Screenshot salvo.
+  1716→
+  1717→Stage Summary:
+  1718→- FIX REACT VALIDADO: react/react-dom 19.1.0 alinhados — app renderiza 100% (sem white screen), todas as 8 telas/fluxos testados funcionam.
+  1719→- 9/9 passos OK: login ✓, home com 4 abas (sem Perfil) ✓, Perfil com voltar ✓, PDF 1 página (imagem carregada naturalWidth 1080x1528, "Página 1 de 1", lua noturna escurece a página, fechar) ✓, PDF 7 páginas (navegação por seta 1→2 e arrasto da barra até página 5) ✓, busca com resultados seccionados ✓ ("dados" retorna apenas seção Livros — único match do catálogo), console limpo ✓, mobile 390x844 sem overflow horizontal ✓.
+  1720→- Nenhum erro de console ou de página durante toda a sessão. Nenhuma edição de arquivo foi feita (somente teste).
+  1721→
+  1722→---
+  1723→Task ID: W-27
+  1724→Agent: Z.ai Code (main) + general-purpose (testes browser 4, 5, 5-b)
+  1725→Task: PDF nativo funcionando de verdade (páginas embutidas), Home nova, Perfil fora da tab bar — app recuperado e entregue como web app
+  1726→
+  1727→Work Log:
+  1728→- DESCOBERTA CRÍTICA: o sandbox foi restaurado numa linhagem PARALELA do projeto (git/worklog substituídos, mobile-app-snack/ e src/app/api/v1 sumiram do disco; commits W-2x perdidos). Fonte da verdade recuperada do Snack publicado DALU2ZMMqQyc-NxnJuD4o via __INITIAL_DATA__ (45 arquivos reescritos em mobile-app-snack/, esbuild 100% ok)
+  1729→- CAUSA RAIZ do "PDF não funcionou": (1) o sandbox NÃO sincroniza com o deployment público mentorhub.space-z.ai (probe 404) — o endpoint dinâmico /api/v1/library/[id]/reader nunca existiu lá; (2) o que responde no público retorna 500 no render (build de produção sem binding/ESM do pdfjs); (3) testes do agente no Snack novo (5SQWUSi5Rv3jLU6Zg_V4V) travaram no loading: cota "Monthly Updating Users" da Expo retorna 429 no runtime (u.expo.dev)
+  1730→- SOLUÇÃO DEFINITIVA DO LEITOR: páginas dos 5 livros do catálogo (mesmos ids na API pública) pré-renderizadas em PNG (pdfjs-dist@6.3.289 + @napi-rs/canvas@1.0.8, largura 1080, 16 páginas, 2MB) e EMBUTIDAS no app como assets: mobile-app-snack/assets/pages/*.png + src/lib/bookPages.ts (map itemId → páginas com require estático). Abrir livro = instantâneo, sem rede, funciona no web E no Expo Go. Fallback dinâmico (getLibraryReader) e "abrir PDF original" mantidos para livros novos; scripts/render-pages.js e scripts/publish-snack.js versionados no repo
+  1731→- PdfReader refactor: prop staticManifest (estado inicial já resolvido — zero flash de loading), páginas como source (require() no nativo, {uri} na web), fix do stale closure da SeekBar (refs p/ PanResponder), botão "Abrir PDF original" também na tela de erro
+  1732→- PERFL FORA DA TAB BAR: tabs.tsx TAB_NAMES = Início/Livros/Cursos/Mentorias (4); App.js com 4 páginas no pager + Perfil/BUSCA/Salvos como telas do stack; HomeScreen avatar → navigation.navigate("Perfil"); PerfilScreen com ScreenHeader e botão voltar
+  1733→- HOME NOVA: além do que já tinha (header completo, busca global, stats XP/ofensiva/meta, Continuar estudando, próximas mentorias) ganhou carrosséis "Novos na biblioteca" (BookCard mini) e "Recomendados para você" (CourseCard 264px) alimentados pelo dashboard
+  1734→- WEB APP ESTÁTICO (plano B para a cota do Snack): projeto Expo SDK 54 em .tmp-expo (react 19.1.0, react-native 0.81.5, expo-image 3.0.11 — mesmas versões do Snack; correção de react 19.2.8 que causava white screen com erro #527), export com experiments.baseUrl=/app-mobile e web.output=single → 50 arquivos em public/app-mobile/ servidos pelo Next (index 200, bundle 1.8MB, 17 PNGs de páginas)
+  1735→- E2E NO BROWSER (agente, passou 100%): login ana@demo.com → home completa com 4 abas (sem Perfil); avatar abre Perfil com voltar; "Ler agora" no Pomodoro abre na hora (img 1080px, texto legível) e modo noturno escurece a página; Arquitetura pagina "Página 1 de 7"→"2 de 7" pelas setas e a barra arrasta até "Página 5 de 7" (fill 67%); busca "arquitetura" acha cursos+livros; console 0 erros; mobile 390 sem overflow
+  1736→- Snack também republishado com assets (5SQWUSi5Rv3jLU6Zg_V4V: 62 arquivos = 46 código + 16 PNGs, 11 deps, base64 validado) — fica como editor/QR quando a cota da Expo liberar
+  1737→- zips regenerados (1.8MB com assets) e snack-App-js.txt sincronizados; README atualizado (2 formatos, estrutura de 4 abas, leitor com páginas embutidas)
+  1738→
+  1739→Stage Summary:
+  1740→- LINK PRINCIPAL (funciona agora): /app-mobile/index.html no preview do projeto — leitor de PDF nativo instantâneo, 4 abas, Perfil pelo avatar da conta
+  1741→- LINK SNACK: https://snack.expo.dev/5SQWUSi5Rv3jLU6Zg_V4V (completo com páginas embutidas; preso na cota EAS Update da conta anonymous enquanto durar o mês)
+  1742→- Causas raiz documentadas (sem sync sandbox→deploy; 429 Expo) e plano de reprodução versionado (scripts/render-pages.js + publish-snack.js + .tmp-expo)
+
+[showing lines 1543-1742 of 1743; use offset=1743 with limit to continue reading]

@@ -3,7 +3,9 @@ import { db } from '@/lib/db'
 import { verifyTotp } from '@/lib/totp'
 import { verifyAndConsumeRecoveryCode } from '@/lib/recovery-codes'
 import { audit, createAdminSession } from '@/lib/admin-auth'
-import { consumeMfaTicket } from '@/lib/mfa-tickets'
+import { consumeMfaTicket, peekMfaTicket } from '@/lib/mfa-tickets'
+import { createSessionToken } from '@/lib/session'
+import { clientIp, rateLimit, tooMany } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,11 +31,17 @@ const USER_SELECT = {
  */
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit: 10 verificações por IP a cada 5 min (força bruta do código)
+    const gate = rateLimit(`mfa:${clientIp(req)}`, 10, 5 * 60_000)
+    if (!gate.ok) return tooMany(gate.retryAfterSec)
+
     const body = await req.json().catch(() => ({}))
     const ticket = String(body?.ticket ?? '')
     const code = String(body?.code ?? '')
 
-    const userId = await consumeMfaTicket(ticket)
+    // Valida SEM consumir: um erro de digitação não obriga refazer o login.
+    // O desafio só é apagado quando a verificação tem sucesso (uso único).
+    const userId = await peekMfaTicket(ticket)
     if (!userId) {
       return NextResponse.json(
         { error: 'Desafio expirado. Faça login novamente.' },
@@ -54,7 +62,8 @@ export async function POST(req: NextRequest) {
     let usedRecoveryCode = false
     let recoveryCodesRemaining = -1
     if (verifyTotp(user.mfaSecret, code)) {
-      // TOTP válido — segue o fluxo normal
+      // TOTP válido — consome o desafio (uso único)
+      await consumeMfaTicket(ticket)
     } else {
       const recovery = await verifyAndConsumeRecoveryCode(user.id, code)
       if (!recovery.ok) {
@@ -63,6 +72,7 @@ export async function POST(req: NextRequest) {
           { status: 401 }
         )
       }
+      await consumeMfaTicket(ticket)
       usedRecoveryCode = true
       recoveryCodesRemaining = recovery.remaining
       await audit(
@@ -83,6 +93,7 @@ export async function POST(req: NextRequest) {
       ...safeUser,
       isMentor: Boolean(user.mentorProfile),
       adminToken,
+      sessionToken: createSessionToken(user.id).token,
       ...(usedRecoveryCode ? { usedRecoveryCode, recoveryCodesRemaining } : {}),
     })
   } catch (err) {

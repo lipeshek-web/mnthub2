@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { notify } from '@/lib/notify'
 import { addDays, dateKey } from '@/lib/helpers'
+import { resolveUser, unauthorized } from '@/lib/session'
 import type { WeeklyGoalDTO } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -81,10 +82,9 @@ async function weeklyGoalDto(userId: string): Promise<WeeklyGoalDTO> {
 
 /** GET /api/goals/weekly?userId=X */
 export async function GET(req: NextRequest) {
-  const userId = req.nextUrl.searchParams.get('userId')?.trim() ?? ''
-  if (!userId) {
-    return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
-  }
+  const session = await resolveUser(req)
+  if (!session) return unauthorized()
+  const userId = session.id
   const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } })
   if (!user) {
     return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 })
@@ -97,13 +97,12 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/** PUT /api/goals/weekly — body { userId, targetLessons } */
+/** PUT /api/goals/weekly — body { targetLessons } (usuário da SESSÃO) */
 export async function PUT(req: NextRequest) {
+  const session = await resolveUser(req)
+  if (!session) return unauthorized('Sessão expirada. Entre novamente para salvar a meta.')
   const body = await req.json().catch(() => null)
-  const userId = String(body?.userId ?? '').trim()
-  if (!userId) {
-    return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
-  }
+  const userId = session.id
   const target = Number(body?.targetLessons)
   if (!Number.isInteger(target) || target < 1 || target > 35) {
     return NextResponse.json(

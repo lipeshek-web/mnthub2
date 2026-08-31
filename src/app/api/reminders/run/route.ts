@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { notify } from '@/lib/notify'
 import { addDays, dateKey, parseNaive } from '@/lib/helpers'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,10 +51,12 @@ async function pushReminder(args: {
 }
 
 export async function POST(req: NextRequest) {
+  // Só gera lembretes para o próprio usuário da SESSÃO (antes um userId
+  // arbitrário no corpo injetava notificações no sino de outra pessoa)
+  const session = await resolveUser(req)
+  if (!session) return unauthorized()
   try {
-    const body = await req.json().catch(() => ({}))
-    const userId = String(body?.userId ?? '').trim()
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const userId = session.id
 
     const user = await db.user.findUnique({ where: { id: userId } })
     if (!user) return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 })

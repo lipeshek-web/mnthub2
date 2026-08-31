@@ -4388,6 +4388,7 @@ function CouponsManager({ userId }: { userId: string }) {
 export default function OnboardingView() {
   const user = useAppStore((state) => state.user)
   const setUser = useAppStore((state) => state.setUser)
+  const navigate = useAppStore((state) => state.navigate)
   const userId = user?.id ?? null
 
   const [loading, setLoading] = useState(true)
@@ -4488,8 +4489,11 @@ export default function OnboardingView() {
             </div>
             <h1 className="text-xl font-semibold">Entre para configurar seu perfil de mentor</h1>
             <p className="max-w-xs text-sm text-muted-foreground">
-              Selecione um usuário no seletor do topo da página para criar ou editar seu perfil de mentor.
+              Entre na sua conta para criar ou editar seu perfil de mentor.
             </p>
+            <Button className="mt-2" onClick={() => navigate({ name: 'auth', mode: 'login' })}>
+              Entrar ou criar conta
+            </Button>
           </div>
         </Card>
       </div>

@@ -1,24 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { formatWhen, notify } from '@/lib/notify'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 /**
  * PATCH /api/bookings/[id]
- * body: { userId, action: 'confirm' | 'cancel' | 'complete' }
+ * body: { action: 'confirm' | 'cancel' | 'complete' } — a identidade vem da
+ * SESSÃO (antes vinha do body e permitia confirmar/concluir/cancelar a sessão
+ * de qualquer pessoa, já que o userId do mentor é público).
  * Cada ação notifica a outra parte envolvida.
  */
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const session = await resolveUser(req)
+  if (!session) return unauthorized()
   try {
     const { id } = await ctx.params
     const body = await req.json()
-    const userId = String(body?.userId ?? '')
+    const userId = session.id
     const action = String(body?.action ?? '')
-
-    if (!userId || !['confirm', 'cancel', 'complete'].includes(action)) {
-      return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 })
-    }
 
     const booking = await db.booking.findUnique({
       where: { id },

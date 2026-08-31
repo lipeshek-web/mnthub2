@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ArrowLeft,
   BookOpenCheck,
@@ -559,6 +559,8 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
 
   const days = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i))
   const [selectedDate, setSelectedDate] = useState(() => dateKey(new Date()))
+  // Dia realmente exibido — resolve a corrida de respostas de getSlots
+  const selectedDateRef = useRef(dateKey(new Date()))
   const [slots, setSlots] = useState<string[]>([])
   const [slotsLoading, setSlotsLoading] = useState(true)
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
@@ -575,20 +577,26 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
     }
   }, [bookingTopic, setBookingTopic])
 
-  const loadSlots = useCallback(async (date: string) => {
-    setSlotsLoading(true)
-    setSelectedSlot(null)
-    try {
-      const { slots } = await api.getSlots(mentor.id, date)
-      setSlots(slots)
-    } catch {
-      setSlots([])
-    } finally {
-      setSlotsLoading(false)
-    }
-  }, [mentor.id])
+  const loadSlots = useCallback(
+    async (date: string) => {
+      setSlotsLoading(true)
+      setSelectedSlot(null)
+      try {
+        const { slots } = await api.getSlots(mentor.id, date)
+        // Guard anti-race: resposta de um dia antigo não sobrescreve o dia novo
+        if (date !== selectedDateRef.current) return
+        setSlots(slots)
+      } catch {
+        if (date === selectedDateRef.current) setSlots([])
+      } finally {
+        if (date === selectedDateRef.current) setSlotsLoading(false)
+      }
+    },
+    [mentor.id]
+  )
 
   useEffect(() => {
+    selectedDateRef.current = selectedDate
     loadSlots(selectedDate)
   }, [loadSlots, selectedDate])
 
@@ -596,7 +604,8 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
 
   const submit = async () => {
     if (!user) {
-      toast.error('Entre com um usuário no topo da página para agendar.')
+      toast.error('Entre na sua conta para agendar uma mentoria.')
+      navigate({ name: 'auth', mode: 'login' })
       return
     }
     if (!selectedSlot) {
@@ -778,7 +787,8 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
           disabled={submitting}
           onClick={() => {
             if (!user) {
-              toast.error('Entre com um usuário no topo da página para agendar.')
+              toast.error('Entre na sua conta para agendar uma mentoria.')
+              navigate({ name: 'auth', mode: 'login' })
               return
             }
             setConfirmOpen(true)
@@ -856,6 +866,7 @@ function MembershipCard({
   const membership = membershipTuple[0]
   const setMembership = membershipTuple[1]
   const [confirming, setConfirming] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -878,7 +889,8 @@ function MembershipCard({
   ]} às ${membership.groupSessionTime}`
 
   const cancel = async () => {
-    if (!user || !membership) return
+    if (!user || !membership || cancelling) return
+    setCancelling(true)
     try {
       await api.cancelMembership({ userId: user.id, membershipId: membership.id })
       toast.success('Assinatura cancelada — o acesso segue até o fim do ciclo pago.')
@@ -890,6 +902,8 @@ function MembershipCard({
       setMembership(res.memberships.find((x) => x.isPublished) ?? null)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao cancelar.')
+    } finally {
+      setCancelling(false)
     }
   }
 
@@ -941,12 +955,13 @@ function MembershipCard({
               <Button
                 variant="destructive"
                 size="sm"
+                disabled={cancelling}
                 onClick={() => void cancel()}
                 className="h-10 rounded-full px-4 font-bold"
               >
-                Confirmar cancelamento
+                {cancelling ? 'Cancelando…' : 'Confirmar cancelamento'}
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setConfirming(false)} className="h-10 rounded-full px-4">
+              <Button variant="ghost" size="sm" disabled={cancelling} onClick={() => setConfirming(false)} className="h-10 rounded-full px-4">
                 Voltar
               </Button>
             </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { notify } from '@/lib/notify'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,15 +29,17 @@ async function peerInfo(peerId: string) {
 }
 
 /**
- * GET /api/messages?userId=&peerId= — thread entre dois usuários (mais antigas
- * primeiro, carrega as últimas 200). Abrir a thread marca como lidas as
- * mensagens recebidas do par.
+ * GET /api/messages?peerId= — thread do usuário autenticado com o par (mais
+ * antigas primeiro, carrega as últimas 200). Abrir a thread marca como lidas
+ * as mensagens recebidas do par. Identidade da SESSÃO.
  */
 export async function GET(req: NextRequest) {
+  const session = await resolveUser(req)
+  if (!session) return unauthorized()
   try {
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
+    const userId = session.id
     const peerId = (req.nextUrl.searchParams.get('peerId') || '').trim()
-    if (!userId || !peerId || userId === peerId) {
+    if (!peerId || userId === peerId) {
       return NextResponse.json({ error: 'Participantes inválidos.' }, { status: 400 })
     }
 
@@ -84,24 +87,23 @@ export async function GET(req: NextRequest) {
 
 /**
  * POST /api/messages — envia uma mensagem direta.
- * body: { userId (remetente), peerId (destinatário), body }
+ * body: { peerId (destinatário), body } — remetente é o usuário da SESSÃO.
  */
 export async function POST(req: NextRequest) {
+  const session = await resolveUser(req)
+  if (!session) return unauthorized()
   try {
     const payload = await req.json().catch(() => ({}))
-    const userId = String(payload?.userId ?? '').trim()
+    const userId = session.id
     const peerId = String(payload?.peerId ?? '').trim()
     const text = String(payload?.body ?? '').trim()
-    if (!userId || !peerId || userId === peerId) {
+    if (!peerId || userId === peerId) {
       return NextResponse.json({ error: 'Participantes inválidos.' }, { status: 400 })
     }
     if (!text) return NextResponse.json({ error: 'Mensagem vazia.' }, { status: 400 })
 
-    const [sender, peer] = await Promise.all([
-      db.user.findUnique({ where: { id: userId }, select: { id: true } }),
-      peerInfo(peerId),
-    ])
-    if (!sender || !peer) {
+    const peer = await peerInfo(peerId)
+    if (!peer) {
       return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 })
     }
 

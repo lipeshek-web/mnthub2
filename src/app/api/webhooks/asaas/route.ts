@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { timingSafeEqual } from 'crypto'
 import { db } from '@/lib/db'
 import { getAsaasConfig, mapAsaasStatus } from '@/lib/asaas'
 import { fulfillOrder } from '@/lib/fulfillment'
 
 export const dynamic = 'force-dynamic'
+
+/** Comparação em tempo constante (evita timing attack no token do webhook) */
+function safeEqual(a: string, b: string): boolean {
+  const ba = Buffer.from(a)
+  const bb = Buffer.from(b)
+  if (ba.length !== bb.length) return false
+  return timingSafeEqual(ba, bb)
+}
 
 // ==================== WEBHOOK DO ASAAS ====================
 // Recebe eventos de pagamento (PAYMENT_RECEIVED/CONFIRMED/OVERDUE/REFUNDED).
@@ -25,7 +34,7 @@ export async function POST(req: NextRequest) {
     const config = await getAsaasConfig()
     const received = req.headers.get('asaas-access-token') ?? ''
 
-    if (!config.webhookToken || received !== config.webhookToken) {
+    if (!config.webhookToken || !safeEqual(received, config.webhookToken)) {
       // Sem token configurado ou token errado: rejeita (Asaas tenta de novo)
       return NextResponse.json({ error: 'Token do webhook inválido.' }, { status: 401 })
     }
@@ -74,8 +83,10 @@ export async function POST(req: NextRequest) {
           where: { id: payment.id },
           data: { status: 'OVERDUE', lastEvent: event, lastEventAt: now },
         })
-        await db.order.update({
-          where: { id: payment.orderId },
+        // Só cancela pedido ainda PENDING: um OVERDUE fora de ordem (atrasado)
+        // nunca pode virar um pedido já PAGO em CANCELED
+        await db.order.updateMany({
+          where: { id: payment.orderId, status: 'PENDING' },
           data: { status: 'CANCELED' },
         })
         return NextResponse.json({ received: true })

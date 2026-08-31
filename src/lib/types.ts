@@ -17,6 +17,8 @@ export interface UserDTO {
   mfaEnabled?: boolean
   /** Token da sessão administrativa (só admins, emitido no login) */
   adminToken?: string | null
+  /** Token de sessão assinado (HMAC) — enviado no header Authorization */
+  sessionToken?: string | null
 }
 
 export interface SocialLinksDTO {

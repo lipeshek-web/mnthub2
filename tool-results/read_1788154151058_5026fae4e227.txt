@@ -1,0 +1,722 @@
+     1→'use client'
+     2→
+     3→// Checkout de curso, trilha, pacote ou assinatura — via gateway Asaas (sandbox
+     4→// em testes) ou modo demonstração (sem chave configurada).
+     5→// Fluxo: resumo do pedido → cupom/créditos → forma de pagamento → PIX/fatura,
+     6→// com funil de rastreamento (begin_checkout na montagem, purchase no sucesso).
+     7→// A loja navega { name: 'checkout', courseId | trackId | bundleId | membershipId }.
+     8→
+     9→import { useCallback, useEffect, useRef, useState } from 'react'
+    10→import {
+    11→  AlertCircle,
+    12→  ArrowLeft,
+    13→  BookOpen,
+    14→  Check,
+    15→  CheckCircle2,
+    16→  CircleDollarSign,
+    17→  Clock,
+    18→  Copy,
+    19→  CreditCard,
+    20→  ExternalLink,
+    21→  Info,
+    22→  Landmark,
+    23→  Layers,
+    24→  Library,
+    25→  Loader2,
+    26→  Lock,
+    27→  LogIn,
+    28→  QrCode,
+    29→  Route,
+    30→  ShieldCheck,
+    31→  Tag,
+    32→  Users,
+    33→  X,
+    34→} from 'lucide-react'
+    35→import { toast } from 'sonner'
+    36→import { Badge } from '@/components/ui/badge'
+    37→import { Button } from '@/components/ui/button'
+    38→import { Card, CardContent } from '@/components/ui/card'
+    39→import { Input } from '@/components/ui/input'
+    40→import { Label } from '@/components/ui/label'
+    41→import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+    42→import { Separator } from '@/components/ui/separator'
+    43→import { Skeleton } from '@/components/ui/skeleton'
+    44→import { Avatar, Stars } from '@/components/platform/avatar'
+    45→import { api } from '@/lib/api'
+    46→import { groupSessionLabel } from '@/lib/membership-serialize'
+    47→import { LEVEL_LABELS, avatarGradient, currencyBRL } from '@/lib/helpers'
+    48→import { getAttribution, loadTrackingScripts, trackEvent } from '@/lib/tracking'
+    49→import { useAppStore } from '@/lib/store'
+    50→import type {
+    51→  BundleCourseDTO,
+    52→  BundleDetailDTO,
+    53→  CheckoutResultDTO,
+    54→  CouponValidationDTO,
+    55→  CourseDetailDTO,
+    56→  MembershipDTO,
+    57→  PaymentsConfigDTO,
+    58→  PendingPaymentDTO,
+    59→  TrackDetailDTO,
+    60→} from '@/lib/types'
+    61→import { cn } from '@/lib/utils'
+    62→
+    63→type PaymentMethodValue = 'PIX' | 'CREDIT_CARD' | 'BOLETO'
+    64→
+    65→const METHOD_LABEL: Record<string, string> = {
+    66→  PIX: 'PIX',
+    67→  CREDIT_CARD: 'Cartão de crédito',
+    68→  BOLETO: 'Boleto',
+    69→}
+    70→
+    71→/** Moeda com 2 casas fixas (descontos costumam ter centavos: R$ 170,10) */
+    72→const formatBRL = (value: number) =>
+    73→  value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })
+    74→
+    75→/** Resumo normalizado do item em checkout (curso, trilha ou pacote) */
+    76→interface ItemSummary {
+    77→  kind: 'course' | 'track' | 'bundle' | 'membership'
+    78→  id: string
+    79→  title: string
+    80→  coverUrl: string | null
+    81→  category: string
+    82→  level: string
+    83→  price: number
+    84→  mentor: {
+    85→    id: string
+    86→    name: string
+    87→    rating: number
+    88→    reviewCount: number
+    89→    avatarUrl?: string | null
+    90→  }
+    91→  isEnrolled: boolean
+    92→  /** Presente apenas em trilhas: composição da jornada */
+    93→  trackStats?: { courseCount: number; mentorshipSessions: number }
+    94→  /** Presente apenas em pacotes: cursos inclusos e economia */
+    95→  bundleStats?: {
+    96→    courses: BundleCourseDTO[]
+    97→    coursesTotal: number
+    98→    discountPercent: number
+    99→    enrolledCount: number
+   100→  }
+   101→  /** Presente apenas em assinaturas: benefícios do plano */
+   102→  membershipStats?: { coursesCount: number; sessionLabel: string }
+   103→}
+   104→
+   105→export function CheckoutView({
+   106→  courseId,
+   107→  trackId,
+   108→  bundleId,
+   109→  membershipId,
+   110→}: {
+   111→  courseId?: string
+   112→  trackId?: string
+   113→  bundleId?: string
+   114→  membershipId?: string
+   115→}) {
+   116→  const navigate = useAppStore((s) => s.navigate)
+   117→  const setExploreTab = useAppStore((s) => s.setExploreTab)
+   118→  const user = useAppStore((s) => s.user)
+   119→
+   120→  const [course, setCourse] = useState<CourseDetailDTO | null>(null)
+   121→  const [track, setTrack] = useState<TrackDetailDTO | null>(null)
+   122→  const [bundle, setBundle] = useState<BundleDetailDTO | null>(null)
+   123→  const membershipTuple = useState<MembershipDTO | null>(null)
+   124→  const membership = membershipTuple[0]
+   125→  const setMembership = membershipTuple[1]
+   126→  const [loading, setLoading] = useState(true)
+   127→  const [error, setError] = useState<string | null>(null)
+   128→
+   129→  // Créditos de indicação (saldo fresco da API — o store pode estar desatualizado)
+   130→  const [creditCents, setCreditCents] = useState(0)
+   131→  const [useCredits, setUseCredits] = useState(false)
+   132→
+   133→  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodValue>('PIX')
+   134→  const [paying, setPaying] = useState(false)
+   135→  const [freeEnrolling, setFreeEnrolling] = useState(false)
+   136→  const [order, setOrder] = useState<CheckoutResultDTO | null>(null)
+   137→
+   138→  // Gateway: ASAAS (real, sandbox em testes) ou SIMULADO (modo demonstração)
+   139→  const [gateway, setGateway] = useState<PaymentsConfigDTO | null>(null)
+   140→  const [cpfCnpj, setCpfCnpj] = useState('')
+   141→  // Cobrança pendente no Asaas (PIX/fatura) — substitui o formulário até cair
+   142→  const [pendingPayment, setPendingPayment] = useState<PendingPaymentDTO | null>(null)
+   143→  const [pendingOrder, setPendingOrder] = useState<CheckoutResultDTO['order'] | null>(null)
+   144→  const [checkingStatus, setCheckingStatus] = useState(false)
+   145→  const [copiedPix, setCopiedPix] = useState(false)
+   146→
+   147→  // Cupom de desconto (apenas itens pagos)
+   148→  const [couponInput, setCouponInput] = useState('')
+   149→  const [couponApplied, setCouponApplied] = useState<CouponValidationDTO | null>(null)
+   150→  const [couponLoading, setCouponLoading] = useState(false)
+   151→  const [couponError, setCouponError] = useState<string | null>(null)
+   152→
+   153→  // Guarda: begin_checkout apenas na primeira montagem bem-sucedida
+   154→  // (evita duplicidade em re-render/StrictMode)
+   155→  const trackedRef = useRef(false)
+   156→
+   157→  const fetchSummary = useCallback(async () => {
+   158→    setLoading(true)
+   159→    setError(null)
+   160→    try {
+   161→      if (membershipId) {
+   162→        const { membership: m } = await api.getMembership(membershipId, user?.id)
+   163→        setMembership(m)
+   164→        setBundle(null)
+   165→        setCourse(null)
+   166→        setTrack(null)
+   167→
+   168→        if (!trackedRef.current) {
+   169→          trackedRef.current = true
+   170→          loadTrackingScripts()
+   171→          trackEvent('begin_checkout', {
+   172→            mentorId: m.mentor.id,
+   173→            value: m.price,
+   174→            contentName: m.title,
+   175→          })
+   176→        }
+   177→      } else if (bundleId) {
+   178→        const { bundle: b } = await api.getBundle(bundleId, user?.id)
+   179→        setBundle(b)
+   180→        setCourse(null)
+   181→        setTrack(null)
+   182→        setMembership(null)
+   183→
+   184→        if (!trackedRef.current) {
+   185→          trackedRef.current = true
+   186→          loadTrackingScripts()
+   187→          trackEvent('begin_checkout', {
+   188→            mentorId: b.mentor.id,
+   189→            value: b.price,
+   190→            contentName: b.title,
+   191→          })
+   192→        }
+   193→      } else if (trackId) {
+   194→        const d = await api.getTrack(trackId, user?.id)
+   195→        setTrack(d)
+   196→        setCourse(null)
+   197→        setMembership(null)
+   198→
+   199→        // Pixels da plataforma recebem as conversões deste checkout
+   200→        if (!trackedRef.current) {
+   201→          trackedRef.current = true
+   202→          loadTrackingScripts()
+   203→          trackEvent('begin_checkout', {
+   204→            mentorId: d.mentor.id,
+   205→            value: d.price,
+   206→            contentName: d.title,
+   207→          })
+   208→        }
+   209→      } else if (courseId) {
+   210→        const d = await api.getCourse(courseId, user?.id)
+   211→        setCourse(d)
+   212→        setTrack(null)
+   213→        setBundle(null)
+   214→        setMembership(null)
+   215→
+   216→        // Pixels do mentor recebem as conversões deste checkout
+   217→        if (!trackedRef.current) {
+   218→          trackedRef.current = true
+   219→          loadTrackingScripts({
+   220→            mentorGaId: d.mentor.tracking?.gaMeasurementId,
+   221→            mentorPixelId: d.mentor.tracking?.metaPixelId,
+   222→          })
+   223→          trackEvent('begin_checkout', {
+   224→            mentorId: d.mentor.id,
+   225→            courseId: d.id,
+   226→            value: d.price,
+   227→            contentName: d.title,
+   228→          })
+   229→        }
+   230→      } else {
+   231→        setError('Item não encontrado.')
+   232→      }
+   233→    } catch (err) {
+   234→      setError(err instanceof Error ? err.message : 'Não foi possível carregar o checkout.')
+   235→    } finally {
+   236→      setLoading(false)
+   237→    }
+   238→  }, [bundleId, courseId, trackId, membershipId, user?.id])
+   239→
+   240→  useEffect(() => {
+   241→    void fetchSummary()
+   242→  }, [fetchSummary])
+   243→
+   244→  // Saldo fresco de créditos de indicação (a sessão pode ser antiga)
+   245→  useEffect(() => {
+   246→    if (!user) return
+   247→    let active = true
+   248→    api
+   249→      .me(user.id)
+   250→      .then(({ user: fresh }) => {
+   251→        if (active && fresh) setCreditCents(fresh.creditCents ?? 0)
+   252→      })
+   253→      .catch(() => {})
+   254→    return () => {
+   255→      active = false
+   256→    }
+   257→  }, [user])
+   258→
+   259→  // Trocou o item do checkout: volta o cupom ao estado inicial
+   260→  useEffect(() => {
+   261→    setCouponInput('')
+   262→    setCouponApplied(null)
+   263→    setCouponError(null)
+   264→    setCouponLoading(false)
+   265→    setUseCredits(false)
+   266→  }, [bundleId, courseId, trackId, membershipId])
+   267→
+   268→  // Qual gateway está ativo? (ASAAS real vs modo demonstração)
+   269→  useEffect(() => {
+   270→    let active = true
+   271→    api
+   272→      .paymentsConfig()
+   273→      .then((cfg) => {
+   274→        if (active) setGateway(cfg)
+   275→      })
+   276→      .catch(() => {
+   277→        if (active) setGateway({ gateway: 'SIMULADO', env: null })
+   278→      })
+   279→    return () => {
+   280→      active = false
+   281→    }
+   282→  }, [])
+   283→
+   284→  const isGateway = gateway?.gateway === 'ASAAS'
+   285→
+   286→  /** Máscara leve de CPF/CNPJ para digitação */
+   287→  const maskCpfCnpj = (raw: string): string => {
+   288→    const v = raw.replace(/\D/g, '').slice(0, 14)
+   289→    if (v.length <= 11) {
+   290→      return v
+   291→        .replace(/(\d{3})(\d)/, '$1.$2')
+   292→        .replace(/(\d{3})(\d)/, '$1.$2')
+   293→        .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
+   294→    }
+   295→    return v
+   296→      .replace(/(\d{2})(\d)/, '$1.$2')
+   297→      .replace(/(\d{3})(\d)/, '$1.$2')
+   298→      .replace(/(\d{3})(\d)/, '$1/$2')
+   299→      .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
+   300→  }
+   301→
+   302→  /* ---------- Ações ---------- */
+   303→
+   304→  const applyCoupon = async () => {
+   305→    if (!item || couponLoading) return
+   306→    const code = couponInput.trim().toUpperCase()
+   307→    if (!code) {
+   308→      setCouponApplied(null)
+   309→      setCouponError('Digite um cupom para aplicar.')
+   310→      return
+   311→    }
+   312→    setCouponLoading(true)
+   313→    setCouponError(null)
+   314→    try {
+   315→      const result = await api.validateCoupon({
+   316→        code,
+   317→        userId: user?.id,
+   318→        courseId: item.kind === 'course' ? item.id : undefined,
+   319→        trackId: item.kind === 'track' ? item.id : undefined,
+   320→        bundleId: item.kind === 'bundle' ? item.id : undefined,
+   321→        membershipId: item.kind === 'membership' ? item.id : undefined,
+   322→      })
+   323→      setCouponApplied(result)
+   324→      setCouponInput('')
+   325→    } catch (err) {
+   326→      setCouponApplied(null)
+   327→      setCouponError(err instanceof Error ? err.message : 'Não foi possível validar o cupom.')
+   328→    } finally {
+   329→      setCouponLoading(false)
+   330→    }
+   331→  }
+   332→
+   333→  const removeCoupon = () => {
+   334→    setCouponApplied(null)
+   335→    setCouponInput('')
+   336→    setCouponError(null)
+   337→  }
+   338→
+   339→  const doEnrollFree = async () => {
+   340→    if (!user || !item) return
+   341→    setFreeEnrolling(true)
+   342→    try {
+   343→      if (item.kind === 'bundle') {
+   344→        // Pacote gratuito: matrícula em todos os cursos inclusos
+   345→        const courses = item.bundleStats?.courses ?? []
+   346→        for (const c of courses) {
+   347→          await api.enrollCourse(c.id, user.id).catch(() => {})
+   348→        }
+   349→        toast.success('Inscrição realizada em todos os cursos do pacote! Boa jornada 🎉')
+   350→        navigate({ name: 'dashboard' })
+   351→      } else if (item.kind === 'track') {
+   352→        await api.enrollTrack(item.id, user.id)
+   353→        toast.success('Inscrição realizada! Boa jornada 🎉')
+   354→        navigate({ name: 'track', trackId: item.id })
+   355→      } else {
+   356→        const res = await api.enrollCourse(item.id, user.id)
+   357→        toast.success(
+   358→          res.alreadyEnrolled
+   359→            ? 'Você já estava inscrito neste curso.'
+   360→            : 'Inscrição realizada! Boa jornada 🎉'
+   361→        )
+   362→        navigate({ name: 'course', courseId: item.id })
+   363→      }
+   364→    } catch (err) {
+   365→      toast.error(err instanceof Error ? err.message : 'Erro ao realizar inscrição.')
+   366→    } finally {
+   367→      setFreeEnrolling(false)
+   368→    }
+   369→  }
+   370→
+   371→  const doPay = async () => {
+   372→    if (!user || !item || paying) return
+   373→    if (isGateway && cpfCnpj.replace(/\D/g, '').length < 11) {
+   374→      toast.error('Informe seu CPF/CNPJ para o pagamento seguro via Asaas.')
+   375→      return
+   376→    }
+   377→    setPaying(true)
+   378→    try {
+   379→      // A atribuição (utm/gclid/fbclid/canal/landing) viaja no mesmo corpo —
+   380→      // o servidor lê body.attribution para o pedido e o evento purchase.
+   381→      const payload = {
+   382→        userId: user.id,
+   383→        courseId: item.kind === 'course' ? item.id : undefined,
+   384→        trackId: item.kind === 'track' ? item.id : undefined,
+   385→        bundleId: item.kind === 'bundle' ? item.id : undefined,
+   386→        membershipId: item.kind === 'membership' ? item.id : undefined,
+   387→        paymentMethod,
+   388→        couponCode: couponApplied?.code || undefined,
+   389→        useCredits,
+   390→        cpfCnpj: isGateway ? cpfCnpj : undefined,
+   391→        attribution: getAttribution(),
+   392→      }
+   393→      const result = await api.checkout(payload)
+   394→
+   395→      // Gateway real: cobrança criada — mostra PIX/fatura e aguarda o pagamento
+   396→      if ('pending' in result && result.pending) {
+   397→        setPendingPayment(result.payment)
+   398→        setPendingOrder(result.order)
+   399→        toast.info(
+   400→          result.payment.pix
+   401→            ? 'PIX gerado! Pague com o QR Code ou o copia e cola.'
+   402→            : 'Cobrança criada! Conclua na fatura segura do Asaas.'
+   403→        )
+   404→        return
+   405→      }
+   406→
+   407→      const instant = result as CheckoutResultDTO
+   408→      trackEvent('purchase', {
+   409→        mentorId: item.mentor.id,
+   410→        courseId: item.kind === 'course' ? item.id : null,
+   411→        value: item.price,
+   412→        transactionId: instant.order.id,
+   413→        contentName: item.title,
+   414→      })
+   415→      toast.success('Pagamento aprovado! 🎉')
+   416→      setOrder(instant)
+   417→    } catch (err) {
+   418→      const message = err instanceof Error ? err.message : 'Não foi possível concluir o pagamento.'
+   419→      toast.error(message)
+   420→      // Cupom pode ter esgotado/expirado entre a validação e o pagamento:
+   421→      // mostra o erro no fluxo normal e volta o cupom ao estado inicial.
+   422→      if (/cupom/i.test(message)) {
+   423→        setCouponApplied(null)
+   424→        setCouponInput('')
+   425→        setCouponError(message)
+   426→      }
+   427→      // Matrícula já existia (409): recarrega para exibir o estado "já inscrito"
+   428→      if (message.includes('já tem acesso') || message.includes('assinatura ativa')) void fetchSummary()
+   429→    } finally {
+   430→      setPaying(false)
+   431→    }
+   432→  }
+   433→
+   434→  /** Consulta o status da cobrança pendente (sincroniza com o Asaas) */
+   435→  const checkPaymentStatus = async () => {
+   436→    if (!user || !pendingPayment || checkingStatus) return
+   437→    setCheckingStatus(true)
+   438→    try {
+   439→      const status = await api.paymentStatus(user.id, pendingPayment.id)
+   440→      if (status.status === 'PAID' || status.orderStatus === 'PAID') {
+   441→        if (pendingOrder) {
+   442→          setOrder({ order: pendingOrder } as CheckoutResultDTO)
+   443→        }
+   444→        setPendingPayment(null)
+   445→        toast.success('Pagamento confirmado! Acesso liberado 🎉')
+   446→      } else if (status.status === 'OVERDUE' || status.status === 'CANCELED' || status.orderStatus === 'CANCELED') {
+   447→        setPendingPayment(null)
+   448→        toast.error('A cobrança venceu ou foi cancelada. Gere uma nova.')
+   449→      } else {
+   450→        toast.info('Ainda não identificamos o pagamento. Tente novamente em instantes.')
+   451→      }
+   452→    } catch {
+   453→      toast.error('Não foi possível verificar o pagamento agora.')
+   454→    } finally {
+   455→      setCheckingStatus(false)
+   456→    }
+   457→  }
+   458→
+   459→  /* ---------- Skeleton ---------- */
+   460→  if (loading) {
+   461→    return (
+   462→      <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-8" aria-busy="true">
+   463→        <Skeleton className="h-9 w-28 rounded-full" />
+   464→        <Skeleton className="mt-4 h-64 w-full rounded-2xl" />
+   465→        <Skeleton className="mt-6 h-24 w-full rounded-2xl" />
+   466→        <Skeleton className="mt-6 h-12 w-full rounded-full" />
+   467→        <p className="sr-only">Carregando checkout…</p>
+   468→      </div>
+   469→    )
+   470→  }
+   471→
+   472→  /* ---------- Erro ---------- */
+   473→  if (error || (!course && !track && !bundle && !membership)) {
+   474→    return (
+   475→      <div className="mx-auto w-full max-w-3xl px-4 py-16">
+   476→        <Card className="mx-auto max-w-md border-dashed">
+   477→          <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
+   478→            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 dark:bg-rose-950/50">
+   479→              <AlertCircle aria-hidden className="h-7 w-7 text-rose-500" />
+   480→            </span>
+   481→            <p className="font-bold text-stone-900 dark:text-stone-50">Não foi possível carregar o checkout</p>
+   482→            <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+   483→              {error ?? 'Item não encontrado.'}
+   484→            </p>
+   485→            <Button variant="outline" className="rounded-full" onClick={() => void fetchSummary()}>
+   486→              Tentar novamente
+   487→            </Button>
+   488→          </CardContent>
+   489→        </Card>
+   490→      </div>
+   491→    )
+   492→  }
+   493→
+   494→  /* ---------- Resumo normalizado (curso, trilha, pacote ou assinatura) ---------- */
+   495→  const item: ItemSummary | null = membership
+   496→    ? {
+   497→        kind: 'membership',
+   498→        id: membership.id,
+   499→        title: membership.title,
+   500→        coverUrl: null,
+   501→        category: 'Assinatura',
+   502→        level: '',
+   503→        price: membership.price,
+   504→        mentor: {
+   505→          id: membership.mentor.id,
+   506→          name: membership.mentor.name,
+   507→          rating: 0,
+   508→          reviewCount: 0,
+   509→          avatarUrl: membership.mentor.avatarUrl,
+   510→        },
+   511→        isEnrolled: membership.myStatus === 'ACTIVE',
+   512→        membershipStats: {
+   513→          coursesCount: membership.coursesCount,
+   514→          sessionLabel: groupSessionLabel(
+   515→            membership.groupSessionDay,
+   516→            membership.groupSessionTime
+   517→          ),
+   518→        },
+   519→      }
+   520→    : bundle
+   521→    ? {
+   522→        kind: 'bundle',
+   523→        id: bundle.id,
+   524→        title: bundle.title,
+   525→        coverUrl: bundle.courses.find((c) => c.coverUrl)?.coverUrl ?? null,
+   526→        category: bundle.courses[0]?.category ?? '',
+   527→        level: '',
+   528→        price: bundle.price,
+   529→        mentor: {
+   530→          id: bundle.mentor.id,
+   531→          name: bundle.mentor.name,
+   532→          rating: 0,
+   533→          reviewCount: 0,
+   534→          avatarUrl: bundle.mentor.avatarUrl,
+   535→        },
+   536→        isEnrolled:
+   537→          bundle.courseCount > 0 &&
+   538→          (bundle.myEnrolledCourseIds?.length ?? 0) >=
+   539→            bundle.courses.filter((c) => c.id).length,
+   540→        bundleStats: {
+   541→          courses: bundle.courses,
+   542→          coursesTotal: bundle.coursesTotal,
+   543→          discountPercent: bundle.discountPercent,
+   544→          enrolledCount: bundle.myEnrolledCourseIds?.length ?? 0,
+   545→        },
+   546→      }
+   547→    : track
+   548→    ? {
+   549→        kind: 'track',
+   550→        id: track.id,
+   551→        title: track.title,
+   552→        coverUrl: track.coverUrl ?? null,
+   553→        category: track.category,
+   554→        level: track.level,
+   555→        price: track.price,
+   556→        mentor: {
+   557→          id: track.mentor.id,
+   558→          name: track.mentor.name,
+   559→          rating: track.mentor.rating,
+   560→          reviewCount: track.mentor.reviewCount,
+   561→          avatarUrl: track.mentor.avatarUrl,
+   562→        },
+   563→        isEnrolled: track.myEnrollment !== null,
+   564→        trackStats: {
+   565→          courseCount: track.courseCount,
+   566→          mentorshipSessions: track.mentorshipSessions,
+   567→        },
+   568→      }
+   569→    : course
+   570→      ? {
+   571→          kind: 'course',
+   572→          id: course.id,
+   573→          title: course.title,
+   574→          coverUrl: course.coverUrl ?? null,
+   575→          category: course.category,
+   576→          level: course.level,
+   577→          price: course.price,
+   578→          mentor: {
+   579→            id: course.mentor.id,
+   580→            name: course.mentor.name,
+   581→            rating: course.mentor.rating,
+   582→            reviewCount: course.mentor.reviewCount,
+   583→            avatarUrl: course.mentor.avatarUrl,
+   584→          },
+   585→          isEnrolled: course.enrollment !== null,
+   586→        }
+   587→      : null
+   588→
+   589→  if (!item) return null
+   590→
+   591→  const isTrack = item.kind === 'track'
+   592→  const isBundle = item.kind === 'bundle'
+   593→  const isMembership = item.kind === 'membership'
+   594→
+   595→  // Descontos combinados: cupom + créditos de indicação
+   596→  const couponDiscount = couponApplied?.discount ?? 0
+   597→  const afterCoupon = Math.max(0, Math.round((item.price - couponDiscount) * 100) / 100)
+   598→  const creditsApplied =
+   599→    useCredits && creditCents > 0 ? Math.min(creditCents / 100, afterCoupon) : 0
+   600→  const finalAmount = Math.max(0, Math.round((afterCoupon - creditsApplied) * 100) / 100)
+   601→
+   602→  /* ---------- Tela de AGUARDANDO PAGAMENTO (gateway Asaas) ---------- */
+   603→  if (pendingPayment && pendingOrder && item) {
+   604→    return (
+   605→      <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:py-14">
+   606→        <Card className="mx-auto max-w-md rounded-2xl">
+   607→          <CardContent className="flex flex-col items-center gap-1.5 p-6 text-center sm:p-8">
+   608→            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950/50">
+   609→              <Clock aria-hidden className="h-9 w-9 text-amber-600 dark:text-amber-400" />
+   610→            </span>
+   611→            <h1 className="mt-2 text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50 sm:text-2xl">
+   612→              Aguardando pagamento
+   613→            </h1>
+   614→            <p className="text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+   615→              <span className="font-semibold text-stone-700 dark:text-stone-200">
+   616→                “{pendingOrder.itemTitle}”
+   617→              </span>{' '}
+   618→              · {formatBRL(pendingPayment.value)} ·{' '}
+   619→              {METHOD_LABEL[pendingPayment.billingType] ?? pendingPayment.billingType}
+   620→              {pendingPayment.env === 'sandbox' && (
+   621→                <Badge variant="secondary" className="ml-1.5 rounded-full text-[10px]">
+   622→                  SANDBOX
+   623→                </Badge>
+   624→              )}
+   625→            </p>
+   626→
+   627→            {/* PIX: QR + copia e cola */}
+   628→            {pendingPayment.pix ? (
+   629→              <div className="mt-4 w-full space-y-3 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-950/50 p-4">
+   630→                { }
+   631→                <img
+   632→                  src={`data:image/png;base64,${pendingPayment.pix.encodedImage}`}
+   633→                  alt="QR Code PIX para pagamento"
+   634→                  className="mx-auto h-44 w-44 rounded-lg bg-white p-1.5"
+   635→                />
+   636→                <p className="text-xs font-semibold text-stone-600 dark:text-stone-300">
+   637→                  Escaneie no app do banco ou use o copia e cola:
+   638→                </p>
+   639→                <div className="flex items-center gap-2">
+   640→                  <code className="min-w-0 flex-1 truncate rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-2 py-1.5 text-left text-[10px] text-stone-500 dark:text-stone-400">
+   641→                    {pendingPayment.pix.payload}
+   642→                  </code>
+   643→                  <Button
+   644→                    variant="outline"
+   645→                    size="sm"
+   646→                    className="h-8 shrink-0 rounded-lg"
+   647→                    onClick={() => {
+   648→                      void navigator.clipboard.writeText(pendingPayment.pix!.payload)
+   649→                      setCopiedPix(true)
+   650→                      toast.success('Código PIX copiado!')
+   651→                      window.setTimeout(() => setCopiedPix(false), 2500)
+   652→                    }}
+   653→                  >
+   654→                    {copiedPix ? <Check aria-hidden className="h-3.5 w-3.5" /> : <Copy aria-hidden className="h-3.5 w-3.5" />}
+   655→                    <span className="sr-only">Copiar código PIX</span>
+   656→                  </Button>
+   657→                </div>
+   658→              </div>
+   659→            ) : (
+   660→              <p className="mt-4 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+   661→                {pendingPayment.billingType === 'CREDIT_CARD'
+   662→                  ? 'Conclua o pagamento com cartão na fatura segura do Asaas.'
+   663→                  : 'O boleto foi gerado — pague em qualquer banco ou lotérica.'}
+   664→              </p>
+   665→            )}
+   666→
+   667→            <Button
+   668→              onClick={() =>
+   669→                pendingPayment.invoiceUrl && window.open(pendingPayment.invoiceUrl, '_blank', 'noopener')
+   670→              }
+   671→              variant={pendingPayment.pix ? 'outline' : 'default'}
+   672→              className="mt-4 h-12 w-full rounded-full font-bold"
+   673→              disabled={!pendingPayment.invoiceUrl}
+   674→            >
+   675→              <ExternalLink aria-hidden className="h-4 w-4" />
+   676→              Abrir fatura no Asaas
+   677→            </Button>
+   678→            <Button
+   679→              onClick={() => void checkPaymentStatus()}
+   680→              disabled={checkingStatus}
+   681→              className="mt-2.5 h-12 w-full rounded-full font-bold"
+   682→            >
+   683→              {checkingStatus ? (
+   684→                <>
+   685→                  <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> Verificando…
+   686→                </>
+   687→              ) : (
+   688→                'Já paguei — verificar status'
+   689→              )}
+   690→            </Button>
+   691→            <p className="mt-3 text-xs leading-relaxed text-stone-400 dark:text-stone-500">
+   692→              O acesso é liberado automaticamente quando o pagamento cai. Em{' '}
+   693→              <span className="font-semibold">sandbox</span>, você também pode confirmar a cobrança
+   694→              no painel do Asaas ou pedir ao admin.
+   695→            </p>
+   696→          </CardContent>
+   697→        </Card>
+   698→      </div>
+   699→    )
+   700→  }
+   701→
+   702→  /* ---------- Tela de SUCESSO (substitui o formulário) ---------- */
+   703→  if (order) {
+   704→    return (
+   705→      <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:py-14">
+   706→        <Card className="mx-auto max-w-md rounded-2xl">
+   707→          <CardContent className="flex flex-col items-center gap-1.5 p-8 text-center">
+   708→            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-950/50">
+   709→              <CheckCircle2 aria-hidden className="h-9 w-9 text-emerald-600 dark:text-emerald-400" />
+   710→            </span>
+   711→            <h1 className="mt-2 text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50 sm:text-2xl">
+   712→              Pagamento confirmado!
+   713→            </h1>
+   714→            <p className="text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+   715→              Você já tem acesso a{' '}
+   716→              <span className="font-semibold text-stone-700 dark:text-stone-200">“{order.order.itemTitle}”</span>
+   717→            </p>
+   718→
+   719→            <dl className="mt-5 w-full space-y-2 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-950/50 p-4 text-left text-sm">
+   720→              <div className="flex items-center justify-between gap-3">
+
+[showing lines 1-720 of 1444; use offset=721 with limit to continue reading]

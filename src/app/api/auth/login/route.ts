@@ -3,6 +3,8 @@ import { db } from '@/lib/db'
 import { verifyPassword } from '@/lib/password'
 import { createAdminSession } from '@/lib/admin-auth'
 import { createMfaTicket } from '@/lib/mfa-tickets'
+import { createSessionToken } from '@/lib/session'
+import { clientIp, rateLimit, tooMany } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,6 +32,13 @@ export async function POST(req: NextRequest) {
     if (!email || !password) {
       return NextResponse.json({ error: 'Informe e-mail e senha.' }, { status: 400 })
     }
+
+    // Rate limit: 10 tentativas por IP a cada 5 min + 5 por conta a cada 5 min
+    const ipGate = rateLimit(`login:ip:${clientIp(req)}`, 10, 5 * 60_000)
+    if (!ipGate.ok) return tooMany(ipGate.retryAfterSec)
+    const accGate = rateLimit(`login:acc:${email}`, 5, 5 * 60_000)
+    if (!accGate.ok)
+      return tooMany(accGate.retryAfterSec, 'Muitas tentativas para esta conta. Aguarde alguns minutos.')
 
     const user = await db.user.findUnique({ where: { email }, select: USER_SELECT })
     if (!user || !verifyPassword(password, user.passwordHash)) {
@@ -60,7 +69,12 @@ export async function POST(req: NextRequest) {
       adminToken = (await createAdminSession(user.id)).token
     }
 
-    return NextResponse.json({ ...rest, isMentor: Boolean(user.mentorProfile), adminToken })
+    return NextResponse.json({
+      ...rest,
+      isMentor: Boolean(user.mentorProfile),
+      adminToken,
+      sessionToken: createSessionToken(user.id).token,
+    })
   } catch (err) {
     console.error('POST /api/auth/login', err)
     return NextResponse.json({ error: 'Erro ao fazer login' }, { status: 500 })

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { bundleBaseInclude, serializeBundle, serializeBundleDetail } from '@/lib/bundle-serialize'
+import { resolveUser } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/bundles — lista pacotes publicados.
- * Filtros: mentorUserId (inclui rascunhos do próprio mentor), courseId
- * (pacotes publicados que contêm o curso — callout na página do curso).
+ * Filtros: mentorUserId (inclui rascunhos — SOMENTE do próprio usuário da sessão),
+ * courseId (pacotes publicados que contêm o curso — callout na página do curso).
  */
 export async function GET(req: NextRequest) {
   try {
@@ -16,8 +17,11 @@ export async function GET(req: NextRequest) {
     const courseId = (sp.get('courseId') || '').trim()
     const userId = (sp.get('userId') || '').trim() // p/ myEnrolledCourseIds
 
+    const session = await resolveUser(req)
+    const canSeeDrafts = Boolean(mentorUserId) && session?.id === mentorUserId
+
     const where: Record<string, unknown> = {}
-    if (mentorUserId) {
+    if (canSeeDrafts) {
       where.mentor = { userId: mentorUserId } // painel do mentor: tudo
     } else if (courseId) {
       where.isPublished = true

@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
-/** GET /api/mentors/me?userId= — perfil de mentor do usuário logado (ou null) */
+/** GET /api/mentors/me — perfil de mentor do usuário autenticado (ou null).
+ *  Identidade da SESSÃO: sem token válido responde { profile: null } (antes o
+ *  userId na query expunha rascunhos e métricas de qualquer mentor). */
 export async function GET(req: NextRequest) {
   try {
-    const userId = req.nextUrl.searchParams.get('userId') || ''
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const session = await resolveUser(req)
+    if (!session) return NextResponse.json({ profile: null })
+    const userId = session.id
 
     const profile = await db.mentorProfile.findUnique({
       where: { userId },

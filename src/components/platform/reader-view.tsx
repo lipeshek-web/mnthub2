@@ -34,15 +34,28 @@ const KIND_META: Record<string, { label: string; badge: string; badgeDark: strin
   },
 }
 
+/** Passos de tamanho de fonte do leitor (controle A− / A+ do cabeçalho) */
+const READER_FONT_CLASSES = [
+  'text-sm leading-relaxed',
+  'text-[15px] sm:text-base leading-relaxed',
+  'text-base sm:text-lg leading-relaxed',
+] as const
+
 /** Blocos simples: parágrafo normal, "## " → h2, linhas "- " → lista com marcador esmeralda */
-function ArticleBlocks({ content }: { content: string }) {
+function ArticleBlocks({
+  content,
+  sizeClass = READER_FONT_CLASSES[1],
+}: {
+  content: string
+  sizeClass?: string
+}) {
   const blocks = content
     .split(/\n\s*\n/)
     .map((b) => b.trim())
     .filter(Boolean)
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {blocks.map((block, i) => {
         const lines = block.split('\n').map((l) => l.trim()).filter(Boolean)
 
@@ -58,11 +71,11 @@ function ArticleBlocks({ content }: { content: string }) {
         // Lista: todas as linhas começando com "- "
         if (lines.length > 0 && lines.every((l) => l.startsWith('- '))) {
           return (
-            <ul key={i} className="space-y-2">
+            <ul key={i} className="space-y-2 py-2">
               {lines.map((l, j) => (
                 <li key={j} className="flex items-start gap-2.5">
                   <span aria-hidden className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-                  <span className="text-[15px] leading-relaxed text-stone-700 dark:text-stone-200">{l.slice(2).trim()}</span>
+                  <span className={cn(sizeClass, 'text-stone-700 dark:text-stone-200')}>{l.slice(2).trim()}</span>
                 </li>
               ))}
             </ul>
@@ -70,7 +83,7 @@ function ArticleBlocks({ content }: { content: string }) {
         }
 
         return (
-          <p key={i} className="whitespace-pre-line text-[15px] leading-relaxed text-stone-700 dark:text-stone-200">
+          <p key={i} className={cn('whitespace-pre-line py-2', sizeClass, 'text-stone-700 dark:text-stone-200')}>
             {block}
           </p>
         )
@@ -87,6 +100,8 @@ export function ReaderView({ itemId }: { itemId: string }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [related, setRelated] = useState<LibraryItemDTO[]>([])
+  // Tamanho da fonte do modo texto (estado local, sem persistência) — 0/1/2 = A−/padrão/A+
+  const [fontStep, setFontStep] = useState(1)
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const barRef = useRef<HTMLDivElement>(null)
@@ -304,8 +319,34 @@ export function ReaderView({ itemId }: { itemId: string }) {
             )}
           </div>
 
-          {/* Direita: tempo de leitura + download */}
+          {/* Direita: tamanho da fonte (modo texto) + tempo de leitura + download */}
           <div className="flex shrink-0 items-center gap-2">
+            {item?.canRead && !item.pdfUrl && item.content ? (
+              <div
+                role="group"
+                aria-label="Tamanho da fonte do texto"
+                className="flex items-center gap-0.5 rounded-full bg-white/10 p-0.5"
+              >
+                <button
+                  type="button"
+                  onClick={() => setFontStep((s) => Math.max(0, s - 1))}
+                  disabled={fontStep === 0}
+                  aria-label="Diminuir tamanho da fonte"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full text-xs font-bold text-white transition-colors hover:bg-white/15 disabled:pointer-events-none disabled:opacity-40"
+                >
+                  A−
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFontStep((s) => Math.min(READER_FONT_CLASSES.length - 1, s + 1))}
+                  disabled={fontStep === READER_FONT_CLASSES.length - 1}
+                  aria-label="Aumentar tamanho da fonte"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold text-white transition-colors hover:bg-white/15 disabled:pointer-events-none disabled:opacity-40"
+                >
+                  A+
+                </button>
+              </div>
+            ) : null}
             {item && (
               <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-emerald-100/70">
                 <Clock aria-hidden className="h-3.5 w-3.5" />
@@ -336,8 +377,12 @@ export function ReaderView({ itemId }: { itemId: string }) {
 
         {/* Linha de progresso de leitura (colada no fundo da top bar) */}
         {item?.canRead && !item.pdfUrl && item.content && (
-          <div aria-hidden className="h-0.5 w-full bg-white/10">
-            <div ref={barRef} className="h-full bg-emerald-400" style={{ width: '0%' }} />
+          <div aria-hidden className="h-1.5 w-full bg-white/10">
+            <div
+              ref={barRef}
+              className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-[width] duration-150 ease-linear"
+              style={{ width: '0%' }}
+            />
           </div>
         )}
       </header>
@@ -346,7 +391,7 @@ export function ReaderView({ itemId }: { itemId: string }) {
       <div ref={scrollRef} onScroll={handleScroll} className="relative flex-1 overflow-y-auto">
         {loading ? (
           /* Skeleton do leitor */
-          <div className="mx-auto w-full max-w-3xl px-4 py-8">
+          <div className="mx-auto w-full max-w-2xl px-4 py-8">
             <Skeleton className="h-6 w-28 rounded-full" />
             <Skeleton className="mt-4 h-9 w-3/4" />
             <div className="mt-4 flex items-center gap-3">
@@ -431,8 +476,8 @@ export function ReaderView({ itemId }: { itemId: string }) {
           </div>
         ) : item.content ? (
           /* Modo texto: artigo editorial */
-          <article className="mx-auto w-full max-w-3xl px-4 py-8">
-            <h1 className="text-3xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">{item.title}</h1>
+          <article className="mx-auto w-full max-w-2xl px-4 py-8">
+            <h1 className="text-3xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50 sm:text-4xl">{item.title}</h1>
             <div className="mt-4 flex items-center gap-3">
               <Avatar name={item.author.name} src={item.author.avatarUrl} size="sm" />
               <div className="min-w-0 text-sm">
@@ -450,7 +495,7 @@ export function ReaderView({ itemId }: { itemId: string }) {
               <p className="mt-6 text-lg leading-relaxed text-stone-500 dark:text-stone-400">{item.description}</p>
             )}
             <div className="mt-8">
-              <ArticleBlocks content={item.content ?? ''} />
+              <ArticleBlocks content={item.content ?? ''} sizeClass={READER_FONT_CLASSES[fontStep]} />
             </div>
             {footerSections(false)}
           </article>

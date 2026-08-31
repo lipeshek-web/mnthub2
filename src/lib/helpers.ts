@@ -88,7 +88,13 @@ export function relativeDayLabel(iso: string): string | null {
 }
 
 export function currencyBRL(value: number): string {
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 })
+  // 2 casas SEMPRE: antes, R$ 94,50 renderizava "R$ 94,5" (mínimo 0 dígito)
+  return value.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
 }
 
 export function hourToLabel(hour: number): string {

@@ -7,12 +7,14 @@ import {
   type TrackRow,
 } from '@/lib/tracks-serialize'
 import { normalizeText } from '@/lib/helpers'
+import { resolveUser } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 const LEVELS = ['INICIANTE', 'INTERMEDIARIO', 'AVANCADO']
 
-/** GET /api/tracks?search=&category=&sort=&mentorUserId= — lista trilhas publicadas (ou todas do mentor) */
+/** GET /api/tracks?search=&category=&sort=&mentorUserId= — lista trilhas publicadas
+ *  (ou todas do mentor, SOMENTE quando mentorUserId é o usuário da sessão) */
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams
@@ -21,8 +23,11 @@ export async function GET(req: NextRequest) {
     const sort = sp.get('sort') || 'relevance'
     const mentorUserId = (sp.get('mentorUserId') || '').trim()
 
+    const session = await resolveUser(req)
+    const canSeeDrafts = Boolean(mentorUserId) && session?.id === mentorUserId
+
     const where: Record<string, unknown> = {}
-    if (mentorUserId) {
+    if (canSeeDrafts) {
       where.mentor = { userId: mentorUserId }
     } else {
       where.isPublished = true

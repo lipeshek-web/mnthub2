@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { nowNaive, parseNaive } from '@/lib/helpers'
 import { formatWhen, notify } from '@/lib/notify'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
-/** GET /api/bookings?userId= — sessões do usuário (como mentorado e como mentor) */
+/** GET /api/bookings — sessões do usuário autenticado (como mentorado e como mentor) */
 export async function GET(req: NextRequest) {
+  const session = await resolveUser(req)
+  if (!session) return unauthorized()
   try {
-    const userId = req.nextUrl.searchParams.get('userId') || ''
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
-
+    const userId = session.id
     const bookings = await db.booking.findMany({
       where: {
         OR: [{ menteeId: userId }, { mentor: { userId } }],
@@ -50,18 +51,20 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/** POST /api/bookings — novo agendamento (status PENDING, confirmado pelo mentor) */
+/** POST /api/bookings — novo agendamento (status PENDING, confirmado pelo mentor). Mentee = usuário da SESSÃO. */
 export async function POST(req: NextRequest) {
+  const session = await resolveUser(req)
+  if (!session) return unauthorized()
   try {
     const body = await req.json()
-    const menteeId = String(body?.menteeId ?? '')
+    const menteeId = session.id
     const mentorId = String(body?.mentorId ?? '')
     const startsAt = String(body?.startsAt ?? '')
     const durationMin = Math.max(30, Math.min(180, Number(body?.durationMin ?? 60)))
-    const topic = String(body?.topic ?? '').trim()
-    const notes = body?.notes ? String(body.notes).trim() : null
+    const topic = String(body?.topic ?? '').trim().slice(0, 160)
+    const notes = body?.notes ? String(body.notes).trim().slice(0, 600) : null
 
-    if (!menteeId || !mentorId) {
+    if (!mentorId) {
       return NextResponse.json({ error: 'Dados incompletos.' }, { status: 400 })
     }
     if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(startsAt)) {
@@ -99,11 +102,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Este horário saiu da agenda do mentor. Atualize a página.' }, { status: 409 })
     }
 
-    // valida conflito de horários
+    // valida conflito de horários (só sessões na janela relevante — perf)
     const start = parseNaive(startsAt).getTime()
     const end = start + durationMin * 60 * 1000
+    // janela ±1 dia em torno do horário solicitado (strings naive ordenam bem)
+    const dayBefore = new Date(start - 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
+    const dayAfter = new Date(end + 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
     const others = await db.booking.findMany({
-      where: { mentorId, status: { in: ['PENDING', 'CONFIRMED'] } },
+      where: {
+        mentorId,
+        status: { in: ['PENDING', 'CONFIRMED'] },
+        startsAt: { gte: dayBefore, lte: dayAfter },
+      },
       select: { startsAt: true, durationMin: true },
     })
     const conflict = others.some((o) => {

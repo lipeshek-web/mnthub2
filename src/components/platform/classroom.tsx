@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Copy,
   Download,
   FileDown,
@@ -261,13 +262,13 @@ export function ClassroomView({ courseId }: { courseId: string }) {
       const nowCompleted = res.completedLessonIds.includes(currentLesson.id)
       setCompletedIds(res.completedLessonIds)
       if (res.xpAwarded > 0) {
-        toast.success(`+${res.xpAwarded} XP de estudo ⚡`)
+        toast.success(`🎉 Aula concluída! +${res.xpAwarded} XP de estudo`)
       }
       if (nowCompleted && res.courseCompleted) {
-        toast.success('Curso concluído! Parabéns 🎉')
-      } else if (nowCompleted) {
-        toast.success('Aula marcada como concluída.')
-      } else {
+        toast.success('🏆 Curso concluído! Parabéns 🎉')
+      } else if (nowCompleted && res.xpAwarded <= 0) {
+        toast.success('Aula marcada como concluída ✅')
+      } else if (!nowCompleted) {
         toast('Marcação removida desta aula.')
       }
       if (autoAdvance && nowCompleted && currentIndex < orderedLessons.length - 1) {
@@ -437,11 +438,19 @@ export function ClassroomView({ courseId }: { courseId: string }) {
           </span>
         </div>
         <div className="flex w-32 shrink-0 items-center gap-2 sm:w-44">
-          <Progress
-            value={percent}
+          <div
+            role="progressbar"
             aria-label="Progresso do curso"
-            className="h-2 bg-white/20 [&_[data-slot=progress-indicator]]:bg-emerald-400"
-          />
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={percent}
+            className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-white/20"
+          >
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-500"
+              style={{ width: `${percent}%` }}
+            />
+          </div>
           <span className="w-9 shrink-0 text-right text-xs font-bold tabular-nums text-emerald-100">
             {percent}%
           </span>
@@ -472,8 +481,10 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                 ) : currentLesson.kind === 'READING' ? (
                   <ReadingMaterial lesson={currentLesson} courseId={courseId} />
                 ) : currentLesson.kind === 'RECORDED' && currentLesson.videoUrl ? (
-                  <div className="overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-stone-900/10">
-                    <LessonPlayer lesson={currentLesson} />
+                  <div className="rounded-3xl bg-gradient-to-b from-emerald-50/70 to-transparent p-2 sm:p-3 dark:from-emerald-950/25 dark:to-transparent">
+                    <div className="overflow-hidden rounded-2xl bg-black shadow-2xl shadow-stone-950/25 ring-1 ring-stone-200 dark:ring-stone-800">
+                      <LessonPlayer lesson={currentLesson} />
+                    </div>
                   </div>
                 ) : (
                   <LessonPlayer lesson={currentLesson} />
@@ -512,6 +523,9 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                 <div className="mt-5 flex flex-wrap items-center gap-2">
                   <Badge variant="outline" className="border-stone-200 bg-white text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
                     Aula {currentIndex + 1} de {orderedLessons.length}
+                  </Badge>
+                  <Badge variant="outline" className="border-stone-200 bg-white text-stone-600 tabular-nums dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
+                    <Clock aria-hidden className="h-3 w-3" /> {currentLesson.durationMin} min
                   </Badge>
                   {currentLesson.kind === 'LIVE' ? (
                     <Badge className="border-transparent bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-400">
@@ -952,9 +966,16 @@ function ContentsNav({
                       'flex min-h-14 w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors',
                       isCurrent
                         ? 'border-emerald-300 bg-emerald-50/80 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.15)] dark:border-emerald-700 dark:bg-emerald-950/50'
-                        : 'border-transparent hover:bg-stone-50 dark:hover:bg-stone-800'
+                        : 'border-transparent hover:bg-stone-50 dark:hover:bg-stone-800/70'
                     )}
                   >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'w-[3px] shrink-0 self-stretch rounded-full transition-colors',
+                        isCurrent ? 'bg-emerald-600' : 'bg-transparent'
+                      )}
+                    />
                     <span
                       className={cn(
                         'w-4 shrink-0 text-center text-xs font-bold',
@@ -1049,7 +1070,7 @@ function LessonPlayer({ lesson }: { lesson: CourseLessonDTO }) {
   const embedUrl = lesson.videoUrl ? toVideoEmbedUrl(lesson.videoUrl) : null
   if (!embedUrl) return null
   return (
-    <div className="overflow-hidden rounded-2xl border border-stone-800 bg-stone-950 shadow-lg shadow-stone-900/10">
+    <div className="overflow-hidden rounded-2xl bg-stone-950 shadow-2xl shadow-stone-950/25 ring-1 ring-stone-200 dark:ring-stone-800">
       <div className="aspect-video">
         <iframe
           src={embedUrl}
@@ -1120,7 +1141,7 @@ function ReadingMaterial({
       </div>
 
       {reading.pdfUrl ? (
-        <div className="aspect-video min-h-[420px] overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-lg shadow-stone-900/5">
+        <div className="aspect-video min-h-[420px] overflow-hidden rounded-2xl bg-white shadow-2xl shadow-stone-950/15 ring-1 ring-stone-200 dark:bg-stone-900 dark:ring-stone-800">
           <iframe
             src={reading.pdfUrl}
             title={lesson.title}
@@ -1128,7 +1149,7 @@ function ReadingMaterial({
           />
         </div>
       ) : (
-        <div className="min-h-[420px] max-h-[70vh] overflow-y-auto rounded-2xl border border-stone-200 bg-white p-6 shadow-lg shadow-stone-900/5 sm:p-8 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-stone-100 dark:[&::-webkit-scrollbar-track]:bg-stone-900 [&::-webkit-scrollbar]:w-1.5 dark:border-stone-800 dark:bg-stone-900">
+        <div className="min-h-[420px] max-h-[70vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl shadow-stone-950/15 ring-1 ring-stone-200 sm:p-8 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-stone-100 dark:[&::-webkit-scrollbar-track]:bg-stone-900 [&::-webkit-scrollbar]:w-1.5 dark:bg-stone-900 dark:ring-stone-800">
           <article className="mx-auto max-w-3xl">
             <h2 className="text-2xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">{reading.title}</h2>
             <div className="mt-5 space-y-4">
@@ -1184,7 +1205,7 @@ function LivePanel({ lesson, isOwner }: { lesson: CourseLessonDTO; isOwner: bool
     : 'agendada'
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-stone-800 bg-stone-950 shadow-lg shadow-stone-900/10">
+    <div className="overflow-hidden rounded-2xl bg-stone-950 shadow-2xl shadow-stone-950/25 ring-1 ring-stone-200 dark:ring-stone-800">
       {status === 'ended' && embedUrl ? (
         <div className="aspect-video">
           <iframe
@@ -1517,7 +1538,9 @@ function LessonNotes({
     }
   }, [lessonId, user])
 
-  // Autosave com debounce (o estado "salvando" aparece no envio)
+  // Autosave com debounce (o estado "salvando" aparece no envio).
+  // No unmount/troca de aula: FLUSH do texto pendente antes de limpar o timer —
+  // sair da sala ≤900ms depois de digitar não perde mais a anotação.
   useEffect(() => {
     if (!loaded || !user) return
     if (body === latestRef.current) return
@@ -1534,8 +1557,21 @@ function LessonNotes({
         toast.error('Não foi possível salvar as anotações.')
       }
     }, 900)
+    const pending = body
+    const staleLesson = lessonId
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
+      // fire-and-forget: salva o rascunho pendente (só se realmente divergiu)
+      if (pending !== latestRef.current && user) {
+        api
+          .saveLessonNote(staleLesson, { userId: user.id, body: pending })
+          .then(() => {
+            latestRef.current = pending
+          })
+          .catch(() => {
+            /* silencioso: melhor esforço no flush */
+          })
+      }
     }
   }, [body, loaded, user, lessonId])
 
@@ -1570,17 +1606,22 @@ function LessonNotes({
     <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 dark:border-stone-800 dark:bg-stone-900">
       <div className="flex items-center justify-between gap-3">
         <label htmlFor="lesson-notes" className="text-sm font-bold text-stone-800 dark:text-stone-200">
-          Minhas anotações desta aula
+          Anotações da aula
         </label>
         <span
           className={cn(
             'inline-flex items-center gap-1.5 text-xs font-semibold',
-            saveState === 'saving' ? 'text-amber-600 dark:text-amber-400' : saveState === 'saved' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-400 dark:text-stone-500'
+            saveState === 'saving' || saveState === 'saved'
+              ? 'text-emerald-600 dark:text-emerald-400'
+              : 'text-stone-400 dark:text-stone-500'
           )}
           aria-live="polite"
         >
           {saveState === 'saving' ? (
-            'Salvando…'
+            <>
+              <span aria-hidden className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+              Salvando…
+            </>
           ) : saveState === 'saved' ? (
             <>
               <Check aria-hidden className="h-3.5 w-3.5" /> Salvo

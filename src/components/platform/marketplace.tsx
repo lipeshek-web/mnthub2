@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   BadgeCheck,
@@ -118,15 +118,25 @@ export function MarketplaceView() {
   // header, ao vivo) e o corpo reage — navegando ou exibindo só resultados.
   const search = useAppStore((s) => s.exploreQuery)
 
+  // Guards anti-race da busca ao vivo: respostas antigas (debounce rápido /
+  // digitação veloz) nunca sobrescrevem o resultado mais recente
+  const mentorsReqRef = useRef(0)
+  const coursesReqRef = useRef(0)
+  const tracksReqRef = useRef(0)
+  const libReqRef = useRef(0)
+
   const load = useCallback(async () => {
+    const reqId = ++mentorsReqRef.current
     setLoading(true)
     try {
       const data = await api.listMentors({ search, category, sort })
+      if (reqId !== mentorsReqRef.current) return
       setMentors(data)
     } catch {
+      if (reqId !== mentorsReqRef.current) return
       setMentors([])
     } finally {
-      setLoading(false)
+      if (reqId === mentorsReqRef.current) setLoading(false)
     }
   }, [search, category, sort])
 
@@ -167,14 +177,17 @@ export function MarketplaceView() {
 
   // Lista filtrada de cursos — só carrega enquanto a aba Cursos está ativa
   const loadCourses = useCallback(async () => {
+    const reqId = ++coursesReqRef.current
     setCoursesLoading(true)
     try {
       const data = await api.listCourses({ search, category, sort: courseSort })
+      if (reqId !== coursesReqRef.current) return
       setCourses(data)
     } catch {
+      if (reqId !== coursesReqRef.current) return
       setCourses([])
     } finally {
-      setCoursesLoading(false)
+      if (reqId === coursesReqRef.current) setCoursesLoading(false)
     }
   }, [search, category, courseSort])
 
@@ -184,14 +197,17 @@ export function MarketplaceView() {
 
   // Lista filtrada de trilhas — só carrega enquanto a aba Trilhas está ativa
   const loadTracks = useCallback(async () => {
+    const reqId = ++tracksReqRef.current
     setTracksLoading(true)
     try {
       const data = await api.listTracks({ search, category, sort: trackSort })
+      if (reqId !== tracksReqRef.current) return
       setTracks(data)
     } catch {
+      if (reqId !== tracksReqRef.current) return
       setTracks([])
     } finally {
-      setTracksLoading(false)
+      if (reqId === tracksReqRef.current) setTracksLoading(false)
     }
   }, [search, category, trackSort])
 
@@ -201,6 +217,7 @@ export function MarketplaceView() {
 
   // Lista filtrada da Biblioteca — só carrega enquanto a aba Biblioteca está ativa
   const loadLibrary = useCallback(async () => {
+    const reqId = ++libReqRef.current
     setLibLoading(true)
     try {
       const data = await api.listLibrary({
@@ -209,11 +226,13 @@ export function MarketplaceView() {
         kind: libKind === 'ALL' ? undefined : libKind,
         sort: libSort,
       })
+      if (reqId !== libReqRef.current) return
       setLibItems(data)
     } catch {
+      if (reqId !== libReqRef.current) return
       setLibItems([])
     } finally {
-      setLibLoading(false)
+      if (reqId === libReqRef.current) setLibLoading(false)
     }
   }, [search, libCategory, libKind, libSort])
 

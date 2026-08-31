@@ -1,21 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
-/** POST /api/contents — publica item no mural de conteúdos do mentor */
+/** POST /api/contents — publica item no mural de conteúdos do mentor autenticado */
 export async function POST(req: NextRequest) {
+  const session = await resolveUser(req)
+  if (!session) return unauthorized('Sessão expirada. Entre novamente para publicar.')
   try {
     const body = await req.json()
-    const userId = String(body?.userId ?? '')
-    const title = String(body?.title ?? '').trim()
-    const description = String(body?.description ?? '').trim()
-    const tags: string[] = Array.isArray(body?.tags) ? body.tags.map(String).filter(Boolean) : []
+    const userId = session.id
+    const title = String(body?.title ?? '').trim().slice(0, 160)
+    const description = String(body?.description ?? '').trim().slice(0, 2000)
+    const tags: string[] = Array.isArray(body?.tags) ? body.tags.map(String).filter(Boolean).slice(0, 10) : []
     const type = String(body?.type ?? 'ARTICLE')
     const level = String(body?.level ?? 'INTERMEDIARIO')
     const durationMin = Math.max(5, Math.min(600, Number(body?.durationMin ?? 30)))
 
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
     if (!title || title.length < 5) {
       return NextResponse.json({ error: 'Informe um título com pelo menos 5 caracteres.' }, { status: 400 })
     }

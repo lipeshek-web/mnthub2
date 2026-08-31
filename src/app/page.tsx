@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useSyncExternalStore, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { GraduationCap } from 'lucide-react'
+import { toast } from 'sonner'
 import { Navbar } from '@/components/platform/navbar'
 import { PromoBar } from '@/components/platform/promo-bar'
 import { PlatformFooter } from '@/components/platform/footer'
@@ -198,6 +199,17 @@ export default function Home() {
       })
       .catch(() => {})
   }, [])
+
+  // Sessão expirada no servidor (401 de rota protegida): limpa e pede login
+  useEffect(() => {
+    const onExpired = () => {
+      setUser(null)
+      toast.error('Sua sessão expirou. Entre novamente para continuar.')
+      navigate({ name: 'auth', mode: 'login' })
+    }
+    window.addEventListener('mentorhub:session-expired', onExpired)
+    return () => window.removeEventListener('mentorhub:session-expired', onExpired)
+  }, [setUser, navigate])
 
   // #7 Lembretes automáticos: após carga/login bem-sucedido do usuário, dispara
   // api.runReminders 1x por sessão de navegador (guard de módulo). Nunca bloqueia a UI.

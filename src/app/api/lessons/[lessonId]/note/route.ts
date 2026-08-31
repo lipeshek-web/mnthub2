@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
-/** GET /api/lessons/[lessonId]/note?userId= — anotações do usuário nesta aula */
+/** GET /api/lessons/[lessonId]/note — anotações do usuário autenticado nesta aula */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ lessonId: string }> }) {
+  const session = await resolveUser(req)
+  if (!session) return unauthorized()
   try {
     const { lessonId } = await ctx.params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
-
+    const userId = session.id
     const note = await db.lessonNote.findUnique({
       where: { lessonId_userId: { lessonId, userId } },
     })
@@ -20,14 +21,15 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ lessonId: s
   }
 }
 
-/** PUT /api/lessons/[lessonId]/note — salva (upsert) as anotações do usuário */
+/** PUT /api/lessons/[lessonId]/note — salva (upsert) as anotações do usuário autenticado */
 export async function PUT(req: NextRequest, ctx: { params: Promise<{ lessonId: string }> }) {
+  const session = await resolveUser(req)
+  if (!session) return unauthorized('Sessão expirada. Entre novamente para salvar as anotações.')
   try {
     const { lessonId } = await ctx.params
     const body = await req.json()
-    const userId = String(body?.userId ?? '')
+    const userId = session.id
     const text = String(body?.body ?? '').slice(0, 20000)
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
 
     const lesson = await db.lesson.findUnique({ where: { id: lessonId }, select: { id: true } })
     if (!lesson) return NextResponse.json({ error: 'Aula não encontrada.' }, { status: 404 })

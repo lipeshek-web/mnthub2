@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import ZAI from 'z-ai-web-dev-sdk'
 import { courseBaseInclude, serializeCourse } from '@/lib/course-serialize'
+import { clientIp, rateLimit, tooMany } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,8 +10,17 @@ const CATALOG_LIMIT = 24 // cursos enviados ao modelo
 const PICKS = 4 // recomendações devolvidas
 const CACHE_TTL_MS = 10 * 60 * 1000 // cache em memória por usuário
 
-/** Cache simples em memória (userId → resposta + timestamp) */
+/** Cache simples em memória (userId → resposta + timestamp) com varredura TTL */
 const cache = new Map<string, { at: number; payload: unknown }>()
+let lastCacheSweep = 0
+function sweepCache() {
+  const now = Date.now()
+  if (now - lastCacheSweep < 60_000) return
+  lastCacheSweep = now
+  for (const [key, entry] of cache) {
+    if (now - entry.at > CACHE_TTL_MS) cache.delete(key)
+  }
+}
 
 function extractJson(text: string): { picks?: unknown } | null {
   const start = text.indexOf('{')
@@ -44,6 +54,11 @@ export async function GET(req: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
     }
+    // Rate limit: 12 recomendações/min por IP (chamada custa LLM)
+    const gate = rateLimit(`ai-rec:${clientIp(req)}`, 12, 60_000)
+    if (!gate.ok) return tooMany(gate.retryAfterSec)
+
+    sweepCache() // varre entradas expiradas (Map não cresce sem limite)
 
     // 1) Cache hit
     const hit = cache.get(userId)

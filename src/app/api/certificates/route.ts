@@ -1,20 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/certificates — emite (ou retorna) o certificado de conclusão do curso.
- * body: { courseId, userId }
+ * body: { courseId } — o aluno é o usuário da SESSÃO (antes aceitava qualquer
+ * userId e permitia emitir certificado em nome de outra pessoa).
  * Exige inscrição com 100% das aulas concluídas. O código é único e verificável.
  */
 export async function POST(req: NextRequest) {
+  const session = await resolveUser(req)
+  if (!session) return unauthorized()
   try {
     const body = await req.json().catch(() => ({}))
     const courseId = String(body?.courseId ?? '').trim()
-    const userId = String(body?.userId ?? '').trim()
-    if (!courseId || !userId) {
+    const userId = session.id
+    if (!courseId) {
       return NextResponse.json({ error: 'Dados incompletos.' }, { status: 400 })
     }
 
@@ -61,9 +65,22 @@ export async function POST(req: NextRequest) {
     }
 
     const code = `MH-${randomBytes(6).toString('hex').toUpperCase().slice(0, 10)}`
-    const cert = await db.certificate.create({
-      data: { code, courseId, studentId: userId },
-    })
+    let cert
+    try {
+      cert = await db.certificate.create({
+        data: { code, courseId, studentId: userId },
+      })
+    } catch (e) {
+      // Colisão rara de código (P2002): recarrega o existente ou tenta 1x de novo
+      const dup = await db.certificate.findUnique({
+        where: { courseId_studentId: { courseId, studentId: userId } },
+      })
+      if (dup) return NextResponse.json({ code: dup.code, issuedAt: dup.issuedAt.toISOString() })
+      const retryCode = `MH-${randomBytes(8).toString('hex').toUpperCase().slice(0, 12)}`
+      cert = await db.certificate.create({
+        data: { code: retryCode, courseId, studentId: userId },
+      })
+    }
 
     return NextResponse.json({ code: cert.code, issuedAt: cert.issuedAt.toISOString() }, { status: 201 })
   } catch (err) {

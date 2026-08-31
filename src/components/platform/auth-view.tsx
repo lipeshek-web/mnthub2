@@ -68,7 +68,9 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
   const [regLoading, setRegLoading] = useState(false)
 
   // ----- Contas de demonstração -----
-  const [demoUsers, setDemoUsers] = useState<UserDTO[]>([])
+  const [demoUsers, setDemoUsers] = useState<
+    { id: string; name: string; email: string; avatarUrl: string | null }[]
+  >([])
   const [demoLoading, setDemoLoading] = useState(true)
   const [demoBusyId, setDemoBusyId] = useState<string | null>(null)
 
@@ -88,7 +90,7 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
   useEffect(() => {
     let active = true
     api
-      .listUsers()
+      .demoAccounts()
       .then((users) => {
         if (active) setDemoUsers(users)
       })
@@ -249,8 +251,10 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
       setUser(user)
       toast.success(`Entrou como ${user.name}`)
       navigate({ name: 'home' })
-    } catch {
-      toast.info('Esta conta demo ainda está sendo preparada. Crie a sua!')
+    } catch (err) {
+      // Mostra o erro real (ex.: 429 de rate limit) em vez de mascarar
+      const msg = err instanceof Error ? err.message : ''
+      toast.info(msg || 'Esta conta demo ainda está sendo preparada. Crie a sua!')
     } finally {
       setDemoBusyId(null)
     }

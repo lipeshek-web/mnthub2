@@ -1,0 +1,662 @@
+   682→          {FORMATS.map((format, i) => (
+   683→            <motion.div
+   684→              key={format.title}
+   685→              initial={{ opacity: 0, y: 16 }}
+   686→              whileInView={{ opacity: 1, y: 0 }}
+   687→              viewport={{ once: true, margin: '-40px' }}
+   688→              transition={{ duration: 0.4, delay: i * 0.07 }}
+   689→              className="min-w-0"
+   690→            >
+   691→              <div className="group flex h-full flex-col rounded-2xl border border-stone-200 bg-white p-5 transition hover:border-emerald-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
+   692→                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:group-hover:bg-emerald-900/30">
+   693→                  <format.icon aria-hidden className="h-5 w-5" />
+   694→                </span>
+   695→                <p className="mt-4 text-[10px] font-semibold uppercase tracking-widest text-stone-400 dark:text-stone-500">
+   696→                  {format.eyebrow}
+   697→                </p>
+   698→                <h3 className="mt-1 font-semibold text-stone-900 dark:text-stone-50">{format.title}</h3>
+   699→                <p className="mt-1.5 flex-1 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
+   700→                  {format.text}
+   701→                </p>
+   702→                <button
+   703→                  type="button"
+   704→                  onClick={() => handleFormatTab(format.tab)}
+   705→                  className="mt-4 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-emerald-700 transition hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-emerald-300 dark:hover:text-emerald-200"
+   706→                  aria-label={`${format.cta} — ${format.title}`}
+   707→                >
+   708→                  {format.cta}
+   709→                  <ChevronRight
+   710→                    aria-hidden
+   711→                    className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+   712→                  />
+   713→                </button>
+   714→              </div>
+   715→            </motion.div>
+   716→          ))}
+   717→        </div>
+   718→      </motion.section>
+   719→
+   720→      {/* ---------- COMO FUNCIONA ---------- */}
+   721→      <motion.section
+   722→        aria-labelledby="como-funciona-title"
+   723→        initial={{ opacity: 0, y: 16 }}
+   724→        whileInView={{ opacity: 1, y: 0 }}
+   725→        viewport={{ once: true, margin: '-80px' }}
+   726→        transition={{ duration: 0.5 }}
+   727→        className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-4 pt-14 sm:pt-20"
+   728→      >
+   729→        <div className="max-w-2xl">
+   730→          <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+   731→            Como funciona
+   732→          </p>
+   733→            <h2
+   734→              id="como-funciona-title"
+   735→              className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl dark:text-stone-50"
+   736→            >
+   737→              Do descobrimento ao certificado
+   738→            </h2>
+   739→          </div>
+   740→
+   741→          <div className="relative mt-12 grid grid-cols-1 gap-10 sm:grid-cols-3 sm:gap-6">
+   742→            {STEPS.map((step, i) => (
+   743→              <motion.div
+   744→                key={step.number}
+   745→                initial={{ opacity: 0, y: 16 }}
+   746→                whileInView={{ opacity: 1, y: 0 }}
+   747→                viewport={{ once: true, margin: '-60px' }}
+   748→                transition={{ duration: 0.4, delay: i * 0.1 }}
+   749→                className="relative flex flex-col items-center"
+   750→              >
+   751→                <div className="relative z-10 flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-stone-950 text-sm font-semibold tracking-wide text-white ring-4 ring-white dark:bg-white dark:text-stone-950 dark:ring-stone-950">
+   752→                  {step.number}
+   753→                </div>
+   754→                <div className="mt-5 flex w-full min-w-0 flex-1 flex-col items-center rounded-2xl border border-stone-200 bg-white px-5 pb-6 pt-5 text-center transition hover:border-emerald-300 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
+   755→                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+   756→                    <step.icon aria-hidden className="h-5 w-5" />
+   757→                  </span>
+   758→                  <h3 className="mt-3 font-semibold text-stone-900 dark:text-stone-50">{step.title}</h3>
+   759→                  <p className="mt-1.5 text-sm leading-relaxed text-stone-600 dark:text-stone-300">{step.text}</p>
+   760→                </div>
+   761→              </motion.div>
+   762→            ))}
+   763→          </div>
+   764→      </motion.section>
+   765→
+   766→      {/* ---------- EXPLORE POR ÁREA (chips de categorias) ---------- */}
+   767→      <section
+   768→        aria-labelledby="areas-title"
+   769→        className="border-y border-stone-200/70 bg-stone-50/60 py-8 sm:py-10 dark:border-stone-800 dark:bg-stone-900/60"
+   770→      >
+   771→        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+   772→          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-8">
+   773→            <h2
+   774→              id="areas-title"
+   775→              className="shrink-0 text-sm font-semibold text-stone-500 dark:text-stone-400"
+   776→            >
+   777→              Explore por área
+   778→            </h2>
+   779→            <ul className="flex flex-wrap gap-2">
+   780→              {CATEGORIES.map((cat) => (
+   781→                <li key={cat}>
+   782→                  <button
+   783→                    type="button"
+   784→                    onClick={handleExploreArea}
+   785→                    className="inline-flex min-h-11 items-center rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-stone-700 transition hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-emerald-500 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300"
+   786→                  >
+   787→                    {cat}
+   788→                  </button>
+   789→                </li>
+   790→              ))}
+   791→            </ul>
+   792→          </div>
+   793→        </div>
+   794→      </section>
+   795→
+   796→      {/* ---------- MENTORES EM DESTAQUE ---------- */}
+   797→      <motion.section
+   798→        aria-labelledby="destaque-title"
+   799→        initial={{ opacity: 0, y: 16 }}
+   800→        whileInView={{ opacity: 1, y: 0 }}
+   801→        viewport={{ once: true, margin: '-80px' }}
+   802→        transition={{ duration: 0.5 }}
+   803→        className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24"
+   804→      >
+   805→        <div className="flex flex-wrap items-end justify-between gap-3">
+   806→          <div className="min-w-0">
+   807→            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+   808→              Aprenda ao vivo
+   809→            </p>
+   810→            <h2
+   811→              id="destaque-title"
+   812→              className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl dark:text-stone-50"
+   813→            >
+   814→              Mentores em destaque
+   815→            </h2>
+   816→            <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
+   817→              Os mais bem avaliados pela comunidade de mentorados.
+   818→            </p>
+   819→          </div>
+   820→          <Button
+   821→            variant="link"
+   822→            onClick={() => navigate({ name: 'marketplace' })}
+   823→            className="gap-1 px-0 font-semibold text-emerald-700 dark:text-emerald-300"
+   824→          >
+   825→            Ver todos
+   826→            <ChevronRight aria-hidden className="h-4 w-4" />
+   827→          </Button>
+   828→        </div>
+   829→
+   830→        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+   831→          {loading
+   832→            ? Array.from({ length: 3 }).map((_, i) => (
+   833→                <div
+   834→                  key={i}
+   835→                  aria-hidden
+   836→                  className="overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800"
+   837→                >
+   838→                  <Skeleton className="h-14 w-full rounded-none" />
+   839→                  <div className="p-5">
+   840→                    <Skeleton className="-mt-9 h-16 w-16 rounded-full ring-4 ring-white dark:ring-stone-950" />
+   841→                    <Skeleton className="mt-4 h-4 w-2/3" />
+   842→                    <Skeleton className="mt-2 h-3 w-1/2" />
+   843→                    <Skeleton className="mt-4 h-3 w-full" />
+   844→                    <Skeleton className="mt-2 h-3 w-4/5" />
+   845→                    <div className="mt-4 flex gap-2">
+   846→                      <Skeleton className="h-5 w-20 rounded-full" />
+   847→                      <Skeleton className="h-5 w-16 rounded-full" />
+   848→                    </div>
+   849→                    <Skeleton className="mt-6 h-11 w-full rounded-full" />
+   850→                  </div>
+   851→                </div>
+   852→              ))
+   853→            : featured.map((m) => <FeaturedMentorCard key={m.id} mentor={m} />)}
+   854→
+   855→          {!loading && featured.length === 0 && (
+   856→            <p className="rounded-2xl border border-dashed border-stone-200 p-10 text-center text-sm text-stone-500 sm:col-span-2 lg:col-span-3 dark:border-stone-800 dark:text-stone-400">
+   857→              Nenhum mentor avaliado por aqui ainda — explore a lista completa.
+   858→            </p>
+   859→          )}
+   860→        </div>
+   861→      </motion.section>
+   862→
+   863→      {/* ---------- CURSOS EM DESTAQUE ---------- */}
+   864→      {(coursesLoading || topCourses.length > 0) && (
+   865→        <motion.section
+   866→          ref={coursesSectionRef}
+   867→          aria-labelledby="cursos-destaque-title"
+   868→          initial={{ opacity: 0, y: 16 }}
+   869→          whileInView={{ opacity: 1, y: 0 }}
+   870→          viewport={{ once: true, margin: '-80px' }}
+   871→          transition={{ duration: 0.5 }}
+   872→          className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24"
+   873→        >
+   874→          <div className="flex flex-wrap items-end justify-between gap-3">
+   875→            <div className="min-w-0">
+   876→              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+   877→                No seu ritmo
+   878→              </p>
+   879→              <h2
+   880→                id="cursos-destaque-title"
+   881→                className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl dark:text-stone-50"
+   882→              >
+   883→                Cursos em destaque
+   884→              </h2>
+   885→              <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
+   886→                Aprenda no seu ritmo com aulas gravadas e materiais dos nossos mentores.
+   887→              </p>
+   888→            </div>
+   889→            <Button
+   890→              variant="link"
+   891→              onClick={handleVerCursos}
+   892→              className="gap-1 px-0 font-semibold text-emerald-700 dark:text-emerald-300"
+   893→            >
+   894→              Ver todos os cursos
+   895→              <ChevronRight aria-hidden className="h-4 w-4" />
+   896→            </Button>
+   897→          </div>
+   898→
+   899→          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+   900→            {coursesLoading
+   901→              ? Array.from({ length: 3 }).map((_, i) => (
+   902→                  <div
+   903→                    key={i}
+   904→                    aria-hidden
+   905→                    className="overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800"
+   906→                  >
+   907→                    <Skeleton className="h-36 w-full rounded-none" />
+   908→                    <div className="space-y-2.5 p-5">
+   909→                      <div className="flex gap-1.5">
+   910→                        <Skeleton className="h-5 w-20 rounded-full" />
+   911→                        <Skeleton className="h-5 w-16 rounded-full" />
+   912→                      </div>
+   913→                      <Skeleton className="h-4 w-3/4" />
+   914→                      <Skeleton className="h-3 w-1/3" />
+   915→                      <Skeleton className="h-3 w-1/2" />
+   916→                      <Skeleton className="mt-3 h-11 w-full rounded-full" />
+   917→                    </div>
+   918→                  </div>
+   919→                ))
+   920→              : topCourses.map((c) => <FeaturedCourseCard key={c.id} course={c} />)}
+   921→          </div>
+   922→        </motion.section>
+   923→      )}
+   924→
+   925→      {/* ---------- TRILHAS EM DESTAQUE ---------- */}
+   926→      {(tracksLoading || topTracks.length > 0) && (
+   927→        <motion.section
+   928→          ref={tracksSectionRef}
+   929→          aria-labelledby="trilhas-destaque-title"
+   930→          initial={{ opacity: 0, y: 16 }}
+   931→          whileInView={{ opacity: 1, y: 0 }}
+   932→          viewport={{ once: true, margin: '-80px' }}
+   933→          transition={{ duration: 0.5 }}
+   934→          className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24"
+   935→        >
+   936→          <div className="flex flex-wrap items-end justify-between gap-3">
+   937→            <div className="min-w-0">
+   938→              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+   939→                Jornadas guiadas
+   940→              </p>
+   941→              <h2
+   942→                id="trilhas-destaque-title"
+   943→                className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl dark:text-stone-50"
+   944→              >
+   945→                Trilhas em destaque
+   946→              </h2>
+   947→              <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
+   948→                Jornadas guiadas que combinam cursos e mentorias 1:1 dos nossos mentores.
+   949→              </p>
+   950→            </div>
+   951→            <Button
+   952→              variant="link"
+   953→              onClick={handleVerTrilhas}
+   954→              className="gap-1 px-0 font-semibold text-emerald-700 dark:text-emerald-300"
+   955→            >
+   956→              Ver todas as trilhas
+   957→              <ChevronRight aria-hidden className="h-4 w-4" />
+   958→            </Button>
+   959→          </div>
+   960→
+   961→          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+   962→            {tracksLoading
+   963→              ? Array.from({ length: 3 }).map((_, i) => (
+   964→                  <div
+   965→                    key={i}
+   966→                    aria-hidden
+   967→                    className="overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800"
+   968→                  >
+   969→                    <Skeleton className="h-36 w-full rounded-none" />
+   970→                    <div className="space-y-2.5 p-5">
+   971→                      <div className="flex gap-1.5">
+   972→                        <Skeleton className="h-5 w-16 rounded-full" />
+   973→                        <Skeleton className="h-5 w-20 rounded-full" />
+   974→                      </div>
+   975→                      <Skeleton className="h-4 w-3/4" />
+   976→                      <Skeleton className="h-3 w-1/2" />
+   977→                      <Skeleton className="h-3 w-1/3" />
+   978→                      <Skeleton className="mt-3 h-11 w-full rounded-full" />
+   979→                    </div>
+   980→                  </div>
+   981→                ))
+   982→              : topTracks.map((t) => <FeaturedTrackCard key={t.id} track={t} />)}
+   983→          </div>
+   984→        </motion.section>
+   985→      )}
+   986→
+   987→      {/* ---------- BIBLIOTECA EM DESTAQUE ---------- */}
+   988→      {(libraryLoading || topLibrary.length > 0) && (
+   989→        <motion.section
+   990→          ref={librarySectionRef}
+   991→          aria-labelledby="biblioteca-destaque-title"
+   992→          initial={{ opacity: 0, y: 16 }}
+   993→          whileInView={{ opacity: 1, y: 0 }}
+   994→          viewport={{ once: true, margin: '-80px' }}
+   995→          transition={{ duration: 0.5 }}
+   996→          className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24"
+   997→        >
+   998→          <div className="flex flex-wrap items-end justify-between gap-3">
+   999→            <div className="min-w-0">
+  1000→              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+  1001→                Para ler e reler
+  1002→              </p>
+  1003→              <h2
+  1004→                id="biblioteca-destaque-title"
+  1005→                className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl dark:text-stone-50"
+  1006→              >
+  1007→                Biblioteca em destaque
+  1008→              </h2>
+  1009→              <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
+  1010→                Artigos e livros publicados pelos nossos mentores, com leitor integrado.
+  1011→              </p>
+  1012→            </div>
+  1013→            <Button
+  1014→              variant="link"
+  1015→              onClick={handleVerBiblioteca}
+  1016→              className="gap-1 px-0 font-semibold text-emerald-700 dark:text-emerald-300"
+  1017→            >
+  1018→              Abrir biblioteca
+  1019→              <ChevronRight aria-hidden className="h-4 w-4" />
+  1020→            </Button>
+  1021→          </div>
+  1022→
+  1023→          {/* Estante: capas e papéis menores lado a lado — 3 colunas no mobile, 6 no desktop */}
+  1024→          <div className="mt-8 grid grid-cols-3 items-start gap-x-4 gap-y-7 sm:grid-cols-4 sm:gap-x-6 lg:grid-cols-6">
+  1025→            {libraryLoading
+  1026→              ? Array.from({ length: 6 }).map((_, i) => (
+  1027→                  <div key={i} aria-hidden>
+  1028→                    <Skeleton className="aspect-[2/3] w-full rounded-xl" />
+  1029→                    <div className="space-y-2 pt-3">
+  1030→                      <Skeleton className="h-3.5 w-4/5" />
+  1031→                      <Skeleton className="h-3 w-3/5" />
+  1032→                    </div>
+  1033→                  </div>
+  1034→                ))
+  1035→              : topLibrary.map((item) => <FeaturedLibraryCard key={item.id} item={item} />)}
+  1036→          </div>
+  1037→        </motion.section>
+  1038→      )}
+  1039→
+  1040→      {/* ---------- A PLATAFORMA EM NÚMEROS (faixa dark emerald-950) ---------- */}
+  1041→      <section
+  1042→        ref={statsSectionRef}
+  1043→        aria-label="Números da plataforma"
+  1044→        className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24"
+  1045→      >
+  1046→        <motion.div
+  1047→          initial={{ opacity: 0, y: 16 }}
+  1048→          whileInView={{ opacity: 1, y: 0 }}
+  1049→          viewport={{ once: true, margin: '-60px' }}
+  1050→          transition={{ duration: 0.5 }}
+  1051→          className="relative overflow-hidden rounded-3xl bg-emerald-950 px-6 py-12 sm:px-12 sm:py-14"
+  1052→        >
+  1053→
+  1054→          <dl className="relative grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-4">
+  1055→            <div className="flex flex-col">
+  1056→              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
+  1057→                mentores especialistas
+  1058→              </dt>
+  1059→              {loading ? (
+  1060→                <dd className="order-1">
+  1061→                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
+  1062→                </dd>
+  1063→              ) : (
+  1064→                <dd className="order-1 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+  1065→                  +{mentors.length}
+  1066→                </dd>
+  1067→              )}
+  1068→            </div>
+  1069→            <div className="flex flex-col">
+  1070→              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
+  1071→                cursos publicados
+  1072→              </dt>
+  1073→              {coursesLoading ? (
+  1074→                <dd className="order-1">
+  1075→                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
+  1076→                </dd>
+  1077→              ) : (
+  1078→                <dd className="order-1 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+  1079→                  +{courses.length}
+  1080→                </dd>
+  1081→              )}
+  1082→            </div>
+  1083→            <div className="flex flex-col">
+  1084→              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
+  1085→                trilhas guiadas
+  1086→              </dt>
+  1087→              {tracksLoading ? (
+  1088→                <dd className="order-1">
+  1089→                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
+  1090→                </dd>
+  1091→              ) : (
+  1092→                <dd className="order-1 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+  1093→                  +{tracks.length}
+  1094→                </dd>
+  1095→              )}
+  1096→            </div>
+  1097→            <div className="flex flex-col">
+  1098→              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
+  1099→                aulas disponíveis
+  1100→              </dt>
+  1101→              {coursesLoading ? (
+  1102→                <dd className="order-1">
+  1103→                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
+  1104→                </dd>
+  1105→              ) : (
+  1106→                <dd className="order-1 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+  1107→                  +{totalLessons}
+  1108→                </dd>
+  1109→              )}
+  1110→            </div>
+  1111→          </dl>
+  1112→        </motion.div>
+  1113→      </section>
+  1114→
+  1115→      {/* ---------- E MUITO MAIS (superpoderes transversais) ---------- */}
+  1116→      <motion.section
+  1117→        aria-labelledby="extras-title"
+  1118→        initial={{ opacity: 0, y: 16 }}
+  1119→        whileInView={{ opacity: 1, y: 0 }}
+  1120→        viewport={{ once: true, margin: '-80px' }}
+  1121→        transition={{ duration: 0.5 }}
+  1122→        className="border-y border-stone-200/70 bg-stone-50/60 dark:border-stone-800 dark:bg-stone-900/60"
+  1123→      >
+  1124→        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-16 sm:py-20">
+  1125→          <div className="max-w-2xl">
+  1126→            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+  1127→              E muito mais
+  1128→            </p>
+  1129→            <h2
+  1130→              id="extras-title"
+  1131→              className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl dark:text-stone-50"
+  1132→            >
+  1133→              Superpoderes em toda a plataforma
+  1134→            </h2>
+  1135→            <p className="mt-2 text-sm text-stone-500 sm:text-base dark:text-stone-400">
+  1136→              Recursos que acompanham mentorias, cursos, trilhas e a biblioteca.
+  1137→            </p>
+  1138→          </div>
+  1139→
+  1140→          <ul className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  1141→            {EXTRAS.map((extra, i) => (
+  1142→              <motion.li
+  1143→                key={extra.title}
+  1144→                initial={{ opacity: 0, y: 16 }}
+  1145→                whileInView={{ opacity: 1, y: 0 }}
+  1146→                viewport={{ once: true, margin: '-40px' }}
+  1147→                transition={{ duration: 0.4, delay: (i % 3) * 0.07 }}
+  1148→                className="min-w-0"
+  1149→              >
+  1150→                <div className="group flex h-full items-start gap-3.5 rounded-2xl border border-stone-200 bg-white p-4 transition hover:border-emerald-300 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700 sm:p-5">
+  1151→                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:group-hover:bg-emerald-900/30">
+  1152→                    <extra.icon aria-hidden className="h-4.5 w-4.5" />
+  1153→                  </span>
+  1154→                  <span className="min-w-0">
+  1155→                    <h3 className="font-semibold text-stone-900 dark:text-stone-50">{extra.title}</h3>
+  1156→                    <p className="mt-1 text-sm leading-relaxed text-stone-600 dark:text-stone-300">{extra.text}</p>
+  1157→                  </span>
+  1158→                </div>
+  1159→              </motion.li>
+  1160→            ))}
+  1161→          </ul>
+  1162→        </div>
+  1163→      </motion.section>
+  1164→
+  1165→      {/* ---------- DEPOIMENTOS ---------- */}
+  1166→      <motion.section
+  1167→        aria-labelledby="depoimentos-title"
+  1168→        initial={{ opacity: 0, y: 16 }}
+  1169→        whileInView={{ opacity: 1, y: 0 }}
+  1170→        viewport={{ once: true, margin: '-80px' }}
+  1171→        transition={{ duration: 0.5 }}
+  1172→        className="border-y border-stone-200/70 bg-stone-50/60 dark:border-stone-800 dark:bg-stone-900/60"
+  1173→      >
+  1174→        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-24">
+  1175→          <div className="max-w-2xl">
+  1176→            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+  1177→              Depoimentos
+  1178→            </p>
+  1179→            <h2
+  1180→              id="depoimentos-title"
+  1181→              className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl dark:text-stone-50"
+  1182→            >
+  1183→              Depoimentos de mentorados
+  1184→            </h2>
+  1185→            <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
+  1186→              Histórias reais de quem já deu o próximo passo.
+  1187→            </p>
+  1188→          </div>
+  1189→
+  1190→          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+  1191→            {TESTIMONIALS.map((t) => {
+  1192→              const [namePart, rolePart] = t.author.split(' · ')
+  1193→              return (
+  1194→                <figure
+  1195→                  key={t.author}
+  1196→                  className="flex h-full min-w-0 flex-col rounded-2xl border border-stone-200 bg-white p-6 transition dark:border-stone-800 dark:bg-stone-900"
+  1197→                >
+  1198→                  <Stars rating={5} size={14} />
+  1199→                  <blockquote className="mt-3 flex-1 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
+  1200→                    {t.quote}
+  1201→                  </blockquote>
+  1202→                  <figcaption className="mt-5 flex items-center gap-2.5 border-t border-stone-100 pt-4 dark:border-stone-800">
+  1203→                    <span
+  1204→                      aria-hidden
+  1205→                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white"
+  1206→                      style={avatarGradient(t.author)}
+  1207→                    >
+  1208→                      {initials(namePart ?? t.author)}
+  1209→                    </span>
+  1210→                    <span className="min-w-0">
+  1211→                      <span className="block truncate text-sm font-semibold text-stone-800 dark:text-stone-200">
+  1212→                        {namePart?.trim() ?? t.author}
+  1213→                      </span>
+  1214→                      {rolePart && (
+  1215→                        <span className="block truncate text-xs text-stone-500 dark:text-stone-400">{rolePart}</span>
+  1216→                      )}
+  1217→                    </span>
+  1218→                  </figcaption>
+  1219→                </figure>
+  1220→              )
+  1221→            })}
+  1222→          </div>
+  1223→        </div>
+  1224→      </motion.section>
+  1225→
+  1226→      {/* ---------- FAQ ---------- */}
+  1227→      <motion.section
+  1228→        aria-labelledby="faq-title"
+  1229→        initial={{ opacity: 0, y: 16 }}
+  1230→        whileInView={{ opacity: 1, y: 0 }}
+  1231→        viewport={{ once: true, margin: '-80px' }}
+  1232→        transition={{ duration: 0.5 }}
+  1233→        className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-16 sm:py-24"
+  1234→      >
+  1235→        <div className="mx-auto max-w-3xl">
+  1236→          <div className="text-center">
+  1237→            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+  1238→              Perguntas frequentes
+  1239→            </p>
+  1240→            <h2
+  1241→              id="faq-title"
+  1242→              className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl dark:text-stone-50"
+  1243→            >
+  1244→              Tudo o que você precisa saber
+  1245→            </h2>
+  1246→            <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
+  1247→              Antes da sua primeira sessão, sem surpresas.
+  1248→            </p>
+  1249→          </div>
+  1250→
+  1251→          <Accordion
+  1252→            type="single"
+  1253→            collapsible
+  1254→            className="mt-8 rounded-2xl border border-stone-200 bg-white px-5 sm:px-6 dark:border-stone-800 dark:bg-stone-900"
+  1255→          >
+  1256→            {FAQS.map((faq, i) => (
+  1257→              <AccordionItem key={faq.q} value={`faq-${i}`} className="border-stone-100 dark:border-stone-800">
+  1258→                <AccordionTrigger className="py-5 text-left text-sm font-semibold text-stone-900 hover:no-underline sm:text-base dark:text-stone-50">
+  1259→                  {faq.q}
+  1260→                </AccordionTrigger>
+  1261→                <AccordionContent className="pb-5 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
+  1262→                  {faq.a}
+  1263→                </AccordionContent>
+  1264→              </AccordionItem>
+  1265→            ))}
+  1266→          </Accordion>
+  1267→        </div>
+  1268→      </motion.section>
+  1269→
+  1270→      {/* ---------- ACESSIBILIDADE À EDUCAÇÃO (impacto social / ESG) ---------- */}
+  1271→      <section aria-labelledby="impacto-title" className="mt-4 bg-emerald-950 py-16 text-white sm:py-24">
+  1272→        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+  1273→          <div className="max-w-2xl">
+  1274→            <p className="text-sm font-semibold text-emerald-300">
+  1275→              Acessibilidade à educação · Impacto social (ESG)
+  1276→            </p>
+  1277→            <h2
+  1278→              id="impacto-title"
+  1279→              className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl"
+  1280→            >
+  1281→              Educação que alcança todo mundo
+  1282→            </h2>
+  1283→            <p className="mt-3 text-base leading-relaxed text-emerald-100/85 sm:text-lg">
+  1284→              Levamos palestras sobre temas que importam — cyberbullying, crimes digitais, segurança
+  1285→              online e outros — a escolas públicas e privadas, com mentores especialistas. Todo
+  1286→              participante ganha bolsa parcial, e os alunos mais esforçados sem condições de pagar
+  1287→              concorrem a bolsas integrais.
+  1288→            </p>
+  1289→          </div>
+  1290→
+  1291→          <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
+  1292→            {[
+  1293→              {
+  1294→                icon: Presentation,
+  1295→                title: 'Palestras que abrem a conversa',
+  1296→                text: 'Cyberbullying, crimes digitais e outros temas urgentes, apresentados nas escolas pelos nossos mentores.',
+  1297→              },
+  1298→              {
+  1299→                icon: School,
+  1300→                title: 'Públicas e privadas',
+  1301→                text: 'Do projeto aberto à turma inteira ao programa personalizado sob medida para colégios particulares.',
+  1302→              },
+  1303→              {
+  1304→                icon: HeartHandshake,
+  1305→                title: 'Bolsas para todos',
+  1306→                text: 'Bolsas parciais para todos os participantes — e integrais para os mais esforçados que não têm condições.',
+  1307→              },
+  1308→            ].map((pillar) => (
+  1309→              <div
+  1310→                key={pillar.title}
+  1311→                className="rounded-2xl bg-white/5 p-6 ring-1 ring-white/10"
+  1312→              >
+  1313→                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-emerald-300 ring-1 ring-white/15">
+  1314→                  <pillar.icon aria-hidden className="h-5 w-5" />
+  1315→                </span>
+  1316→                <h3 className="mt-4 text-lg font-semibold tracking-tight">{pillar.title}</h3>
+  1317→                <p className="mt-1.5 text-sm leading-relaxed text-emerald-100/80">{pillar.text}</p>
+  1318→              </div>
+  1319→            ))}
+  1320→          </div>
+  1321→
+  1322→          <div className="mt-10 flex flex-wrap items-end gap-x-10 gap-y-6">
+  1323→            <div>
+  1324→              <p className="text-4xl font-semibold tracking-tight sm:text-5xl">100%</p>
+  1325→              <p className="mt-1 text-sm text-emerald-200/75">
+  1326→                dos participantes ganham bolsa parcial em projetos escolares
+  1327→              </p>
+  1328→            </div>
+  1329→            <div>
+  1330→              <p className="text-4xl font-semibold tracking-tight sm:text-5xl">Integrais</p>
+  1331→              <p className="mt-1 text-sm text-emerald-200/75">
+  1332→                para os alunos mais esforçados sem condições de pagar — custo zero
+  1333→              </p>
+  1334→            </div>
+  1335→            <div>
+  1336→              <p className="text-4xl font-semibold tracking-tight sm:text-5xl">Sob medida</p>
+  1337→              <p className="mt-1 text-sm text-emerald-200/75">
+  1338→                programas personalizados para colégios públicos e particulares
+  1339→              </p>
+  1340→            </div>
+  1341→          </div>
+
+[showing lines 682-1341 of 2313; use offset=1342 with limit to continue reading]

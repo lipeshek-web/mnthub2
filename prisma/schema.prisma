@@ -141,6 +141,9 @@ model Booking {
   price       Float         @default(0)
   createdAt   DateTime      @default(now())
 
+  @@index([mentorId, status, startsAt])
+  @@index([menteeId, startsAt])
+
   review Review?
 }
 
@@ -259,6 +262,7 @@ model Enrollment {
   createdAt          DateTime  @default(now())
 
   @@unique([courseId, studentId])
+  @@index([studentId])
 }
 
 /// Pergunta de quiz vinculada a uma aula (múltipla escolha, corrigida no servidor)
@@ -426,6 +430,9 @@ model Order {
   landingPage String  @default("platform") // mentor_lp | platform
 
   createdAt DateTime @default(now())
+
+  @@index([studentId, status])
+  @@index([mentorId, status])
 }
 
 /// Eventos de rastreamento (page_view, view_item, begin_checkout, purchase, lead)
@@ -451,6 +458,9 @@ model TrackingEvent {
   path        String?
 
   createdAt DateTime @default(now())
+
+  @@index([mentorId, createdAt])
+  @@index([mentorId, name])
 }
 
 // ==================== NOTIFICAÇÕES ====================

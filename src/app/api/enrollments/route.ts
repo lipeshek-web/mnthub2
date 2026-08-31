@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
-/** GET /api/enrollments?userId= — cursos em que o usuário está inscrito, com progresso */
+/** GET /api/enrollments — cursos em que o usuário autenticado está inscrito, com progresso */
 export async function GET(req: NextRequest) {
+  const session = await resolveUser(req)
+  if (!session) return unauthorized()
   try {
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
-
+    const userId = session.id
     const enrollments = await db.enrollment.findMany({
       where: { studentId: userId },
       include: {

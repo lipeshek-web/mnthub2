@@ -1,24 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * GET /api/notifications?userId= — lista as notificações do usuário (mais recentes primeiro)
- * + contagem de não lidas.
+ * GET /api/notifications — lista as notificações do usuário autenticado
+ * (mais recentes primeiro) + contagem de não lidas.
+ * Identidade vem da SESSÃO (header Authorization) — nunca mais do userId na
+ * query, que permitia ler as notificações de qualquer pessoa.
  */
 export async function GET(req: NextRequest) {
-  try {
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+  const user = await resolveUser(req)
+  if (!user) return unauthorized()
 
+  try {
     const [items, unread] = await Promise.all([
       db.notification.findMany({
-        where: { userId },
+        where: { userId: user.id },
         orderBy: { createdAt: 'desc' },
         take: 30,
       }),
-      db.notification.count({ where: { userId, readAt: null } }),
+      db.notification.count({ where: { userId: user.id, readAt: null } }),
     ])
 
     return NextResponse.json({
@@ -41,18 +44,18 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * POST /api/notifications — marca notificações como lidas.
- * body: { userId, ids?: string[] } — sem ids, marca TODAS as não lidas.
+ * POST /api/notifications — marca notificações do usuário autenticado como lidas.
+ * body: { ids?: string[] } — sem ids, marca TODAS as não lidas.
  */
 export async function POST(req: NextRequest) {
+  const user = await resolveUser(req)
+  if (!user) return unauthorized()
+
   try {
     const body = await req.json().catch(() => ({}))
-    const userId = String(body?.userId ?? '').trim()
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
-
-    const ids = Array.isArray(body?.ids) ? body.ids.map(String).filter(Boolean) : null
+    const ids = Array.isArray(body?.ids) ? body.ids.map(String).filter(Boolean).slice(0, 50) : null
     await db.notification.updateMany({
-      where: { userId, readAt: null, ...(ids ? { id: { in: ids } } : {}) },
+      where: { userId: user.id, readAt: null, ...(ids ? { id: { in: ids } } : {}) },
       data: { readAt: new Date() },
     })
 

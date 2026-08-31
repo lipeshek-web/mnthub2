@@ -75,7 +75,12 @@ export function CertificateView({ code }: { code: string }) {
         year: 'numeric',
       })
     : ''
-  const hours = cert ? Math.max(1, Math.round((cert.totalMin / 60) * 10) / 10) : 0
+  // Duração legível: <1h mostra minutos (30 min), ≥1h mostra horas decimais
+  const durationLabel = cert
+    ? cert.totalMin < 60
+      ? `${cert.totalMin} min`
+      : `${Math.round((cert.totalMin / 60) * 10) / 10}h`
+    : ''
 
   if (loading) {
     return (
@@ -172,7 +177,7 @@ export function CertificateView({ code }: { code: string }) {
 
           <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-stone-500">
             <span className="inline-flex items-center gap-1.5">
-              <Clock className="h-3.5 w-3.5 text-emerald-600" aria-hidden /> {hours}h de conteúdo
+              <Clock className="h-3.5 w-3.5 text-emerald-600" aria-hidden /> {durationLabel} de conteúdo
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Award className="h-3.5 w-3.5 text-emerald-600" aria-hidden /> {cert.category}

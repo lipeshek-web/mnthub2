@@ -34,7 +34,6 @@ import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Avatar, Stars } from '@/components/platform/avatar'
@@ -290,7 +289,7 @@ export function CourseView({ courseId }: { courseId: string }) {
           <p className="relative inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">
             {isOwner && !isEnrolled ? 'Seu curso' : 'Inscrição ativa'}
           </p>
-          <h1 className="relative mt-2 max-w-2xl text-2xl font-extrabold tracking-tight sm:text-3xl">
+          <h1 className="relative mt-2 max-w-2xl text-3xl font-extrabold tracking-tight sm:text-4xl">
             {course.title}
           </h1>
           <p className="relative mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-emerald-100/80">
@@ -315,11 +314,19 @@ export function CourseView({ courseId }: { courseId: string }) {
                 <span>Seu progresso</span>
                 <span className="tabular-nums">{pct}%</span>
               </div>
-              <Progress
-                value={pct}
+              <div
+                role="progressbar"
                 aria-label="Progresso do curso"
-                className="mt-1.5 h-2 bg-white/15 [&_[data-slot=progress-indicator]]:bg-emerald-400"
-              />
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={pct}
+                className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/15"
+              >
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-500"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
               <p className="mt-1 text-[11px] text-emerald-100/60">
                 {done} de {course.lessonCount} {course.lessonCount === 1 ? 'aula concluída' : 'aulas concluídas'}
               </p>
@@ -467,8 +474,8 @@ function OverviewContent({
               {LEVEL_LABELS[course.level] ?? course.level}
             </Badge>
           </div>
-          <h1 className="mt-4 text-2xl font-extrabold tracking-tight sm:text-3xl">{course.title}</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/85 sm:text-[15px]">
+          <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">{course.title}</h1>
+          <p className="mt-2.5 max-w-2xl text-[15px] leading-relaxed text-white/85 sm:text-base">
             {course.description}
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/90">
@@ -541,9 +548,15 @@ function OverviewContent({
                 Currículo do curso
               </h2>
               {lessons.length > 0 && (
-                <span className="text-xs font-medium text-stone-400 dark:text-stone-500">
-                  {lessons.length} {lessons.length === 1 ? 'aula' : 'aulas'} ·{' '}
-                  {formatTotalDuration(course.totalDurationMin)}
+                <span className="inline-flex items-center gap-4 text-xs font-medium text-stone-500 dark:text-stone-400">
+                  <span className="inline-flex items-center gap-1.5">
+                    <BookOpen aria-hidden className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    {lessons.length} {lessons.length === 1 ? 'aula' : 'aulas'}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 tabular-nums">
+                    <Clock aria-hidden className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    {formatTotalDuration(course.totalDurationMin)}
+                  </span>
                 </span>
               )}
             </div>
@@ -604,7 +617,7 @@ function OverviewContent({
                               </span>
                             ) : null}
                             {lesson.kind !== 'LIVE' ? (
-                              <span className="hidden shrink-0 items-center gap-1 text-xs text-stone-400 dark:text-stone-500 sm:inline-flex">
+                              <span className="hidden shrink-0 items-center gap-1 text-xs tabular-nums text-stone-400 dark:text-stone-500 sm:inline-flex">
                                 {lesson.durationMin} min
                               </span>
                             ) : null}
@@ -623,7 +636,7 @@ function OverviewContent({
               <ol className="mt-3 divide-y divide-stone-100 dark:divide-stone-800">
                 {lessons.map((lesson, i) => (
                   <li key={lesson.id} className="flex items-center gap-3 py-3.5 first:pt-4 last:pb-0">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-xs font-bold text-stone-500 dark:text-stone-400">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-bold tabular-nums text-stone-500 dark:bg-stone-800 dark:text-stone-400">
                       {i + 1}
                     </span>
                     <div className="min-w-0 flex-1">
@@ -638,7 +651,7 @@ function OverviewContent({
                           : 'Ao vivo'}
                       </span>
                     ) : (
-                      <span className="hidden shrink-0 items-center gap-1 text-xs text-stone-400 dark:text-stone-500 sm:inline-flex">
+                      <span className="hidden shrink-0 items-center gap-1 text-xs tabular-nums text-stone-400 dark:text-stone-500 sm:inline-flex">
                         {lesson.kind === 'READING' ? (
                           <BookOpen aria-hidden className="h-4 w-4 text-amber-500" />
                         ) : lesson.videoUrl ? (
@@ -715,7 +728,7 @@ function OverviewContent({
                 Todo o conteúdo, perguntas e anotações estão liberados na sua sala de aula.
               </p>
               <Button
-                className="mt-5 h-11 w-full rounded-full font-bold"
+                className="mt-5 h-11 w-full rounded-full bg-gradient-to-r from-emerald-700 to-emerald-600 font-bold shadow-lg shadow-emerald-600/20 transition-shadow hover:from-emerald-800 hover:to-emerald-700"
                 onClick={onContinue}
                 aria-label="Abrir a sala de aula"
                 disabled={!onContinue}
@@ -740,7 +753,7 @@ function OverviewContent({
               </p>
 
               <Button
-                className="mt-5 h-11 w-full rounded-full font-bold"
+                className="mt-5 h-11 w-full rounded-full bg-gradient-to-r from-emerald-700 to-emerald-600 font-bold shadow-lg shadow-emerald-600/20 transition-shadow hover:from-emerald-800 hover:to-emerald-700"
                 onClick={onEnrollClick}
                 disabled={enrolling}
               >

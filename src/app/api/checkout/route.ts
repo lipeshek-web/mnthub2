@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAsaasConfig, ensureAsaasCustomer, createAsaasPayment, getPixQrCode, type AsaasBillingType } from '@/lib/asaas'
 import { resolveCoupon, fulfillOrder } from '@/lib/fulfillment'
+import { resolveUser, unauthorized } from '@/lib/session'
+import { clientIp, rateLimit, tooMany } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -61,9 +63,15 @@ async function previewCredits(
 }
 
 export async function POST(req: NextRequest) {
+  // Identidade da SESSÃO (checkout mexe com dinheiro — userId do corpo era
+  // spoofável) + rate limit contra criação em massa de pedidos/cobranças
+  const session = await resolveUser(req)
+  if (!session) return unauthorized()
+  const gate = rateLimit(`checkout:${session.id}:${clientIp(req)}`, 12, 5 * 60_000)
+  if (!gate.ok) return tooMany(gate.retryAfterSec)
   try {
     const body = await req.json().catch(() => ({}))
-    const userId = String(body?.userId ?? '')
+    const userId = session.id
     const courseId = String(body?.courseId ?? '')
     const trackId = String(body?.trackId ?? '')
     const bundleId = String(body?.bundleId ?? '')
@@ -239,6 +247,39 @@ export async function POST(req: NextRequest) {
     })
 
     // ---------- Sem gateway: modo demonstração (paga na hora) ----------
+    // Valor zerado (cupom 100% + créditos): não cobra gateway — libera direto
+    if (gatewayActive && finalAmount <= 0) {
+      await db.payment.create({
+        data: {
+          orderId: order.id,
+          userId,
+          gateway: 'SIMULATED',
+          billingType,
+          status: 'PENDING',
+          value: 0,
+          externalReference: order.id,
+          lastEvent: 'valor_zerado',
+          lastEventAt: new Date(),
+        },
+      })
+      const result = await fulfillOrder(order.id)
+      if (!result.ok) {
+        return NextResponse.json({ error: 'Erro ao liberar o acesso.' }, { status: 500 })
+      }
+      return NextResponse.json({
+        order: {
+          id: order.id,
+          itemKind: item.kind,
+          itemTitle: item.title,
+          amount: 0,
+          paymentMethod: billingType,
+          status: 'PAID',
+          createdAt: order.createdAt.toISOString(),
+        },
+        alreadyEnrolled: false,
+      })
+    }
+
     if (!gatewayActive) {
       await db.payment.create({
         data: {

@@ -10,7 +10,9 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const now = new Date()
-    const coupons = await db.coupon.findMany({
+    // Busca mais ampla e filtra em memória: cupons esgotados (uses >= maxUses)
+    // não podem "gastar" o take e esvaziar a barra
+    const candidates = await db.coupon.findMany({
       where: {
         mentorId: null,
         isActive: true,
@@ -18,12 +20,12 @@ export async function GET() {
         OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
       },
       orderBy: { createdAt: 'desc' },
-      take: 8,
+      take: 40,
       include: { mentor: { select: { user: { select: { name: true } } } } },
     })
+    const coupons = candidates.filter((c) => c.maxUses === null || c.uses < c.maxUses).slice(0, 8)
 
     const items = coupons
-      .filter((c) => c.maxUses === null || c.uses < c.maxUses)
       .map((c) => {
         const discountLabel =
           c.percentOff !== null

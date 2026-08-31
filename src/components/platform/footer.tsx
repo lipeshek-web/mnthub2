@@ -14,7 +14,9 @@ import {
 import { useAppStore } from '@/lib/store'
 
 export function PlatformFooter() {
-  const { navigate, user } = useAppStore()
+  // Seletores atômicos: footer re-renderiza só quando user ou navigate mudarem
+  const navigate = useAppStore((s) => s.navigate)
+  const user = useAppStore((s) => s.user)
   const year = new Date().getFullYear()
 
   const goToExploreTab = (tab: 'all' | 'mentors' | 'courses' | 'tracks' | 'library') => {

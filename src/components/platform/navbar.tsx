@@ -81,37 +81,70 @@ function relativeTime(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
 }
 
-// ==================== Mensagens diretas (chat) ====================
+// ==================== Contadores do header (1 poll para os 2 sininhos) ====================
 
-/** Ícone de mensagens com badge de não lidas (polling leve a cada 45s) */
-function MessagesButton() {
-  const user = useAppStore((s) => s.user)
-  const navigate = useAppStore((s) => s.navigate)
-  const [unread, setUnread] = useState(0)
+/**
+ * Badge único: mensagens + notificações não lidas em UM request autenticado
+ * (antes eram 2 polls — messages/unread 45s + notifications 60s). Pausa com a
+ * aba oculta e atualiza ao voltar o foco. `refresh()` força revalidação depois
+ * de ações locais (ex.: marcar tudo como lido).
+ */
+function useBadges() {
+  const userId = useAppStore((s) => s.user?.id)
+  const [badges, setBadges] = useState({ messages: 0, notifications: 0 })
   const aliveRef = useRef(true)
+  const reqIdRef = useRef(0)
+
+  const refresh = useCallback(() => {
+    if (!userId) return
+    const reqId = ++reqIdRef.current
+    api
+      .badges()
+      .then((res) => {
+        if (!aliveRef.current || reqId !== reqIdRef.current) return
+        setBadges((prev) =>
+          prev.messages === res.messages && prev.notifications === res.notifications
+            ? prev
+            : { messages: res.messages, notifications: res.notifications }
+        )
+      })
+      .catch(() => {
+        /* silencioso */
+      })
+  }, [userId])
 
   useEffect(() => {
-    const userId = user?.id
     if (!userId) return
     aliveRef.current = true
-    let alive = true
-    const load = () =>
-      api
-        .unreadMessages(userId)
-        .then((r) => {
-          if (alive) setUnread(r.count)
-        })
-        .catch(() => {
-          /* silencioso */
-        })
-    load()
-    const timer = setInterval(load, 45_000)
+    refresh()
+    const timer = setInterval(() => {
+      if (document.hidden) return // economia: aba em segundo plano não faz polling
+      refresh()
+    }, 45_000)
+    const onVisible = () => {
+      if (!document.hidden) refresh()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
     return () => {
-      alive = false
       aliveRef.current = false
       clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
     }
-  }, [user?.id])
+  }, [userId, refresh])
+
+  // Sem login os badges são sempre zero (derivado — sem setState em efeito)
+  const shown = userId ? badges : { messages: 0, notifications: 0 }
+  return { ...shown, refresh }
+}
+
+// ==================== Mensagens diretas (chat) ====================
+
+/** Ícone de mensagens com badge de não lidas (alimenta-se do badge único do header) */
+function MessagesButton({ unread }: { unread: number }) {
+  const user = useAppStore((s) => s.user)
+  const navigate = useAppStore((s) => s.navigate)
 
   if (!user) return null
 
@@ -173,13 +206,23 @@ function ThemeToggle() {
   )
 }
 
-function NotificationsBell() {
+function NotificationsBell({
+  badgeCount,
+  refreshBadges,
+}: {
+  badgeCount: number
+  refreshBadges: () => void
+}) {
   const user = useAppStore((s) => s.user)
   const navigate = useAppStore((s) => s.navigate)
 
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState<NotificationDTO[]>([])
-  const [unreadCount, setUnreadCount] = useState(0)
+  // Contador exibido = sobrescrita otimista local ?? badge do header (poll 45s).
+  // Sem setState em efeito: o badge chega como prop e a otimização vence até o
+  // servidor confirmar.
+  const [localOverride, setLocalOverride] = useState<number | null>(null)
+  const unreadCount = localOverride ?? badgeCount
 
   // Guard `alive` + contador de requisição: evita setState de respostas
   // obsoletas (unmount, troca de usuário ou fetch sobreposto)
@@ -192,52 +235,33 @@ function NotificationsBell() {
       const res = await api.listNotifications(userId)
       if (!aliveRef.current || reqId !== reqIdRef.current) return
       setItems(res.items)
-      setUnreadCount(res.unreadCount)
+      setLocalOverride(res.unreadCount)
     } catch {
       // Erro silencioso: badge apenas não aparece (sem toast)
     }
   }, [])
 
   const userId = user?.id
+  // Itens do dropdown: carregados ao ABRIR o painel (sem poll e sem fetch no
+  // mount — o contador vem do badge único; a lista só importa ao abrir)
   useEffect(() => {
-    if (!userId) return
     aliveRef.current = true
-    let alive = true
-    // Fetch inicial (setState em callback assíncrono) com guard anti-race:
-    // descartado se o componente desmontar ou se um fetch mais novo existir
-    const reqId = ++reqIdRef.current
-    api
-      .listNotifications(userId)
-      .then((res) => {
-        if (!alive || reqId !== reqIdRef.current) return
-        setItems(res.items)
-        setUnreadCount(res.unreadCount)
-      })
-      .catch(() => {
-        // Erro silencioso: badge apenas não aparece
-      })
-    // Polling a cada 60s enquanto logado
-    const timer = setInterval(() => {
-      loadNotifications(userId)
-    }, 60_000)
     return () => {
-      alive = false
       aliveRef.current = false
-      clearInterval(timer)
     }
-  }, [userId, loadNotifications])
+  }, [])
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next)
     if (next && userId) loadNotifications(userId) // refetch ao abrir o dropdown
   }
-
   const handleItemClick = (item: NotificationDTO) => {
     // Marca como lida de forma otimista (badge/zumbido atualizam na hora)
     if (!item.read) {
       setItems((prev) => prev.map((n) => (n.id === item.id ? { ...n, read: true } : n)))
-      setUnreadCount((count) => Math.max(0, count - 1))
+      setLocalOverride((count) => Math.max(0, unreadCount - 1))
       if (userId) api.markNotificationsRead(userId, [item.id]).catch(() => {})
+      refreshBadges()
     }
     // Navega conforme o destino sugerido pela notificação
     if (item.linkView === 'dashboard') navigate({ name: 'dashboard' })
@@ -252,12 +276,13 @@ function NotificationsBell() {
     if (!userId || unreadCount === 0) return
     const prevItems = items
     setItems((prev) => prev.map((n) => ({ ...n, read: true })))
-    setUnreadCount(0)
+    setLocalOverride(0)
     api.markNotificationsRead(userId).catch(() => {
       // Falhou: restaura o estado anterior
       setItems(prevItems)
-      setUnreadCount(prevItems.filter((n) => !n.read).length)
+      setLocalOverride(prevItems.filter((n) => !n.read).length)
     })
+    refreshBadges()
   }
 
   if (!user) return null
@@ -376,7 +401,13 @@ function NotificationsBell() {
 }
 
 export function Navbar() {
-  const { user, view, setUser, navigate } = useAppStore()
+  // Seletores atômicos (não destruturar a store inteira: Navbar re-renderizaria
+  // a cada commit de qualquer campo, incluindo a cada digitação da busca)
+  const user = useAppStore((s) => s.user)
+  const view = useAppStore((s) => s.view)
+  const setUser = useAppStore((s) => s.setUser)
+  const navigate = useAppStore((s) => s.navigate)
+  const badges = useBadges()
 
   // ---------- Busca global do header (a busca principal, sempre visível) ----------
   const [query, setQuery] = useState('')
@@ -574,8 +605,10 @@ export function Navbar() {
         <div className={cn('flex items-center gap-2', 'md:ml-0 ml-auto')}>
           {/* Tema claro/escuro (todos) + mensagens e sino (apenas logado) */}
           <ThemeToggle />
-          {user && <MessagesButton />}
-          {user && <NotificationsBell />}
+          {user && <MessagesButton unread={badges.messages} />}
+          {user && (
+            <NotificationsBell badgeCount={badges.notifications} refreshBadges={badges.refresh} />
+          )}
 
           {/* Busca (mobile): ícone que expande a linha de busca abaixo do header */}
           <button

@@ -54,6 +54,10 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
 
   const listEndRef = useRef<HTMLDivElement | null>(null)
   const aliveRef = useRef(true)
+  // Guard anti-race da thread ativa: respostas antigas (troca rápida de convera)
+  // são descartadas se um request mais novo existir
+  const threadReqIdRef = useRef(0)
+  const lastSnapshotRef = useRef<string>('')
 
   // ---------- Caixa de entrada ----------
   const loadThreads = useCallback(async () => {
@@ -71,24 +75,34 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
 
   // ---------- Thread ativa ----------
   const loadThread = useCallback(
-    async (peerId: string, markReadLocally = true) => {
+    async (peerId: string, markReadLocally = true, isPoll = false) => {
       if (!userId) return
-      setMessagesLoading(true)
+      const reqId = ++threadReqIdRef.current
+      if (!isPoll) setMessagesLoading(true)
       try {
         const res = await api.listMessages(userId, peerId)
-        if (!aliveRef.current) return
+        if (!aliveRef.current || reqId !== threadReqIdRef.current) return
+        // Poll: só atualiza quando houve novidade (evita re-render + skeleton
+        // piscando a cada 4s em conversa parada); preserva mensagens otimistas
+        const snapshot = `${res.items.length}:${res.items[res.items.length - 1]?.id ?? ''}`
+        if (isPoll && snapshot === lastSnapshotRef.current) return
+        lastSnapshotRef.current = snapshot
         setActivePeerId(res.peer.id)
         setActiveHeadline(res.peer.headline ?? null)
-        setMessages(res.items)
+        setMessages((prev) => {
+          if (!isPoll) return res.items
+          const temps = prev.filter((m) => m.id.startsWith('temp-'))
+          return temps.length > 0 ? [...res.items, ...temps] : res.items
+        })
         if (markReadLocally) {
           setThreads((prev) =>
             prev.map((t) => (t.peer.id === peerId ? { ...t, unread: 0 } : t))
           )
         }
       } catch {
-        if (aliveRef.current) setMessages([])
+        if (aliveRef.current && !isPoll) setMessages([])
       } finally {
-        if (aliveRef.current) setMessagesLoading(false)
+        if (aliveRef.current && !isPoll) setMessagesLoading(false)
       }
     },
     [userId]
@@ -119,7 +133,7 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
   useEffect(() => {
     if (!userId || !activePeerId) return
     const t2 = setInterval(() => {
-      if (!document.hidden) loadThread(activePeerId, false)
+      if (!document.hidden) loadThread(activePeerId, false, true)
     }, 4_000)
     return () => clearInterval(t2)
   }, [userId, activePeerId, loadThread])
@@ -141,6 +155,7 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
     setActiveThread(t)
     setActiveHeadline(null)
     setMessages([])
+    lastSnapshotRef.current = '' // thread nova: snapshot reinicia
     setMobileChatOpen(true)
     loadThread(t.peer.id)
   }

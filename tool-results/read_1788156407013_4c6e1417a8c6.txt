@@ -1,0 +1,1155 @@
+     1→'use client'
+     2→
+     3→import {
+     4→  useCallback,
+     5→  useEffect,
+     6→  useMemo,
+     7→  useRef,
+     8→  useState,
+     9→  type ReactNode,
+    10→} from 'react'
+    11→import {
+    12→  AlertCircle,
+    13→  ArrowLeft,
+    14→  BadgePercent,
+    15→  BookOpen,
+    16→  Check,
+    17→  CheckCircle2,
+    18→  Clock,
+    19→  CreditCard,
+    20→  ExternalLink,
+    21→  FileText,
+    22→  Folder,
+    23→  Layers,
+    24→  Library,
+    25→  Lock,
+    26→  PlayCircle,
+    27→  Radio,
+    28→  Sparkles,
+    29→  Star,
+    30→  UserRound,
+    31→  Users,
+    32→} from 'lucide-react'
+    33→import { toast } from 'sonner'
+    34→import { Badge } from '@/components/ui/badge'
+    35→import { Button } from '@/components/ui/button'
+    36→import { Card } from '@/components/ui/card'
+    37→import { Progress } from '@/components/ui/progress'
+    38→import { Skeleton } from '@/components/ui/skeleton'
+    39→import { Textarea } from '@/components/ui/textarea'
+    40→import { Avatar, Stars } from '@/components/platform/avatar'
+    41→import { api } from '@/lib/api'
+    42→import {
+    43→  LEVEL_LABELS,
+    44→  avatarGradient,
+    45→  currencyBRL,
+    46→  formatDayLabel,
+    47→  formatTimeLabel,
+    48→  formatTotalDuration,
+    49→  toVideoEmbedUrl,
+    50→} from '@/lib/helpers'
+    51→import { loadTrackingScripts, trackEvent } from '@/lib/tracking'
+    52→import { useAppStore } from '@/lib/store'
+    53→import type {
+    54→  BundleDTO,
+    55→  CourseDetailDTO,
+    56→  CourseLessonDTO,
+    57→  CourseReviewDTO,
+    58→  MembershipDTO,
+    59→} from '@/lib/types'
+    60→import { cn } from '@/lib/utils'
+    61→
+    62→export function CourseView({ courseId }: { courseId: string }) {
+    63→  const navigate = useAppStore((s) => s.navigate)
+    64→  const user = useAppStore((s) => s.user)
+    65→
+    66→  const [data, setData] = useState<CourseDetailDTO | null>(null)
+    67→  const [loading, setLoading] = useState(true)
+    68→  const [error, setError] = useState<string | null>(null)
+    69→
+    70→  // Estado da inscrição (modo visitante)
+    71→  const [enrolling, setEnrolling] = useState(false)
+    72→
+    73→  // Estado de envio da avaliação do aluno (modo inscrito)
+    74→  const [reviewSaving, setReviewSaving] = useState(false)
+    75→
+    76→  // Tracking (GA4/Meta Pixel do mentor + view_item) — uma única vez por curso/montagem
+    77→  const trackedCourseRef = useRef<string | null>(null)
+    78→
+    79→  const fetchCourse = useCallback(async () => {
+    80→    setLoading(true)
+    81→    setError(null)
+    82→    try {
+    83→      const d = await api.getCourse(courseId, user?.id)
+    84→      setData(d)
+    85→    } catch (err) {
+    86→      setError(err instanceof Error ? err.message : 'Não foi possível carregar o curso.')
+    87→    } finally {
+    88→      setLoading(false)
+    89→    }
+    90→  }, [courseId, user?.id])
+    91→
+    92→  useEffect(() => {
+    93→    void fetchCourse()
+    94→  }, [fetchCourse])
+    95→
+    96→  const lessons = useMemo<CourseLessonDTO[]>(
+    97→    () => [...(data?.lessons ?? [])].sort((a, b) => a.order - b.order),
+    98→    [data]
+    99→  )
+   100→
+   101→  const course = data
+   102→  const isEnrolled = course?.enrollment != null
+   103→  const isOwner = Boolean(user && course && course.mentor.userId === user.id)
+   104→
+   105→  // Dispara view_item + injeta os pixels do mentor quando os dados do curso chegam
+   106→  // (visitante ou inscrito), no máximo uma vez por curso por montagem.
+   107→  useEffect(() => {
+   108→    if (!course || trackedCourseRef.current === course.id) return
+   109→    trackedCourseRef.current = course.id
+   110→    loadTrackingScripts({
+   111→      mentorGaId: course.mentor.tracking?.gaMeasurementId,
+   112→      mentorPixelId: course.mentor.tracking?.metaPixelId,
+   113→    })
+   114→    trackEvent('view_item', {
+   115→      mentorId: course.mentor.id,
+   116→      courseId: course.id,
+   117→      value: course.price || undefined,
+   118→      contentName: course.title,
+   119→    })
+   120→  }, [course])
+   121→
+   122→  /* ---------- Avaliação do curso (aluno inscrito) ---------- */
+   123→
+   124→  const handleSaveReview = async (rating: number, comment: string) => {
+   125→    if (!user || !course) return
+   126→    setReviewSaving(true)
+   127→    try {
+   128→      const res: { id: string; updated: boolean; createdAt?: string } =
+   129→        await api.saveCourseReview(course.id, { userId: user.id, rating, comment })
+   130→
+   131→      const saved: CourseReviewDTO = {
+   132→        id: res.id,
+   133→        rating,
+   134→        comment,
+   135→        createdAt: res.createdAt ?? new Date().toISOString(),
+   136→        student: { id: user.id, name: user.name, avatarUrl: user.avatarUrl ?? null },
+   137→      }
+   138→
+   139→      // Reflete localmente: atualiza/insere a review na lista, recalcula o resumo
+   140→      // (distribuição → média) e preenche myReview para pré-preencher o formulário.
+   141→      setData((prev) => {
+   142→        if (!prev) return prev
+   143→        const list = [...(prev.reviews ?? [])]
+   144→        const idx = list.findIndex((r) => r.student.id === user.id)
+   145→        const oldRating = idx >= 0 ? list[idx].rating : null
+   146→        if (idx >= 0) list[idx] = saved
+   147→        else list.unshift(saved)
+   148→
+   149→        const dist = [...(prev.reviewSummary?.distribution ?? [0, 0, 0, 0, 0])]
+   150→        if (oldRating != null) {
+   151→          dist[5 - oldRating] = Math.max(0, (dist[5 - oldRating] ?? 0) - 1)
+   152→        }
+   153→        dist[5 - rating] = (dist[5 - rating] ?? 0) + 1
+   154→        const total = dist.reduce((acc, n, i) => acc + n * (5 - i), 0)
+   155→        const newCount = dist.reduce((acc, n) => acc + n, 0)
+   156→        const avg = newCount > 0 ? Math.round((total / newCount) * 10) / 10 : 0
+   157→
+   158→        return {
+   159→          ...prev,
+   160→          reviews: list.slice(0, 20),
+   161→          reviewSummary: { rating: avg, count: newCount, distribution: dist },
+   162→          myReview: { rating, comment },
+   163→          rating: avg,
+   164→          reviewCount: newCount,
+   165→        }
+   166→      })
+   167→
+   168→      toast.success(
+   169→        res.updated ? 'Avaliação atualizada!' : 'Avaliação enviada! Obrigada pela contribuição 💚'
+   170→      )
+   171→    } catch (err) {
+   172→      toast.error(err instanceof Error ? err.message : 'Erro ao salvar sua avaliação.')
+   173→    } finally {
+   174→      setReviewSaving(false)
+   175→    }
+   176→  }
+   177→
+   178→  /* ---------- Inscrição (overview) ---------- */
+   179→
+   180→  const doEnroll = async () => {
+   181→    if (!user || !course) return
+   182→    setEnrolling(true)
+   183→    try {
+   184→      const res = await api.enrollCourse(course.id, user.id)
+   185→      if (res.alreadyEnrolled) {
+   186→        toast.info('Você já estava inscrito neste curso.')
+   187→        // Busca novamente com o usuário: enrollment preenchido mostra o modo inscrito
+   188→        const fresh = await api.getCourse(course.id, user.id)
+   189→        setData(fresh)
+   190→      } else {
+   191→        toast.success('Inscrição realizada! Boa jornada 🎉')
+   192→        await api.getCourse(course.id, user.id)
+   193→        // Nova inscrição: entra direto na sala de aula
+   194→        navigate({ name: 'classroom', courseId: course.id })
+   195→      }
+   196→    } catch (err) {
+   197→      toast.error(err instanceof Error ? err.message : 'Erro ao realizar inscrição.')
+   198→    } finally {
+   199→      setEnrolling(false)
+   200→    }
+   201→  }
+   202→
+   203→  const handleEnrollClick = () => {
+   204→    if (!user) {
+   205→      toast.info('Entre com uma conta para se inscrever.')
+   206→      navigate({ name: 'auth', mode: 'login' })
+   207→      return
+   208→    }
+   209→    if (!course) return
+   210→    if (course.price === 0) {
+   211→      void doEnroll()
+   212→    } else {
+   213→      // Curso pago: fluxo completo de checkout (com atribuição e pixels carregados)
+   214→      trackEvent('begin_checkout', {
+   215→        mentorId: course.mentor.id,
+   216→        courseId: course.id,
+   217→        value: course.price || undefined,
+   218→        contentName: course.title,
+   219→      })
+   220→      navigate({ name: 'checkout', courseId: course.id })
+   221→    }
+   222→  }
+   223→
+   224→  /* ---------- Renders auxiliares ---------- */
+   225→
+   226→  if (loading) {
+   227→    return (
+   228→      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-6 sm:py-8" aria-busy="true">
+   229→        <Skeleton className="h-9 w-24 rounded-full" />
+   230→        <Skeleton className="mt-4 h-52 w-full rounded-2xl" />
+   231→        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+   232→          <div className="space-y-6 lg:col-span-2">
+   233→            <Skeleton className="h-44 rounded-2xl" />
+   234→            <Skeleton className="h-64 rounded-2xl" />
+   235→          </div>
+   236→          <Skeleton className="h-72 rounded-2xl" />
+   237→        </div>
+   238→        <p className="sr-only">Carregando curso…</p>
+   239→      </div>
+   240→    )
+   241→  }
+   242→
+   243→  if (!course) {
+   244→    return (
+   245→      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-6 sm:py-8">
+   246→        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 dark:border-stone-700 px-6 py-14 text-center">
+   247→          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 dark:bg-rose-950/50">
+   248→            <AlertCircle aria-hidden className="h-7 w-7 text-rose-500" />
+   249→          </span>
+   250→          <p className="font-bold text-stone-900 dark:text-stone-50">Não foi possível carregar o curso</p>
+   251→          <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+   252→            {error ?? 'Curso não encontrado.'}
+   253→          </p>
+   254→          <Button variant="outline" className="rounded-full" onClick={() => void fetchCourse()}>
+   255→            Tentar novamente
+   256→          </Button>
+   257→        </div>
+   258→      </div>
+   259→    )
+   260→  }
+   261→
+   262→  if (isEnrolled || isOwner) {
+   263→    const done = course.enrollment?.completedLessonIds.length ?? 0
+   264→    const pct = course.lessonCount > 0 ? Math.round((done / course.lessonCount) * 100) : 0
+   265→    const enr = course.enrollment
+   266→    // Curso 100% concluído → destaque suave no card de avaliação
+   267→    const allDone =
+   268→      enr != null && lessons.length > 0 && enr.completedLessonIds.length >= lessons.length
+   269→    // Remonta o formulário quando a avaliação salva do servidor muda (pré-preencher)
+   270→    const reviewFormKey = course.myReview
+   271→      ? `${course.id}-saved-${course.myReview.rating}-${course.myReview.comment.length}`
+   272→      : `${course.id}-new`
+   273→    return (
+   274→      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-6 sm:py-8">
+   275→        <Button
+   276→          variant="ghost"
+   277→          onClick={() => navigate({ name: 'marketplace' })}
+   278→          className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-50"
+   279→        >
+   280→          <ArrowLeft aria-hidden className="h-4 w-4" /> Voltar
+   281→        </Button>
+   282→
+   283→        {/* Hero do aluno inscrito */}
+   284→        <section
+   285→          aria-label="Seu curso"
+   286→          className="relative mt-2 overflow-hidden rounded-3xl bg-emerald-950 p-6 text-white sm:p-8"
+   287→        >
+   288→          <div aria-hidden className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl" />
+   289→          <div aria-hidden className="absolute -bottom-24 left-10 h-48 w-48 rounded-full bg-teal-400/10 blur-3xl" />
+   290→          <p className="relative inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">
+   291→            {isOwner && !isEnrolled ? 'Seu curso' : 'Inscrição ativa'}
+   292→          </p>
+   293→          <h1 className="relative mt-2 max-w-2xl text-2xl font-extrabold tracking-tight sm:text-3xl">
+   294→            {course.title}
+   295→          </h1>
+   296→          <p className="relative mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-emerald-100/80">
+   297→            <span>por {course.mentor.name}</span>
+   298→            <span aria-hidden>·</span>
+   299→            <span>{course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'}</span>
+   300→            <span aria-hidden>·</span>
+   301→            <span>{formatTotalDuration(course.totalDurationMin)}</span>
+   302→          </p>
+   303→          <div className="relative mt-5 flex flex-wrap items-center gap-4">
+   304→            <Button
+   305→              size="lg"
+   306→              onClick={() => navigate({ name: 'classroom', courseId: course.id })}
+   307→              aria-label="Abrir a sala de aula"
+   308→              className="h-12 rounded-full bg-white px-7 font-bold text-emerald-950 hover:bg-emerald-100"
+   309→            >
+   310→              <PlayCircle aria-hidden className="h-5 w-5" />
+   311→              {done > 0 ? 'Continuar curso' : 'Começar agora'}
+   312→            </Button>
+   313→            <div className="min-w-40 flex-1 max-w-xs" aria-hidden>
+   314→              <div className="flex items-center justify-between text-xs font-semibold text-emerald-100/80">
+   315→                <span>Seu progresso</span>
+   316→                <span className="tabular-nums">{pct}%</span>
+   317→              </div>
+   318→              <Progress
+   319→                value={pct}
+   320→                aria-label="Progresso do curso"
+   321→                className="mt-1.5 h-2 bg-white/15 [&_[data-slot=progress-indicator]]:bg-emerald-400"
+   322→              />
+   323→              <p className="mt-1 text-[11px] text-emerald-100/60">
+   324→                {done} de {course.lessonCount} {course.lessonCount === 1 ? 'aula concluída' : 'aulas concluídas'}
+   325→              </p>
+   326→            </div>
+   327→          </div>
+   328→        </section>
+   329→
+   330→        <OverviewContent
+   331→          course={course}
+   332→          lessons={lessons}
+   333→          enrolling={false}
+   334→          isLoggedIn={Boolean(user)}
+   335→          enrolled
+   336→          currentUserId={user?.id ?? null}
+   337→          reviewFormNode={
+   338→            enr ? (
+   339→              <ReviewFormCard
+   340→                key={reviewFormKey}
+   341→                myReview={course.myReview}
+   342→                completed={allDone}
+   343→                saving={reviewSaving}
+   344→                onSubmit={handleSaveReview}
+   345→              />
+   346→            ) : null
+   347→          }
+   348→          onContinue={() => navigate({ name: 'classroom', courseId: course.id })}
+   349→          onEnrollClick={handleEnrollClick}
+   350→          onLogin={() => navigate({ name: 'auth', mode: 'login' })}
+   351→          onViewMentor={(mentorId) => navigate({ name: 'mentor', mentorId })}
+   352→        />
+   353→      </div>
+   354→    )
+   355→  }
+   356→
+   357→  return (
+   358→    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-6 sm:py-8">
+   359→      <Button
+   360→        variant="ghost"
+   361→        onClick={() => navigate({ name: 'marketplace' })}
+   362→        className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-50"
+   363→      >
+   364→        <ArrowLeft aria-hidden className="h-4 w-4" /> Voltar
+   365→      </Button>
+   366→
+   367→      <OverviewContent
+   368→        course={course}
+   369→        lessons={lessons}
+   370→        enrolling={enrolling}
+   371→        isLoggedIn={Boolean(user)}
+   372→        currentUserId={user?.id ?? null}
+   373→        onContinue={
+   374→          course.enrollment || isOwner
+   375→            ? () => navigate({ name: 'classroom', courseId: course.id })
+   376→            : undefined
+   377→        }
+   378→        onEnrollClick={handleEnrollClick}
+   379→        onLogin={() => navigate({ name: 'auth', mode: 'login' })}
+   380→        onViewMentor={(mentorId) => navigate({ name: 'mentor', mentorId })}
+   381→      />
+   382→    </div>
+   383→  )
+   384→}
+   385→
+   386→/* ==================== MODO VISITANTE (overview) ==================== */
+   387→
+   388→function OverviewContent({
+   389→  course,
+   390→  lessons,
+   391→  enrolling,
+   392→  isLoggedIn,
+   393→  enrolled = false,
+   394→  currentUserId = null,
+   395→  reviewFormNode = null,
+   396→  onContinue,
+   397→  onEnrollClick,
+   398→  onLogin,
+   399→  onViewMentor,
+   400→}: {
+   401→  course: CourseDetailDTO
+   402→  lessons: CourseLessonDTO[]
+   403→  enrolling: boolean
+   404→  isLoggedIn: boolean
+   405→  enrolled?: boolean
+   406→  currentUserId?: string | null
+   407→  reviewFormNode?: ReactNode
+   408→  onContinue?: () => void
+   409→  onEnrollClick: () => void
+   410→  onLogin: () => void
+   411→  onViewMentor: (mentorId: string) => void
+   412→}) {
+   413→  // Currículo agrupado por temas (em ordem); aulas sem tema → "Outros conteúdos" no fim
+   414→  const themes = useMemo(
+   415→    () => [...(course.themes ?? [])].sort((a, b) => a.order - b.order),
+   416→    [course]
+   417→  )
+   418→  const curriculumGroups = useMemo(() => {
+   419→    const byTheme = new Map<string, CourseLessonDTO[]>()
+   420→    const loose: CourseLessonDTO[] = []
+   421→    for (const lesson of lessons) {
+   422→      if (lesson.themeId && themes.some((t) => t.id === lesson.themeId)) {
+   423→        const bucket = byTheme.get(lesson.themeId) ?? []
+   424→        bucket.push(lesson)
+   425→        byTheme.set(lesson.themeId, bucket)
+   426→      } else {
+   427→        loose.push(lesson)
+   428→      }
+   429→    }
+   430→    const groups: { key: string; title: string; lessons: CourseLessonDTO[] }[] = themes.map((t) => ({
+   431→      key: t.id,
+   432→      title: t.title,
+   433→      lessons: byTheme.get(t.id) ?? [],
+   434→    }))
+   435→    if (loose.length > 0) groups.push({ key: 'none', title: 'Outros conteúdos', lessons: loose })
+   436→    return groups
+   437→  }, [lessons, themes])
+   438→  return (
+   439→    <>
+   440→      {/* ---------- HERO (oculto no modo inscrito: já existe o hero de progresso) ---------- */}
+   441→      {!enrolled && (
+   442→      <section
+   443→        aria-label={`Curso: ${course.title}`}
+   444→        className="relative overflow-hidden rounded-2xl p-6 text-white sm:p-8"
+   445→        style={avatarGradient(course.title)}
+   446→      >
+   447→        {course.coverUrl && (
+   448→          <>
+   449→            <img
+   450→              src={course.coverUrl}
+   451→              alt=""
+   452→              aria-hidden
+   453→              className="absolute inset-0 h-full w-full object-cover"
+   454→            />
+   455→            <div aria-hidden className="absolute inset-0 bg-stone-950/55" />
+   456→          </>
+   457→        )}
+   458→        {!course.coverUrl && (
+   459→          <Library aria-hidden className="pointer-events-none absolute -right-6 -top-10 h-48 w-48 text-white/15" />
+   460→        )}
+   461→        <div className="relative">
+   462→          <div className="flex flex-wrap items-center gap-2">
+   463→            <Badge className="rounded-full border-white/25 bg-white/15 text-white hover:bg-white/15">
+   464→              {course.category}
+   465→            </Badge>
+   466→            <Badge className="rounded-full border-white/25 bg-stone-900/30 text-white hover:bg-stone-900/30">
+   467→              {LEVEL_LABELS[course.level] ?? course.level}
+   468→            </Badge>
+   469→          </div>
+   470→          <h1 className="mt-4 text-2xl font-extrabold tracking-tight sm:text-3xl">{course.title}</h1>
+   471→          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/85 sm:text-[15px]">
+   472→            {course.description}
+   473→          </p>
+   474→          <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/90">
+   475→            <span className="inline-flex items-center gap-1.5">
+   476→              <BookOpen aria-hidden className="h-4 w-4" />
+   477→              {course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'}
+   478→            </span>
+   479→            {course.liveCount > 0 ? (
+   480→              <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/25 px-2.5 py-0.5 font-semibold">
+   481→                <Radio aria-hidden className="h-4 w-4" />
+   482→                {course.liveCount} ao vivo
+   483→              </span>
+   484→            ) : null}
+   485→            <span className="inline-flex items-center gap-1.5">
+   486→              <Clock aria-hidden className="h-4 w-4" />
+   487→              {formatTotalDuration(course.totalDurationMin)}
+   488→            </span>
+   489→            {course.mentorshipCount > 0 ? (
+   490→              <span className="inline-flex items-center gap-1.5">
+   491→                <UserRound aria-hidden className="h-4 w-4" />
+   492→                {course.mentorshipCount} mentoria{course.mentorshipCount > 1 ? 's' : ''} 1:1
+   493→              </span>
+   494→            ) : null}
+   495→            <span className="inline-flex items-center gap-1.5">
+   496→              <Users aria-hidden className="h-4 w-4" />
+   497→              {course.studentCount} {course.studentCount === 1 ? 'aluno' : 'alunos'}
+   498→            </span>
+   499→            <span className="font-extrabold">
+   500→              {course.price === 0 ? 'Grátis' : currencyBRL(course.price)}
+   501→            </span>
+   502→          </div>
+   503→        </div>
+   504→      </section>
+   505→      )}
+   506→
+   507→      {/* ---------- CONTEÚDO ---------- */}
+   508→      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+   509→        <div className="space-y-6 lg:col-span-2">
+   510→          {/* O que você vai aprender */}
+   511→          <section
+   512→            aria-labelledby="aprender-title"
+   513→            className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 sm:p-6"
+   514→          >
+   515→            <h2 id="aprender-title" className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+   516→              O que você vai aprender
+   517→            </h2>
+   518→            {lessons.length > 0 ? (
+   519→              <ul className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+   520→                {lessons.slice(0, 6).map((lesson) => (
+   521→                  <li key={lesson.id} className="flex items-start gap-2.5 text-sm text-stone-700 dark:text-stone-200">
+   522→                    <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+   523→                    <span className="leading-snug">{lesson.title}</span>
+   524→                  </li>
+   525→                ))}
+   526→              </ul>
+   527→            ) : (
+   528→              <p className="mt-3 text-sm text-stone-400 dark:text-stone-500">
+   529→                As aulas deste curso estão sendo preparadas.
+   530→              </p>
+   531→            )}
+   532→          </section>
+   533→
+   534→          {/* Currículo */}
+   535→          <section
+   536→            aria-labelledby="curriculo-title"
+   537→            className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 sm:p-6"
+   538→          >
+   539→            <div className="flex flex-wrap items-center justify-between gap-2">
+   540→              <h2 id="curriculo-title" className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+   541→                Currículo do curso
+   542→              </h2>
+   543→              {lessons.length > 0 && (
+   544→                <span className="text-xs font-medium text-stone-400 dark:text-stone-500">
+   545→                  {lessons.length} {lessons.length === 1 ? 'aula' : 'aulas'} ·{' '}
+   546→                  {formatTotalDuration(course.totalDurationMin)}
+   547→                </span>
+   548→              )}
+   549→            </div>
+   550→            {themes.length > 0 ? (
+   551→              <div className="mt-4 space-y-6">
+   552→                {curriculumGroups.map((group, gi) => {
+   553→                  const groupDuration = group.lessons.reduce((acc, l) => acc + l.durationMin, 0)
+   554→                  return (
+   555→                    <section key={group.key} aria-label={`Tema: ${group.title}`}>
+   556→                      <header className="flex items-center gap-3">
+   557→                        {group.key === 'none' ? (
+   558→                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
+   559→                            <Folder aria-hidden className="h-4 w-4 text-stone-500 dark:text-stone-400" />
+   560→                          </span>
+   561→                        ) : (
+   562→                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-sm font-bold text-white">
+   563→                            {gi + 1}
+   564→                          </span>
+   565→                        )}
+   566→                        <div className="min-w-0 flex-1">
+   567→                          <p className="truncate text-sm font-bold text-stone-900 dark:text-stone-50">{group.title}</p>
+   568→                          <p className="text-xs text-stone-400 dark:text-stone-500">
+   569→                            {group.lessons.length} {group.lessons.length === 1 ? 'aula' : 'aulas'} ·{' '}
+   570→                            {formatTotalDuration(groupDuration)}
+   571→                          </p>
+   572→                        </div>
+   573→                      </header>
+   574→                      <ol className="mt-1 divide-y divide-stone-100 dark:divide-stone-800">
+   575→                        {group.lessons.map((lesson) => (
+   576→                          <li key={lesson.id} className="flex items-center gap-3 py-3 first:pt-3 last:pb-0">
+   577→                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
+   578→                              {lesson.kind === 'LIVE' ? (
+   579→                                <Radio aria-hidden className="h-3.5 w-3.5 text-rose-500" />
+   580→                              ) : lesson.kind === 'READING' ? (
+   581→                                <BookOpen aria-hidden className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+   582→                              ) : lesson.videoUrl ? (
+   583→                                <PlayCircle aria-hidden className="h-3.5 w-3.5 text-stone-500 dark:text-stone-400" />
+   584→                              ) : (
+   585→                                <FileText aria-hidden className="h-3.5 w-3.5 text-stone-500 dark:text-stone-400" />
+   586→                              )}
+   587→                            </span>
+   588→                            <div className="min-w-0 flex-1">
+   589→                              <p className="truncate text-sm font-semibold text-stone-800 dark:text-stone-200">{lesson.title}</p>
+   590→                              <p className="mt-0.5 line-clamp-1 text-xs text-stone-400 dark:text-stone-500">{lesson.description}</p>
+   591→                            </div>
+   592→                            {lesson.kind === 'LIVE' ? (
+   593→                              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 text-[11px] font-bold text-rose-600 dark:text-rose-400">
+   594→                                <Radio aria-hidden className="h-3 w-3" />
+   595→                                {lesson.startsAt
+   596→                                  ? `${formatDayLabel(lesson.startsAt)} · ${formatTimeLabel(lesson.startsAt)}`
+   597→                                  : 'Ao vivo'}
+   598→                              </span>
+   599→                            ) : null}
+   600→                            {lesson.kind === 'READING' ? (
+   601→                              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 text-[11px] font-bold text-amber-700 dark:text-amber-400">
+   602→                                <BookOpen aria-hidden className="h-3 w-3" />
+   603→                                {lesson.reading?.kind === 'BOOK' ? 'Livro' : 'Artigo'}
+   604→                              </span>
+   605→                            ) : null}
+   606→                            {lesson.kind !== 'LIVE' ? (
+   607→                              <span className="hidden shrink-0 items-center gap-1 text-xs text-stone-400 dark:text-stone-500 sm:inline-flex">
+   608→                                {lesson.durationMin} min
+   609→                              </span>
+   610→                            ) : null}
+   611→                            <Lock
+   612→                              aria-label="Aula bloqueada — inscreva-se para acessar"
+   613→                              className="h-3.5 w-3.5 shrink-0 text-stone-300 dark:text-stone-600"
+   614→                            />
+   615→                          </li>
+   616→                        ))}
+   617→                      </ol>
+   618→                    </section>
+   619→                  )
+   620→                })}
+   621→              </div>
+   622→            ) : (
+   623→              <ol className="mt-3 divide-y divide-stone-100 dark:divide-stone-800">
+   624→                {lessons.map((lesson, i) => (
+   625→                  <li key={lesson.id} className="flex items-center gap-3 py-3.5 first:pt-4 last:pb-0">
+   626→                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-xs font-bold text-stone-500 dark:text-stone-400">
+   627→                      {i + 1}
+   628→                    </span>
+   629→                    <div className="min-w-0 flex-1">
+   630→                      <p className="truncate text-sm font-semibold text-stone-800 dark:text-stone-200">{lesson.title}</p>
+   631→                      <p className="mt-0.5 line-clamp-1 text-xs text-stone-400 dark:text-stone-500">{lesson.description}</p>
+   632→                    </div>
+   633→                    {lesson.kind === 'LIVE' ? (
+   634→                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 text-[11px] font-bold text-rose-600 dark:text-rose-400">
+   635→                        <Radio aria-hidden className="h-3 w-3" />
+   636→                        {lesson.startsAt
+   637→                          ? `${formatDayLabel(lesson.startsAt)} · ${formatTimeLabel(lesson.startsAt)}`
+   638→                          : 'Ao vivo'}
+   639→                      </span>
+   640→                    ) : (
+   641→                      <span className="hidden shrink-0 items-center gap-1 text-xs text-stone-400 dark:text-stone-500 sm:inline-flex">
+   642→                        {lesson.kind === 'READING' ? (
+   643→                          <BookOpen aria-hidden className="h-4 w-4 text-amber-500" />
+   644→                        ) : lesson.videoUrl ? (
+   645→                          <PlayCircle aria-hidden className="h-4 w-4" />
+   646→                        ) : (
+   647→                          <FileText aria-hidden className="h-4 w-4" />
+   648→                        )}
+   649→                        {lesson.durationMin} min
+   650→                      </span>
+   651→                    )}
+   652→                    <Lock
+   653→                      aria-label="Aula bloqueada — inscreva-se para acessar"
+   654→                      className="h-3.5 w-3.5 shrink-0 text-stone-300 dark:text-stone-600"
+   655→                    />
+   656→                  </li>
+   657→                ))}
+   658→              </ol>
+   659→            )}
+   660→            {lessons.length === 0 && (
+   661→              <p className="py-4 text-sm text-stone-400 dark:text-stone-500">Nenhuma aula publicada ainda.</p>
+   662→            )}
+   663→          </section>
+   664→
+   665→          {/* Avaliações dos alunos (público — visitante e inscrito) */}
+   666→          <CourseReviewsSection
+   667→            reviews={course.reviews ?? []}
+   668→            summary={
+   669→              course.reviewSummary ?? { rating: 0, count: 0, distribution: [0, 0, 0, 0, 0] }
+   670→            }
+   671→            currentUserId={currentUserId}
+   672→          />
+   673→
+   674→          {/* Mentor */}
+   675→          <section
+   676→            aria-label="Mentor do curso"
+   677→            className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 sm:p-6"
+   678→          >
+   679→            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+   680→              <Avatar name={course.mentor.name} src={course.mentor.avatarUrl} size="lg" />
+   681→              <div className="min-w-0 flex-1">
+   682→                <p className="font-bold text-stone-900 dark:text-stone-50">{course.mentor.name}</p>
+   683→                <p className="line-clamp-1 text-sm text-stone-500 dark:text-stone-400">{course.mentor.headline}</p>
+   684→                <div className="mt-1.5 flex items-center gap-1.5">
+   685→                  <Stars rating={course.mentor.rating} size={13} />
+   686→                  <span className="text-xs font-semibold text-stone-700 dark:text-stone-200">
+   687→                    {course.mentor.rating > 0 ? course.mentor.rating.toFixed(1) : 'Novo'}
+   688→                  </span>
+   689→                  <span className="text-xs text-stone-400 dark:text-stone-500">
+   690→                    ({course.mentor.reviewCount} {course.mentor.reviewCount === 1 ? 'avaliação' : 'avaliações'})
+   691→                  </span>
+   692→                </div>
+   693→              </div>
+   694→              <Button
+   695→                variant="outline"
+   696→                className="h-10 rounded-full font-semibold"
+   697→                onClick={() => onViewMentor(course.mentor.id)}
+   698→                aria-label={`Ver perfil de ${course.mentor.name}`}
+   699→              >
+   700→                Ver perfil
+   701→              </Button>
+   702→            </div>
+   703→          </section>
+   704→        </div>
+   705→
+   706→        {/* ---------- SIDEBAR DE INSCRIÇÃO ---------- */}
+   707→        <div className="min-w-0 space-y-6 self-start lg:sticky lg:top-6">
+   708→        <Card className="rounded-2xl border-stone-200 dark:border-stone-800 p-6 shadow-none">
+   709→          {enrolled ? (
+   710→            <>
+   711→              <p className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-emerald-800 dark:text-emerald-300">
+   712→                <Check aria-hidden className="h-5 w-5" /> Você já está inscrito
+   713→              </p>
+   714→              <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+   715→                Todo o conteúdo, perguntas e anotações estão liberados na sua sala de aula.
+   716→              </p>
+   717→              <Button
+   718→                className="mt-5 h-11 w-full rounded-full font-bold"
+   719→                onClick={onContinue}
+   720→                aria-label="Abrir a sala de aula"
+   721→                disabled={!onContinue}
+   722→              >
+   723→                <PlayCircle aria-hidden className="h-4.5 w-4.5" /> Continuar curso
+   724→              </Button>
+   725→            </>
+   726→          ) : (
+   727→            <>
+   728→              <p
+   729→                className={cn(
+   730→                  'text-3xl font-extrabold tracking-tight',
+   731→                  course.price === 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-stone-900 dark:text-stone-50'
+   732→                )}
+   733→              >
+   734→                {course.price === 0 ? 'Grátis' : currencyBRL(course.price)}
+   735→              </p>
+   736→              <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+   737→                {course.price === 0
+   738→                  ? 'Acesso gratuito a todo o conteúdo.'
+   739→                  : 'Pagamento único, acesso ao conteúdo completo.'}
+   740→              </p>
+   741→
+   742→              <Button
+   743→                className="mt-5 h-11 w-full rounded-full font-bold"
+   744→                onClick={onEnrollClick}
+   745→                disabled={enrolling}
+   746→              >
+   747→                {enrolling
+   748→                  ? 'Inscrevendo…'
+   749→                  : course.price === 0
+   750→                    ? 'Inscrever-se gratuitamente'
+   751→                    : 'Inscrever-se no curso'}
+   752→              </Button>
+   753→          {enrolling ? (
+   754→            <p className="mt-2 text-center text-xs text-stone-400 dark:text-stone-500">Processando inscrição…</p>
+   755→          ) : !isLoggedIn ? (
+   756→            <p className="mt-2 text-center text-xs text-stone-400 dark:text-stone-500">
+   757→              Entre com uma conta para se inscrever.{' '}
+   758→              <button
+   759→                type="button"
+   760→                onClick={onLogin}
+   761→                className="font-semibold text-emerald-700 dark:text-emerald-300 underline underline-offset-2 transition-colors hover:text-emerald-800 dark:hover:text-emerald-200"
+   762→              >
+   763→                Entrar
+   764→              </button>
+   765→            </p>
+   766→          ) : null}
+   767→
+   768→          <ul className="mt-5 space-y-2.5 border-t border-stone-100 dark:border-stone-800 pt-5 text-sm text-stone-600 dark:text-stone-300">
+   769→            <li className="flex items-start gap-2">
+   770→              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+   771→              {course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'} (
+   772→              {formatTotalDuration(course.totalDurationMin)})
+   773→            </li>
+   774→            {course.liveCount > 0 ? (
+   775→              <li className="flex items-start gap-2">
+   776→                <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+   777→                {course.liveCount} aula{course.liveCount > 1 ? 's' : ''} ao vivo com o mentor
+   778→              </li>
+   779→            ) : null}
+   780→            {course.mentorshipCount > 0 ? (
+   781→              <li className="flex items-start gap-2">
+   782→                <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+   783→                {course.mentorshipCount} {course.mentorshipCount > 1 ? 'sessões' : 'sessão'} de mentoria 1:1 inclusa{course.mentorshipCount > 1 ? 's' : ''}
+   784→              </li>
+   785→            ) : null}
+   786→            <li className="flex items-start gap-2">
+   787→              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+   788→              Materiais e anexos para download
+   789→            </li>
+   790→            <li className="flex items-start gap-2">
+   791→              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+   792→              Perguntas respondidas pelo mentor
+   793→            </li>
+   794→          </ul>
+   795→
+   796→          {course.mentorshipCount > 0 ? (
+   797→            <div className="mt-5 rounded-2xl border border-emerald-100 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/50 p-4">
+   798→              <p className="flex items-center gap-2 text-sm font-bold text-emerald-900 dark:text-emerald-200">
+   799→                <UserRound aria-hidden className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
+   800→                Mentorias 1:1 inclusas
+   801→              </p>
+   802→              <p className="mt-1 text-xs leading-relaxed text-emerald-800/80 dark:text-emerald-300/80">
+   803→                Este curso inclui {course.mentorshipCount} {course.mentorshipCount > 1 ? 'sessões' : 'sessão'} de
+   804→                mentoria individual com {course.mentor.name.split(' ')[0]}. Agende após se inscrever.
+   805→              </p>
+   806→              <Button
+   807→                variant="outline"
+   808→                size="sm"
+   809→                className="mt-3 w-full rounded-full border-emerald-200 dark:border-emerald-900 bg-white dark:bg-stone-900 font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 hover:text-emerald-800 dark:hover:text-emerald-200"
+   810→                onClick={() => onViewMentor(course.mentor.id)}
+   811→              >
+   812→                Ver disponibilidade do mentor
+   813→              </Button>
+   814→            </div>
+   815→          ) : null}
+   816→            </>
+   817→          )}
+   818→        </Card>
+   819→        {!enrolled && <BundleCallout courseId={course.id} currentUserId={currentUserId} />}
+   820→        {!enrolled && (
+   821→          <MembershipCallout mentorId={course.mentor.id} currentUserId={currentUserId} />
+   822→        )}
+   823→        {reviewFormNode}
+   824→        </div>
+   825→      </div>
+   826→    </>
+   827→  )
+   828→}
+   829→
+   830→/* ==================== CALLOUT "ESTE CURSO FAZ PARTE DE UM PACOTE" ==================== */
+   831→
+   832→/** Busca pacotes publicados que contêm este curso; esconde silenciosamente se não houver */
+   833→function BundleCallout({
+   834→  courseId,
+   835→  currentUserId,
+   836→}: {
+   837→  courseId: string
+   838→  currentUserId?: string | null
+   839→}) {
+   840→  const navigate = useAppStore((s) => s.navigate)
+   841→  const [bundle, setBundle] = useState<BundleDTO | null>(null)
+   842→
+   843→  useEffect(() => {
+   844→    let active = true
+   845→    api
+   846→      .listBundles({ courseId, userId: currentUserId ?? undefined })
+   847→      .then((res) => {
+   848→        if (active && res.bundles.length > 0) setBundle(res.bundles[0])
+   849→      })
+   850→      .catch(() => {})
+   851→    return () => {
+   852→      active = false
+   853→    }
+   854→  }, [courseId, currentUserId])
+   855→
+   856→  if (!bundle) return null
+   857→
+   858→  const brl = (v: number) =>
+   859→    v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })
+   860→
+   861→  return (
+   862→    <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/50 p-4">
+   863→      <p className="flex items-center gap-2 text-sm font-bold text-emerald-900 dark:text-emerald-200">
+   864→        <Layers aria-hidden className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
+   865→        Este curso faz parte do pacote “{bundle.title}”
+   866→      </p>
+   867→      <p className="mt-1 text-xs leading-relaxed text-emerald-800/80 dark:text-emerald-300/80">
+   868→        Leve {bundle.courseCount} cursos de {bundle.mentor.name} por {bundle.price === 0 ? 'grátis' : brl(bundle.price)}
+   869→        {bundle.coursesTotal > bundle.price && bundle.price > 0
+   870→          ? ` — economize ${bundle.discountPercent}% em relação à compra separada`
+   871→          : ''}
+   872→        .
+   873→      </p>
+   874→      <Button
+   875→        size="sm"
+   876→        onClick={() => navigate({ name: 'checkout', bundleId: bundle.id })}
+   877→        className="mt-3 h-10 w-full rounded-full bg-emerald-700 font-bold hover:bg-emerald-800"
+   878→      >
+   879→        <BadgePercent aria-hidden className="h-4 w-4" />
+   880→        Ver pacote
+   881→      </Button>
+   882→    </div>
+   883→  )
+   884→}
+   885→
+   886→/* ==================== CALLOUT "ACESSE TUDO COM A ASSINATURA" ==================== */
+   887→
+   888→/** Plano de assinatura publicado do mentor; esconde silenciosamente se não houver */
+   889→function MembershipCallout({
+   890→  mentorId,
+   891→  currentUserId,
+   892→}: {
+   893→  mentorId: string
+   894→  currentUserId?: string | null
+   895→}) {
+   896→  const navigate = useAppStore((s) => s.navigate)
+   897→  const membershipTuple = useState<MembershipDTO | null>(null)
+   898→  const membership = membershipTuple[0]
+   899→  const setMembership = membershipTuple[1]
+   900→
+   901→  useEffect(() => {
+   902→    let active = true
+   903→    api
+   904→      .listMemberships({ mentorId, userId: currentUserId ?? undefined })
+   905→      .then((res) => {
+   906→        const m = res.memberships.find((x) => x.isPublished && x.myStatus !== 'ACTIVE')
+   907→        if (active && m) setMembership(m)
+   908→      })
+   909→      .catch(() => {})
+   910→    return () => {
+   911→      active = false
+   912→    }
+   913→  }, [mentorId, currentUserId])
+   914→
+   915→  if (!membership) return null
+   916→
+   917→  const brl = (v: number) =>
+   918→    v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })
+   919→
+   920→  return (
+   921→    <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/50 p-4">
+   922→      <p className="flex items-center gap-2 text-sm font-bold text-emerald-900 dark:text-emerald-200">
+   923→        <CreditCard aria-hidden className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
+   924→        Acesse tudo com a assinatura “{membership.title}”
+   925→      </p>
+   926→      <p className="mt-1 text-xs leading-relaxed text-emerald-800/80 dark:text-emerald-300/80">
+   927→        Todos os {membership.coursesCount} cursos de {membership.mentor.name} + sessão em grupo
+   928→        mensal por {brl(membership.price)}/mês — cancele quando quiser.
+   929→      </p>
+   930→      <Button
+   931→        size="sm"
+   932→        onClick={() => navigate({ name: 'checkout', membershipId: membership.id })}
+   933→        className="mt-3 h-10 w-full rounded-full bg-emerald-700 font-bold hover:bg-emerald-800"
+   934→      >
+   935→        <Sparkles aria-hidden className="h-4 w-4" />
+   936→        Ver assinatura
+   937→      </Button>
+   938→    </div>
+   939→  )
+   940→}
+   941→
+   942→/* ==================== CARD "AVALIAR ESTE CURSO" (modo inscrito) ==================== */
+   943→
+   944→function ReviewFormCard({
+   945→  myReview,
+   946→  completed,
+   947→  saving,
+   948→  onSubmit,
+   949→}: {
+   950→  myReview: { rating: number; comment: string } | null
+   951→  /** true quando o aluno concluiu 100% das aulas (destaque para avaliar) */
+   952→  completed: boolean
+   953→  saving: boolean
+   954→  onSubmit: (rating: number, comment: string) => Promise<void>
+   955→}) {
+   956→  const [rating, setRating] = useState(myReview?.rating ?? 0)
+   957→  const [hover, setHover] = useState(0)
+   958→  const [comment, setComment] = useState(myReview?.comment ?? '')
+   959→
+   960→  // O componente é remontado (via key no pai) sempre que a avaliação salva do
+   961→  // servidor muda — o estado inicial já nasce pré-preenchido com myReview.
+   962→
+   963→  const shown = hover || rating
+   964→
+   965→  const submit = () => {
+   966→    if (rating < 1 || saving) return
+   967→    void onSubmit(rating, comment.trim())
+   968→  }
+   969→
+   970→  return (
+   971→    <Card className="rounded-2xl border-stone-200 dark:border-stone-800 p-6 shadow-none">
+   972→      <p className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">Avaliar este curso</p>
+   973→
+   974→      {completed && !myReview ? (
+   975→        <p className="mt-2 flex items-start gap-2 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 px-3 py-2.5 text-xs font-semibold leading-relaxed text-amber-800 dark:text-amber-300">
+   976→          <Star aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />
+   977→          Você concluiu o curso! Deixe sua avaliação ⭐
+   978→        </p>
+   979→      ) : myReview ? (
+   980→        <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+   981→          Sua avaliação está salva — você pode atualizá-la quando quiser.
+   982→        </p>
+   983→      ) : (
+   984→        <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+   985→          Como foi sua experiência? Sua nota ajuda outros alunos.
+   986→        </p>
+   987→      )}
+   988→
+   989→      <div
+   990→        role="radiogroup"
+   991→        aria-label="Sua nota para o curso"
+   992→        className="mt-4 flex items-center gap-1"
+   993→        onMouseLeave={() => setHover(0)}
+   994→      >
+   995→        {[1, 2, 3, 4, 5].map((i) => {
+   996→          const active = i <= shown
+   997→          return (
+   998→            <button
+   999→              key={i}
+  1000→              type="button"
+  1001→              role="radio"
+  1002→              aria-checked={rating === i}
+  1003→              aria-label={`${i} ${i === 1 ? 'estrela' : 'estrelas'}`}
+  1004→              disabled={saving}
+  1005→              onClick={() => setRating(i)}
+  1006→              onMouseEnter={() => setHover(i)}
+  1007→              className="flex h-9 w-9 items-center justify-center rounded-full transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:pointer-events-none"
+  1008→            >
+  1009→              <Star
+  1010→                aria-hidden
+  1011→                className={cn(
+  1012→                  'h-6 w-6 transition-colors',
+  1013→                  active ? 'fill-amber-400 text-amber-400' : 'text-stone-300 dark:text-stone-600'
+  1014→                )}
+  1015→              />
+  1016→            </button>
+  1017→          )
+  1018→        })}
+  1019→        {rating > 0 ? (
+  1020→          <span className="ml-2 text-sm font-bold tabular-nums text-stone-700 dark:text-stone-200">
+  1021→            {rating.toFixed(1).replace('.', ',')}
+  1022→          </span>
+  1023→        ) : null}
+  1024→      </div>
+  1025→
+  1026→      <Textarea
+  1027→        value={comment}
+  1028→        onChange={(e) => setComment(e.target.value.slice(0, 800))}
+  1029→        maxLength={800}
+  1030→        rows={4}
+  1031→        placeholder="Conte como foi sua experiência (opcional)"
+  1032→        aria-label="Comentário da avaliação (opcional)"
+  1033→        className="mt-3 min-h-24 resize-none rounded-2xl border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-sm focus-visible:ring-emerald-600/30"
+  1034→      />
+  1035→      <p className="mt-1 text-right text-[11px] tabular-nums text-stone-400 dark:text-stone-500">{comment.length}/800</p>
+  1036→
+  1037→      <Button
+  1038→        onClick={submit}
+  1039→        disabled={rating < 1 || saving}
+  1040→        className="mt-2 h-11 w-full rounded-full bg-emerald-700 font-bold text-white hover:bg-emerald-800"
+  1041→      >
+  1042→        {saving ? 'Enviando…' : myReview ? 'Atualizar minha avaliação' : 'Enviar avaliação'}
+  1043→      </Button>
+  1044→    </Card>
+  1045→  )
+  1046→}
+  1047→
+  1048→/* ==================== SEÇÃO "AVALIAÇÕES DOS ALUNOS" (pública) ==================== */
+  1049→
+  1050→/** Data relativa/curta em pt-BR: "agora", "há 5 min", "ontem", "12 de mai. de 2025" */
+  1051→function reviewDateLabel(iso: string): string {
+  1052→  const d = new Date(iso)
+  1053→  const diffMin = Math.floor((Date.now() - d.getTime()) / 60000)
+  1054→  if (diffMin < 1) return 'agora'
+  1055→  if (diffMin < 60) return `há ${diffMin} min`
+  1056→  const hours = Math.floor(diffMin / 60)
+  1057→  if (hours < 24) return `há ${hours} h`
+  1058→  const days = Math.floor(hours / 24)
+  1059→  if (days === 1) return 'ontem'
+  1060→  if (days < 30) return `há ${days} dias`
+  1061→  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+  1062→}
+  1063→
+  1064→function CourseReviewsSection({
+  1065→  reviews,
+  1066→  summary,
+  1067→  currentUserId,
+  1068→}: {
+  1069→  reviews: CourseReviewDTO[]
+  1070→  summary: { rating: number; count: number; distribution: number[] }
+  1071→  currentUserId?: string | null
+  1072→}) {
+  1073→  const count = summary.count
+  1074→
+  1075→  return (
+  1076→    <section
+  1077→      aria-labelledby="avaliacoes-title"
+  1078→      className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 sm:p-6"
+  1079→    >
+  1080→      <h2 id="avaliacoes-title" className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+  1081→        Avaliações dos alunos
+  1082→      </h2>
+  1083→
+  1084→      {count === 0 ? (
+  1085→        <p className="mt-4 rounded-2xl border border-dashed border-stone-200 dark:border-stone-800 px-4 py-6 text-center text-sm text-stone-400 dark:text-stone-500">
+  1086→          Este curso ainda não tem avaliações — seja o primeiro a avaliar!
+  1087→        </p>
+  1088→      ) : (
+  1089→        <div className="mt-4 grid gap-6 sm:grid-cols-[220px_minmax(0,1fr)]">
+  1090→          {/* Resumo: nota grande + distribuição por estrela */}
+  1091→          <div className="self-start rounded-2xl bg-stone-50/80 dark:bg-stone-950/50 p-4">
+  1092→            <p className="text-4xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+  1093→              {summary.rating.toFixed(1).replace('.', ',')}
+  1094→            </p>
+  1095→            <Stars rating={summary.rating} size={15} className="mt-1.5" />
+  1096→            <p className="mt-1 text-xs font-medium text-stone-500 dark:text-stone-400">
+  1097→              {count} {count === 1 ? 'avaliação' : 'avaliações'}
+  1098→            </p>
+  1099→            <div className="mt-4 space-y-1.5" role="group" aria-label="Distribuição das notas">
+  1100→              {summary.distribution.map((n, i) => {
+  1101→                const star = 5 - i
+  1102→                const pct = count > 0 ? Math.round((n / count) * 100) : 0
+  1103→                return (
+  1104→                  <div key={star} className="flex items-center gap-1.5">
+  1105→                    <span className="w-3 shrink-0 text-right text-[11px] font-semibold tabular-nums text-stone-500 dark:text-stone-400">
+  1106→                      {star}
+  1107→                    </span>
+  1108→                    <Star aria-hidden className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
+  1109→                    <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
+  1110→                      <div className="h-full rounded-full bg-amber-400" style={{ width: `${pct}%` }} />
+  1111→                    </div>
+  1112→                    <span className="w-6 shrink-0 text-right text-[11px] tabular-nums text-stone-400 dark:text-stone-500">
+  1113→                      {n}
+  1114→                    </span>
+  1115→                  </div>
+  1116→                )
+  1117→              })}
+  1118→            </div>
+  1119→          </div>
+  1120→
+  1121→          {/* Lista de avaliações */}
+  1122→          <ul className="min-w-0 space-y-3">
+  1123→            {reviews.map((review) => (
+  1124→              <li key={review.id} className="rounded-2xl border border-stone-200 dark:border-stone-800 p-4">
+  1125→                <div className="flex items-center gap-3">
+  1126→                  <Avatar name={review.student.name} src={review.student.avatarUrl} size="sm" />
+  1127→                  <div className="min-w-0 flex-1">
+  1128→                    <div className="flex items-center gap-2">
+  1129→                      <p className="truncate text-sm font-bold text-stone-900 dark:text-stone-50">
+  1130→                        {review.student.name}
+  1131→                      </p>
+  1132→                      {review.student.id === currentUserId ? (
+  1133→                        <span className="shrink-0 rounded-full bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+  1134→                          Você
+  1135→                        </span>
+  1136→                      ) : null}
+  1137→                    </div>
+  1138→                    <Stars rating={review.rating} size={12} className="mt-0.5" />
+  1139→                  </div>
+  1140→                  <span className="shrink-0 text-xs text-stone-400 dark:text-stone-500">
+  1141→                    {reviewDateLabel(review.createdAt)}
+  1142→                  </span>
+  1143→                </div>
+  1144→                {review.comment ? (
+  1145→                  <p className="mt-2.5 text-sm leading-relaxed text-stone-700 dark:text-stone-200">{review.comment}</p>
+  1146→                ) : null}
+  1147→              </li>
+  1148→            ))}
+  1149→          </ul>
+  1150→        </div>
+  1151→      )}
+  1152→    </section>
+  1153→  )
+  1154→}
+  1155→

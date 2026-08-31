@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * GET /api/messages/threads?userId= — caixa de entrada: uma linha por par de
- * conversa com última mensagem, data e contagem de não lidas.
+ * GET /api/messages/threads — caixa de entrada do usuário autenticado: uma
+ * linha por par de conversa com última mensagem, data e contagem de não lidas.
+ * Identidade da SESSÃO (antes vinha da query e permitia ler a caixa de
+ * entrada de qualquer pessoa).
  */
 export async function GET(req: NextRequest) {
-  try {
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+  const session = await resolveUser(req)
+  if (!session) return unauthorized()
 
+  try {
+    const userId = session.id
     const messages = await db.directMessage.findMany({
       where: { OR: [{ senderId: userId }, { recipientId: userId }] },
       orderBy: { createdAt: 'desc' },

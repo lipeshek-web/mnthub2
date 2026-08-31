@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { courseBaseInclude, serializeCourse } from '@/lib/course-serialize'
 import { normalizeText } from '@/lib/helpers'
+import { resolveUser } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 const LEVELS = ['INICIANTE', 'INTERMEDIARIO', 'AVANCADO']
 
 /** GET /api/courses?search=&category=&sort=&mentorId=&mentorUserId=
- *  mentorUserId: lista TODOS os cursos (incl. rascunhos) do mentor daquele usuário */
+ *  mentorUserId: lista TODOS os cursos (incl. rascunhos) — SOMENTE quando o
+ *  parâmetro é o próprio usuário da sessão; visitantes só veem publicados. */
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams
@@ -18,8 +20,12 @@ export async function GET(req: NextRequest) {
     const mentorId = (sp.get('mentorId') || '').trim()
     const mentorUserId = (sp.get('mentorUserId') || '').trim()
 
+    // Rascunhos só para o dono autenticado: sem sessão válida, o parâmetro é ignorado
+    const session = await resolveUser(req)
+    const canSeeDrafts = Boolean(mentorUserId) && session?.id === mentorUserId
+
     const where: Record<string, unknown> = {}
-    if (mentorUserId) {
+    if (canSeeDrafts) {
       where.mentor = { userId: mentorUserId }
     } else {
       if (mentorId) where.mentorId = mentorId

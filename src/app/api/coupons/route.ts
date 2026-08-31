@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 const normalizeCode = (raw: string) => raw.toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 24)
 
-/** GET /api/coupons?userId= — cupons do mentor */
+/** GET /api/coupons — cupons do mentor autenticado */
 export async function GET(req: NextRequest) {
+  const session = await resolveUser(req)
+  if (!session) return unauthorized()
   try {
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
-
+    const userId = session.id
     const mentor = await db.mentorProfile.findUnique({ where: { userId } })
     if (!mentor) return NextResponse.json({ error: 'Perfil de mentor não encontrado.' }, { status: 404 })
 
@@ -38,14 +39,13 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/**
- * POST /api/coupons — cria cupom do mentor.
- * body: { userId, code, percentOff?, amountOff?, maxUses?, expiresAt? (ISO) }
- */
+/** POST /api/coupons — cria cupom do mentor autenticado. */
 export async function POST(req: NextRequest) {
+  const session = await resolveUser(req)
+  if (!session) return unauthorized('Sessão expirada. Entre novamente para criar cupons.')
   try {
     const body = await req.json()
-    const userId = String(body?.userId ?? '').trim()
+    const userId = session.id
     const code = normalizeCode(String(body?.code ?? ''))
     const percentOff = body?.percentOff === undefined || body?.percentOff === null || body?.percentOff === ''
       ? null
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       : Math.max(1, Math.round(Number(body.maxUses)))
     const expiresAt = body?.expiresAt ? new Date(String(body.expiresAt)) : null
 
-    if (!userId || !code) {
+    if (!code) {
       return NextResponse.json({ error: 'Informe o código do cupom.' }, { status: 400 })
     }
 
@@ -116,13 +116,15 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/** PATCH /api/coupons — ativa/desativa: { userId, id, isActive } */
+/** PATCH /api/coupons — ativa/desativa: { id, isActive } (mentor da SESSÃO) */
 export async function PATCH(req: NextRequest) {
+  const session = await resolveUser(req)
+  if (!session) return unauthorized()
   try {
     const body = await req.json()
-    const userId = String(body?.userId ?? '').trim()
+    const userId = session.id
     const id = String(body?.id ?? '').trim()
-    if (!userId || !id) return NextResponse.json({ error: 'Dados incompletos.' }, { status: 400 })
+    if (!id) return NextResponse.json({ error: 'Dados incompletos.' }, { status: 400 })
 
     const mentor = await db.mentorProfile.findUnique({ where: { userId } })
     if (!mentor) return NextResponse.json({ error: 'Perfil de mentor não encontrado.' }, { status: 404 })
@@ -145,11 +147,13 @@ export async function PATCH(req: NextRequest) {
 
 /** DELETE /api/coupons?userId=&id= — exclui cupom do mentor */
 export async function DELETE(req: NextRequest) {
+  const session = await resolveUser(req)
+  if (!session) return unauthorized()
   try {
     const sp = req.nextUrl.searchParams
-    const userId = (sp.get('userId') || '').trim()
+    const userId = session.id
     const id = (sp.get('id') || '').trim()
-    if (!userId || !id) return NextResponse.json({ error: 'Dados incompletos.' }, { status: 400 })
+    if (!id) return NextResponse.json({ error: 'Dados incompletos.' }, { status: 400 })
 
     const mentor = await db.mentorProfile.findUnique({ where: { userId } })
     if (!mentor) return NextResponse.json({ error: 'Perfil de mentor não encontrado.' }, { status: 404 })

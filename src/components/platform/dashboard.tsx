@@ -635,6 +635,9 @@ export default function DashboardView() {
   const [xpFailed, setXpFailed] = useState(false)
   const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<string | null>(null)
+  // Distingue "não é mentor" (profile null) de "falhou ao carregar" — antes um
+  // erro silencioso escondia as Solicitações recebidas sem qualquer aviso
+  const [profileFailed, setProfileFailed] = useState(false)
 
   const refetch = useCallback(async () => {
     if (!userId) return
@@ -644,7 +647,10 @@ export default function DashboardView() {
         api
           .getMyMentorProfile(userId)
           .then((res) => res.profile)
-          .catch(() => null),
+          .catch(() => {
+            setProfileFailed(true)
+            return null
+          }),
         api.listMyEnrollments(userId).catch(() => []),
         api.listMyTracks(userId).catch(() => []),
       ])
@@ -743,8 +749,11 @@ export default function DashboardView() {
             </div>
             <h1 className="text-xl font-semibold">Você precisa entrar</h1>
             <p className="max-w-xs text-sm text-muted-foreground">
-              Selecione um usuário no seletor do topo da página para ver e gerenciar suas sessões de mentoria.
+              Entre na sua conta para ver e gerenciar suas sessões de mentoria.
             </p>
+            <Button className="mt-2" onClick={() => navigate({ name: 'auth', mode: 'login' })}>
+              Entrar ou criar conta
+            </Button>
           </div>
         </Card>
       </div>
@@ -846,6 +855,19 @@ export default function DashboardView() {
       </header>
 
       <XpJourneyCard stats={xpStats} failed={xpFailed} />
+
+      {profileFailed && (
+        <Card className="border-rose-200 dark:border-rose-900 bg-rose-50/60 dark:bg-rose-950/40">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
+            <p className="text-sm text-rose-800 dark:text-rose-300">
+              Não foi possível carregar seu perfil de mentor — as solicitações recebidas podem estar ocultas.
+            </p>
+            <Button size="sm" variant="outline" className="h-9" onClick={() => { setProfileFailed(false); setLoading(true); refetch() }}>
+              Tentar novamente
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {pendingRequests.length > 0 ? (
         <Card className="border-amber-300 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/50">

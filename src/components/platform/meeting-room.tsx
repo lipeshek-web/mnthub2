@@ -118,9 +118,10 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
             <Video className="h-10 w-10 text-stone-400 dark:text-stone-500" />
             <p className="font-semibold">Entre para acessar a sala</p>
             <p className="text-sm text-muted-foreground">
-              Use o menu <strong>Entrar</strong> no topo da página para selecionar um usuário.
+              Entre na sua conta para participar desta sessão por vídeo.
             </p>
-            <Button onClick={() => navigate({ name: 'dashboard' })}>Voltar</Button>
+            <Button onClick={() => navigate({ name: 'auth', mode: 'login' })}>Entrar ou criar conta</Button>
+            <Button variant="ghost" onClick={() => navigate({ name: 'dashboard' })}>Voltar</Button>
           </CardContent>
         </Card>
       </div>

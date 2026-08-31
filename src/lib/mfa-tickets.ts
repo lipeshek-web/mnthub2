@@ -18,6 +18,18 @@ export async function createMfaTicket(userId: string): Promise<string> {
   return token
 }
 
+/** Valida o desafio SEM consumir (código só é apagado após a verificação ter sucesso) */
+export async function peekMfaTicket(token: string): Promise<string | null> {
+  if (!token) return null
+  const entry = await db.mfaChallenge.findUnique({ where: { token } })
+  if (!entry) return null
+  if (entry.expiresAt.getTime() < Date.now()) {
+    await db.mfaChallenge.delete({ where: { id: entry.id } }).catch(() => undefined)
+    return null
+  }
+  return entry.userId
+}
+
 /** Consome o desafio (uso único) e devolve o userId; null se inválido/expirado */
 export async function consumeMfaTicket(token: string): Promise<string | null> {
   if (!token) return null

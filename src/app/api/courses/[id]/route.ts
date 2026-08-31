@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 const LEVELS = ['INICIANTE', 'INTERMEDIARIO', 'AVANCADO']
 
-/** GET /api/courses/[id]?userId= — detalhe do curso com aulas e estado de matrícula */
+/** GET /api/courses/[id] — detalhe do curso com aulas e estado de matrícula do usuário autenticado.
+ *  A identidade (matrícula, dono, avaliação própria, certificado) vem da SESSÃO —
+ *  o userId da query não é mais aceito (permitia ver a matrícula e o material
+ *  pago de outra pessoa). */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
+    const session = await resolveUser(req)
+    const userId = session?.id ?? ''
 
     const course = await db.course.findUnique({
       where: { id },
@@ -141,8 +146,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
           title: l.title,
           description: l.description,
           kind: l.kind,
-          videoUrl: l.videoUrl,
-          content: l.content,
+          // Conteúdo pago (texto da aula e link do vídeo) SÓ para inscritos/
+          // dono — antes vazava para qualquer visitante
+          videoUrl: canSeeMaterial ? l.videoUrl : null,
+          content: canSeeMaterial ? l.content : null,
           startsAt: l.startsAt,
           meetingUrl: canSeeMaterial ? l.meetingUrl : null,
           attachments: canSeeMaterial ? attachments : [],

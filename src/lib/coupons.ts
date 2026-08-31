@@ -120,8 +120,9 @@ export async function resolveCoupon(
     if (base) return fail(base)
 
     if (platform.scope === 'NEW_ACCOUNTS') {
+      // "Primeira compra" = pedido PAGO (PENDING abandonado não queima o cupom)
       const priorOrders = await db.order.count({
-        where: { studentId: userId, status: { not: 'CANCELED' } },
+        where: { studentId: userId, status: 'PAID' },
       })
       if (priorOrders > 0) {
         return fail('Este cupom é válido apenas para a primeira compra (contas novas).')

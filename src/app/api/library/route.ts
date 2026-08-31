@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { normalizeText } from '@/lib/helpers'
+import { resolveUser } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,7 +10,8 @@ const LEVELS = ['INICIANTE', 'INTERMEDIARIO', 'AVANCADO']
 
 /** GET /api/library?search=&kind=&category=&sort=&authorUserId= — lista a Biblioteca.
  *  sort: 'recent' (padrão) | 'popular' (usageCount desc) | 'title'.
- *  authorUserId informado → lista TUDO do autor (inclui rascunhos); senão só isPublished=true. */
+ *  authorUserId informado → lista TUDO do autor (inclui rascunhos) SOMENTE se for
+ *  o próprio usuário da sessão; senão só isPublished=true. */
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams
@@ -19,8 +21,11 @@ export async function GET(req: NextRequest) {
     const sort = sp.get('sort') || 'recent'
     const authorUserId = (sp.get('authorUserId') || '').trim()
 
+    const session = await resolveUser(req)
+    const canSeeDrafts = Boolean(authorUserId) && session?.id === authorUserId
+
     const where: Record<string, unknown> = {}
-    if (authorUserId) {
+    if (canSeeDrafts) {
       where.mentor = { userId: authorUserId }
     } else {
       where.isPublished = true

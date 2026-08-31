@@ -81,12 +81,19 @@ export async function fulfillOrder(orderId: string): Promise<FulfillResult> {
   })
   if (!order) return { ok: false, alreadyFulfilled: false, orderStatus: 'NOT_FOUND' }
 
-  // Idempotência: pedido já liberado
-  if (order.status === 'PAID') {
-    return { ok: true, alreadyFulfilled: true, orderStatus: 'PAID' }
-  }
-  if (order.status === 'CANCELED' || order.status === 'REFUNDED') {
-    return { ok: false, alreadyFulfilled: false, orderStatus: order.status }
+  // Idempotência ATÔMICA: só quem conseguir a transição PENDING→PAID (condi-
+  // cional) executa a liberação. Webhook duplicado / duplo checkout / duas
+  // rotas simultâneas caem no updateMany count === 0 e retornam cedo — sem
+  // dobrar débito de créditos, uso de cupom ou notificações.
+  const claim = await db.order.updateMany({
+    where: { id: order.id, status: { notIn: ['PAID', 'REFUNDED', 'CANCELED'] } },
+    data: { status: 'PAID' },
+  })
+  if (claim.count === 0) {
+    const fresh = await db.order.findUnique({ where: { id: order.id }, select: { status: true } })
+    const st = fresh?.status ?? order.status
+    if (st === 'PAID') return { ok: true, alreadyFulfilled: true, orderStatus: 'PAID' }
+    return { ok: false, alreadyFulfilled: false, orderStatus: st }
   }
 
   const userId = order.studentId
@@ -144,18 +151,21 @@ export async function fulfillOrder(orderId: string): Promise<FulfillResult> {
     })
   }
 
-  // ---------- Consome cupom + créditos e marca o pedido como pago ----------
+  // ---------- Consome cupom + créditos e marca a cobrança como paga ----------
   await db.$transaction(async (tx) => {
-    await tx.order.update({
-      where: { id: order.id },
-      data: { status: 'PAID' },
-    })
     // Cupom: revalida (pode ter esgotado entre a criação e o pagamento);
     // esgotado/desativado não cancela o pedido — apenas não incrementa.
+    // CUPOM DE MENTOR tem mentorId; CUPOM DA PLATAFORMA (site-wide, novas
+    // contas, categoria) tem mentorId null — antes o incremento nunca achava
+    // os da plataforma e maxUses ficava sem efeito.
     if (order.couponCode) {
-      const coupon = await tx.coupon.findUnique({
-        where: { mentorId_code: { mentorId: order.mentorId, code: order.couponCode } },
-      })
+      const coupon =
+        (await tx.coupon.findUnique({
+          where: { mentorId_code: { mentorId: order.mentorId, code: order.couponCode } },
+        })) ??
+        (await tx.coupon.findFirst({
+          where: { mentorId: null, code: order.couponCode },
+        }))
       if (coupon && coupon.isActive) {
         const notExpired = !coupon.expiresAt || coupon.expiresAt.getTime() > Date.now()
         const hasUses = coupon.maxUses === null || coupon.uses < coupon.maxUses

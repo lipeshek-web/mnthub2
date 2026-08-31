@@ -1,3 +1,4 @@
+import { useAppStore } from './store'
 import type {
   AdminPaymentsResponseDTO,
   AdminStatsDTO,
@@ -59,11 +60,27 @@ import type {
 } from './types'
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json' },
-    cache: 'no-store',
-    ...options,
-  })
+  // Timeout padrão de 15s: rede travada não deixa skeleton eterno nem empilha polls.
+  // Callers podem passar o próprio signal (AbortController) para cancelar.
+  const signal = options?.signal ?? AbortSignal.timeout(15_000)
+  let res: Response
+  try {
+    res = await fetch(url, {
+      ...options,
+      cache: 'no-store',
+      signal,
+      headers: {
+        ...(hasBody(options) ? { 'Content-Type': 'application/json' } : {}),
+        ...authHeaders(),
+        ...options?.headers,
+      },
+    })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'TimeoutError') {
+      throw new Error('A conexão demorou demais. Verifique sua internet e tente de novo.')
+    }
+    throw err
+  }
   let json: unknown = {}
   try {
     json = await res.json()
@@ -71,10 +88,47 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     json = {}
   }
   if (!res.ok) {
+    // Sessão inválida/expirada: limpa a sessão local e pede novo login
+    if (res.status === 401) {
+      clearSession()
+      const msg401 = (json as { error?: string })?.error || 'Sessão expirada. Entre novamente.'
+      throw new Error(msg401)
+    }
     const msg = (json as { error?: string })?.error || 'Ocorreu um erro inesperado. Tente novamente.'
     throw new Error(msg)
   }
   return json as T
+}
+
+/** true quando a requisição tem corpo (POST/PUT/PATCH) — só então envia Content-Type JSON */
+function hasBody(options?: RequestInit): boolean {
+  const method = (options?.method || 'GET').toUpperCase()
+  return options?.body != null || method === 'POST' || method === 'PUT' || method === 'PATCH'
+}
+
+/** Limpa a sessão local (token + usuário) quando o servidor rejeita a sessão */
+function clearSession() {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.removeItem('mentorhub-session')
+    window.dispatchEvent(new CustomEvent('mentorhub:session-expired'))
+  } catch {
+    /* ignora */
+  }
+}
+
+/**
+ * Header Authorization com o token de sessão assinado (emitido no login/
+ * registro/verificação MFA e persistido junto ao usuário no zustand).
+ * Anexado em TODAS as chamadas — o servidor decide quais rotas exigem.
+ */
+function authHeaders(): Record<string, string> {
+  try {
+    const token = useAppStore.getState().user?.sessionToken
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  } catch {
+    return {}
+  }
 }
 
 const qs = (params: Record<string, string | number | undefined>) => {
@@ -106,9 +160,11 @@ export const api = {
     request<{ user: UserDTO | null }>(`/api/auth/me${qs({ userId })}`),
 
   // Usuários
-  listUsers: () => request<UserDTO[]>('/api/users'),
-  createUser: (data: { name: string; email: string }) =>
-    request<UserDTO>('/api/users', { method: 'POST', body: JSON.stringify(data) }),
+  /** Contas de demonstração para o seletor de login (substitui o antigo listUsers) */
+  demoAccounts: () =>
+    request<{ id: string; name: string; email: string; avatarUrl: string | null }[]>(
+      '/api/auth/demo-accounts'
+    ),
 
   // Mentores
   listMentors: (params: { search?: string; category?: string; sort?: string }) =>
@@ -504,6 +560,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ userId, ids }),
     }),
+  /** Contadores de sininhos do header (mensagens + notificações) em 1 request autenticado */
+  badges: () => request<{ messages: number; notifications: number }>('/api/badges'),
 
   // Mensagens diretas (chat aluno ↔ mentor)
   listThreads: (userId: string) =>

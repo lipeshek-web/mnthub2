@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { membershipBaseInclude, serializeMembership } from '@/lib/membership-serialize'
+import { resolveUser } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/memberships — planos de assinatura mensal (1 por mentor).
  * Filtros:
- * - mentorUserId: painel do mentor (inclui rascunho + assinantes)
+ * - mentorUserId: painel do mentor (inclui rascunho + assinantes) — SOMENTE do
+ *   próprio usuário da sessão
  * - mentorId:      público (plano publicado do perfil, p/ página do mentor)
  * - userId:        estado do usuário (myStatus/renewsAt) + re-sincroniza matrículas
  *                  de assinaturas ACTIVE (novos cursos publicados entram no plano)
@@ -19,8 +21,11 @@ export async function GET(req: NextRequest) {
     const mentorId = (sp.get('mentorId') || '').trim()
     const userId = (sp.get('userId') || '').trim()
 
+    const session = await resolveUser(req)
+    const canSeeDrafts = Boolean(mentorUserId) && session?.id === mentorUserId
+
     const where: Record<string, unknown> = {}
-    if (mentorUserId) {
+    if (canSeeDrafts) {
       where.mentor = { userId: mentorUserId } // painel: tudo (mesmo rascunho)
     } else if (mentorId) {
       where.mentorId = mentorId
