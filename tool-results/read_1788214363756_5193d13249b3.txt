@@ -1,0 +1,832 @@
+     1→import { useAppStore } from './store'
+     2→import type {
+     3→  AdminPaymentsResponseDTO,
+     4→  AdminStatsDTO,
+     5→  AdminUsersResponseDTO,
+     6→  AiLessonSummaryDTO,
+     7→  AiTutorChatMessage,
+     8→  AsaasSettingsDTO,
+     9→  AuditLogDTO,
+    10→  AvailabilitySlotInput,
+    11→  AdminCouponsResponseDTO,
+    12→  BookingDTO,
+    13→  BundleDTO,
+    14→  BundleDetailDTO,
+    15→  CertificateDTO,
+    16→  CheckoutResultDTO,
+    17→  ContentPostDTO,
+    18→  CouponDTO,
+    19→  CouponValidationDTO,
+    20→  CourseDetailDTO,
+    21→  CourseLessonDTO,
+    22→  CourseListItemDTO,
+    23→  CourseReviewsResponseDTO,
+    24→  CourseThemeDTO,
+    25→  EnrolledCourseDTO,
+    26→  FinanceDTO,
+    27→  LibraryItemDTO,
+    28→  LibraryItemDetailDTO,
+    29→  LessonAttachmentDTO,
+    30→  LessonNoteDTO,
+    31→  LessonQuestionDTO,
+    32→  MessageDTO,
+    33→  MembershipDTO,
+    34→  PaymentStatusDTO,
+    35→  PaymentsConfigDTO,
+    36→  PendingPaymentDTO,
+    37→  PlatformCouponDTO,
+    38→  PromoBarItemDTO,
+    39→  ReminderRunDTO,
+    40→  WeeklyGoalDTO,
+    41→  MessagesResponseDTO,
+    42→  NotificationsResponseDTO,
+    43→  ReferralsDTO,
+    44→  ThreadsResponseDTO,
+    45→  QuizAttemptResultDTO,
+    46→  QuizDTO,
+    47→  RecommendationsDTO,
+    48→  XpStatsDTO,
+    49→  MentorDetailDTO,
+    50→  MentorListItemDTO,
+    51→  MentorLpDTO,
+    52→  MyTrackDTO,
+    53→  ReviewDTO,
+    54→  SocialLinksDTO,
+    55→  TrackDetailDTO,
+    56→  TrackItemInput,
+    57→  TrackListItemDTO,
+    58→  TrackingStatsDTO,
+    59→  UserDTO,
+    60→} from './types'
+    61→
+    62→async function request<T>(url: string, options?: RequestInit): Promise<T> {
+    63→  // Timeout padrão de 15s: rede travada não deixa skeleton eterno nem empilha polls.
+    64→  // Callers podem passar o próprio signal (AbortController) para cancelar.
+    65→  const signal = options?.signal ?? AbortSignal.timeout(15_000)
+    66→  let res: Response
+    67→  try {
+    68→    res = await fetch(url, {
+    69→      ...options,
+    70→      cache: 'no-store',
+    71→      signal,
+    72→      headers: {
+    73→        ...(hasBody(options) ? { 'Content-Type': 'application/json' } : {}),
+    74→        ...authHeaders(),
+    75→        ...options?.headers,
+    76→      },
+    77→    })
+    78→  } catch (err) {
+    79→    if (err instanceof DOMException && err.name === 'TimeoutError') {
+    80→      throw new Error('A conexão demorou demais. Verifique sua internet e tente de novo.')
+    81→    }
+    82→    throw err
+    83→  }
+    84→  let json: unknown = {}
+    85→  try {
+    86→    json = await res.json()
+    87→  } catch {
+    88→    json = {}
+    89→  }
+    90→  if (!res.ok) {
+    91→    // Sessão inválida/expirada: limpa a sessão local e pede novo login
+    92→    if (res.status === 401) {
+    93→      clearSession()
+    94→      const msg401 = (json as { error?: string })?.error || 'Sessão expirada. Entre novamente.'
+    95→      throw new Error(msg401)
+    96→    }
+    97→    const msg = (json as { error?: string })?.error || 'Ocorreu um erro inesperado. Tente novamente.'
+    98→    throw new Error(msg)
+    99→  }
+   100→  return json as T
+   101→}
+   102→
+   103→/** true quando a requisição tem corpo (POST/PUT/PATCH) — só então envia Content-Type JSON */
+   104→function hasBody(options?: RequestInit): boolean {
+   105→  const method = (options?.method || 'GET').toUpperCase()
+   106→  return options?.body != null || method === 'POST' || method === 'PUT' || method === 'PATCH'
+   107→}
+   108→
+   109→/** Limpa a sessão local (token + usuário) quando o servidor rejeita a sessão */
+   110→function clearSession() {
+   111→  if (typeof window === 'undefined') return
+   112→  try {
+   113→    window.localStorage.removeItem('mentorhub-session')
+   114→    window.dispatchEvent(new CustomEvent('mentorhub:session-expired'))
+   115→  } catch {
+   116→    /* ignora */
+   117→  }
+   118→}
+   119→
+   120→/**
+   121→ * Header Authorization com o token de sessão assinado (emitido no login/
+   122→ * registro/verificação MFA e persistido junto ao usuário no zustand).
+   123→ * Anexado em TODAS as chamadas — o servidor decide quais rotas exigem.
+   124→ */
+   125→function authHeaders(): Record<string, string> {
+   126→  try {
+   127→    const token = useAppStore.getState().user?.sessionToken
+   128→    return token ? { Authorization: `Bearer ${token}` } : {}
+   129→  } catch {
+   130→    return {}
+   131→  }
+   132→}
+   133→
+   134→const qs = (params: Record<string, string | number | undefined>) => {
+   135→  const sp = new URLSearchParams()
+   136→  Object.entries(params).forEach(([k, v]) => {
+   137→    if (v !== undefined && v !== '') sp.set(k, String(v))
+   138→  })
+   139→  const s = sp.toString()
+   140→  return s ? `?${s}` : ''
+   141→}
+   142→
+   143→export const api = {
+   144→  // Autenticação
+   145→  register: (data: { name: string; email: string; password: string; refCode?: string }) =>
+   146→    request<UserDTO & { referralApplied?: boolean }>('/api/auth/register', {
+   147→      method: 'POST',
+   148→      body: JSON.stringify(data),
+   149→    }),
+   150→  login: (data: { email: string; password: string }) =>
+   151→    request<
+   152→      | UserDTO
+   153→      | { mfaRequired: true; mfaTicket: string; email: string }
+   154→    >('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+   155→  verifyMfa: (data: { ticket: string; code: string }) =>
+   156→    request<
+   157→      UserDTO & { usedRecoveryCode?: boolean; recoveryCodesRemaining?: number }
+   158→    >('/api/auth/mfa/verify', { method: 'POST', body: JSON.stringify(data) }),
+   159→  me: (userId: string) =>
+   160→    request<{ user: UserDTO | null }>(`/api/auth/me${qs({ userId })}`),
+   161→
+   162→  // Usuários
+   163→  /** Contas de demonstração para o seletor de login (substitui o antigo listUsers) */
+   164→  demoAccounts: () =>
+   165→    request<{ id: string; name: string; email: string; avatarUrl: string | null }[]>(
+   166→      '/api/auth/demo-accounts'
+   167→    ),
+   168→
+   169→  // Mentores
+   170→  listMentors: (params: { search?: string; category?: string; sort?: string }) =>
+   171→    request<MentorListItemDTO[]>(`/api/mentors${qs(params)}`),
+   172→  getMentor: (id: string) => request<MentorDetailDTO>(`/api/mentors/${id}`),
+   173→  getMyMentorProfile: (userId: string) =>
+   174→    request<{ profile: MentorDetailDTO | null }>(`/api/mentors/me${qs({ userId })}`),
+   175→  saveMentorProfile: (data: {
+   176→    userId: string
+   177→    headline: string
+   178→    description: string
+   179→    categories: string[]
+   180→    hourlyRate: number
+   181→    experienceYears: number
+   182→    languages: string
+   183→    socials?: SocialLinksDTO
+   184→    avatarUrl?: string | null
+   185→    coverUrl?: string | null
+   186→    /** Tipografia da página do criador (ids do catálogo em src/lib/fonts.ts) */
+   187→    fontHeading?: string | null
+   188→    fontBody?: string | null
+   189→    gaMeasurementId?: string | null
+   190→    metaPixelId?: string | null
+   191→  }) => request<{ id: string }>('/api/mentors', { method: 'POST', body: JSON.stringify(data) }),
+   192→  saveAvailability: (data: { userId: string; slots: AvailabilitySlotInput[] }) =>
+   193→    request<{ ok: boolean }>('/api/mentors/availability', {
+   194→      method: 'PUT',
+   195→      body: JSON.stringify(data),
+   196→    }),
+   197→
+   198→  // Horários livres
+   199→  getSlots: (mentorId: string, date: string) =>
+   200→    request<{ slots: string[] }>(`/api/slots${qs({ mentorId, date })}`),
+   201→
+   202→  // Agendamentos
+   203→  listBookings: (userId: string) => request<BookingDTO[]>(`/api/bookings${qs({ userId })}`),
+   204→  createBooking: (data: {
+   205→    menteeId: string
+   206→    mentorId: string
+   207→    startsAt: string
+   208→    durationMin: number
+   209→    topic: string
+   210→    notes?: string
+   211→  }) => request<BookingDTO>('/api/bookings', { method: 'POST', body: JSON.stringify(data) }),
+   212→  updateBooking: (id: string, data: { userId: string; action: 'confirm' | 'cancel' | 'complete' }) =>
+   213→    request<BookingDTO>(`/api/bookings/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+   214→
+   215→  // Avaliações
+   216→  createReview: (data: { bookingId: string; userId: string; rating: number; comment: string }) =>
+   217→    request<ReviewDTO>('/api/reviews', { method: 'POST', body: JSON.stringify(data) }),
+   218→
+   219→  // Conteúdos do mural
+   220→  createContent: (data: {
+   221→    userId: string
+   222→    title: string
+   223→    description: string
+   224→    tags: string[]
+   225→    type: string
+   226→    level: string
+   227→    durationMin: number
+   228→  }) => request<ContentPostDTO>('/api/contents', { method: 'POST', body: JSON.stringify(data) }),
+   229→  deleteContent: (id: string, userId: string) =>
+   230→    request<{ ok: boolean }>(`/api/contents/${id}${qs({ userId })}`, { method: 'DELETE' }),
+   231→
+   232→  // Cursos
+   233→  listCourses: (params: {
+   234→    search?: string
+   235→    category?: string
+   236→    sort?: string
+   237→    mentorId?: string
+   238→    mentorUserId?: string // lista também rascunhos do próprio mentor
+   239→  }) => request<CourseListItemDTO[]>(`/api/courses${qs(params)}`),
+   240→  getCourse: (id: string, userId?: string) =>
+   241→    request<CourseDetailDTO>(`/api/courses/${id}${qs({ userId })}`),
+   242→  createCourse: (data: {
+   243→    userId: string
+   244→    title: string
+   245→    description: string
+   246→    category: string
+   247→    level: string
+   248→    price: number
+   249→    coverUrl?: string | null
+   250→    mentorshipCount?: number
+   251→  }) => request<{ id: string }>('/api/courses', { method: 'POST', body: JSON.stringify(data) }),
+   252→  updateCourse: (
+   253→    id: string,
+   254→    data: {
+   255→      userId: string
+   256→      title?: string
+   257→      description?: string
+   258→      category?: string
+   259→      level?: string
+   260→      price?: number
+   261→      coverUrl?: string | null
+   262→      mentorshipCount?: number
+   263→      isPublished?: boolean
+   264→    }
+   265→  ) => request<{ ok: boolean }>(`/api/courses/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+   266→  deleteCourse: (id: string, userId: string) =>
+   267→    request<{ ok: boolean }>(`/api/courses/${id}${qs({ userId })}`, { method: 'DELETE' }),
+   268→  createLesson: (
+   269→    courseId: string,
+   270→    data: {
+   271→      userId: string
+   272→      title: string
+   273→      description?: string
+   274→      kind?: 'RECORDED' | 'TEXT' | 'LIVE' | 'READING'
+   275→      videoUrl?: string
+   276→      content?: string
+   277→      startsAt?: string
+   278→      meetingUrl?: string
+   279→      attachments?: LessonAttachmentDTO[]
+   280→      themeId?: string | null
+   281→      libraryItemId?: string | null
+   282→      durationMin: number
+   283→    }
+   284→  ) =>
+   285→    request<CourseLessonDTO>(`/api/courses/${courseId}/lessons`, {
+   286→      method: 'POST',
+   287→      body: JSON.stringify(data),
+   288→    }),
+   289→  deleteLesson: (courseId: string, lessonId: string, userId: string) =>
+   290→    request<{ ok: boolean }>(`/api/courses/${courseId}/lessons${qs({ userId, lessonId })}`, {
+   291→      method: 'DELETE',
+   292→    }),
+   293→  updateLesson: (
+   294→    courseId: string,
+   295→    lessonId: string,
+   296→    data: { userId: string; themeId?: string | null; title?: string; description?: string; order?: number }
+   297→  ) =>
+   298→    request<{ ok: boolean }>(`/api/courses/${courseId}/lessons${qs({ lessonId })}`, {
+   299→      method: 'PATCH',
+   300→      body: JSON.stringify(data),
+   301→    }),
+   302→
+   303→  // Temas (módulos) do curso
+   304→  createTheme: (
+   305→    courseId: string,
+   306→    data: { userId: string; title: string; description?: string }
+   307→  ) =>
+   308→    request<CourseThemeDTO>(`/api/courses/${courseId}/themes`, {
+   309→      method: 'POST',
+   310→      body: JSON.stringify(data),
+   311→    }),
+   312→  updateTheme: (
+   313→    courseId: string,
+   314→    themeId: string,
+   315→    data: { userId: string; title?: string; description?: string; order?: number }
+   316→  ) =>
+   317→    request<{ ok: boolean }>(`/api/courses/${courseId}/themes${qs({ themeId })}`, {
+   318→      method: 'PATCH',
+   319→      body: JSON.stringify(data),
+   320→    }),
+   321→  deleteTheme: (courseId: string, themeId: string, userId: string) =>
+   322→    request<{ ok: boolean }>(
+   323→      `/api/courses/${courseId}/themes${qs({ themeId, userId })}`,
+   324→      { method: 'DELETE' }
+   325→    ),
+   326→  enrollCourse: (courseId: string, userId: string) =>
+   327→    request<{ ok: boolean; alreadyEnrolled: boolean }>(`/api/courses/${courseId}/enroll`, {
+   328→      method: 'POST',
+   329→      body: JSON.stringify({ userId }),
+   330→    }),
+   331→  toggleLessonComplete: (courseId: string, data: { userId: string; lessonId: string }) =>
+   332→    request<{
+   333→      completedLessonIds: string[]
+   334→      xpAwarded: number
+   335→      courseCompleted: boolean
+   336→    }>(`/api/courses/${courseId}/enroll`, {
+   337→      method: 'PATCH',
+   338→      body: JSON.stringify(data),
+   339→    }),
+   340→
+   341→  // Quiz da aula (correção no servidor + XP)
+   342→  listLessonQuizzes: (lessonId: string, userId?: string) =>
+   343→    request<QuizDTO[]>(`/api/lessons/${lessonId}/quizzes${qs({ userId })}`),
+   344→  createQuiz: (
+   345→    lessonId: string,
+   346→    data: { userId: string; prompt: string; options: string[]; correctIndex: number; explanation: string }
+   347→  ) =>
+   348→    request<QuizDTO>(`/api/lessons/${lessonId}/quizzes`, {
+   349→      method: 'POST',
+   350→      body: JSON.stringify(data),
+   351→    }),
+   352→  updateQuiz: (
+   353→    quizId: string,
+   354→    data: { userId: string; prompt?: string; options?: string[]; correctIndex?: number; explanation?: string }
+   355→  ) =>
+   356→    request<{ ok: boolean }>(`/api/quizzes/${quizId}`, {
+   357→      method: 'PATCH',
+   358→      body: JSON.stringify(data),
+   359→    }),
+   360→  deleteQuiz: (quizId: string, userId: string) =>
+   361→    request<{ ok: boolean }>(`/api/quizzes/${quizId}${qs({ userId })}`, { method: 'DELETE' }),
+   362→  answerQuiz: (quizId: string, data: { userId: string; selectedIndex: number }) =>
+   363→    request<QuizAttemptResultDTO>(`/api/quizzes/${quizId}/attempt`, {
+   364→      method: 'POST',
+   365→      body: JSON.stringify(data),
+   366→    }),
+   367→
+   368→  // Gamificação: XP e ofensiva de estudos
+   369→  xpStats: (userId: string) => request<XpStatsDTO>(`/api/xp${qs({ userId })}`),
+   370→
+   371→  // Matrículas do usuário
+   372→  listMyEnrollments: (userId: string) =>
+   373→    request<EnrolledCourseDTO[]>(`/api/enrollments${qs({ userId })}`),
+   374→
+   375→  // Classroom pro: Q&A e anotações da aula
+   376→  listLessonQuestions: (lessonId: string, userId: string) =>
+   377→    request<LessonQuestionDTO[]>(`/api/lessons/${lessonId}/questions${qs({ userId })}`),
+   378→  askLessonQuestion: (lessonId: string, data: { userId: string; body: string }) =>
+   379→    request<LessonQuestionDTO>(`/api/lessons/${lessonId}/questions`, {
+   380→      method: 'POST',
+   381→      body: JSON.stringify(data),
+   382→    }),
+   383→  answerQuestion: (questionId: string, data: { userId: string; answer: string }) =>
+   384→    request<{ id: string; answer: string | null; answeredAt: string | null }>(
+   385→      `/api/questions/${questionId}`,
+   386→      { method: 'PATCH', body: JSON.stringify(data) }
+   387→    ),
+   388→  deleteQuestion: (questionId: string, userId: string) =>
+   389→    request<{ ok: boolean }>(`/api/questions/${questionId}${qs({ userId })}`, { method: 'DELETE' }),
+   390→  getLessonNote: (lessonId: string, userId: string) =>
+   391→    request<LessonNoteDTO>(`/api/lessons/${lessonId}/note${qs({ userId })}`),
+   392→  saveLessonNote: (lessonId: string, data: { userId: string; body: string }) =>
+   393→    request<LessonNoteDTO>(`/api/lessons/${lessonId}/note`, {
+   394→      method: 'PUT',
+   395→      body: JSON.stringify(data),
+   396→    }),
+   397→
+   398→  // Biblioteca (artigos e livros)
+   399→  listLibrary: (params: {
+   400→    search?: string
+   401→    kind?: string // ARTICLE | BOOK
+   402→    category?: string
+   403→    sort?: string
+   404→    authorUserId?: string // inclui rascunhos do próprio mentor
+   405→  }) => request<LibraryItemDTO[]>(`/api/library${qs(params)}`),
+   406→  getLibraryItem: (id: string, userId?: string) =>
+   407→    request<LibraryItemDetailDTO>(`/api/library/${id}${qs({ userId })}`),
+   408→  createLibraryItem: (data: {
+   409→    userId: string
+   410→    kind: 'ARTICLE' | 'BOOK'
+   411→    title: string
+   412→    description?: string
+   413→    category?: string
+   414→    level?: string
+   415→    coverUrl?: string | null
+   416→    pdfUrl?: string | null
+   417→    content?: string | null
+   418→    readingMin?: number
+   419→  }) => request<{ id: string }>('/api/library', { method: 'POST', body: JSON.stringify(data) }),
+   420→  updateLibraryItem: (
+   421→    id: string,
+   422→    data: {
+   423→      userId: string
+   424→      kind?: 'ARTICLE' | 'BOOK'
+   425→      title?: string
+   426→      description?: string
+   427→      category?: string
+   428→      level?: string
+   429→      coverUrl?: string | null
+   430→      pdfUrl?: string | null
+   431→      content?: string | null
+   432→      readingMin?: number
+   433→      isPublished?: boolean
+   434→    }
+   435→  ) => request<{ ok: boolean }>(`/api/library/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+   436→  deleteLibraryItem: (id: string, userId: string) =>
+   437→    request<{ ok: boolean }>(`/api/library/${id}${qs({ userId })}`, { method: 'DELETE' }),
+   438→
+   439→  // Trilhas
+   440→  listTracks: (params: { search?: string; category?: string; sort?: string; mentorUserId?: string }) =>
+   441→    request<TrackListItemDTO[]>(`/api/tracks${qs(params)}`),
+   442→  getTrack: (id: string, userId?: string) =>
+   443→    request<TrackDetailDTO>(`/api/tracks/${id}${qs({ userId })}`),
+   444→  createTrack: (data: {
+   445→    userId: string
+   446→    title: string
+   447→    description: string
+   448→    category: string
+   449→    level: string
+   450→    price: number
+   451→    coverUrl?: string | null
+   452→    items: TrackItemInput[]
+   453→  }) => request<{ id: string }>('/api/tracks', { method: 'POST', body: JSON.stringify(data) }),
+   454→  updateTrack: (
+   455→    id: string,
+   456→    data: {
+   457→      userId: string
+   458→      title?: string
+   459→      description?: string
+   460→      category?: string
+   461→      level?: string
+   462→      price?: number
+   463→      coverUrl?: string | null
+   464→      isPublished?: boolean
+   465→      items?: TrackItemInput[]
+   466→    }
+   467→  ) => request<{ ok: boolean }>(`/api/tracks/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+   468→  deleteTrack: (id: string, userId: string) =>
+   469→    request<{ ok: boolean }>(`/api/tracks/${id}${qs({ userId })}`, { method: 'DELETE' }),
+   470→  enrollTrack: (trackId: string, userId: string) =>
+   471→    request<{ ok: boolean }>(`/api/tracks/${trackId}/enroll`, {
+   472→      method: 'POST',
+   473→      body: JSON.stringify({ userId }),
+   474→    }),
+   475→  listMyTracks: (userId: string) =>
+   476→    request<MyTrackDTO[]>(`/api/tracks/mine${qs({ userId })}`),
+   477→
+   478→  // Upload de arquivos (imagens: avatar/capas · documentos: anexos de aula)
+   479→  uploadImage: (file: File) => {
+   480→    const fd = new FormData()
+   481→    fd.append('file', file)
+   482→    return fetch('/api/upload', { method: 'POST', body: fd, cache: 'no-store' }).then(async (res) => {
+   483→      const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string }
+   484→      if (!res.ok || !json.url) throw new Error(json.error || 'Falha no upload do arquivo.')
+   485→      return json.url
+   486→    })
+   487→  },
+   488→
+   489→  // Upload de anexo de aula (documento/vídeo/áudio) → { url, name }
+   490→  uploadAttachment: (file: File) => {
+   491→    const fd = new FormData()
+   492→    fd.append('file', file)
+   493→    return fetch('/api/upload', { method: 'POST', body: fd, cache: 'no-store' }).then(async (res) => {
+   494→      const json = (await res.json().catch(() => ({}))) as {
+   495→        url?: string
+   496→        name?: string
+   497→        error?: string
+   498→      }
+   499→      if (!res.ok || !json.url) throw new Error(json.error || 'Falha no upload do anexo.')
+   500→      return { url: json.url, name: json.name || file.name }
+   501→    })
+   502→  },
+   503→
+   504→  // LP pública do mentor (tráfego pago) — por slug
+   505→  getMentorBySlug: (slug: string) => request<MentorLpDTO>(`/api/mentors/by-slug/${encodeURIComponent(slug)}`),
+   506→
+   507→  // Checkout — curso, trilha, pacote ou assinatura (gateway Asaas ou modo demonstração)
+   508→  checkout: (
+   509→    data: {
+   510→      userId: string
+   511→      courseId?: string
+   512→      trackId?: string
+   513→      bundleId?: string
+   514→      membershipId?: string
+   515→      paymentMethod: 'PIX' | 'CREDIT_CARD' | 'BOLETO'
+   516→      couponCode?: string
+   517→      useCredits?: boolean
+   518→      cpfCnpj?: string
+   519→    }
+   520→  ) =>
+   521→    request<CheckoutResultDTO | { pending: true; order: CheckoutResultDTO['order']; payment: PendingPaymentDTO }>(
+   522→      '/api/checkout',
+   523→      { method: 'POST', body: JSON.stringify(data) }
+   524→    ),
+   525→
+   526→  // Pagamentos (config do gateway + status de cobrança pendente)
+   527→  paymentsConfig: () => request<PaymentsConfigDTO>('/api/payments/config'),
+   528→  paymentStatus: (userId: string, paymentId: string) =>
+   529→    request<PaymentStatusDTO>(`/api/payments/status${qs({ userId, paymentId })}`),
+   530→
+   531→  // Pacotes de cursos (bundles)
+   532→  listBundles: (params: { mentorUserId?: string; courseId?: string; userId?: string }) =>
+   533→    request<{ bundles: BundleDTO[] }>(`/api/bundles${qs(params)}`),
+   534→  getBundle: (id: string, userId?: string) =>
+   535→    request<{ bundle: BundleDetailDTO }>(`/api/bundles/${id}${qs({ userId })}`),
+   536→  saveBundle: (data: {
+   537→    userId: string
+   538→    id?: string
+   539→    title: string
+   540→    description?: string
+   541→    price: number
+   542→    courseIds: string[]
+   543→    isPublished?: boolean
+   544→  }) => request<{ id: string }>('/api/bundles', { method: 'POST', body: JSON.stringify(data) }),
+   545→  deleteBundle: (id: string, userId: string) =>
+   546→    request<{ ok: boolean }>(`/api/bundles/${id}${qs({ userId })}`, { method: 'DELETE' }),
+   547→
+   548→  // Programa de indicação (código, saldo e convidados)
+   549→  referrals: (userId: string) => request<ReferralsDTO>(`/api/referrals${qs({ userId })}`),
+   550→
+   551→  // Estatísticas de tráfego do mentor (dashboard)
+   552→  trackingStats: (mentorUserId: string) =>
+   553→    request<TrackingStatsDTO>(`/api/track/stats${qs({ mentorUserId })}`),
+   554→
+   555→  // Notificações in-app (sino do header)
+   556→  listNotifications: (userId: string) =>
+   557→    request<NotificationsResponseDTO>(`/api/notifications${qs({ userId })}`),
+   558→  markNotificationsRead: (userId: string, ids?: string[]) =>
+   559→    request<{ ok: boolean }>('/api/notifications', {
+   560→      method: 'POST',
+   561→      body: JSON.stringify({ userId, ids }),
+   562→    }),
+   563→  /** Contadores de sininhos do header (mensagens + notificações) em 1 request autenticado */
+   564→  badges: () => request<{ messages: number; notifications: number }>('/api/badges'),
+   565→
+   566→  // Mensagens diretas (chat aluno ↔ mentor)
+   567→  listThreads: (userId: string) =>
+   568→    request<ThreadsResponseDTO>(`/api/messages/threads${qs({ userId })}`),
+   569→  listMessages: (userId: string, peerId: string) =>
+   570→    request<MessagesResponseDTO>(`/api/messages${qs({ userId, peerId })}`),
+   571→  sendMessage: (userId: string, peerId: string, body: string) =>
+   572→    request<MessageDTO>('/api/messages', {
+   573→      method: 'POST',
+   574→      body: JSON.stringify({ userId, peerId, body }),
+   575→    }),
+   576→  unreadMessages: (userId: string) =>
+   577→    request<{ count: number }>(`/api/messages/unread${qs({ userId })}`),
+   578→
+   579→  // Avaliações de curso
+   580→  listCourseReviews: (courseId: string) =>
+   581→    request<CourseReviewsResponseDTO>(`/api/courses/${courseId}/reviews`),
+   582→  saveCourseReview: (
+   583→    courseId: string,
+   584→    data: { userId: string; rating: number; comment: string }
+   585→  ) =>
+   586→    request<{ id: string; updated: boolean }>(`/api/courses/${courseId}/reviews`, {
+   587→      method: 'POST',
+   588→      body: JSON.stringify(data),
+   589→    }),
+   590→
+   591→  // Certificado de conclusão (código público verificável)
+   592→  issueCertificate: (courseId: string, userId: string) =>
+   593→    request<{ code: string; issuedAt: string }>('/api/certificates', {
+   594→      method: 'POST',
+   595→      body: JSON.stringify({ courseId, userId }),
+   596→    }),
+   597→  getCertificate: (code: string) =>
+   598→    request<CertificateDTO>(`/api/certificates/${encodeURIComponent(code)}`),
+   599→
+   600→  // Cupons de desconto (painel do mentor + checkout)
+   601→  listCoupons: (userId: string) => request<CouponDTO[]>(`/api/coupons${qs({ userId })}`),
+   602→  createCoupon: (data: {
+   603→    userId: string
+   604→    code: string
+   605→    percentOff?: number | null
+   606→    amountOff?: number | null
+   607→    maxUses?: number | null
+   608→    expiresAt?: string | null
+   609→  }) => request<CouponDTO>('/api/coupons', { method: 'POST', body: JSON.stringify(data) }),
+   610→  toggleCoupon: (data: { userId: string; id: string; isActive: boolean }) =>
+   611→    request<{ id: string; isActive: boolean }>('/api/coupons', {
+   612→      method: 'PATCH',
+   613→      body: JSON.stringify(data),
+   614→    }),
+   615→  deleteCoupon: (id: string, userId: string) =>
+   616→    request<{ ok: boolean }>(`/api/coupons${qs({ userId, id })}`, { method: 'DELETE' }),
+   617→  validateCoupon: (data: { code: string; userId?: string; courseId?: string; trackId?: string; bundleId?: string; membershipId?: string }) =>
+   618→    request<CouponValidationDTO>('/api/coupons/validate', {
+   619→      method: 'POST',
+   620→      body: JSON.stringify(data),
+   621→    }),
+   622→
+   623→  // Barra promocional (público): cupons ativos em rotação acima do header
+   624→  promoBar: () => request<{ items: PromoBarItemDTO[] }>('/api/promo-bar'),
+   625→
+   626→  // Financeiro do mentor
+   627→  finance: (userId: string) => request<FinanceDTO>(`/api/mentors/finance${qs({ userId })}`),
+   628→
+   629→  // Duplicar curso (rascunho com temas/aulas/quizzes)
+   630→  duplicateCourse: (courseId: string, userId: string) =>
+   631→    request<{ id: string; title: string }>(`/api/courses/${courseId}/duplicate`, {
+   632→      method: 'POST',
+   633→      body: JSON.stringify({ userId }),
+   634→    }),
+   635→
+   636→  // IA: resumo da aula (gerado 1x no servidor e cacheado)
+   637→  lessonAiSummary: (lessonId: string, userId: string) =>
+   638→    request<AiLessonSummaryDTO>(`/api/lessons/${lessonId}/ai-summary`, {
+   639→      method: 'POST',
+   640→      body: JSON.stringify({ userId }),
+   641→    }),
+   642→
+   643→  // IA: tutor do curso (responde com base no conteúdo do curso/aula)
+   644→  aiTutor: (data: {
+   645→    courseId: string
+   646→    lessonId?: string
+   647→    userId: string
+   648→    message: string
+   649→    history: AiTutorChatMessage[]
+   650→  }) =>
+   651→    request<{ reply: string }>('/api/ai/tutor', {
+   652→      method: 'POST',
+   653→      body: JSON.stringify(data),
+   654→    }),
+   655→
+   656→  // IA: recomendações personalizadas ("Feito para você")
+   657→  recommendations: (userId: string) =>
+   658→    request<RecommendationsDTO>(`/api/ai/recommendations${qs({ userId })}`),
+   659→
+   660→  // Assinatura do mentor (membership)
+   661→  listMemberships: (params: { mentorUserId?: string; mentorId?: string; userId?: string }) =>
+   662→    request<{ memberships: MembershipDTO[] }>(`/api/memberships${qs(params)}`),
+   663→  getMembership: (id: string, userId?: string) =>
+   664→    request<{ membership: MembershipDTO }>(`/api/memberships/${id}${qs({ userId })}`),
+   665→  saveMembership: (data: {
+   666→    userId: string
+   667→    id?: string
+   668→    title: string
+   669→    description?: string
+   670→    price: number
+   671→    groupSessionDay?: number
+   672→    groupSessionTime?: string
+   673→    isPublished?: boolean
+   674→  }) => request<{ id: string }>('/api/memberships', { method: 'POST', body: JSON.stringify(data) }),
+   675→  deleteMembership: (id: string, userId: string) =>
+   676→    request<{ ok: boolean }>(`/api/memberships/${id}${qs({ userId })}`, { method: 'DELETE' }),
+   677→  cancelMembership: (data: { userId: string; membershipId: string }) =>
+   678→    request<{ ok: boolean }>('/api/memberships/cancel', {
+   679→      method: 'POST',
+   680→      body: JSON.stringify(data),
+   681→    }),
+   682→
+   683→  // Meta semanal de estudos (progresso calculado no servidor)
+   684→  getWeeklyGoal: (userId: string) =>
+   685→    request<WeeklyGoalDTO>(`/api/goals/weekly${qs({ userId })}`),
+   686→  updateWeeklyGoal: (data: { userId: string; targetLessons: number }) =>
+   687→    request<WeeklyGoalDTO>('/api/goals/weekly', { method: 'PUT', body: JSON.stringify(data) }),
+   688→
+   689→  // Lembretes automáticos (idempotente — seguro chamar a cada boot)
+   690→  runReminders: (userId: string) =>
+   691→    request<ReminderRunDTO>('/api/reminders/run', {
+   692→      method: 'POST',
+   693→      body: JSON.stringify({ userId }),
+   694→    }),
+   695→
+   696→  // ==================== PAINEL DE ADMINISTRAÇÃO ====================
+   697→  // Todas as chamadas exigem o header x-admin-token (sessão emitida no login)
+   698→  admin: {
+   699→    stats: (token: string) =>
+   700→      request<AdminStatsDTO>('/api/admin/stats', { headers: { 'x-admin-token': token } }),
+   701→
+   702→    users: (token: string, params: { q?: string; page?: number }) =>
+   703→      request<AdminUsersResponseDTO>(`/api/admin/users${qs({ ...params })}`, {
+   704→        headers: { 'x-admin-token': token },
+   705→      }),
+   706→    userAction: (
+   707→      token: string,
+   708→      data: { userId: string; action: 'promote' | 'demote' | 'block' | 'unblock' }
+   709→    ) =>
+   710→      request<{ user: { id: string; role: string; blocked: boolean } }>('/api/admin/users', {
+   711→        method: 'PATCH',
+   712→        headers: { 'x-admin-token': token },
+   713→        body: JSON.stringify(data),
+   714→      }),
+   715→
+   716→    // Cupons de plataforma (barra promocional / descontos globais)
+   717→    coupons: (token: string) =>
+   718→      request<AdminCouponsResponseDTO>('/api/admin/coupons', {
+   719→        headers: { 'x-admin-token': token },
+   720→      }),
+   721→    createCoupon: (
+   722→      token: string,
+   723→      data: {
+   724→        code: string
+   725→        percentOff?: number | null
+   726→        amountOff?: number | null
+   727→        scope: 'SITE_WIDE' | 'NEW_ACCOUNTS' | 'CATEGORY' | 'MENTOR'
+   728→        category?: string
+   729→        mentorId?: string
+   730→        maxUses?: number | null
+   731→        expiresAt?: string | null
+   732→        showInPromoBar?: boolean
+   733→        promoMessage?: string | null
+   734→      }
+   735→    ) =>
+   736→      request<{ coupon: PlatformCouponDTO }>('/api/admin/coupons', {
+   737→        method: 'POST',
+   738→        headers: { 'x-admin-token': token },
+   739→        body: JSON.stringify(data),
+   740→      }),
+   741→    updateCoupon: (
+   742→      token: string,
+   743→      data: { id: string; isActive?: boolean; showInPromoBar?: boolean; promoMessage?: string | null }
+   744→    ) =>
+   745→      request<{ coupon: PlatformCouponDTO }>('/api/admin/coupons', {
+   746→        method: 'PATCH',
+   747→        headers: { 'x-admin-token': token },
+   748→        body: JSON.stringify(data),
+   749→      }),
+   750→    deleteCoupon: (token: string, id: string) =>
+   751→      request<{ ok: boolean }>(`/api/admin/coupons${qs({ id })}`, {
+   752→        method: 'DELETE',
+   753→        headers: { 'x-admin-token': token },
+   754→      }),
+   755→
+   756→    settings: (token: string) =>
+   757→      request<{ asaas: AsaasSettingsDTO }>('/api/admin/settings', {
+   758→        headers: { 'x-admin-token': token },
+   759→      }),
+   760→    saveSettings: (token: string, data: { apiKey?: string; env: 'sandbox' | 'production' }) =>
+   761→      request<{ asaas: AsaasSettingsDTO }>('/api/admin/settings', {
+   762→        method: 'PUT',
+   763→        headers: { 'x-admin-token': token },
+   764→        body: JSON.stringify(data),
+   765→      }),
+   766→    removeSettings: (token: string) =>
+   767→      request<{ asaas: AsaasSettingsDTO }>('/api/admin/settings', {
+   768→        method: 'DELETE',
+   769→        headers: { 'x-admin-token': token },
+   770→      }),
+   771→    testConnection: (token: string) =>
+   772→      request<{ ok: true; env: string; stats: { received: number; pending: number } } | { ok: false; error: string }>(
+   773→        '/api/admin/settings',
+   774→        { method: 'POST', headers: { 'x-admin-token': token }, body: JSON.stringify({ action: 'test' }) }
+   775→      ),
+   776→    createWebhook: (token: string, url: string, email: string) =>
+   777→      request<{ ok: true; asaas: AsaasSettingsDTO } | { ok: false; error: string }>(
+   778→        '/api/admin/settings',
+   779→        { method: 'POST', headers: { 'x-admin-token': token }, body: JSON.stringify({ action: 'webhook', url, email }) }
+   780→      ),
+   781→
+   782→    payments: (token: string, params: { status?: string; q?: string; page?: number }) =>
+   783→      request<AdminPaymentsResponseDTO>(`/api/admin/payments${qs({ ...params })}`, {
+   784→        headers: { 'x-admin-token': token },
+   785→      }),
+   786→    paymentAction: (
+   787→      token: string,
+   788→      data: { paymentId: string; action: 'confirm_asaas' | 'sync' | 'cancel' }
+   789→    ) =>
+   790→      request<{ ok: boolean } & Record<string, unknown>>('/api/admin/payments', {
+   791→        method: 'POST',
+   792→        headers: { 'x-admin-token': token },
+   793→        body: JSON.stringify(data),
+   794→      }),
+   795→
+   796→    mfaStatus: (token: string) =>
+   797→      request<{ mfaEnabled: boolean; recoveryCodesRemaining: number }>('/api/admin/mfa', {
+   798→        headers: { 'x-admin-token': token },
+   799→      }),
+   800→    mfaSetup: (token: string) =>
+   801→      request<{ secret: string; uri: string; qrDataUrl: string }>('/api/admin/mfa', {
+   802→        method: 'POST',
+   803→        headers: { 'x-admin-token': token },
+   804→        body: JSON.stringify({ action: 'setup' }),
+   805→      }),
+   806→    mfaEnable: (token: string, code: string) =>
+   807→      request<{ ok: true; mfaEnabled: true; recoveryCodes: string[] }>('/api/admin/mfa', {
+   808→        method: 'POST',
+   809→        headers: { 'x-admin-token': token },
+   810→        body: JSON.stringify({ action: 'enable', code }),
+   811→      }),
+   812→    mfaRegenerateCodes: (token: string, password: string) =>
+   813→      request<{ ok: true; recoveryCodes: string[] }>('/api/admin/mfa', {
+   814→        method: 'POST',
+   815→        headers: { 'x-admin-token': token },
+   816→        body: JSON.stringify({ action: 'regenerate-codes', password }),
+   817→      }),
+   818→    mfaDisable: (token: string, password: string) =>
+   819→      request<{ ok: true; mfaEnabled: false }>('/api/admin/mfa', {
+   820→        method: 'POST',
+   821→        headers: { 'x-admin-token': token },
+   822→        body: JSON.stringify({ action: 'disable', password }),
+   823→      }),
+   824→
+   825→    audit: (token: string, page = 1) =>
+   826→      request<{ logs: AuditLogDTO[]; total: number; page: number; pages: number }>(
+   827→        `/api/admin/audit${qs({ page })}`,
+   828→        { headers: { 'x-admin-token': token } }
+   829→      ),
+   830→  },
+   831→}
+   832→

@@ -1,0 +1,562 @@
+    53→    53→  // ----- Entrar -----
+    54→    54→  const [loginEmail, setLoginEmail] = useState('')
+    55→    55→  const [loginPassword, setLoginPassword] = useState('')
+    56→    56→  const [showLoginPassword, setShowLoginPassword] = useState(false)
+    57→    57→  const [loginErrors, setLoginErrors] = useState<FieldErrors>({})
+    58→    58→  const [loginFormError, setLoginFormError] = useState<string | null>(null)
+    59→    59→  const [loginLoading, setLoginLoading] = useState(false)
+    60→    60→
+    61→    61→  // ----- Criar conta -----
+    62→    62→  const [regName, setRegName] = useState('')
+    63→    63→  const [regEmail, setRegEmail] = useState('')
+    64→    64→  const [regPassword, setRegPassword] = useState('')
+    65→    65→  const [showRegPassword, setShowRegPassword] = useState(false)
+    66→    66→  const [regErrors, setRegErrors] = useState<FieldErrors>({})
+    67→    67→  const [regFormError, setRegFormError] = useState<string | null>(null)
+    68→    68→  const [regLoading, setRegLoading] = useState(false)
+    69→    69→
+    70→    70→  // ----- Contas de demonstração -----
+    71→    71→  const [demoUsers, setDemoUsers] = useState<
+    72→    72→    { id: string; name: string; email: string; avatarUrl: string | null }[]
+    73→    73→  >([])
+    74→    74→  const [demoLoading, setDemoLoading] = useState(true)
+    75→    75→  const [demoBusyId, setDemoBusyId] = useState<string | null>(null)
+    76→    76→
+    77→    77→  // ----- MFA (segundo fator): ativo após senha correta de conta com MFA -----
+    78→    78→  const [mfaTicket, setMfaTicket] = useState<string | null>(null)
+    79→    79→  const [mfaCode, setMfaCode] = useState('')
+    80→    80→  const [mfaLoading, setMfaLoading] = useState(false)
+    81→    81→  const [mfaError, setMfaError] = useState<string | null>(null)
+    82→    82→  const [mfaMode, setMfaMode] = useState<'totp' | 'recovery'>('totp')
+    83→    83→  const [mfaRecoveryCode, setMfaRecoveryCode] = useState('')
+    84→    84→
+    85→    85→  // Sincroniza quando a view chega com outro modo (ex.: clique em "Criar conta" no navbar)
+    86→    86→  useEffect(() => {
+    87→    87→    if (initialMode) setTab(initialMode)
+    88→    88→  }, [initialMode])
+    89→    89→
+    90→    90→  useEffect(() => {
+    91→    91→    let active = true
+    92→    92→    api
+    93→    93→      .demoAccounts()
+    94→    94→      .then((users) => {
+    95→    95→        if (active) setDemoUsers(users)
+    96→    96→      })
+    97→    97→      .catch(() => {
+    98→    98→        if (active) setDemoUsers([])
+    99→    99→      })
+   100→   100→      .finally(() => {
+   101→   101→        if (active) setDemoLoading(false)
+   102→   102→      })
+   103→   103→    return () => {
+   104→   104→      active = false
+   105→   105→    }
+   106→   106→  }, [])
+   107→   107→
+   108→   108→  /** Ao trocar de tab, limpa os erros inline */
+   109→   109→  const switchTab = (next: string) => {
+   110→   110→    setTab(next as 'login' | 'register')
+   111→   111→    setLoginErrors({})
+   112→   112→    setLoginFormError(null)
+   113→   113→    setRegErrors({})
+   114→   114→    setRegFormError(null)
+   115→   115→  }
+   116→   116→
+   117→   117→  // ---------- Entrar ----------
+   118→   118→  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
+   119→   119→    e.preventDefault()
+   120→   120→    if (loginLoading) return // bloqueia duplo submit
+   121→   121→
+   122→   122→    const errors: FieldErrors = {}
+   123→   123→    if (!EMAIL_RE.test(loginEmail.trim())) errors.email = 'Informe um e-mail válido.'
+   124→   124→    if (loginPassword.length < 6) errors.password = 'A senha deve ter pelo menos 6 caracteres.'
+   125→   125→    setLoginErrors(errors)
+   126→   126→    if (Object.keys(errors).length > 0) return
+   127→   127→
+   128→   128→    setLoginLoading(true)
+   129→   129→    setLoginFormError(null)
+   130→   130→    try {
+   131→   131→      const result = await api.login({ email: loginEmail.trim(), password: loginPassword })
+   132→   132→
+   133→   133→      // Conta com MFA: mostra a etapa do código de 6 dígitos
+   134→   134→      if ('mfaRequired' in result && result.mfaRequired) {
+   135→   135→        setMfaTicket(result.mfaTicket)
+   136→   136→        setMfaCode('')
+   137→   137→        setMfaError(null)
+   138→   138→        setMfaMode('totp')
+   139→   139→        setMfaRecoveryCode('')
+   140→   140→        toast.info('Confirme com o código do seu app autenticador 🔐')
+   141→   141→        return
+   142→   142→      }
+   143→   143→
+   144→   144→      const user = result as UserDTO
+   145→   145→      setUser(user)
+   146→   146→      toast.success(`Bem-vindo(a) de volta, ${firstName(user.name)}! 👋`)
+   147→   147→      navigate({ name: 'home' })
+   148→   148→    } catch (err) {
+   149→   149→      const msg = err instanceof Error ? err.message : 'Não foi possível entrar. Tente novamente.'
+   150→   150→      toast.error(msg)
+   151→   151→      setLoginFormError(msg)
+   152→   152→    } finally {
+   153→   153→      setLoginLoading(false)
+   154→   154→    }
+   155→   155→  }
+   156→   156→
+   157→   157→  // ---------- MFA: verifica o código TOTP ou de recuperação ----------
+   158→   158→  const handleMfaVerify = async (code?: string) => {
+   159→   159→    if (!mfaTicket || mfaLoading) return
+   160→   160→    const value =
+   161→   161→      mfaMode === 'totp'
+   162→   162→        ? (code ?? mfaCode).replace(/\D/g, '')
+   163→   163→        : (code ?? mfaRecoveryCode).trim().toUpperCase()
+   164→   164→    if (mfaMode === 'totp' && value.length !== 6) return
+   165→   165→    if (mfaMode === 'recovery' && value.length < 6) return
+   166→   166→    setMfaLoading(true)
+   167→   167→    setMfaError(null)
+   168→   168→    try {
+   169→   169→      const user = await api.verifyMfa({ ticket: mfaTicket, code: value })
+   170→   170→      setUser(user)
+   171→   171→      if (user.usedRecoveryCode) {
+   172→   172→        toast.warning(
+   173→   173→          `Você entrou com um código de recuperação. Restam ${user.recoveryCodesRemaining ?? 0} — gere novos no painel admin. ⚠️`
+   174→   174→        )
+   175→   175→      } else {
+   176→   176→        toast.success(`Bem-vindo(a) de volta, ${firstName(user.name)}! 👋`)
+   177→   177→      }
+   178→   178→      setMfaTicket(null)
+   179→   179→      setMfaCode('')
+   180→   180→      setMfaRecoveryCode('')
+   181→   181→      setMfaMode('totp')
+   182→   182→      navigate({ name: 'home' })
+   183→   183→    } catch (err) {
+   184→   184→      const msg = err instanceof Error ? err.message : 'Código inválido.'
+   185→   185→      setMfaError(msg)
+   186→   186→      setMfaCode('')
+   187→   187→      setMfaRecoveryCode('')
+   188→   188→    } finally {
+   189→   189→      setMfaLoading(false)
+   190→   190→    }
+   191→   191→  }
+   192→   192→
+   193→   193→  // ---------- Criar conta ----------
+   194→   194→  const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
+   195→   195→    e.preventDefault()
+   196→   196→    if (regLoading) return // bloqueia duplo submit
+   197→   197→
+   198→   198→    const errors: FieldErrors = {}
+   199→   199→    if (regName.trim().length < 2) errors.name = 'Informe seu nome completo.'
+   200→   200→    if (!EMAIL_RE.test(regEmail.trim())) errors.email = 'Informe um e-mail válido.'
+   201→   201→    if (regPassword.length < 6) errors.password = 'A senha deve ter pelo menos 6 caracteres.'
+   202→   202→    setRegErrors(errors)
+   203→   203→    if (Object.keys(errors).length > 0) return
+   204→   204→
+   205→   205→    setRegLoading(true)
+   206→   206→    setRegFormError(null)
+   207→   207→    try {
+   208→   208→      // Convite capturado em ?ref= (localStorage, janela de 7 dias)
+   209→   209→      const refCode = getStoredRefCode() ?? undefined
+   210→   210→      const user = await api.register({
+   211→   211→        name: regName.trim(),
+   212→   212→        email: regEmail.trim(),
+   213→   213→        password: regPassword,
+   214→   214→        refCode,
+   215→   215→      })
+   216→   216→      if (refCode) clearStoredRefCode()
+   217→   217→      setUser(user)
+   218→   218→      toast.success(
+   219→   219→        user.referralApplied
+   220→   220→          ? `Conta criada! R$ 10 de crédito de convite adicionados, ${firstName(user.name)}! 🎁`
+   221→   221→          : `Conta criada! Bem-vindo(a), ${firstName(user.name)}! 🎉`
+   222→   222→      )
+   223→   223→      navigate({ name: 'home' })
+   224→   224→    } catch (err) {
+   225→   225→      const msg =
+   226→   226→        err instanceof Error ? err.message : 'Não foi possível criar sua conta. Tente novamente.'
+   227→   227→      toast.error(msg)
+   228→   228→      if (msg.includes('Já existe') || msg.includes('e-mail')) {
+   229→   229→        setRegErrors((prev) => ({ ...prev, email: 'Já existe conta com este e-mail. Faça login.' }))
+   230→   230→      } else {
+   231→   231→        setRegFormError(msg)
+   232→   232→      }
+   233→   233→    } finally {
+   234→   234→      setRegLoading(false)
+   235→   235→    }
+   236→   236→  }
+   237→   237→
+   238→   238→  // ---------- Contas demo ----------
+   239→   239→  const handleDemoLogin = async (u: UserDTO) => {
+   240→   240→    if (demoBusyId) return
+   241→   241→    setDemoBusyId(u.id)
+   242→   242→    try {
+   243→   243→      const result = await api.login({ email: u.email, password: DEMO_PASSWORD })
+   244→   244→      // Contas demo não têm MFA — mas o tipo cobre o caso
+   245→   245→      if ('mfaRequired' in result && result.mfaRequired) {
+   246→   246→        setMfaTicket(result.mfaTicket)
+   247→   247→        toast.info('Confirme com o código do seu app autenticador 🔐')
+   248→   248→        return
+   249→   249→      }
+   250→   250→      const user = result as UserDTO
+   251→   251→      setUser(user)
+   252→   252→      toast.success(`Entrou como ${user.name}`)
+   253→   253→      navigate({ name: 'home' })
+   254→   254→    } catch (err) {
+   255→   255→      // Mostra o erro real (ex.: 429 de rate limit) em vez de mascarar
+   256→   256→      const msg = err instanceof Error ? err.message : ''
+   257→   257→      toast.info(msg || 'Esta conta demo ainda está sendo preparada. Crie a sua!')
+   258→   258→    } finally {
+   259→   259→      setDemoBusyId(null)
+   260→   260→    }
+   261→   261→  }
+   262→   262→
+   263→   263→  const handleForgotPassword = () => {
+   264→   264→    toast.info('Em breve! Por enquanto, use uma conta demo ou crie a sua.')
+   265→   265→  }
+   266→   266→
+   267→   267→  return (
+   268→   268→    <div className="grid min-h-full bg-stone-50 dark:bg-stone-950 lg:grid-cols-2">
+   269→   269→      {/* ---------- Painel esquerdo (header compacto no mobile, completo no lg+) ---------- */}
+   270→   270→      <section
+   271→   271→        aria-label="Sobre o MentorHub"
+   272→   272→        className="relative flex flex-col gap-10 overflow-hidden bg-gradient-to-br from-emerald-800 via-emerald-700 to-teal-700 p-6 text-white lg:justify-between lg:gap-12 lg:p-10 xl:p-14"
+   273→   273→      >
+   274→   274→        {/* Blobs decorativos */}
+   275→   275→        <div aria-hidden className="pointer-events-none absolute inset-0">
+   276→   276→          <div className="absolute -left-28 -top-28 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
+   277→   277→          <div className="absolute -right-24 top-1/3 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
+   278→   278→          <div className="absolute -bottom-32 left-1/4 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+   279→   279→        </div>
+   280→   280→
+   281→   281→        {/* Logo */}
+   282→   282→        <div className="relative flex items-center gap-3">
+   283→   283→          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
+   284→   284→            <GraduationCap className="h-5 w-5" aria-hidden />
+   285→   285→          </span>
+   286→   286→          <span className="text-lg font-extrabold tracking-tight">MentorHub</span>
+   287→   287→        </div>
+   288→   288→
+   289→   289→        {/* Headline + bullets */}
+   290→   290→        <div className="relative">
+   291→   291→          <h1 className="max-w-lg text-2xl font-extrabold leading-tight tracking-tight lg:text-4xl lg:leading-[1.1]">
+   292→   292→            Aprenda com quem vive o que ensina.
+   293→   293→          </h1>
+   294→   294→          <p className="mt-3 max-w-md text-sm text-emerald-100/80 lg:mt-4 lg:text-base">
+   295→   295→            Cursos ao vivo, mentorias 1:1 e biblioteca — tudo o que você precisa para evoluir de
+   296→   296→            verdade, em um só lugar.
+   297→   297→          </p>
+   298→   298→          <ul className="mt-8 hidden space-y-4 lg:block">
+   299→   299→            {PANEL_BULLETS.map(({ icon: Icon, text }) => (
+   300→   300→              <li key={text} className="flex items-center gap-3.5">
+   301→   301→                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10">
+   302→   302→                  <Icon className="h-5 w-5" aria-hidden />
+   303→   303→                </span>
+   304→   304→                <span className="text-sm text-emerald-50/90">{text}</span>
+   305→   305→              </li>
+   306→   306→            ))}
+   307→   307→          </ul>
+   308→   308→        </div>
+   309→   309→
+   310→   310→        {/* Prova social (rodapé do painel) */}
+   311→   311→        <div className="relative hidden lg:block">
+   312→   312→          <div className="max-w-md rounded-2xl border border-white/15 bg-white/10 p-4">
+   313→   313→            <Stars rating={5} size={16} />
+   314→   314→            <p className="mt-2 text-sm text-emerald-50/90">
+   315→   315→              4,9 de média · +2.400 alunos aprendendo todos os dias
+   316→   316→            </p>
+   317→   317→          </div>
+   318→   318→        </div>
+   319→   319→      </section>
+   320→   320→
+   321→   321→      {/* ---------- Painel direito: formulário ---------- */}
+   322→   322→      <section className="flex items-center justify-center p-4 sm:p-6 lg:p-8 xl:p-12">
+   323→   323→        <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900 p-6 shadow-sm sm:p-8">
+   324→   324→          <Tabs value={tab} onValueChange={switchTab}>
+   325→   325→            <TabsList className="grid h-11 w-full grid-cols-2 rounded-full bg-stone-100 dark:bg-stone-800 p-1">
+   326→   326→              <TabsTrigger
+   327→   327→                value="login"
+   328→   328→                className="rounded-full text-sm font-semibold text-stone-500 data-[state=active]:bg-white data-[state=active]:text-stone-900 data-[state=active]:shadow-sm dark:text-stone-400 dark:data-[state=active]:bg-stone-900 dark:data-[state=active]:text-stone-50"
+   329→   329→              >
+   330→   330→                Entrar
+   331→   331→              </TabsTrigger>
+   332→   332→              <TabsTrigger
+   333→   333→                value="register"
+   334→   334→                className="rounded-full text-sm font-semibold text-stone-500 data-[state=active]:bg-white data-[state=active]:text-stone-900 data-[state=active]:shadow-sm dark:text-stone-400 dark:data-[state=active]:bg-stone-900 dark:data-[state=active]:text-stone-50"
+   335→   335→              >
+   336→   336→                Criar conta
+   337→   337→              </TabsTrigger>
+   338→   338→            </TabsList>
+   339→   339→
+   340→   340→            {/* ----- Tab Entrar ----- */}
+   341→   341→            <TabsContent value="login" className="mt-6">
+   342→   342→              {mfaTicket ? (
+   343→   343→                <div className="flex flex-col items-center text-center">
+   344→   344→                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+   345→   345→                    <ShieldCheck className="h-7 w-7" aria-hidden />
+   346→   346→                  </span>
+   347→   347→                  <h2 className="mt-4 text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+   348→   348→                    Verificação em duas etapas
+   349→   349→                  </h2>
+   350→   350→                  <p className="mt-1.5 max-w-xs text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+   351→   351→                    {mfaMode === 'totp' ? (
+   352→   352→                      <>Digite o código de 6 dígitos do seu app autenticador (Google Authenticator, Authy…).</>
+   353→   353→                    ) : (
+   354→   354→                      <>Digite um dos seus códigos de recuperação (formato XXXX-XXXX). Cada código funciona uma única vez.</>
+   355→   355→                    )}
+   356→   356→                  </p>
+   357→   357→
+   358→   358→                  <div className="mt-6">
+   359→   359→                    {mfaMode === 'totp' ? (
+   360→   360→                      <InputOTP
+   361→   361→                        maxLength={6}
+   362→   362→                        value={mfaCode}
+   363→   363→                        onChange={(v) => {
+   364→   364→                          setMfaCode(v)
+   365→   365→                          setMfaError(null)
+   366→   366→                          if (v.length === 6) void handleMfaVerify(v)
+   367→   367→                        }}
+   368→   368→                        disabled={mfaLoading}
+   369→   369→                      >
+   370→   370→                        <InputOTPGroup>
+   371→   371→                          {[0, 1, 2, 3, 4, 5].map((i) => (
+   372→   372→                            <InputOTPSlot key={i} index={i} className="h-12 w-11 rounded-lg border-stone-300 text-lg font-bold dark:border-stone-700" />
+   373→   373→                          ))}
+   374→   374→                        </InputOTPGroup>
+   375→   375→                      </InputOTP>
+   376→   376→                    ) : (
+   377→   377→                      <Input
+   378→   378→                        value={mfaRecoveryCode}
+   379→   379→                        onChange={(e) => {
+   380→   380→                          setMfaRecoveryCode(e.target.value.toUpperCase())
+   381→   381→                          setMfaError(null)
+   382→   382→                        }}
+   383→   383→                        onKeyDown={(e) => {
+   384→   384→                          if (e.key === 'Enter') void handleMfaVerify()
+   385→   385→                        }}
+   386→   386→                        placeholder="XXXX-XXXX"
+   387→   387→                        autoComplete="off"
+   388→   388→                        disabled={mfaLoading}
+   389→   389→                        className="h-12 w-56 rounded-xl text-center font-mono text-lg font-bold tracking-widest uppercase"
+   390→   390→                        aria-label="Código de recuperação"
+   391→   391→                      />
+   392→   392→                    )}
+   393→   393→                  </div>
+   394→   394→
+   395→   395→                  {mfaError && (
+   396→   396→                    <p role="alert" className="mt-4 text-xs font-medium text-rose-600 dark:text-rose-400">
+   397→   397→                      {mfaError}
+   398→   398→                    </p>
+   399→   399→                  )}
+   400→   400→
+   401→   401→                  <Button
+   402→   402→                    onClick={() => void handleMfaVerify()}
+   403→   403→                    disabled={
+   404→   404→                      mfaLoading ||
+   405→   405→                      (mfaMode === 'totp'
+   406→   406→                        ? mfaCode.replace(/\D/g, '').length !== 6
+   407→   407→                        : mfaRecoveryCode.trim().length < 6)
+   408→   408→                    }
+   409→   409→                    className="mt-6 h-11 w-full rounded-full text-sm font-bold"
+   410→   410→                  >
+   411→   411→                    {mfaLoading ? (
+   412→   412→                      <>
+   413→   413→                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+   414→   414→                        Verificando…
+   415→   415→                      </>
+   416→   416→                    ) : (
+   417→   417→                      'Confirmar código'
+   418→   418→                    )}
+   419→   419→                  </Button>
+   420→   420→                  <button
+   421→   421→                    type="button"
+   422→   422→                    onClick={() => {
+   423→   423→                      if (mfaMode === 'recovery') {
+   424→   424→                        setMfaMode('totp')
+   425→   425→                        setMfaRecoveryCode('')
+   426→   426→                      } else {
+   427→   427→                        setMfaMode('recovery')
+   428→   428→                        setMfaCode('')
+   429→   429→                      }
+   430→   430→                      setMfaError(null)
+   431→   431→                    }}
+   432→   432→                    className="mt-4 text-xs font-medium text-stone-400 underline-offset-2 transition-colors hover:text-stone-600 hover:underline dark:text-stone-500 dark:hover:text-stone-300"
+   433→   433→                  >
+   434→   434→                    {mfaMode === 'recovery'
+   435→   435→                      ? 'Usar o app autenticador'
+   436→   436→                      : 'Não tem o app? Usar código de recuperação'}
+   437→   437→                  </button>
+   438→   438→                  <button
+   439→   439→                    type="button"
+   440→   440→                    onClick={() => {
+   441→   441→                      setMfaTicket(null)
+   442→   442→                      setMfaCode('')
+   443→   443→                      setMfaRecoveryCode('')
+   444→   444→                      setMfaError(null)
+   445→   445→                      setMfaMode('totp')
+   446→   446→                    }}
+   447→   447→                    className="mt-2 text-xs font-medium text-stone-400 underline-offset-2 transition-colors hover:text-stone-600 hover:underline dark:text-stone-500 dark:hover:text-stone-300"
+   448→   448→                  >
+   449→   449→                    Voltar para o login
+   450→   450→                  </button>
+   451→   451→                </div>
+   452→   452→              ) : (
+   453→   453→              <form onSubmit={handleLogin} noValidate className="space-y-4">
+   454→   454→                <div>
+   455→   455→                  <h2 className="text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+   456→   456→                    Bem-vindo de volta
+   457→   457→                  </h2>
+   458→   458→                  <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+   459→   459→                    Entre para continuar sua jornada de aprendizado.
+   460→   460→                  </p>
+   461→   461→                </div>
+   462→   462→
+   463→   463→                <div className="space-y-2">
+   464→   464→                  <Label htmlFor="login-email" className="text-sm font-medium text-stone-700 dark:text-stone-200">
+   465→   465→                    E-mail
+   466→   466→                  </Label>
+   467→   467→                  <Input
+   468→   468→                    id="login-email"
+   469→   469→                    type="email"
+   470→   470→                    value={loginEmail}
+   471→   471→                    onChange={(e) => {
+   472→   472→                      setLoginEmail(e.target.value)
+   473→   473→                      if (loginErrors.email)
+   474→   474→                        setLoginErrors((prev) => ({ ...prev, email: undefined }))
+   475→   475→                    }}
+   476→   476→                    placeholder="voce@exemplo.com"
+   477→   477→                    autoComplete="email"
+   478→   478→                    className="h-11 rounded-xl"
+   479→   479→                    aria-invalid={Boolean(loginErrors.email)}
+   480→   480→                    aria-describedby={loginErrors.email ? 'login-email-error' : undefined}
+   481→   481→                  />
+   482→   482→                  {loginErrors.email && (
+   483→   483→                    <p id="login-email-error" className="text-xs text-rose-600 dark:text-rose-400">
+   484→   484→                      {loginErrors.email}
+   485→   485→                    </p>
+   486→   486→                  )}
+   487→   487→                </div>
+   488→   488→
+   489→   489→                <div className="space-y-2">
+   490→   490→                  <Label htmlFor="login-password" className="text-sm font-medium text-stone-700 dark:text-stone-200">
+   491→   491→                    Senha
+   492→   492→                  </Label>
+   493→   493→                  <div className="relative">
+   494→   494→                    <Input
+   495→   495→                      id="login-password"
+   496→   496→                      type={showLoginPassword ? 'text' : 'password'}
+   497→   497→                      value={loginPassword}
+   498→   498→                      onChange={(e) => {
+   499→   499→                        setLoginPassword(e.target.value)
+   500→   500→                        if (loginErrors.password)
+   501→   501→                          setLoginErrors((prev) => ({ ...prev, password: undefined }))
+   502→   502→                      }}
+   503→   503→                      placeholder="Sua senha"
+   504→   504→                      autoComplete="current-password"
+   505→   505→                      className="h-11 rounded-xl pr-11"
+   506→   506→                      aria-invalid={Boolean(loginErrors.password)}
+   507→   507→                      aria-describedby={loginErrors.password ? 'login-password-error' : undefined}
+   508→   508→                    />
+   509→   509→                    <button
+   510→   510→                      type="button"
+   511→   511→                      onClick={() => setShowLoginPassword((v) => !v)}
+   512→   512→                      aria-label={showLoginPassword ? 'Ocultar senha' : 'Mostrar senha'}
+   513→   513→                      className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center text-stone-400 transition-colors hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
+   514→   514→                    >
+   515→   515→                      {showLoginPassword ? (
+   516→   516→                        <EyeOff className="h-4 w-4" aria-hidden />
+   517→   517→                      ) : (
+   518→   518→                        <Eye className="h-4 w-4" aria-hidden />
+   519→   519→                      )}
+   520→   520→                    </button>
+   521→   521→                  </div>
+   522→   522→                  {loginErrors.password && (
+   523→   523→                    <p id="login-password-error" className="text-xs text-rose-600 dark:text-rose-400">
+   524→   524→                      {loginErrors.password}
+   525→   525→                    </p>
+   526→   526→                  )}
+   527→   527→                </div>
+   528→   528→
+   529→   529→                <div className="flex justify-end">
+   530→   530→                  <button
+   531→   531→                    type="button"
+   532→   532→                    onClick={handleForgotPassword}
+   533→   533→                    className="text-xs font-medium text-emerald-700 underline-offset-2 transition-colors hover:text-emerald-800 hover:underline dark:text-emerald-300 dark:hover:text-emerald-300"
+   534→   534→                  >
+   535→   535→                    Esqueceu a senha?
+   536→   536→                  </button>
+   537→   537→                </div>
+   538→   538→
+   539→   539→                {loginFormError && (
+   540→   540→                  <p role="alert" className="text-xs font-medium text-rose-600 dark:text-rose-400">
+   541→   541→                    {loginFormError}
+   542→   542→                  </p>
+   543→   543→                )}
+   544→   544→
+   545→   545→                <Button
+   546→   546→                  type="submit"
+   547→   547→                  disabled={loginLoading}
+   548→   548→                  className="h-11 w-full rounded-full text-sm font-bold"
+   549→   549→                >
+   550→   550→                  {loginLoading ? (
+   551→   551→                    <>
+   552→   552→                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+   553→   553→                      Entrando…
+   554→   554→                    </>
+   555→   555→                  ) : (
+   556→   556→                    'Entrar'
+   557→   557→                  )}
+   558→   558→                </Button>
+   559→   559→              </form>
+   560→   560→              )}
+   561→   561→            </TabsContent>
+   562→   562→
+   563→   563→            {/* ----- Tab Criar conta ----- */}
+   564→   564→            <TabsContent value="register" className="mt-6">
+   565→   565→              <form onSubmit={handleRegister} noValidate className="space-y-4">
+   566→   566→                <div>
+   567→   567→                  <h2 className="text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+   568→   568→                    Crie sua conta
+   569→   569→                  </h2>
+   570→   570→                  <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+   571→   571→                    Estude com os melhores e, se quiser, vire mentor.
+   572→   572→                  </p>
+   573→   573→                </div>
+   574→   574→
+   575→   575→                <div className="space-y-2">
+   576→   576→                  <Label htmlFor="reg-name" className="text-sm font-medium text-stone-700 dark:text-stone-200">
+   577→   577→                    Nome completo
+   578→   578→                  </Label>
+   579→   579→                  <Input
+   580→   580→                    id="reg-name"
+   581→   581→                    value={regName}
+   582→   582→                    onChange={(e) => {
+   583→   583→                      setRegName(e.target.value)
+   584→   584→                      if (regErrors.name) setRegErrors((prev) => ({ ...prev, name: undefined }))
+   585→   585→                    }}
+   586→   586→                    placeholder="Ex.: Maria Oliveira"
+   587→   587→                    autoComplete="name"
+   588→   588→                    className="h-11 rounded-xl"
+   589→   589→                    aria-invalid={Boolean(regErrors.name)}
+   590→   590→                    aria-describedby={regErrors.name ? 'reg-name-error' : undefined}
+   591→   591→                  />
+   592→   592→                  {regErrors.name && (
+   593→   593→                    <p id="reg-name-error" className="text-xs text-rose-600 dark:text-rose-400">
+   594→   594→                      {regErrors.name}
+   595→   595→                    </p>
+   596→   596→                  )}
+   597→   597→                </div>
+   598→   598→
+   599→   599→                <div className="space-y-2">
+   600→   600→                  <Label htmlFor="reg-email" className="text-sm font-medium text-stone-700 dark:text-stone-200">
+   601→   601→                    E-mail
+   602→   602→                  </Label>
+   603→   603→                  <Input
+   604→   604→                    id="reg-email"
+   605→   605→                    type="email"
+   606→   606→                    value={regEmail}
+   607→   607→                    onChange={(e) => {
+   608→   608→                      setRegEmail(e.target.value)
+   609→   609→                      if (regErrors.email) setRegErrors((prev) => ({ ...prev, email: undefined }))
+   610→   610→                    }}
+   611→   611→                    placeholder="voce@exemplo.com"
+   612→   612→                    autoComplete="email"
+
+[showing lines 53-612 of 744; use offset=613 with limit to continue reading]
