@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-motion'
+import { useEffect, useMemo, useState } from 'react'
 import {
+  ChevronDown,
   ChevronRight,
   BadgeCheck,
   BookOpen,
@@ -29,17 +29,14 @@ import {
   Users,
   Video,
 } from 'lucide-react'
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, Stars } from '@/components/platform/avatar'
+import { Reveal } from '@/components/platform/reveal'
+import { useInViewOnce, usePrefersReducedMotion } from '@/hooks/use-in-view-once'
+import { useMounted } from '@/hooks/use-mounted'
 import { api } from '@/lib/api'
 import {
   CATEGORIES,
@@ -209,7 +206,11 @@ const FINAL_REASSURANCES = [
 export function LandingMenteeView() {
   const navigate = useAppStore((s) => s.navigate)
   const setExploreTab = useAppStore((s) => s.setExploreTab)
-  const user = useAppStore((s) => s.user)
+  // Hidratação segura: no SSR e no primeiro render do cliente o usuário é
+  // tratado como convidado (igual ao HTML do servidor); depois reflete o real.
+  const mounted = useMounted()
+  const storeUser = useAppStore((s) => s.user)
+  const user = mounted ? storeUser : null
   const [mentors, setMentors] = useState<MentorListItemDTO[]>([])
   const [loading, setLoading] = useState(true)
   const [courses, setCourses] = useState<CourseListItemDTO[]>([])
@@ -218,10 +219,8 @@ export function LandingMenteeView() {
   const [tracksLoading, setTracksLoading] = useState(true)
 
   // Fetch preguiçoso: cursos e trilhas só saem quando as seções se aproximam da viewport
-  const coursesSectionRef = useRef<HTMLElement | null>(null)
-  const coursesInView = useInView(coursesSectionRef, { once: true, margin: '600px' })
-  const tracksSectionRef = useRef<HTMLElement | null>(null)
-  const tracksInView = useInView(tracksSectionRef, { once: true, margin: '600px' })
+  const { ref: coursesSectionRef, inView: coursesInView } = useInViewOnce<HTMLElement>('600px')
+  const { ref: tracksSectionRef, inView: tracksInView } = useInViewOnce<HTMLElement>('600px')
 
   useEffect(() => {
     let active = true
@@ -242,8 +241,7 @@ export function LandingMenteeView() {
   }, [])
 
   // Cursos para a seção "Cursos em destaque" (disparado quando a seção ou a faixa de números se aproxima)
-  const statsSectionRef = useRef<HTMLElement | null>(null)
-  const statsInView = useInView(statsSectionRef, { once: true, margin: '600px' })
+  const { ref: statsSectionRef, inView: statsInView } = useInViewOnce<HTMLElement>('600px')
 
   useEffect(() => {
     if (!coursesInView && !statsInView) return
@@ -285,8 +283,7 @@ export function LandingMenteeView() {
   }, [tracksInView, statsInView])
 
   // Biblioteca em destaque (disparado quando a seção se aproxima)
-  const librarySectionRef = useRef<HTMLElement | null>(null)
-  const libraryInView = useInView(librarySectionRef, { once: true, margin: '600px' })
+  const { ref: librarySectionRef, inView: libraryInView } = useInViewOnce<HTMLElement>('600px')
   const [libraryItems, setLibraryItems] = useState<LibraryItemDTO[]>([])
   const [libraryLoading, setLibraryLoading] = useState(true)
 
@@ -455,13 +452,8 @@ export function LandingMenteeView() {
       <section aria-labelledby="hero-title" className="relative overflow-hidden">
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pb-20 pt-14 sm:pb-28 sm:pt-20">
           <div className="grid grid-cols-1 items-center gap-14 lg:grid-cols-2 lg:gap-12">
-            {/* Coluna esquerda: mensagem + busca + prova social */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="min-w-0"
-            >
+            {/* Coluna esquerda: mensagem + busca + prova social — sem animação de entrada: LCP imediato */}
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
                 Mentorias, cursos, trilhas e biblioteca — tudo em um só lugar
               </p>
@@ -545,17 +537,12 @@ export function LandingMenteeView() {
                 </div>
               ) : null}
 
-            </motion.div>
+            </div>
 
             {/* Coluna direita: carrossel leve — um formato por vez, sem excesso de efeitos */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, delay: 0.15 }}
-              className="relative mt-2 min-w-0 lg:mt-0"
-            >
+            <div className="relative mt-2 min-w-0 lg:mt-0">
               <HeroRotator onOpen={handleFormatTab} mentors={mentors} />
-            </motion.div>
+            </div>
           </div>
         </div>
       </section>
@@ -655,12 +642,9 @@ export function LandingMenteeView() {
       )}
 
       {/* ---------- QUATRO FORMAS DE APRENDER (a plataforma inteira em uma olhada) ---------- */}
-      <motion.section
+      <Reveal
+        tag="section"
         aria-labelledby="formatos-title"
-        initial={{ opacity: 0, y: 16 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-80px' }}
-        transition={{ duration: 0.5 }}
         className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-16 sm:py-24"
       >
         <div className="max-w-2xl">
@@ -680,14 +664,7 @@ export function LandingMenteeView() {
 
         <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {FORMATS.map((format, i) => (
-            <motion.div
-              key={format.title}
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.4, delay: i * 0.07 }}
-              className="min-w-0"
-            >
+            <Reveal key={format.title} delay={i * 70} className="min-w-0">
               <div className="group flex h-full flex-col rounded-2xl border border-stone-200 bg-white p-5 transition hover:border-emerald-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:group-hover:bg-emerald-900/30">
                   <format.icon aria-hidden className="h-5 w-5" />
@@ -712,18 +689,15 @@ export function LandingMenteeView() {
                   />
                 </button>
               </div>
-            </motion.div>
+            </Reveal>
           ))}
         </div>
-      </motion.section>
+      </Reveal>
 
       {/* ---------- COMO FUNCIONA ---------- */}
-      <motion.section
+      <Reveal
+        tag="section"
         aria-labelledby="como-funciona-title"
-        initial={{ opacity: 0, y: 16 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-80px' }}
-        transition={{ duration: 0.5 }}
         className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-4 pt-14 sm:pt-20"
       >
         <div className="max-w-2xl">
@@ -740,14 +714,7 @@ export function LandingMenteeView() {
 
           <div className="relative mt-12 grid grid-cols-1 gap-10 sm:grid-cols-3 sm:gap-6">
             {STEPS.map((step, i) => (
-              <motion.div
-                key={step.number}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-60px' }}
-                transition={{ duration: 0.4, delay: i * 0.1 }}
-                className="relative flex flex-col items-center"
-              >
+              <Reveal key={step.number} delay={i * 100} className="relative flex flex-col items-center">
                 <div className="relative z-10 flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-stone-950 text-sm font-semibold tracking-wide text-white ring-4 ring-white dark:bg-white dark:text-stone-950 dark:ring-stone-950">
                   {step.number}
                 </div>
@@ -758,10 +725,10 @@ export function LandingMenteeView() {
                   <h3 className="mt-3 font-semibold text-stone-900 dark:text-stone-50">{step.title}</h3>
                   <p className="mt-1.5 text-sm leading-relaxed text-stone-600 dark:text-stone-300">{step.text}</p>
                 </div>
-              </motion.div>
+              </Reveal>
             ))}
           </div>
-      </motion.section>
+      </Reveal>
 
       {/* ---------- EXPLORE POR ÁREA (chips de categorias) ---------- */}
       <section
@@ -794,12 +761,9 @@ export function LandingMenteeView() {
       </section>
 
       {/* ---------- MENTORES EM DESTAQUE ---------- */}
-      <motion.section
+      <Reveal
+        tag="section"
         aria-labelledby="destaque-title"
-        initial={{ opacity: 0, y: 16 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-80px' }}
-        transition={{ duration: 0.5 }}
         className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24"
       >
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -858,19 +822,12 @@ export function LandingMenteeView() {
             </p>
           )}
         </div>
-      </motion.section>
+      </Reveal>
 
       {/* ---------- CURSOS EM DESTAQUE ---------- */}
       {(coursesLoading || topCourses.length > 0) && (
-        <motion.section
-          ref={coursesSectionRef}
-          aria-labelledby="cursos-destaque-title"
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.5 }}
-          className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24"
-        >
+        <section ref={coursesSectionRef} aria-labelledby="cursos-destaque-title">
+          <Reveal className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
@@ -919,20 +876,14 @@ export function LandingMenteeView() {
                 ))
               : topCourses.map((c) => <FeaturedCourseCard key={c.id} course={c} />)}
           </div>
-        </motion.section>
+          </Reveal>
+        </section>
       )}
 
       {/* ---------- TRILHAS EM DESTAQUE ---------- */}
       {(tracksLoading || topTracks.length > 0) && (
-        <motion.section
-          ref={tracksSectionRef}
-          aria-labelledby="trilhas-destaque-title"
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.5 }}
-          className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24"
-        >
+        <section ref={tracksSectionRef} aria-labelledby="trilhas-destaque-title">
+          <Reveal className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
@@ -981,20 +932,14 @@ export function LandingMenteeView() {
                 ))
               : topTracks.map((t) => <FeaturedTrackCard key={t.id} track={t} />)}
           </div>
-        </motion.section>
+          </Reveal>
+        </section>
       )}
 
       {/* ---------- BIBLIOTECA EM DESTAQUE ---------- */}
       {(libraryLoading || topLibrary.length > 0) && (
-        <motion.section
-          ref={librarySectionRef}
-          aria-labelledby="biblioteca-destaque-title"
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.5 }}
-          className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24"
-        >
+        <section ref={librarySectionRef} aria-labelledby="biblioteca-destaque-title">
+          <Reveal className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
@@ -1034,7 +979,8 @@ export function LandingMenteeView() {
                 ))
               : topLibrary.map((item) => <FeaturedLibraryCard key={item.id} item={item} />)}
           </div>
-        </motion.section>
+          </Reveal>
+        </section>
       )}
 
       {/* ---------- A PLATAFORMA EM NÚMEROS (faixa dark emerald-950) ---------- */}
@@ -1043,11 +989,7 @@ export function LandingMenteeView() {
         aria-label="Números da plataforma"
         className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24"
       >
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.5 }}
+        <Reveal
           className="relative overflow-hidden rounded-3xl bg-emerald-950 px-6 py-12 sm:px-12 sm:py-14"
         >
 
@@ -1109,16 +1051,13 @@ export function LandingMenteeView() {
               )}
             </div>
           </dl>
-        </motion.div>
+        </Reveal>
       </section>
 
       {/* ---------- E MUITO MAIS (superpoderes transversais) ---------- */}
-      <motion.section
+      <Reveal
+        tag="section"
         aria-labelledby="extras-title"
-        initial={{ opacity: 0, y: 16 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-80px' }}
-        transition={{ duration: 0.5 }}
         className="border-y border-stone-200/70 bg-stone-50/60 dark:border-stone-800 dark:bg-stone-900/60"
       >
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-16 sm:py-20">
@@ -1139,14 +1078,7 @@ export function LandingMenteeView() {
 
           <ul className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {EXTRAS.map((extra, i) => (
-              <motion.li
-                key={extra.title}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-40px' }}
-                transition={{ duration: 0.4, delay: (i % 3) * 0.07 }}
-                className="min-w-0"
-              >
+              <Reveal key={extra.title} tag="li" delay={(i % 3) * 70} className="min-w-0">
                 <div className="group flex h-full items-start gap-3.5 rounded-2xl border border-stone-200 bg-white p-4 transition hover:border-emerald-300 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700 sm:p-5">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:group-hover:bg-emerald-900/30">
                     <extra.icon aria-hidden className="h-4.5 w-4.5" />
@@ -1156,19 +1088,16 @@ export function LandingMenteeView() {
                     <p className="mt-1 text-sm leading-relaxed text-stone-600 dark:text-stone-300">{extra.text}</p>
                   </span>
                 </div>
-              </motion.li>
+              </Reveal>
             ))}
           </ul>
         </div>
-      </motion.section>
+      </Reveal>
 
       {/* ---------- DEPOIMENTOS ---------- */}
-      <motion.section
+      <Reveal
+        tag="section"
         aria-labelledby="depoimentos-title"
-        initial={{ opacity: 0, y: 16 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-80px' }}
-        transition={{ duration: 0.5 }}
         className="border-y border-stone-200/70 bg-stone-50/60 dark:border-stone-800 dark:bg-stone-900/60"
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-24">
@@ -1221,15 +1150,12 @@ export function LandingMenteeView() {
             })}
           </div>
         </div>
-      </motion.section>
+      </Reveal>
 
-      {/* ---------- FAQ ---------- */}
-      <motion.section
+      {/* ---------- FAQ (details/summary nativo — zero JS) ---------- */}
+      <Reveal
+        tag="section"
         aria-labelledby="faq-title"
-        initial={{ opacity: 0, y: 16 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-80px' }}
-        transition={{ duration: 0.5 }}
         className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-16 sm:py-24"
       >
         <div className="mx-auto max-w-3xl">
@@ -1248,24 +1174,30 @@ export function LandingMenteeView() {
             </p>
           </div>
 
-          <Accordion
-            type="single"
-            collapsible
-            className="mt-8 rounded-2xl border border-stone-200 bg-white px-5 sm:px-6 dark:border-stone-800 dark:bg-stone-900"
-          >
-            {FAQS.map((faq, i) => (
-              <AccordionItem key={faq.q} value={`faq-${i}`} className="border-stone-100 dark:border-stone-800">
-                <AccordionTrigger className="py-5 text-left text-sm font-semibold text-stone-900 hover:no-underline sm:text-base dark:text-stone-50">
+          <div className="mt-8 overflow-hidden rounded-2xl border border-stone-200 bg-white px-5 sm:px-6 dark:border-stone-800 dark:bg-stone-900">
+            {FAQS.map((faq) => (
+              <details
+                key={faq.q}
+                name="mentorhub-faq"
+                className="mh-faq group border-stone-100 dark:border-stone-800 [&:not(:first-child)]:border-t"
+              >
+                <summary
+                  className="flex min-h-11 items-center justify-between gap-4 py-5 text-left text-sm font-semibold text-stone-900 sm:text-base dark:text-stone-50"
+                >
                   {faq.q}
-                </AccordionTrigger>
-                <AccordionContent className="pb-5 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
+                  <ChevronDown
+                    aria-hidden
+                    className="mh-faq-chevron h-4 w-4 shrink-0 text-stone-400 dark:text-stone-500"
+                  />
+                </summary>
+                <p className="pb-5 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
                   {faq.a}
-                </AccordionContent>
-              </AccordionItem>
+                </p>
+              </details>
             ))}
-          </Accordion>
+          </div>
         </div>
-      </motion.section>
+      </Reveal>
 
       {/* ---------- ACESSIBILIDADE À EDUCAÇÃO (impacto social / ESG) ---------- */}
       <section aria-labelledby="impacto-title" className="mt-4 bg-emerald-950 py-16 text-white sm:py-24">
@@ -1356,12 +1288,9 @@ export function LandingMenteeView() {
       </section>
 
       {/* ---------- CTA DUPLO FINAL ---------- */}
-      <motion.section
+      <Reveal
+        tag="section"
         aria-labelledby="cta-title"
-        initial={{ opacity: 0, y: 16 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-80px' }}
-        transition={{ duration: 0.5 }}
         className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 pt-2 sm:pb-24"
       >
         <div className="mx-auto max-w-2xl text-center">
@@ -1437,7 +1366,7 @@ export function LandingMenteeView() {
             </li>
           ))}
         </ul>
-      </motion.section>
+      </Reveal>
     </div>
   )
 }
@@ -1455,7 +1384,7 @@ function HeroRotator({
 }) {
   const [active, setActive] = useState(0)
   const [paused, setPaused] = useState(false)
-  const reducedMotion = useReducedMotion()
+  const reducedMotion = usePrefersReducedMotion()
   const slide = FORMATS[active]
 
   // Avanço automático — pausa no hover/foco e respeita quem prefere menos movimento
@@ -1480,15 +1409,8 @@ function HeroRotator({
       <div className="overflow-hidden rounded-[1.75rem] border border-stone-200/70 bg-white dark:border-stone-800 dark:bg-stone-900">
 
         <div className="px-6 pb-4 pt-6 sm:px-8 sm:pt-8">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={active}
-              initial={{ opacity: 0, y: reducedMotion ? 0 : 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: reducedMotion ? 0 : -10 }}
-              transition={{ duration: 0.28, ease: 'easeOut' }}
-              className="min-h-[17rem] sm:min-h-[16rem]"
-            >
+          {/* key={active} + animação CSS: troca de slide sem lib de animação */}
+          <div key={active} className="mh-slide-in min-h-[17rem] sm:min-h-[16rem]">
               <div className="flex items-center gap-3">
                 <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 dark:ring-emerald-900">
                   <slide.icon aria-hidden className="h-5 w-5" />
@@ -1599,8 +1521,7 @@ function HeroRotator({
                 {slide.cta}
                 <ChevronRight aria-hidden className="h-4 w-4" />
               </button>
-            </motion.div>
-          </AnimatePresence>
+          </div>
         </div>
 
         {/* Indicadores: um por formato */}

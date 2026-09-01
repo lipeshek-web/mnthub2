@@ -11,7 +11,7 @@ import { db } from '@/lib/db'
 //   MENTOR       → apenas itens do mentor alvo (criado pelo admin)
 // Cupons de mentor (scope MENTOR + mentorId setado) valem só nos itens dele.
 
-export type CouponKind = 'COURSE' | 'TRACK' | 'BUNDLE' | 'MEMBERSHIP' | 'BOOKING'
+export type CouponKind = 'COURSE' | 'TRACK' | 'BUNDLE' | 'MEMBERSHIP' | 'BOOKING' | 'SESSION'
 
 export interface CouponItemContext {
   kind: CouponKind
@@ -57,7 +57,7 @@ async function itemMatchesCategory(item: CouponItemContext, category: string): P
       })
       return (bundle?.items ?? []).some((i) => i.course.category === category)
     }
-    // MEMBERSHIP: categoria dentro das categorias do mentor (JSON array)
+    // MEMBERSHIP/SESSION: categoria dentro das categorias do mentor (JSON array)
     const mentor = await db.mentorProfile.findUnique({
       where: { id: item.mentorId },
       select: { categories: true },

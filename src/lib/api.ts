@@ -598,6 +598,18 @@ export const api = {
       { method: 'POST', body: JSON.stringify(data) }
     ),
 
+  // Reembolso: o aluno solicita, o admin aprova (estorna + revoga acesso) ou recusa
+  requestRefund: (orderId: string, data: { reason: string }) =>
+    request<{ ok: boolean; refundStatus: string }>(`/api/orders/${orderId}/refund-request`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  adminRefundDecision: (orderId: string, action: 'approve' | 'reject') =>
+    request<{ ok: boolean; status: string }>(`/api/admin/orders/${orderId}/refund`, {
+      method: 'PATCH',
+      body: JSON.stringify({ action }),
+    }),
+
   // Pagamentos (config do gateway + status de cobrança pendente)
   paymentsConfig: () => request<PaymentsConfigDTO>('/api/payments/config'),
   paymentStatus: (userId: string, paymentId: string) =>
@@ -689,7 +701,7 @@ export const api = {
     }),
   deleteCoupon: (id: string, userId: string) =>
     request<{ ok: boolean }>(`/api/coupons${qs({ userId, id })}`, { method: 'DELETE' }),
-  validateCoupon: (data: { code: string; userId?: string; courseId?: string; trackId?: string; bundleId?: string; membershipId?: string }) =>
+  validateCoupon: (data: { code: string; userId?: string; courseId?: string; trackId?: string; bundleId?: string; membershipId?: string; bookingId?: string }) =>
     request<CouponValidationDTO>('/api/coupons/validate', {
       method: 'POST',
       body: JSON.stringify(data),

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useSyncExternalStore, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { GraduationCap } from 'lucide-react'
 import { toast } from 'sonner'
@@ -8,13 +8,26 @@ import { Navbar } from '@/components/platform/navbar'
 import { MobileTabbar } from '@/components/platform/mobile-tabbar'
 import { PromoBar } from '@/components/platform/promo-bar'
 import { PlatformFooter } from '@/components/platform/footer'
-import { MarketplaceView } from '@/components/platform/marketplace'
-import { AuthView } from '@/components/platform/auth-view'
 import { LandingMenteeView } from '@/components/platform/landing-mentee'
+import { useMounted } from '@/hooks/use-mounted'
 import { useAppStore } from '@/lib/store'
 import { api } from '@/lib/api'
 import { captureAttributionFromUrl, cleanUrlParams, loadTrackingScripts, trackEvent } from '@/lib/tracking'
 import { captureRefCodeFromUrl } from '@/lib/referral'
+
+/**
+ * AuthView e Marketplace também são code-split: a landing (carga inicial)
+ * não deve pagar o peso de formulários de auth nem do Explorar (vídeo,
+ * filtros e framer-motion entram só quando o usuário navega para lá).
+ */
+const AuthView = dynamic(() => import('@/components/platform/auth-view').then((m) => m.AuthView), {
+  ssr: false,
+  loading: ViewLoading,
+})
+const MarketplaceView = dynamic(
+  () => import('@/components/platform/marketplace').then((m) => m.MarketplaceView),
+  { ssr: false, loading: ViewLoading }
+)
 
 /** Fallback enxuto enquanto um view pesado é baixado sob demanda */
 function ViewLoading() {
@@ -139,20 +152,18 @@ const LazyToaster = dynamic(
 
 export default function Home() {
   const view = useAppStore((s) => s.view)
-  const user = useAppStore((s) => s.user)
   const setUser = useAppStore((s) => s.setUser)
   const navigate = useAppStore((s) => s.navigate)
   const bootstrapped = useRef(false)
   const mainScrollRef = useRef<HTMLElement | null>(null)
 
-  // Detecta montagem no cliente sem setState em effect (hidratação segura
-  // com o estado persistido do zustand: no servidor, false).
-  const emptySubscribe = useCallback(() => () => {}, [])
-  const mounted = useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false
-  )
+  /* Hidratação segura: no SSR e no primeiro render do cliente mounted=false e o
+     usuário é tratado como convidado — o MESMO conteúdo que o servidor renderizou.
+     Resultado: a landing inteira vai no HTML estático (LCP no parse do HTML, sem
+     spinner), e a sessão/personalização entra logo após a hidratação. */
+  const mounted = useMounted()
+  const storeUser = useAppStore((s) => s.user)
+  const user = mounted ? storeUser : null
 
   // Bootstrap de tráfego: captura utm_*/gclid/fbclid, aplica links rastreáveis
   // (?mentor=slug | ?course=id) e carrega os pixels da plataforma (GA4/Meta).
@@ -258,23 +269,6 @@ export default function Home() {
 
   // Sala de aula e leitor: overlay tela cheia (imersão) cobrindo header/footer.
   const immersive = view.name === 'classroom' || view.name === 'reader'
-
-  if (!mounted) {
-    // Evita mismatch de hidratação com o estado persistido (usuário/logado)
-    return (
-      <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-white dark:bg-stone-950">
-        <span className="flex h-14 w-14 animate-pulse items-center justify-center rounded-2xl bg-emerald-700 text-white">
-          <GraduationCap className="h-7 w-7" />
-        </span>
-        <p className="text-base font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
-          Mentor<span className="text-emerald-700 dark:text-emerald-400">Hub</span>
-        </p>
-        <p aria-hidden className="text-xs text-stone-400 dark:text-stone-500">
-          preparando sua experiência...
-        </p>
-      </div>
-    )
-  }
 
   return (
     /* Shell tipo app: header e rodapé fora do fluxo de rolagem. O <main> é o

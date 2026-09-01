@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
 import {
   Bell,
   BellOff,
@@ -554,10 +553,8 @@ export function Navbar() {
         )}
       >
         {active && (
-          <motion.span
-            layoutId="navbar-nav-pill"
+          <span
             aria-hidden
-            transition={{ type: 'spring', bounce: 0.25, duration: 0.5 }}
             className="absolute inset-0 -z-10 rounded-full bg-emerald-50 dark:bg-emerald-900/30"
           />
         )}
@@ -725,20 +722,12 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Linha de busca mobile expansível */}
-      <AnimatePresence>
-        {mobileSearchOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="overflow-hidden border-t border-stone-100 bg-white md:hidden dark:border-stone-800 dark:bg-stone-950"
-          >
-            <div className="px-4 py-2.5">{searchField(true)}</div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Linha de busca mobile expansível (animação CSS, sem lib) */}
+      {mobileSearchOpen && (
+        <div className="mh-slide-down overflow-hidden border-t border-stone-100 bg-white md:hidden dark:border-stone-800 dark:bg-stone-950">
+          <div className="px-4 py-2.5">{searchField(true)}</div>
+        </div>
+      )}
     </header>
   )
 }

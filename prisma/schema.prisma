@@ -424,6 +424,11 @@ model Order {
 
   payments Payment[]
 
+  // Fluxo de reembolso: aluno solicita → admin aprova (estorna + revoga acesso) ou recusa
+  refundStatus      String?   // REQUESTED | APPROVED | REJECTED
+  refundReason      String?   // mensagem do aluno ao solicitar
+  refundRequestedAt DateTime?
+
   // Atribuição de tráfego (last-touch) — segregada por origem
   utmSource   String?
   utmMedium   String?

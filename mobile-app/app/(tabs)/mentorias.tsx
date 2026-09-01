@@ -1,0 +1,415 @@
+/**
+ * Aba Mentorias com dois segmentos:
+ * - Mentores: lista paginada com busca → detalhe do mentor (app/mentor/[id]).
+ * - Minhas sessões: agendamentos do aluno com StatusPill e cancelamento
+ *   (cancelBooking com confirmação) quando PENDING/CONFIRMED.
+ * Aceita o param ?segment=sessoes (usado pelo fluxo de agendamento).
+ */
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  cancelBooking,
+  errMessage,
+  listBookings,
+  listMentors,
+  type Booking,
+} from "../../src/lib/api";
+import { formatNaiveLong, formatPrice } from "../../src/lib/format";
+import { usePagedList } from "../../src/lib/usePagedList";
+import { theme } from "../../src/theme";
+import { Avatar } from "../../src/components/Avatar";
+import { EmptyState } from "../../src/components/EmptyState";
+import { ErrorBox } from "../../src/components/ErrorBox";
+import { LoadingList } from "../../src/components/LoadingList";
+import { MentorCard } from "../../src/components/MentorCard";
+import { Screen } from "../../src/components/Screen";
+import { SearchField } from "../../src/components/SearchField";
+import { StatusPill } from "../../src/components/StatusPill";
+
+type Segment = "mentores" | "sessoes";
+
+export default function MentorshipsScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ segment?: string }>();
+  const [segment, setSegment] = useState<Segment>(
+    params.segment === "sessoes" ? "sessoes" : "mentores"
+  );
+
+  useEffect(() => {
+    if (params.segment === "sessoes") setSegment("sessoes");
+  }, [params.segment]);
+
+  /* ------------------------------ Mentores ------------------------------ */
+
+  const [query, setQuery] = useState("");
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(query.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const mentors = usePagedList(
+    (page) => listMentors({ page, pageSize: 20, q: search || undefined }),
+    [search]
+  );
+
+  /* --------------------------- Minhas sessões --------------------------- */
+
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
+  const [bookingsRefreshing, setBookingsRefreshing] = useState(false);
+  const [bookingsError, setBookingsError] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const bookingsLoadedRef = useRef(false);
+
+  const loadBookings = useCallback(async (mode: "initial" | "refresh") => {
+    if (mode === "initial") setBookingsLoading(true);
+    else setBookingsRefreshing(true);
+    setBookingsError(null);
+    try {
+      const res = await listBookings();
+      setBookings(res.items);
+      bookingsLoadedRef.current = true;
+    } catch (err) {
+      setBookingsError(errMessage(err));
+    } finally {
+      setBookingsLoading(false);
+      setBookingsRefreshing(false);
+    }
+  }, []);
+
+  // Carrega as sessões na primeira vez que o segmento é aberto.
+  useEffect(() => {
+    if (segment === "sessoes" && !bookingsLoadedRef.current) {
+      void loadBookings("initial");
+    }
+  }, [segment, loadBookings]);
+
+  function confirmCancel(booking: Booking) {
+    Alert.alert(
+      "Cancelar sessão",
+      `Cancelar sua sessão com ${booking.mentor.name} em ${formatNaiveLong(booking.startsAt)}?`,
+      [
+        { text: "Voltar", style: "cancel" },
+        {
+          text: "Sim, cancelar",
+          style: "destructive",
+          onPress: () => void doCancel(booking),
+        },
+      ]
+    );
+  }
+
+  async function doCancel(booking: Booking) {
+    setCancellingId(booking.id);
+    try {
+      await cancelBooking(booking.id);
+      setBookings((prev) =>
+        prev.map((b): Booking => (b.id === booking.id ? { ...b, status: "CANCELLED" } : b))
+      );
+      // Revalida com o servidor para refletir o status oficial.
+      void loadBookings("refresh");
+    } catch (err) {
+      Alert.alert("Não foi possível cancelar", errMessage(err));
+    } finally {
+      setCancellingId(null);
+    }
+  }
+
+  /* ------------------------------- Render ------------------------------- */
+
+  return (
+    <Screen>
+      <View style={styles.segmentRow}>
+        <SegmentButton
+          label="Mentores"
+          icon="people-outline"
+          active={segment === "mentores"}
+          onPress={() => setSegment("mentores")}
+        />
+        <SegmentButton
+          label="Minhas sessões"
+          icon="calendar-outline"
+          active={segment === "sessoes"}
+          count={segment === "sessoes" ? bookings.length : undefined}
+          onPress={() => setSegment("sessoes")}
+        />
+      </View>
+
+      {segment === "mentores" ? (
+        <FlatList
+          style={styles.flex}
+          data={mentors.items}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <MentorCard mentor={item} onPress={() => router.push(`/mentor/${item.id}`)} />
+          )}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={mentors.refreshing}
+              onRefresh={mentors.refresh}
+              tintColor={theme.colors.accent}
+              colors={[theme.colors.accent]}
+              progressBackgroundColor={theme.colors.surface}
+            />
+          }
+          onEndReached={mentors.loadMore}
+          onEndReachedThreshold={0.4}
+          ListHeaderComponent={
+            <View style={styles.header}>
+              <SearchField
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Buscar mentor por nome ou área..."
+              />
+              {mentors.error && mentors.items.length > 0 ? (
+                <View style={styles.banner}>
+                  <ErrorBox compact message={mentors.error} onRetry={mentors.refresh} />
+                </View>
+              ) : null}
+            </View>
+          }
+          ListFooterComponent={mentors.loadingMore ? <LoadingList compact /> : null}
+          ListEmptyComponent={
+            mentors.loading ? (
+              <LoadingList label="Carregando mentores..." />
+            ) : mentors.error ? (
+              <ErrorBox message={mentors.error} onRetry={mentors.reload} />
+            ) : (
+              <EmptyState
+                icon="people-outline"
+                title="Nenhum mentor encontrado"
+                message={search ? "Tente buscar por outro nome ou área." : "Volte mais tarde — novos mentores chegam sempre."}
+                actionLabel={search ? "Limpar busca" : undefined}
+                onAction={search ? () => setQuery("") : undefined}
+              />
+            )
+          }
+        />
+      ) : (
+        <FlatList<Booking>
+          style={styles.flex}
+          data={bookings}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <BookingRow item={item} cancellingId={cancellingId} onCancel={confirmCancel} />}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={bookingsRefreshing}
+              onRefresh={() => void loadBookings("refresh")}
+              tintColor={theme.colors.accent}
+              colors={[theme.colors.accent]}
+              progressBackgroundColor={theme.colors.surface}
+            />
+          }
+          ListHeaderComponent={
+            bookingsError && bookings.length > 0 ? (
+              <View style={styles.banner}>
+                <ErrorBox compact message={bookingsError} onRetry={() => void loadBookings("refresh")} />
+              </View>
+            ) : null
+          }
+          ListEmptyComponent={
+            bookingsLoading ? (
+              <LoadingList label="Carregando suas sessões..." />
+            ) : bookingsError ? (
+              <ErrorBox message={bookingsError} onRetry={() => void loadBookings("initial")} />
+            ) : (
+              <EmptyState
+                icon="calendar-outline"
+                title="Nenhuma sessão agendada"
+                message="Encontre um mentor e agende sua mentoria 1:1."
+                actionLabel="Encontrar mentores"
+                onAction={() => setSegment("mentores")}
+              />
+            )
+          }
+        />
+      )}
+    </Screen>
+  );
+}
+
+/* --------------------------- Subcomponentes ---------------------------- */
+
+function SegmentButton({
+  label,
+  icon,
+  active,
+  count,
+  onPress,
+}: {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  active: boolean;
+  count?: number;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.segment, active ? styles.segmentActive : null]}
+      onPress={onPress}
+      activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+    >
+      <Ionicons name={icon} size={15} color={active ? theme.colors.accent : theme.colors.textFaint} />
+      <Text style={[styles.segmentText, active ? styles.segmentTextActive : null]} numberOfLines={1}>
+        {label}
+      </Text>
+      {typeof count === "number" && count > 0 ? (
+        <View style={[styles.segmentCount, active ? styles.segmentCountActive : null]}>
+          <Text style={[styles.segmentCountText, active ? styles.segmentCountTextActive : null]}>
+            {count}
+          </Text>
+        </View>
+      ) : null}
+    </TouchableOpacity>
+  );
+}
+
+function BookingRow({
+  item,
+  cancellingId,
+  onCancel,
+}: {
+  item: Booking;
+  cancellingId: string | null;
+  onCancel: (booking: Booking) => void;
+}) {
+  const cancellable = item.status === "PENDING" || item.status === "CONFIRMED";
+  const cancelling = cancellingId === item.id;
+  return (
+    <View style={styles.bookingCard}>
+      <Avatar uri={item.mentor.avatarUrl} name={item.mentor.name} size={46} />
+      <View style={styles.bookingInfo}>
+        <View style={styles.bookingTopRow}>
+          <Text style={styles.bookingName} numberOfLines={1}>
+            {item.mentor.name}
+          </Text>
+          <StatusPill status={item.status} />
+        </View>
+        <Text style={styles.bookingTopic} numberOfLines={2}>
+          {item.topic}
+        </Text>
+        <Text style={styles.bookingWhen}>
+          {formatNaiveLong(item.startsAt)} · {item.durationMin} min
+        </Text>
+        {item.price > 0 ? <Text style={styles.bookingPrice}>{formatPrice(item.price)}</Text> : null}
+        {cancellable ? (
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => onCancel(item)}
+            disabled={cancelling}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={`Cancelar sessão com ${item.mentor.name}`}
+          >
+            {cancelling ? (
+              <ActivityIndicator size="small" color={theme.colors.danger} />
+            ) : (
+              <Ionicons name="close-circle-outline" size={15} color={theme.colors.danger} />
+            )}
+            <Text style={styles.cancelText}>Cancelar sessão</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+/* ------------------------------- Estilos ------------------------------- */
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  segmentRow: {
+    flexDirection: "row",
+    gap: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.md,
+  },
+  segment: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  segmentActive: {
+    backgroundColor: theme.colors.accentSoft,
+    borderColor: theme.colors.accentBorder,
+  },
+  segmentText: { color: theme.colors.textMuted, fontSize: 13, fontWeight: "600", flexShrink: 1 },
+  segmentTextActive: { color: theme.colors.accent },
+  segmentCount: {
+    minWidth: 20,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.surfaceAlt,
+    alignItems: "center",
+  },
+  segmentCountActive: { backgroundColor: theme.colors.accentStrong },
+  segmentCountText: { color: theme.colors.textMuted, fontSize: 11, fontWeight: "700" },
+  segmentCountTextActive: { color: theme.colors.bg },
+  listContent: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.xxl,
+  },
+  header: { gap: theme.spacing.md, marginBottom: theme.spacing.md },
+  banner: { marginTop: -2 },
+  bookingCard: {
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    marginBottom: theme.spacing.md,
+  },
+  bookingInfo: { flex: 1, gap: 4, marginTop: theme.spacing.sm },
+  bookingTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: theme.spacing.sm,
+  },
+  bookingName: { color: theme.colors.text, fontSize: 14, fontWeight: "600", flex: 1 },
+  bookingTopic: { color: theme.colors.textMuted, fontSize: 13, lineHeight: 18 },
+  bookingWhen: { color: theme.colors.textFaint, fontSize: 12, fontWeight: "600" },
+  bookingPrice: { color: theme.colors.text, fontSize: 12, fontWeight: "700" },
+  cancelButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 5,
+    marginTop: theme.spacing.xs,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.dangerSoft,
+    borderWidth: 1,
+    borderColor: theme.colors.dangerBorder,
+  },
+  cancelText: { color: theme.colors.dangerText, fontSize: 12, fontWeight: "700" },
+});

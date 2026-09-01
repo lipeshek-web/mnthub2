@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Check, Copy, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
+import { usePrefersReducedMotion } from '@/hooks/use-in-view-once'
 import type { PromoBarItemDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -21,6 +21,8 @@ export function PromoBar() {
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
   const [copied, setCopied] = useState(false)
+  // localStorage lido no inicializador lazy: PromoBar renderiza null enquanto
+  // `items` é null (SSR e primeira renderização), então não há mismatch.
   const [dismissed, setDismissed] = useState<string | null>(() => {
     try {
       return window.localStorage.getItem(DISMISS_KEY)
@@ -28,7 +30,7 @@ export function PromoBar() {
       return null
     }
   })
-  const reducedMotion = useReducedMotion()
+  const reducedMotion = usePrefersReducedMotion()
 
   useEffect(() => {
     let active = true
@@ -92,15 +94,11 @@ export function PromoBar() {
       onBlurCapture={() => setPaused(false)}
     >
       <div className="mx-auto flex h-10 max-w-7xl items-center justify-center px-10 sm:px-12">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.p
-            key={current.id}
-            initial={{ opacity: 0, y: reducedMotion ? 0 : 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: reducedMotion ? 0 : -6 }}
-            transition={{ duration: 0.24, ease: 'easeOut' }}
-            className="flex min-w-0 items-center justify-center gap-2 text-xs leading-none sm:text-sm"
-          >
+        {/* key={current.id} + animação CSS: troca de mensagem sem lib de animação */}
+        <p
+          key={current.id}
+          className="mh-slide-in flex min-w-0 items-center justify-center gap-2 text-xs leading-none sm:text-sm"
+        >
             <span className="truncate font-medium">{current.message}</span>
             <span className="hidden shrink-0 text-white/50 sm:inline">·</span>
             <span className="hidden shrink-0 text-white/60 md:inline">{current.scopeLabel}</span>
@@ -116,8 +114,7 @@ export function PromoBar() {
               {copied ? <Check aria-hidden className="h-3 w-3" /> : <Copy aria-hidden className="h-3 w-3" />}
               {current.code}
             </button>
-          </motion.p>
-        </AnimatePresence>
+        </p>
 
         {/* Indicadores discretos quando há mais de uma promoção */}
         {items && items.length > 1 && (
