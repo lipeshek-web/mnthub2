@@ -23,6 +23,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         orders: { select: { status: true } },
       },
     })
+    // mentor.userId é necessário para a sala saber quem é o anfitrião (mentor)
     if (!booking) return NextResponse.json({ error: 'Sessão não encontrada.' }, { status: 404 })
 
     const allowed =
@@ -41,8 +42,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         : booking.orders.some((o) => o.status === 'PENDING')
           ? 'PENDING'
           : 'UNPAID',
+      notes: booking.notes,
+      meetingRoom: booking.meetingRoom,
       mentor: {
         id: booking.mentor.id,
+        userId: booking.mentor.userId,
         name: booking.mentor.user.name,
         avatarUrl: booking.mentor.user.avatarUrl,
       },

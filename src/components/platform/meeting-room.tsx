@@ -1,16 +1,24 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+/**
+ * Sala de reunião (MentorHub Live) — shell da sessão 1:1.
+ *
+ * O vídeo vive em meeting-stage.tsx (WebRTC próprio + sinalização socket.io),
+ * carregado sob demanda. O papel de anfitrião (mentor) é definido pelo BACKEND
+ * no token da sala — nunca por quem entra (o antigo "eu sou o anfitrião" do
+ * Jitsi, que aparecia igual para mentor e aluno, foi eliminado de vez).
+ */
+
+import { useCallback, useEffect, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import {
   ArrowLeft,
   CalendarDays,
   CheckCircle2,
   Copy,
-  ExternalLink,
   Info,
   Lightbulb,
   PhoneOff,
-  ShieldCheck,
   Timer,
   Video,
 } from 'lucide-react'
@@ -42,13 +50,33 @@ import {
 } from '@/lib/helpers'
 import { crossZoneHint } from '@/lib/tz'
 import { useAppStore } from '@/lib/store'
-import type { BookingDTO } from '@/lib/types'
 import { toast } from 'sonner'
+
+/** Palco de vídeo (WebRTC + socket.io) entra no bundle só quando a sala abre */
+const MeetingStage = dynamic(
+  () => import('@/components/platform/meeting-stage').then((m) => m.MeetingStage),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-[46vh] min-h-[300px] items-center justify-center rounded-2xl border border-stone-800 bg-stone-950 sm:h-[56vh]">
+        <div className="flex flex-col items-center gap-3">
+          <span className="flex h-12 w-12 animate-pulse items-center justify-center rounded-2xl bg-emerald-600/20 text-emerald-400">
+            <Video className="h-6 w-6" />
+          </span>
+          <p className="text-sm text-stone-400">abrindo a sala…</p>
+        </div>
+      </div>
+    ),
+  }
+)
+
+/** Tipo de retorno do GET /api/bookings/[id] (detalhe da sessão) */
+type BookingDetail = Awaited<ReturnType<(typeof api)['getBooking']>>
 
 export function MeetingRoomView({ bookingId }: { bookingId: string }) {
   const navigate = useAppStore((s) => s.navigate)
   const user = useAppStore((s) => s.user)
-  const [booking, setBooking] = useState<BookingDTO | null>(null)
+  const [booking, setBooking] = useState<BookingDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [localNotes, setLocalNotes] = useState('')
@@ -70,20 +98,14 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
     setNoteStatus('idle')
     setLocalNotes('')
     try {
-      const all = await api.listBookings(user.id)
-      const found = all.find((b) => b.id === bookingId) ?? null
-      if (found) {
-        setBooking(found)
-        // Anotações privadas do usuário logado (não confundir com booking.notes,
-        // que é o contexto enviado na CRIAÇÃO do agendamento)
-        try {
-          const n = await api.getMeetingNotes(bookingId)
-          if (!dirtyRef.current) setLocalNotes(n.body ?? '')
-        } catch {
-          /* segue com vazio */
-        }
-      } else {
-        setNotFound(true)
+      // Detalhe direto (1 requisição) — antes listava TODAS as sessões para achar uma
+      const found = await api.getBooking(bookingId)
+      setBooking(found)
+      try {
+        const n = await api.getMeetingNotes(bookingId)
+        if (!dirtyRef.current) setLocalNotes(n.body ?? '')
+      } catch {
+        /* segue com vazio */
       }
     } catch {
       setNotFound(true)
@@ -134,10 +156,17 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
     }
   }, [bookingId])
 
-  const roomUrl = useMemo(() => {
-    if (!booking || !user) return ''
-    return `https://meet.jit.si/${booking.meetingRoom}#userInfo.displayName=${encodeURIComponent(user.name)}`
-  }, [booking, user])
+  const inviteUrl = () =>
+    typeof window === 'undefined' ? '' : `${window.location.origin}/?booking=${bookingId}`
+
+  const copyInvite = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl())
+      toast.success('Link de convite da sala copiado!')
+    } catch {
+      toast.error('Não foi possível copiar o link.')
+    }
+  }
 
   const endSession = async () => {
     if (!booking || !user) return
@@ -150,15 +179,6 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
       toast.error(e instanceof Error ? e.message : 'Erro ao encerrar sessão')
     } finally {
       setEnding(false)
-    }
-  }
-
-  const copyRoom = async () => {
-    try {
-      await navigator.clipboard.writeText(roomUrl)
-      toast.success('Link da sala copiado!')
-    } catch {
-      toast.error('Não foi possível copiar o link.')
     }
   }
 
@@ -215,8 +235,12 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
   const blocked = booking.status === 'CANCELLED' || booking.status === 'COMPLETED'
   const tzHint = crossZoneHint(booking.startsAt)
 
+  const peerIsMentor = !isMentorSide
+  const peerName = isMentorSide ? booking.mentee.name : booking.mentor.name
+  const selfRole = isMentorSide ? 'HOST' : 'GUEST'
+
   return (
-    <div className="mx-auto max-w-7xl px-4 pb-14 pt-6">
+    <div className="mx-auto max-w-7xl px-4 pb-10 pt-6 sm:px-6">
       <button
         onClick={() => navigate({ name: 'dashboard' })}
         className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 transition-colors hover:text-emerald-700 dark:text-stone-400 dark:hover:text-emerald-300"
@@ -248,7 +272,7 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
         </div>
       )}
 
-      {/* ---------- VÍDEO ---------- */}
+      {/* ---------- SALA DE VÍDEO (MentorHub Live) ---------- */}
       <section aria-label="Sala de reunião por vídeo" className="mt-5">
         {blocked ? (
           <div className="flex h-[56vh] flex-col items-center justify-center gap-3 rounded-2xl border border-stone-200 bg-stone-100 text-center dark:border-stone-800 dark:bg-stone-800">
@@ -266,35 +290,36 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
             </Button>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-stone-800 bg-stone-950 shadow-xl">
-            <div className="flex items-center gap-2 border-b border-stone-800 px-4 py-2.5 text-xs text-stone-300">
-              <span className="flex h-2 w-2 animate-pulse rounded-full bg-emerald-400" aria-hidden />
-              Sala de vídeo segura · MentorHub Meetings (Jitsi)
-              <span className="ml-auto hidden items-center gap-1 sm:inline-flex">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> criptografada
-              </span>
-            </div>
-            <iframe
-              title={`Reunião: ${booking.topic}`}
-              src={roomUrl}
-              allow="camera; microphone; display-capture; fullscreen; clipboard-read; clipboard-write; autoplay"
-              className="h-[56vh] min-h-[380px] w-full bg-stone-900"
-            />
-          </div>
+          <MeetingStage
+            bookingId={booking.id}
+            role={selfRole}
+            selfName={user.name}
+            peerName={peerName}
+            peerIsMentor={peerIsMentor}
+          />
         )}
       </section>
 
       {/* ---------- PAINÉIS ---------- */}
       <div className="mt-6 grid gap-5 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardContent className="space-y-5 p-6">
-            <div className="flex flex-wrap items-center gap-6">
+          <CardContent className="space-y-5 p-4 sm:p-6">
+            <div className="flex flex-wrap items-center gap-4 sm:gap-6">
               <div className="flex items-center gap-3">
                 <Avatar name={booking.mentor.name} size="lg" />
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Mentor</p>
+                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                    Mentor
+                    <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
+                      Anfitrião
+                    </span>
+                  </p>
                   <p className="font-bold text-stone-900 dark:text-stone-50">{booking.mentor.name}</p>
-                  <p className="max-w-52 truncate text-xs text-muted-foreground">{booking.mentor.headline}</p>
+                  {isMentorSide && (
+                    <p className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
+                      (você — encerra a sessão ao terminar)
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="hidden h-12 w-px bg-stone-200 sm:block" aria-hidden />
@@ -304,6 +329,9 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
                   <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">Mentorado</p>
                   <p className="font-bold text-stone-900 dark:text-stone-50">{booking.mentee.name}</p>
                   <p className="text-xs text-muted-foreground">{currencyBRL(booking.price)} pela sessão</p>
+                  {!isMentorSide && (
+                    <p className="text-[11px] font-medium text-stone-500 dark:text-stone-400">(você)</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -363,7 +391,7 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
 
         <div className="space-y-5">
           <Card>
-            <CardContent className="space-y-3 p-6">
+            <CardContent className="space-y-3 p-4 sm:p-6">
               <p className="flex items-center gap-1.5 text-sm font-bold">
                 <Lightbulb className="h-4 w-4 text-amber-500" /> Dicas para uma boa reunião
               </p>
@@ -381,26 +409,23 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
                   Compartilhe sua tela para revisar materiais juntos.
                 </li>
               </ul>
-              <Button variant="outline" className="w-full" onClick={copyRoom}>
-                <Copy className="h-4 w-4" /> Copiar link da sala
+              <Button variant="outline" className="w-full" onClick={copyInvite}>
+                <Copy className="h-4 w-4" /> Copiar convite da sala
               </Button>
-              {!blocked && (
-                <a href={roomUrl} target="_blank" rel="noreferrer" className="block">
-                  <Button variant="ghost" className="w-full text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-300">
-                    <ExternalLink className="h-4 w-4" /> Abrir sala em nova aba
-                  </Button>
-                </a>
-              )}
+              <p className="text-center text-[11px] text-muted-foreground">
+                Envie o convite para a outra pessoa — ao entrar, ela cai direto aqui, sem senha e sem
+                login externo.
+              </p>
             </CardContent>
           </Card>
 
           {isMentorSide && booking.status === 'CONFIRMED' && (
             <Card className="border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/50">
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <p className="font-bold text-emerald-900 dark:text-emerald-200">Sessão em andamento?</p>
                 <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-300">
-                  Quando a reunião terminar, marque-a como concluída para liberar a avaliação do
-                  mentorado.
+                  Como anfitrião, quando a reunião terminar marque-a como concluída para liberar a
+                  avaliação do mentorado.
                 </p>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>

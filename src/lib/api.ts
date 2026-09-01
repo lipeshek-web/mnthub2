@@ -241,9 +241,22 @@ export const api = {
       status: string
       price: number
       payStatus: 'PAID' | 'PENDING' | 'UNPAID'
-      mentor: { id: string; name: string; avatarUrl: string | null }
+      notes: string | null
+      meetingRoom: string
+      mentor: { id: string; userId: string; name: string; avatarUrl: string | null }
       mentee: { id: string; name: string }
     }>(`/api/bookings/${id}`),
+
+  // Credencial da sala de vídeo própria (MentorHub Live): token HMAC assinado
+  // pelo backend com papel (HOST = mentor) — o cliente nunca se autodeclara.
+  getMeetingToken: (id: string) =>
+    request<{
+      token: string
+      room: string
+      role: 'HOST' | 'GUEST'
+      wsPort: number
+      expiresAt: string
+    }>(`/api/bookings/${id}/meeting-token`),
 
   // Baixa o .ics via fetch autenticado (a rota exige sessão — <a href> não
   // anexa Authorization) e dispara o download no browser.

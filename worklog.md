@@ -1877,3 +1877,26 @@ Stage Summary:
 - Sprint 3 fechado: conta recuperável ("esqueci minha senha" completo com token de uso único), canal de e-mail transacional real (fila + SMTP opcional + inspeção admin), sessões com conversão de fuso para quem está fora do America/Bahia, navegação mobile estilo app (tab bar com badge de não lidas) e anotações de reunião privadas que sobrevivem a refresh — cada participante com a sua
 - NOTA: sem admin no banco, a aba E-mails foi validada por API (18 checks incluem outbox direto) e não por UI logada; smoke-w31 usa 3 chamadas forgot — respeitar janela de 10 min entre execuções (rate limit 3/10min/IP)
 - Pendências futuras (Sprint 4): Q&A inbox, SEO por tela, centro de certificados, editar conta, leaderboard XP, filtros avançados; renewal automático Asaas (herdado)
+
+---
+Task ID: W-32
+Agent: Z.ai Code (main) + agent-browser (E2E 2 sessões)
+Task: Correção de bugs da reunião — "anfitrião" aparecendo para todos (mentor e aluno) + melhorias da sala de vídeo
+
+Work Log:
+- DIAGNÓSTICO (browser probe): meet.jit.si público agora prende salas anônimas em lobby — "The conference has not yet started because no moderators have yet arrived. If you'd like to become a moderator please log-in" — a MESMA tela de virar anfitrião aparecia para mentor E aluno; conferência nem iniciava sem login Jitsi. Não é bug do nosso código: é a política atual do serviço de terceiros
+- DECISÃO: sala de vídeo PRÓPRIA (MentorHub Live) — WebRTC P2P 1:1 + sinalização socket.io; papel (anfitrião) definido pelo BACKEND, eliminando de vez o "eu sou o anfitrião"
+- MINI-SERVICE mini-services/meeting-service (porta 3004, bun --hot, socket.io): salas por bookingId (máx 2), autenticação por token HMAC-SHA256 assinado pela API Next (payload b64url: sala/userId/nome/role/exp 12h, verify timingSafeEqual); reconexão substitui o assento do mesmo uid (refresh nunca dá "sala cheia"); relay de offer/answer/candidate/media-state; peer-joined/peer-left; leave explícito
+- API GET /api/bookings/[id]/meeting-token: sessão obrigatória, só mentor/mentoreado/ADMIN (403 para outros — testado), CANCELLED/COMPLETED 403; role HOST=mentor decidido no servidor; segredo MEETING_SECRET (default dev) compartilhado com o serviço
+- GET /api/bookings/[id] (detalhe): +notes, +meetingRoom, +mentor.userId (sala usa 1 request em vez de listar TODAS as sessões)
+- FRONTEND meeting-stage.tsx (novo, dynamic import do meeting-room): perfect negotiation (HOST impolite / GUEST polite; ofertas só quando o par está na sala — sem offer perdida no vazio; rollback implícito), dataChannel mh-control garante negociação mesmo sem mídia, ICE (Google STUN ×2 + TURN público openrelay como fallback), getUserMedia com degradação vídeo+áudio → só áudio → entrada sem mídia (banner claro + ativar depois pelo toggle), screen share via replaceTrack (renegociado só se não houver sender), toggles mic/cam com sync de badges no par, cronômetro da sessão, retry em falha de ICE (teardown + rejoin), socket reconnection com re-join
+- UI: palco de vídeo h-[46vh] mobile / 56vh desktop com PiP local espelhado; pill de status (preparando/aguardando/conectando/ao vivo+cronômetro/falhou); badge "ANFITRIÃO · MENTOR" no tile do par (papel do token) e "Você · Anfitrião" no PiP do mentor; barra de CONTROLES STICKY (mic/cam/tela/sair) com bottom-[calc(4rem+env(safe-area-inset-bottom))] md:bottom-0 — nunca rola para fora e fica acima da tab bar no mobile (vídeo como foco principal)
+- meeting-room.tsx (reescrito): usa api.getBooking (1 request), notes privadas com autosave mantidas, cards de participantes com quem é anfitrião/você, "Copiar convite" agora gera deep link ?booking=<id> (novo bootstrap em page.tsx + preservado em cleanUrlParams); Jitsi removido por completo (meetingRoom segue só para ICS/histórico)
+- socket.io-client@4.8.3 instalado no app; serviço roda em :3004 (gateway via ?XTransformPort=3004, path '/')
+- VALIDAÇÃO: lint 0/0; tsc 0 erros em src/ (fix disconnectSockets no serviço); curl: mentee=GUEST, mentor=HOST, estranho=403; E2E 2 sessões agent-browser via gateway :81: deep link → login gate → sala; service log "Ana Souza (GUEST)... 1 online" e "Carlos Ferreira (HOST)... 2 online"; AMBOS "ao vivo · Conectado" (ICE conectado via datachannel em headless, mídia negada com degradação correta); badge ANFITRIÃO · MENTOR visível no tile do par; intruso bloqueado 403; Sair → "Carlos Ferreira saiu — aguardando retorno…" no par; mobile 390px: barra sticky com bottom=64px (exatamente acima da tab bar), vídeo dominante; desktop 1280px: controles fixos no rodapé da viewport; dev.log sem erros novos
+- MEETING_SECRET: default 'mentorhub-meeting-dev-secret' em ambos os lados; em produção definir a mesma env var no Next e no serviço
+
+Stage Summary:
+- Bug do anfitrião eliminado na raiz: não existe mais "declarar que é anfitrião" — o papel vem assinado do backend no token (HOST=mentor), exibido como badge para ambos; sala própria P2P sem lobby, sem login externo e sem serviço de terceiros mudando política
+- Sala com UX de app de chamadas real: controles sticky (mobile acima da tab bar, desktop no rodapé), vídeo como foco, badges de mídia do par, cronômetro, degradação graciosa de permissões e reconexão automática
+- E2E duplo aprovado (mentor + aluno simultâneos via gateway), convite por deep link ?booking= funcionando

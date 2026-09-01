@@ -165,6 +165,7 @@ export default function Home() {
     const courseId = sp.get('course')?.trim()
     const certCode = sp.get('cert')?.trim()
     const resetToken = sp.get('reset')?.trim()
+    const bookingId = sp.get('booking')?.trim()
 
     // 1. Atribuição (last non-direct click, janela de 7 dias)
     captureAttributionFromUrl(mentorSlug)
@@ -183,10 +184,13 @@ export default function Home() {
       navigate({ name: 'certificate', code: certCode })
     } else if (resetToken) {
       navigate({ name: 'auth', mode: 'reset', resetToken })
+    } else if (bookingId) {
+      // Convite da sala de reunião (MentorHub Live): cai direto na sessão
+      navigate({ name: 'meeting', bookingId })
     }
     trackEvent('page_view')
 
-    // 4. Limpa utms da barra de endereço (preserva mentor/course/cert p/ refresh)
+    // 4. Limpa utms da barra de endereço (preserva mentor/course/cert/reset/booking p/ refresh)
     cleanUrlParams()
   }, [])
 

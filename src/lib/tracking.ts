@@ -201,7 +201,7 @@ export function cleanUrlParams() {
     const url = new URL(window.location.href)
     const keep = new URLSearchParams()
     url.searchParams.forEach((v, k) => {
-      if (k === 'mentor' || k === 'course' || k === 'reset') keep.set(k, v)
+      if (k === 'mentor' || k === 'course' || k === 'reset' || k === 'booking') keep.set(k, v)
     })
     const qs = keep.toString()
     window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
