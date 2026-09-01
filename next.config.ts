@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Módulos nativos/externos do driver Turso-libSQL (modo nuvem do banco)
+  serverExternalPackages: ["@libsql/client", "libsql", "@prisma/adapter-libsql"],
   // Não vazar a tecnologia do servidor
   poweredByHeader: false,
   // Cabeçalhos de segurança em todas as rotas

@@ -34,6 +34,8 @@ export async function notify(input: {
     | 'inactive_reminder'
     | 'welcome'
     | 'goal_achieved'
+    | 'question_new'
+    | 'question_answered'
   title: string
   body?: string | null
   linkView?: 'dashboard' | 'course' | 'onboarding' | 'messages' | 'referrals' | null

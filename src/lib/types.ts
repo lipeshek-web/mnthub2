@@ -224,6 +224,31 @@ export interface LessonQuestionDTO {
   isMine: boolean
 }
 
+/** Pergunta de aula na caixa de entrada do mentor (com contexto curso/aula) */
+export interface MentorQuestionDTO {
+  id: string
+  body: string
+  answer: string | null
+  answeredAt: string | null
+  createdAt: string
+  author: { id: string; name: string; avatarUrl: string | null }
+  course: { id: string; title: string }
+  lesson: { id: string; title: string }
+}
+
+export interface MentorQuestionsResponseDTO {
+  counts: { total: number; pending: number; answered: number }
+  items: MentorQuestionDTO[]
+}
+
+/** Estado de persistência (aba Dados do admin) */
+export interface PersistenceStatusDTO {
+  mode: 'local' | 'turso'
+  dbPath: string | null
+  dbSizeBytes: number
+  backups: { file: string; sizeBytes: number; createdAt: string; reason: string | null }[]
+}
+
 export interface LessonNoteDTO {
   body: string
   updatedAt: string | null

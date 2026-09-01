@@ -30,11 +30,13 @@ import type {
   LessonAttachmentDTO,
   LessonNoteDTO,
   LessonQuestionDTO,
+  MentorQuestionsResponseDTO,
   MessageDTO,
   MembershipDTO,
   PaymentStatusDTO,
   PaymentsConfigDTO,
   PendingPaymentDTO,
+  PersistenceStatusDTO,
   PlatformCouponDTO,
   PromoBarItemDTO,
   ReminderRunDTO,
@@ -447,6 +449,9 @@ export const api = {
     request<EnrolledCourseDTO[]>(`/api/enrollments${qs({ userId })}`),
 
   // Classroom pro: Q&A e anotações da aula
+  /** Caixa de entrada de dúvidas do painel do mentor (todas as aulas, via sessão) */
+  listMentorQuestions: (params: { status?: 'pending' | 'answered' | 'all' }) =>
+    request<MentorQuestionsResponseDTO>(`/api/mentor/questions${qs(params)}`),
   listLessonQuestions: (lessonId: string, userId: string) =>
     request<LessonQuestionDTO[]>(`/api/lessons/${lessonId}/questions${qs({ userId })}`),
   askLessonQuestion: (lessonId: string, data: { userId: string; body: string }) =>
@@ -785,6 +790,48 @@ export const api = {
   admin: {
     stats: (token: string) =>
       request<AdminStatsDTO>('/api/admin/stats', { headers: { 'x-admin-token': token } }),
+
+    // Persistência: status, snapshot, exportação JSON e restauração
+    persistence: (token: string) =>
+      request<PersistenceStatusDTO>('/api/admin/backup', {
+        headers: { 'x-admin-token': token },
+      }),
+    createBackup: (token: string) =>
+      request<{ ok: boolean } & PersistenceStatusDTO>('/api/admin/backup', {
+        method: 'POST',
+        headers: { 'x-admin-token': token },
+      }),
+    restoreBackup: (token: string, file: string) =>
+      request<{ ok: boolean; restoredFrom: string; safetyBackup: string | null; note: string } & PersistenceStatusDTO>(
+        '/api/admin/backup',
+        { method: 'PUT', headers: { 'x-admin-token': token }, body: JSON.stringify({ file }) }
+      ),
+    /** Baixa a exportação JSON completa (fetch autenticado -> download) */
+    exportJson: async (token: string) => {
+      const res = await fetch('/api/admin/backup?export=json', {
+        headers: { 'x-admin-token': token },
+        cache: 'no-store',
+      })
+      if (!res.ok) {
+        let message = 'Falha na exportação.'
+        try {
+          const j = (await res.json()) as { error?: string }
+          if (j.error) message = j.error
+        } catch {
+          /* ignora */
+        }
+        throw new Error(message)
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `mentorhub-export-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    },
 
     users: (token: string, params: { q?: string; page?: number }) =>
       request<AdminUsersResponseDTO>(`/api/admin/users${qs({ ...params })}`, {

@@ -32,6 +32,7 @@ import {
   Loader2,
   LogIn,
   Megaphone,
+  MessageCircleQuestion,
   Newspaper,
   Paperclip,
   PauseCircle,
@@ -143,6 +144,8 @@ import type {
   LibraryItemDTO,
   LessonAttachmentDTO,
   MentorDetailDTO,
+  MentorQuestionDTO,
+  MentorQuestionsResponseDTO,
   QuizDTO,
   SocialLinksDTO,
   TrackingStatsDTO,
@@ -3706,6 +3709,293 @@ function BenefitCard({ icon: Icon, title, text }: { icon: LucideIcon; title: str
   )
 }
 
+// ---------- Aba Perguntas (caixa de entrada de dúvidas das aulas) ----------
+
+/** "08/02 às 14:30" a partir de um ISO — sem depender de libs de data */
+function shortWhen(iso: string): string {
+  const d = new Date(iso)
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  return `${day}/${month} às ${time}`
+}
+
+function QuestionsInbox({
+  userId,
+  courses,
+  onPendingChange,
+}: {
+  userId: string
+  courses: CourseListItemDTO[]
+  onPendingChange?: (pending: number) => void
+}) {
+  const navigate = useAppStore((s) => s.navigate)
+  const [data, setData] = useState<MentorQuestionsResponseDTO | null>(null)
+  const [status, setStatus] = useState<'pending' | 'answered' | 'all'>('pending')
+  const [courseFilter, setCourseFilter] = useState<string>('all')
+  const [error, setError] = useState<string | null>(null)
+  const [answerDraft, setAnswerDraft] = useState<Record<string, string>>({})
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [answeringId, setAnsweringId] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    try {
+      const res = await api.listMentorQuestions({ status })
+      setData(res)
+      setError(null)
+      onPendingChange?.(res.counts.pending)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível carregar as perguntas.')
+      setData({ counts: { total: 0, pending: 0, answered: 0 }, items: [] })
+    }
+  }, [status, onPendingChange])
+
+  useEffect(() => {
+    setData(null)
+    void load()
+  }, [load])
+
+  const submitAnswer = async (question: MentorQuestionDTO) => {
+    const text = (answerDraft[question.id] ?? '').trim()
+    if (text.length < 2) {
+      toast.error('Escreva a resposta antes de enviar.')
+      return
+    }
+    setAnsweringId(question.id)
+    try {
+      await api.answerQuestion(question.id, { userId, answer: text })
+      toast.success('Resposta publicada! O aluno foi notificado.')
+      setAnswerDraft((prev) => ({ ...prev, [question.id]: '' }))
+      setEditingId(null)
+      await load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível responder.')
+    } finally {
+      setAnsweringId(null)
+    }
+  }
+
+  const counts = data?.counts ?? { total: 0, pending: 0, answered: 0 }
+  const items = (data?.items ?? []).filter(
+    (q) => courseFilter === 'all' || q.course.id === courseFilter
+  )
+
+  return (
+    <div className="flex min-w-0 flex-col gap-4">
+      {/* Contadores */}
+      <div className="grid grid-cols-3 gap-3">
+        <button
+          type="button"
+          onClick={() => setStatus('pending')}
+          aria-label="Ver perguntas pendentes"
+          className={cn(
+            'min-w-0 rounded-2xl border p-4 text-left transition-colors',
+            status === 'pending'
+              ? 'border-amber-300 dark:border-amber-700 bg-amber-50/70 dark:bg-amber-950/40'
+              : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 hover:border-amber-200 dark:hover:border-amber-800'
+          )}
+        >
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
+            Pendentes
+          </span>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-amber-700 dark:text-amber-400">
+            {counts.pending}
+          </p>
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatus('answered')}
+          aria-label="Ver perguntas respondidas"
+          className={cn(
+            'min-w-0 rounded-2xl border p-4 text-left transition-colors',
+            status === 'answered'
+              ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50/70 dark:bg-emerald-950/40'
+              : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 hover:border-emerald-200 dark:hover:border-emerald-800'
+          )}
+        >
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
+            Respondidas
+          </span>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+            {counts.answered}
+          </p>
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatus('all')}
+          aria-label="Ver todas as perguntas"
+          className={cn(
+            'min-w-0 rounded-2xl border p-4 text-left transition-colors',
+            status === 'all'
+              ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50/70 dark:bg-emerald-950/40'
+              : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 hover:border-emerald-200 dark:hover:border-emerald-800'
+          )}
+        >
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
+            Total
+          </span>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-stone-900 dark:text-stone-50">
+            {counts.total}
+          </p>
+        </button>
+      </div>
+
+      {/* Filtro por curso (só quando há mais de um curso) */}
+      {courses.length > 1 ? (
+        <div className="flex items-center gap-2">
+          <label htmlFor="inbox-course-filter" className="text-sm font-semibold text-stone-600 dark:text-stone-300">
+            Curso
+          </label>
+          <Select value={courseFilter} onValueChange={setCourseFilter}>
+            <SelectTrigger id="inbox-course-filter" className="h-9 max-w-xs rounded-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os cursos</SelectItem>
+              {courses.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
+
+      {error ? (
+        <p className="rounded-2xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/50 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">
+          {error}
+        </p>
+      ) : null}
+
+      {/* Lista */}
+      {data === null && !error ? (
+        <div className="space-y-3">
+          <Skeleton className="h-28 rounded-2xl" />
+          <Skeleton className="h-28 rounded-2xl" />
+          <Skeleton className="h-28 rounded-2xl" />
+        </div>
+      ) : items.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-12 text-center dark:border-stone-700 dark:bg-stone-900">
+          <MessageCircleQuestion aria-hidden className="size-7 text-stone-300 dark:text-stone-600" />
+          <p className="text-sm text-stone-400 dark:text-stone-500">
+            {status === 'pending'
+              ? 'Nenhuma pergunta pendente — quando um aluno tiver dúvida em uma aula, ela aparece aqui e você é notificado.'
+              : status === 'answered'
+                ? 'Nenhuma pergunta respondida ainda.'
+                : 'Nenhuma pergunta ainda.'}
+          </p>
+        </div>
+      ) : (
+        <ul className="space-y-3">
+          {items.map((q) => (
+            <li
+              key={q.id}
+              className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 dark:border-stone-800 dark:bg-stone-900"
+            >
+              <div className="flex items-start gap-3">
+                <Avatar name={q.author.name} src={q.author.avatarUrl} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <p className="text-sm font-bold text-stone-800 dark:text-stone-200">{q.author.name}</p>
+                    <span className="text-xs text-stone-400 dark:text-stone-500">{shortWhen(q.createdAt)}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate({ name: 'course', courseId: q.course.id })}
+                    className="mt-0.5 flex max-w-full items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline dark:text-emerald-400"
+                    aria-label={`Abrir o curso ${q.course.title}`}
+                  >
+                    <BookOpen className="size-3 shrink-0" aria-hidden />
+                    <span className="truncate">
+                      {q.course.title} <span className="font-normal text-stone-400 dark:text-stone-500">›</span>{' '}
+                      {q.lesson.title}
+                    </span>
+                  </button>
+                  <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-stone-700 dark:text-stone-200">
+                    {q.body}
+                  </p>
+                </div>
+                {!q.answer ? (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-400">
+                    <Clock className="size-3" aria-hidden /> Aguardando
+                  </span>
+                ) : null}
+              </div>
+
+              {/* Editando (resposta nova ou existente) | resposta publicada */}
+              {editingId === q.id || !q.answer ? (
+                <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50/60 p-3.5 dark:border-amber-900 dark:bg-amber-950/50">
+                  <p className="text-xs font-extrabold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                    {q.answer ? 'Editar resposta' : 'Responda ao aluno'}
+                  </p>
+                  <Textarea
+                    rows={3}
+                    value={answerDraft[q.id] ?? ''}
+                    onChange={(e) => setAnswerDraft((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                    placeholder="Escreva a resposta para o aluno..."
+                    className="mt-2 resize-none border-white bg-white dark:border-stone-800 dark:bg-stone-900"
+                    maxLength={2000}
+                    aria-label={`Responder pergunta de ${q.author.name}`}
+                  />
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    {q.answer ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 rounded-full text-xs"
+                        onClick={() => {
+                          setEditingId(null)
+                          setAnswerDraft((prev) => ({ ...prev, [q.id]: '' }))
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+                    ) : (
+                      <span />
+                    )}
+                    <Button
+                      size="sm"
+                      className="h-9 rounded-full font-semibold"
+                      onClick={() => void submitAnswer(q)}
+                      disabled={answeringId === q.id || (answerDraft[q.id] ?? '').trim().length < 2}
+                    >
+                      {answeringId === q.id ? 'Enviando…' : q.answer ? 'Atualizar resposta' : 'Responder'}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/70 p-3.5 dark:border-emerald-900 dark:bg-emerald-950/50">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                      <Check className="size-3" aria-hidden />
+                      {q.answeredAt ? `Respondida em ${shortWhen(q.answeredAt)}` : 'Respondida'}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 rounded-full px-2.5 text-xs text-emerald-700 hover:bg-emerald-100 dark:text-emerald-300 dark:hover:bg-emerald-900"
+                      onClick={() => {
+                        setEditingId(q.id)
+                        setAnswerDraft((prev) => ({ ...prev, [q.id]: q.answer ?? '' }))
+                      }}
+                    >
+                      <Pencil className="size-3" aria-hidden /> Editar resposta
+                    </Button>
+                  </div>
+                  <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-emerald-900 dark:text-emerald-200">
+                    {q.answer}
+                  </p>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 // ---------- Painel em abas (estúdio do criador) ----------
 
 const PANEL_TABS = [
@@ -3714,6 +4004,7 @@ const PANEL_TABS = [
   { id: 'agenda', label: 'Agenda', icon: CalendarClock },
   { id: 'mural', label: 'Mural', icon: Newspaper },
   { id: 'cursos', label: 'Cursos', icon: ListVideo },
+  { id: 'perguntas', label: 'Perguntas', icon: MessageCircleQuestion },
   { id: 'biblioteca', label: 'Biblioteca', icon: Library },
   { id: 'trilhas', label: 'Trilhas', icon: Route },
   { id: 'pacotes', label: 'Pacotes', icon: Layers },
@@ -3754,6 +4045,12 @@ const PANEL_SHORTCUTS: ReadonlyArray<{
     label: 'Criar curso',
     description: 'Temas, aulas, anexos e quizzes.',
     icon: ListVideo,
+  },
+  {
+    id: 'perguntas',
+    label: 'Responder dúvidas',
+    description: 'Perguntas dos alunos em cada aula.',
+    icon: MessageCircleQuestion,
   },
   {
     id: 'biblioteca',
@@ -3798,22 +4095,37 @@ function OverviewKpi({
   label,
   value,
   footer,
+  onClick,
 }: {
   icon: LucideIcon
   label: string
   value: ReactNode
   footer?: ReactNode
+  onClick?: () => void
 }) {
-  return (
-    <div className="min-w-0 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4">
+  const body = (
+    <>
       <div className="flex items-center gap-1.5 text-stone-500 dark:text-stone-400">
         <Icon className="size-3.5 shrink-0" aria-hidden />
         <span className="text-[11px] font-semibold uppercase tracking-wide">{label}</span>
       </div>
       <p className="mt-2 text-2xl font-bold tabular-nums text-stone-900 dark:text-stone-50">{value}</p>
       {footer ? <div className="mt-1.5 text-xs leading-snug text-muted-foreground">{footer}</div> : null}
-    </div>
+    </>
   )
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={`Ir para a aba ${label}`}
+        className="min-w-0 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 text-left transition-colors hover:border-emerald-300 dark:hover:border-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+      >
+        {body}
+      </button>
+    )
+  }
+  return <div className="min-w-0 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4">{body}</div>
 }
 
 // ---------- Aba Financeiro ----------
@@ -4395,6 +4707,9 @@ export default function OnboardingView() {
   const [profile, setProfile] = useState<MentorDetailDTO | null>(null)
   const [mentorCourses, setMentorCourses] = useState<CourseListItemDTO[]>([])
   const [tab, setTab] = useState<PanelTabId>('overview')
+  // Dúvidas pendentes: badge na aba Perguntas + KPI na Visão geral
+  const [pendingQuestions, setPendingQuestions] = useState(0)
+  const handlePendingChange = useCallback((pending: number) => setPendingQuestions(pending), [])
 
   const handleCoursesChange = useCallback((list: CourseListItemDTO[]) => {
     setMentorCourses(list)
@@ -4432,6 +4747,21 @@ export default function OnboardingView() {
   useEffect(() => {
     void reloadCourses()
   }, [reloadCourses])
+
+  // Contagem de dúvidas pendentes (badge da aba + KPI) — silenciosa em caso de erro
+  useEffect(() => {
+    if (!userId || !profile) return
+    let active = true
+    api
+      .listMentorQuestions({ status: 'all' })
+      .then((res) => {
+        if (active) setPendingQuestions(res.counts.pending)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [userId, profile])
 
   const totalStudents = mentorCourses.reduce((acc, course) => acc + (course.studentCount ?? 0), 0)
 
@@ -4598,6 +4928,14 @@ export default function OnboardingView() {
               >
                 <Icon className="size-4" aria-hidden />
                 {label}
+                {id === 'perguntas' && pendingQuestions > 0 ? (
+                  <span
+                    className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-bold text-white"
+                    aria-label={`${pendingQuestions} perguntas pendentes`}
+                  >
+                    {pendingQuestions > 99 ? '99+' : pendingQuestions}
+                  </span>
+                ) : null}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -4641,6 +4979,15 @@ export default function OnboardingView() {
                     label="Conteúdos"
                     value={profile.contents.length}
                     footer="publicados no mural"
+                  />
+                  <OverviewKpi
+                    icon={MessageCircleQuestion}
+                    label="Dúvidas pendentes"
+                    value={pendingQuestions}
+                    footer={
+                      pendingQuestions > 0 ? 'clique para responder' : 'nenhuma pergunta aguardando'
+                    }
+                    onClick={() => setTab('perguntas')}
                   />
                 </div>
 
@@ -4758,6 +5105,26 @@ export default function OnboardingView() {
 
             <TabsContent value="cursos" className="min-w-0 mt-4 sm:mt-6">
               <CoursesManager userId={user.id} onChanged={reload} onCoursesChange={handleCoursesChange} />
+            </TabsContent>
+
+            <TabsContent value="perguntas" className="min-w-0 mt-4 sm:mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
+                      <MessageCircleQuestion className="size-4" aria-hidden />
+                    </span>
+                    Perguntas dos alunos
+                  </CardTitle>
+                  <CardDescription>
+                    Todas as dúvidas das aulas dos seus cursos em um só lugar — responda aqui e o aluno é
+                    notificado na hora.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <QuestionsInbox userId={user.id} courses={mentorCourses} onPendingChange={handlePendingChange} />
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="biblioteca" className="min-w-0 mt-4 sm:mt-6">

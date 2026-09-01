@@ -56,3 +56,6 @@ server.log
 .tmp-expo/dist
 .tmp-expo/.expo
 .tmp-w27
+
+# Snapshots locais do banco (nunca versionar)
+/backups

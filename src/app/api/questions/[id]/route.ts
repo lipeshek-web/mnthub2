@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { resolveUser, unauthorized } from '@/lib/session'
+import { notify } from '@/lib/notify'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,13 +18,14 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
     const question = await db.lessonQuestion.findUnique({
       where: { id },
-      include: { course: { include: { mentor: true } } },
+      include: { course: { include: { mentor: { include: { user: { select: { name: true } } } } } } },
     })
     if (!question) return NextResponse.json({ error: 'Pergunta não encontrada.' }, { status: 404 })
     if (question.course.mentor.userId !== userId) {
       return NextResponse.json({ error: 'Apenas o mentor responde as perguntas.' }, { status: 403 })
     }
 
+    const isFirstAnswer = !question.answer && Boolean(answer)
     const updated = await db.lessonQuestion.update({
       where: { id },
       data: {
@@ -31,6 +33,18 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
         answeredAt: answer ? new Date() : null,
       },
     })
+
+    // Fecha o ciclo: o aluno fica sabendo no sino que a dúvida foi respondida.
+    if (isFirstAnswer) {
+      await notify({
+        userId: question.userId,
+        kind: 'question_answered',
+        title: `${question.course.mentor.user.name} respondeu sua pergunta`,
+        body: `Curso "${question.course.title}" — ${answer!.slice(0, 140)}`,
+        linkView: 'course',
+        refId: question.courseId,
+      })
+    }
 
     return NextResponse.json({
       id: updated.id,

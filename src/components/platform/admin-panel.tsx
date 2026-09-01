@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import {
+  Archive,
   ArrowLeft,
   BadgeCheck,
   Ban,
@@ -14,16 +15,21 @@ import {
   Check,
   CheckCircle2,
   Clock,
+  CloudUpload,
   Copy,
   CreditCard,
+  Database,
+  Download,
   ExternalLink,
   GraduationCap,
+  HardDrive,
   KeyRound,
   Library,
   Loader2,
   Mail,
   QrCode,
   RefreshCw,
+  RotateCcw,
   Route,
   Search,
   ShieldAlert,
@@ -36,6 +42,16 @@ import {
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -68,6 +84,7 @@ import type {
   AdminEmailDTO,
   AdminEmailsResponseDTO,
   AsaasSettingsDTO,
+  PersistenceStatusDTO,
   PlatformCouponDTO,
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -88,6 +105,13 @@ function StatusBadge({ status }: { status: string }) {
       {meta.label}
     </Badge>
   )
+}
+
+/** 2.3 MB / 480 KB / 12 B */
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${bytes} B`
 }
 
 export function AdminPanel() {
@@ -158,6 +182,14 @@ export function AdminPanel() {
   const [emails, setEmails] = useState<AdminEmailsResponseDTO | null>(null)
   const [emailsLoading, setEmailsLoading] = useState(true)
   const [emailPreview, setEmailPreview] = useState<AdminEmailDTO | null>(null)
+
+  // ---------- Persistência (aba Dados) ----------
+  const [persistence, setPersistence] = useState<PersistenceStatusDTO | null>(null)
+  const [persistenceLoading, setPersistenceLoading] = useState(false)
+  const [backupBusy, setBackupBusy] = useState(false)
+  const [exportBusy, setExportBusy] = useState(false)
+  const [restoringFile, setRestoringFile] = useState<string | null>(null)
+  const [restoreTarget, setRestoreTarget] = useState<string | null>(null)
 
   /** Sem token de sessão admin (login antigo ou expirado) — pede novo login */
   const needsRelogin = !token
@@ -251,6 +283,16 @@ export function AdminPanel() {
       .finally(() => setCouponsLoading(false))
   }, [token])
 
+  const loadPersistence = useCallback(() => {
+    if (!token) return
+    setPersistenceLoading(true)
+    api.admin
+      .persistence(token)
+      .then(setPersistence)
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Erro ao carregar persistência.'))
+      .finally(() => setPersistenceLoading(false))
+  }, [token])
+
   useEffect(() => {
     loadStats()
     loadSettings()
@@ -263,9 +305,53 @@ export function AdminPanel() {
     if (tab === 'security') loadMfa()
     if (tab === 'audit') loadAudit()
     if (tab === 'emails') loadEmails()
+    if (tab === 'dados') loadPersistence()
   }, [tab])
 
   // ==================== Ações ====================
+  /** Snapshot do banco agora (modo arquivo) */
+  const createBackupNow = async () => {
+    setBackupBusy(true)
+    try {
+      const res = await api.admin.createBackup(token)
+      setPersistence(res)
+      toast.success('Snapshot criado em /backups.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível criar o snapshot.')
+    } finally {
+      setBackupBusy(false)
+    }
+  }
+
+  /** Restaura um snapshot (o estado atual é salvo automaticamente antes) */
+  const restoreNow = async (file: string) => {
+    setRestoringFile(file)
+    try {
+      const res = await api.admin.restoreBackup(token, file)
+      setPersistence(res)
+      toast.success(
+        `Banco restaurado de ${res.restoredFrom}.${res.safetyBackup ? ` Estado anterior salvo como ${res.safetyBackup}.` : ''}`
+      )
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível restaurar o snapshot.')
+    } finally {
+      setRestoringFile(null)
+      setRestoreTarget(null)
+    }
+  }
+
+  /** Exportação JSON completa (download autenticado) */
+  const exportJsonNow = async () => {
+    setExportBusy(true)
+    try {
+      await api.admin.exportJson(token)
+      toast.success('Exportação completa baixada.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Falha na exportação.')
+    } finally {
+      setExportBusy(false)
+    }
+  }
   const saveSettings = async () => {
     setSavingSettings(true)
     try {
@@ -598,6 +684,9 @@ export function AdminPanel() {
           </TabsTrigger>
           <TabsTrigger value="emails" className="rounded-xl text-xs font-bold sm:text-sm">
             <Mail className="h-4 w-4" aria-hidden /> E-mails
+          </TabsTrigger>
+          <TabsTrigger value="dados" className="rounded-xl text-xs font-bold sm:text-sm">
+            <Database className="h-4 w-4" aria-hidden /> Dados
           </TabsTrigger>
         </TabsList>
 
@@ -1729,6 +1818,190 @@ export function AdminPanel() {
           </Card>
         </TabsContent>
 
+        {/* ==================== DADOS (PERSISTÊNCIA) ==================== */}
+        <TabsContent value="dados" className="mt-5">
+          <div className="flex flex-col gap-4">
+            {/* Status do banco */}
+            <Card className="rounded-2xl">
+              <CardContent className="p-4 sm:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                    Persistência dos dados
+                  </h2>
+                  {persistence ? (
+                    persistence.mode === 'turso' ? (
+                      <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                        Nuvem (Turso) — protege contra atualizações
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-stone-100 px-2.5 py-1 text-[10px] font-bold text-stone-600 dark:bg-stone-800 dark:text-stone-300">
+                        Arquivo local
+                      </span>
+                    )
+                  ) : null}
+                </div>
+                <p className="mt-2 text-sm text-stone-600 dark:text-stone-300">
+                  Camadas de proteção: snapshots automáticos do banco (boot + a cada 6h + antes de cada
+                  mudança de schema), exportação JSON completa e opção de banco na nuvem (Turso). O
+                  <code className="mx-1 rounded bg-stone-100 px-1.5 py-0.5 text-xs dark:bg-stone-800">db:push</code>
+                  nunca mais roda com <code className="mx-1 rounded bg-stone-100 px-1.5 py-0.5 text-xs dark:bg-stone-800">--accept-data-loss</code> —
+                  mudanças destrutivas falham com explicação em vez de apagar dados.
+                </p>
+                {persistenceLoading ? (
+                  <div className="mt-4 space-y-2">
+                    <Skeleton className="h-12 rounded-xl" />
+                    <Skeleton className="h-12 rounded-xl" />
+                  </div>
+                ) : persistence ? (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border border-stone-200 p-4 dark:border-stone-800">
+                      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400">
+                        <HardDrive className="h-3.5 w-3.5" aria-hidden /> Banco atual
+                      </p>
+                      {persistence.mode === 'turso' ? (
+                        <p className="mt-1.5 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                          Turso/libSQL na nuvem (TURSO_DATABASE_URL)
+                        </p>
+                      ) : (
+                        <>
+                          <p className="mt-1.5 truncate text-sm font-semibold text-stone-800 dark:text-stone-100">
+                            {persistence.dbPath ?? 'db/custom.db'}
+                          </p>
+                          <p className="text-xs text-stone-400 dark:text-stone-500">
+                            {formatBytes(persistence.dbSizeBytes)}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                    <div className="rounded-xl border border-stone-200 p-4 dark:border-stone-800">
+                      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400">
+                        <Archive className="h-3.5 w-3.5" aria-hidden /> Snapshots
+                      </p>
+                      <p className="mt-1.5 text-sm font-semibold text-stone-800 dark:text-stone-100">
+                        {persistence.mode === 'turso'
+                          ? 'Nuvem não precisa de snapshot de arquivo'
+                          : `${persistence.backups.length} em /backups`}
+                      </p>
+                      {persistence.backups[0] ? (
+                        <p className="text-xs text-stone-400 dark:text-stone-500">
+                          Último: {persistence.backups[0].file.replace(/^db-|--\w+\.db$/g, '')} ·{' '}
+                          {formatBytes(persistence.backups[0].sizeBytes)}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Caminho para a nuvem quando em modo local */}
+                {persistence?.mode === 'local' ? (
+                  <div className="mt-4 flex flex-col gap-2 rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900 dark:bg-emerald-950/40 sm:flex-row sm:items-center">
+                    <CloudUpload className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                    <p className="min-w-0 flex-1 text-xs leading-relaxed text-emerald-800 dark:text-emerald-200">
+                      <strong>Proteção máxima:</strong> crie um banco gratuito em turso.tech, defina{' '}
+                      <code className="rounded bg-white/70 px-1 dark:bg-stone-900/70">TURSO_DATABASE_URL</code> e{' '}
+                      <code className="rounded bg-white/70 px-1 dark:bg-stone-900/70">TURSO_AUTH_TOKEN</code> no
+                      ambiente e rode{' '}
+                      <code className="rounded bg-white/70 px-1 dark:bg-stone-900/70">bun run db:to-turso</code>. Aí
+                      nem uma atualização de código apaga dados — eles vivem fora deste servidor.
+                    </p>
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+
+            {/* Snapshots (modo arquivo) */}
+            {persistence?.mode === 'local' ? (
+              <Card className="rounded-2xl">
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                      Backups do banco
+                    </h2>
+                    <Button
+                      size="sm"
+                      className="h-9 rounded-full font-semibold"
+                      onClick={() => void createBackupNow()}
+                      disabled={backupBusy}
+                    >
+                      {backupBusy ? (
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      ) : (
+                        <Archive className="h-4 w-4" aria-hidden />
+                      )}
+                      Fazer backup agora
+                    </Button>
+                  </div>
+                  {persistence.backups.length === 0 ? (
+                    <p className="py-6 text-center text-sm text-stone-400 dark:text-stone-500">
+                      Nenhum snapshot ainda — um é criado automaticamente a cada boot do servidor.
+                    </p>
+                  ) : (
+                    <ul className="mt-3 max-h-96 divide-y divide-stone-100 overflow-y-auto pr-1 dark:divide-stone-800 [scrollbar-width:thin]">
+                      {persistence.backups.map((b) => (
+                        <li key={b.file} className="flex items-center gap-3 py-2.5">
+                          <Archive className="h-4 w-4 shrink-0 text-stone-300 dark:text-stone-600" aria-hidden />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-semibold text-stone-700 dark:text-stone-200">
+                              {b.file}
+                            </p>
+                            <p className="text-[11px] text-stone-400 dark:text-stone-500">
+                              {formatBytes(b.sizeBytes)}
+                              {b.reason ? ` · ${b.reason}` : ''}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-[11px] text-stone-400 dark:text-stone-500">
+                            {new Date(b.createdAt).toLocaleDateString('pt-BR')}{' '}
+                            {new Date(b.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 shrink-0 rounded-full text-[11px]"
+                            onClick={() => setRestoreTarget(b.file)}
+                            disabled={restoringFile !== null}
+                          >
+                            <RotateCcw className="h-3 w-3" aria-hidden /> Restaurar
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {/* Exportação JSON */}
+            <Card className="rounded-2xl">
+              <CardContent className="p-4 sm:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                      Exportação completa (JSON)
+                    </h2>
+                    <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
+                      Todas as tabelas (usuários, cursos, pedidos, gateway configurado...) em um arquivo
+                      portátil — a cópia de segurança definitiva.
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="h-9 shrink-0 rounded-full font-semibold"
+                    onClick={() => void exportJsonNow()}
+                    disabled={exportBusy}
+                  >
+                    {exportBusy ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    ) : (
+                      <Download className="h-4 w-4" aria-hidden />
+                    )}
+                    Baixar exportação
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
         {/* Preview do HTML do e-mail */}
         <Dialog open={Boolean(emailPreview)} onOpenChange={(open) => !open && setEmailPreview(null)}>
           <DialogContent className="sm:max-w-2xl">
@@ -1751,6 +2024,34 @@ export function AdminPanel() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Confirmação de restauração de snapshot */}
+        <AlertDialog open={restoreTarget !== null} onOpenChange={(open) => !open && setRestoreTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Restaurar este snapshot?</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <span>
+                  O banco atual será substituído pelo snapshot <strong>{restoreTarget}</strong>. Por
+                  segurança, um snapshot do estado atual é salvo automaticamente antes da restauração — e
+                  recomenda-se reiniciar o servidor depois para renovar as conexões.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={restoringFile !== null}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={restoringFile !== null}
+                onClick={(e) => {
+                  e.preventDefault()
+                  if (restoreTarget) void restoreNow(restoreTarget)
+                }}
+              >
+                {restoringFile ? 'Restaurando…' : 'Restaurar backup'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </Tabs>
     </div>
   )

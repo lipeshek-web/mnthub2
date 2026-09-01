@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { resolveUser, unauthorized } from '@/lib/session'
 import { rateLimit, tooMany } from '@/lib/rate-limit'
+import { notify } from '@/lib/notify'
 
 export const dynamic = 'force-dynamic'
 
@@ -93,6 +94,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ lessonId: 
     const question = await db.lessonQuestion.create({
       data: { lessonId, courseId: lesson.courseId, userId, body: text.slice(0, 1200) },
       include: { user: { select: { id: true, name: true, avatarUrl: true } } },
+    })
+
+    // O sino do mentor agora promete de verdade: notifica o dono do curso
+    // (o toast do aluno diz "O mentor será notificado").
+    await notify({
+      userId: lesson.course.mentor.userId,
+      kind: 'question_new',
+      title: `Nova pergunta em "${lesson.course.title}"`,
+      body: text.slice(0, 160),
+      linkView: 'onboarding',
+      refId: question.id,
     })
 
     return NextResponse.json({
