@@ -2225,3 +2225,22 @@ Stage Summary:
 - Mentor agora tem UM lugar com TODAS as dúvidas das aulas (novo): aba Perguntas no painel, com filtro pendentes/respondidas, contexto curso/aula, resposta inline editável e notificações dos dois lados (sino) — o ciclo pergunta→resposta fecha de verdade
 - Fim da perda de dados por atualização em 4 camadas: db:push seguro (nada de --accept-data-loss silencioso), snapshots automáticos (boot/6h/pre-push em /backups), exportação JSON completa no admin, e modo nuvem Turso opcional (definir TURSO_DATABASE_URL/TURSO_AUTH_TOKEN + bun run db:to-turso) que sobrevive a qualquer rebuild
 - Chave do gateway (PlatformSetting) passa a estar protegida pelas 4 camadas; recomendado ao usuário: reconfigurar a chave no admin e considerar migrar para Turso
+
+---
+Task ID: W-35
+Agent: Z.ai Code (main) + agent-browser (E2E)
+Task: Ambiente de aprendizado — barra de abas FIXA no topo do corpo e barra de ação (Anterior/Concluir/Próxima) FIXA no rodapé, com conteúdo rolando entre elas; ajuste mobile
+
+Work Log:
+- DIAGNÓSTICO: na sala de aula (classroom.tsx), abas (Material/Resumo IA/Perguntas/Quiz/Anotações) e navegação (Anterior/Concluir/Próxima) viviam DENTRO da área rolável da coluna da aula — ao rolar, o aluno perdia o acesso aos dois controles (precisava rolar de volta)
+- REESTRUTURAÇÃO (classroom.tsx): coluna da aula virou flex column de 3 zonas — (1) barra de abas FIXA no topo do corpo (logo abaixo do cabeçalho emerald), com contador "Aula X de Y" à direita em sm+; (2) conteúdo da aula como ÚNICA área rolável (overscroll-contain, ref lessonScrollRef); (3) barra de ação FIXA no rodapé (border-t, bg branco) com pb de safe-area (env(safe-area-inset-bottom)); abas agora CONTROLADAS (activeTab) porque o seletor saiu do fluxo dos painéis; Tabs root vira o próprio flex container (gap-0)
+- COMPORTAMENTO: trocar de aula reseta aba ativa p/ Material e rola conteúdo ao topo (useEffect em currentLessonId); modo foco em aula de vídeo continua ocultando abas+painéis (showTabsBar), em leitura mantém (material É o conteúdo); barra de ação presente em todos os casos (inclusive foco)
+- MOBILE: Anterior/Próxima viram botões de ícone (rótulo sm:inline), botão central encurta p/ "Concluir" (sm:hidden "Concluir e avançar"); sidebar de conteúdos escondida <lg (hidden lg:flex) — no mobile continua acessível pelo botão "Ver conteúdos" do cabeçalho (dialog existente); TabsList com scrollbar oculta ([scrollbar-width:none])
+- FLUTUANTES: "Sair do modo foco" bottom-6→bottom-20 (acima da barra); Tutor IA (ai-tutor.tsx) bottom-6→bottom-[5.5rem] sempre (acima da barra) e bottom-[8.5rem] no modo foco (acima do botão sair) — zero sobreposição
+- VALIDAÇÃO: lint 0/0; E2E agent-browser (login ana@demo.com): desktop 1280 — rolagem com scrollTop=165 mantém as duas barras fixas (screenshot), "Concluir e avançar" avançou p/ aula 2 + progresso 11% + aba Material + scrollTop=0, aba Perguntas abre painel, modo foco leitura mantém abas e vídeo oculta (abasOcultas=true, player presente, barra presente); mobile 390 — sidebar display:none, tabs bar em top=57 (colada no cabeçalho), rolagem longa (scrollTop=160) mantém barras (bottom bar 779-844 de 844), rótulo central visível = "Concluir", dialog de conteúdos abre/seleciona aula e fecha; console sem erros novos (só warning pré-existente de Meta Pixel); dev.log sem erros novos
+- Dados: apenas progresso de aula da ana (1 aula concluída no curso demo) — db restaurado ao estado pré-teste antes do commit
+- Push: 29fb4ed..1a3f751 main → origin/main (inclui commit pendente b1133aa do ambiente)
+
+Stage Summary:
+- Sala de aula com layout de app de curso real: abas sempre visíveis no topo do corpo (abaixo do cabeçalho) e Anterior/Concluir/Próxima sempre visíveis no rodapé — o aluno marca progresso e navega de qualquer ponto da aula, sem rolar; conteúdo nunca passa por baixo das barras (zonas flex, não overlay)
+- Mobile tratado como cidadão de primeira classe: barra compacta com ícones, abas roláveis sem scrollbar, sidebar só no dialog, safe-area respeitada
