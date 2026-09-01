@@ -1,0 +1,502 @@
+   468→        <div className="min-h-0 overflow-y-auto p-4 sm:p-6 lg:p-8">
+   469→          <div className={cn('mx-auto w-full', focusMode ? 'max-w-4xl' : 'max-w-5xl')}>
+   470→            <AnimatePresence mode="wait">
+   471→              {currentLesson ? (
+   472→                <motion.div
+   473→                  key={currentLesson.id}
+   474→                  initial={{ opacity: 0, y: 12 }}
+   475→                  animate={{ opacity: 1, y: 0 }}
+   476→                  exit={{ opacity: 0, y: -8 }}
+   477→                  transition={{ duration: 0.22 }}
+   478→                >
+   479→                {currentLesson.kind === 'LIVE' ? (
+   480→                  <LivePanel lesson={currentLesson} isOwner={isOwner} />
+   481→                ) : currentLesson.kind === 'READING' ? (
+   482→                  <ReadingMaterial lesson={currentLesson} courseId={courseId} />
+   483→                ) : currentLesson.kind === 'RECORDED' && currentLesson.videoUrl ? (
+   484→                  <div className="rounded-3xl bg-gradient-to-b from-emerald-50/70 to-transparent p-2 sm:p-3 dark:from-emerald-950/25 dark:to-transparent">
+   485→                    <div className="overflow-hidden rounded-2xl bg-black shadow-2xl shadow-stone-950/25 ring-1 ring-stone-200 dark:ring-stone-800">
+   486→                      <LessonPlayer lesson={currentLesson} />
+   487→                    </div>
+   488→                  </div>
+   489→                ) : (
+   490→                  <LessonPlayer lesson={currentLesson} />
+   491→                )}
+   492→
+   493→                {/* Celebração + certificado: 100% das aulas concluídas */}
+   494→                {courseCompleted ? (
+   495→                  <div className="mt-5 flex flex-col items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-6 text-center dark:border-emerald-900 dark:bg-emerald-950/50">
+   496→                    <CheckCircle2 aria-hidden className="h-12 w-12 fill-emerald-600 text-white" />
+   497→                    <p className="text-lg font-extrabold tracking-tight text-emerald-900 dark:text-emerald-200">
+   498→                      Parabéns! Você concluiu este curso 🎉
+   499→                    </p>
+   500→                    {certificateCode ? (
+   501→                      <Button
+   502→                        variant="outline"
+   503→                        onClick={() => navigate({ name: 'certificate', code: certificateCode })}
+   504→                        className="h-11 rounded-full border-emerald-300 bg-white px-6 font-bold text-emerald-800 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-900 dark:border-emerald-700 dark:bg-stone-900 dark:text-emerald-300 dark:hover:border-emerald-600 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-200"
+   505→                        aria-label="Ver meu certificado de conclusão"
+   506→                      >
+   507→                        <GraduationCap aria-hidden className="h-4 w-4" /> Ver meu certificado
+   508→                      </Button>
+   509→                    ) : (
+   510→                      <Button
+   511→                        onClick={() => void handleIssueCertificate()}
+   512→                        disabled={issuing}
+   513→                        className="h-11 rounded-full bg-emerald-700 px-6 font-bold text-white hover:bg-emerald-800"
+   514→                        aria-label="Emitir certificado de conclusão"
+   515→                      >
+   516→                        <GraduationCap aria-hidden className="h-4 w-4" />{' '}
+   517→                        {issuing ? 'Emitindo…' : 'Emitir certificado'}
+   518→                      </Button>
+   519→                    )}
+   520→                  </div>
+   521→                ) : null}
+   522→
+   523→                <div className="mt-5 flex flex-wrap items-center gap-2">
+   524→                  <Badge variant="outline" className="border-stone-200 bg-white text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
+   525→                    Aula {currentIndex + 1} de {orderedLessons.length}
+   526→                  </Badge>
+   527→                  <Badge variant="outline" className="border-stone-200 bg-white text-stone-600 tabular-nums dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
+   528→                    <Clock aria-hidden className="h-3 w-3" /> {currentLesson.durationMin} min
+   529→                  </Badge>
+   530→                  {currentLesson.kind === 'LIVE' ? (
+   531→                    <Badge className="border-transparent bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-400">
+   532→                      <Radio aria-hidden className="h-3 w-3" /> Ao vivo
+   533→                    </Badge>
+   534→                  ) : currentLesson.kind === 'READING' ? (
+   535→                    <Badge className="border-transparent bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+   536→                      <BookOpen aria-hidden className="h-3 w-3" /> {readingKindLabel(currentLesson.reading?.kind)}
+   537→                    </Badge>
+   538→                  ) : currentLesson.videoUrl ? (
+   539→                    <Badge variant="outline" className="border-stone-200 bg-white text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
+   540→                      Vídeo
+   541→                    </Badge>
+   542→                  ) : (
+   543→                    <Badge variant="outline" className="border-stone-200 bg-white text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
+   544→                      Leitura
+   545→                    </Badge>
+   546→                  )}
+   547→                  {currentLesson.quizCount > 0 ? (
+   548→                    <Badge className="border-transparent bg-violet-100 text-violet-800 dark:bg-violet-950/50 dark:text-violet-300">
+   549→                      <ListChecks aria-hidden className="h-3 w-3" /> Quiz
+   550→                    </Badge>
+   551→                  ) : null}
+   552→                  {completedIds.includes(currentLesson.id) && (
+   553→                    <Badge className="border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+   554→                      <Check aria-hidden className="h-3 w-3" /> Concluída
+   555→                    </Badge>
+   556→                  )}
+   557→                </div>
+   558→
+   559→                <h1 className="mt-2.5 text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50 sm:text-2xl">
+   560→                  {currentLesson.title}
+   561→                </h1>
+   562→                {currentLesson.description ? (
+   563→                  <p className="mt-1.5 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+   564→                    {currentLesson.description}
+   565→                  </p>
+   566→                ) : null}
+   567→
+   568→                {/* Anexos para download */}
+   569→                {currentLesson.attachments.length > 0 ? (
+   570→                  <div className="mt-4 flex flex-wrap gap-2">
+   571→                    {currentLesson.attachments.map((att, i) => (
+   572→                      <a
+   573→                        key={`${att.url}-${i}`}
+   574→                        href={att.url}
+   575→                        download
+   576→                        target="_blank"
+   577→                        rel="noopener noreferrer"
+   578→                        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-stone-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300"
+   579→                        aria-label={`Baixar anexo ${att.name}`}
+   580→                      >
+   581→                        <Paperclip aria-hidden className="h-3.5 w-3.5 text-stone-400 dark:text-stone-500" />
+   582→                        <span className="max-w-52 truncate">{att.name}</span>
+   583→                        <Download aria-hidden className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+   584→                      </a>
+   585→                    ))}
+   586→                  </div>
+   587→                ) : null}
+   588→
+   589→                {/* Abas: material / perguntas / anotações (ocultas no modo foco apenas
+   590→                    para aulas em vídeo — o palco é o conteúdo; aulas de texto/leitura
+   591→                    mantêm o material visível, pois ele É o conteúdo da aula) */}
+   592→                {!(focusMode && currentLesson.kind === 'RECORDED' && currentLesson.videoUrl) && (
+   593→                <Tabs defaultValue="lesson" className="mt-6">
+   594→                  <TabsList className="h-11 w-full justify-start overflow-x-auto rounded-full bg-stone-100 dark:bg-stone-800 p-1 sm:w-auto">
+   595→                    <TabsTrigger value="lesson" className="rounded-full">
+   596→                      <FileText aria-hidden className="h-4 w-4" />
+   597→                      <span className="hidden sm:inline">Material</span>
+   598→                    </TabsTrigger>
+   599→                    <TabsTrigger value="aisummary" className="rounded-full">
+   600→                      <Sparkles aria-hidden className="h-4 w-4" />
+   601→                      <span className="hidden sm:inline">Resumo IA</span>
+   602→                    </TabsTrigger>
+   603→                    <TabsTrigger value="qa" className="rounded-full">
+   604→                      <MessageCircle aria-hidden className="h-4 w-4" />
+   605→                      Perguntas
+   606→                      {currentLesson.questionCount > 0 ? ` (${currentLesson.questionCount})` : ''}
+   607→                    </TabsTrigger>
+   608→                    {currentLesson.quizCount > 0 ? (
+   609→                      <TabsTrigger value="quiz" className="rounded-full">
+   610→                        <ListChecks aria-hidden className="h-4 w-4" />
+   611→                        Quiz ({currentLesson.quizCount})
+   612→                      </TabsTrigger>
+   613→                    ) : null}
+   614→                    <TabsTrigger value="notes" className="rounded-full">
+   615→                      <PencilLine aria-hidden className="h-4 w-4" />
+   616→                      <span className="hidden sm:inline">Anotações</span>
+   617→                    </TabsTrigger>
+   618→                  </TabsList>
+   619→
+   620→                  <TabsContent value="lesson" className="mt-4">
+   621→                    {currentLesson.kind === 'READING' ? (
+   622→                      <div className="rounded-2xl border border-stone-200 bg-white p-5 text-sm leading-relaxed text-stone-600 sm:p-6 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
+   623→                        {currentLesson.reading ? (
+   624→                          <>
+   625→                            O material desta aula é{' '}
+   626→                            {currentLesson.reading.kind === 'BOOK' ? 'um livro' : 'um artigo'} — leia no leitor
+   627→                            acima ou use <strong className="font-semibold">Abrir em tela cheia</strong>. Dúvidas?
+   628→                            Use a aba <strong className="font-semibold">Perguntas</strong> — {firstName} responde
+   629→                            por lá.
+   630→                          </>
+   631→                        ) : (
+   632→                          'O material desta aula será publicado em breve.'
+   633→                        )}
+   634→                      </div>
+   635→                    ) : currentLesson.content ? (
+   636→                      <article className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6 dark:border-stone-800 dark:bg-stone-900">
+   637→                        <div className="max-w-prose space-y-4">
+   638→                          {currentLesson.content.split(/\n{2,}/).map((para, i) => (
+   639→                            <p
+   640→                              key={i}
+   641→                              className="whitespace-pre-line text-[15px] leading-relaxed text-stone-700 dark:text-stone-200"
+   642→                            >
+   643→                              {para}
+   644→                            </p>
+   645→                          ))}
+   646→                        </div>
+   647→                      </article>
+   648→                    ) : currentLesson.kind === 'LIVE' ? (
+   649→                      <div className="rounded-2xl border border-stone-200 bg-white p-5 text-sm leading-relaxed text-stone-600 sm:p-6 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
+   650→                        Esta é uma aula ao vivo — participe no horário agendado e use a aba
+   651→                        <strong className="font-semibold"> Perguntas </strong>
+   652→                        para enviar suas dúvidas ao mentor. Se perdeu, a gravação aparece no player
+   653→                        quando disponível.
+   654→                      </div>
+   655→                    ) : currentLesson.videoUrl ? (
+   656→                      <div className="rounded-2xl border border-stone-200 bg-white p-5 text-sm leading-relaxed text-stone-600 sm:p-6 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
+   657→                        Assista à aula acima. Dúvidas? Use a aba{' '}
+   658→                        <strong className="font-semibold">Perguntas</strong> — {firstName} responde
+   659→                        por lá. Anote ideias em <strong className="font-semibold">Anotações</strong>{' '}
+   660→                        e baixe os anexos desta aula.
+   661→                      </div>
+   662→                    ) : (
+   663→                      <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-10 text-center dark:border-stone-700 dark:bg-stone-900">
+   664→                        <FileText aria-hidden className="h-6 w-6 text-stone-300 dark:text-stone-600" />
+   665→                        <p className="text-sm text-stone-400 dark:text-stone-500">
+   666→                          O material desta aula será publicado em breve.
+   667→                        </p>
+   668→                      </div>
+   669→                    )}
+   670→                  </TabsContent>
+   671→
+   672→                  <TabsContent value="aisummary" className="mt-4">
+   673→                    <LessonAiSummary
+   674→                      key={currentLesson.id}
+   675→                      lessonId={currentLesson.id}
+   676→                      lessonTitle={currentLesson.title}
+   677→                      user={user}
+   678→                      onLogin={() => navigate({ name: 'auth', mode: 'login' })}
+   679→                    />
+   680→                  </TabsContent>
+   681→
+   682→                  <TabsContent value="qa" className="mt-4">
+   683→                    <LessonQuestions
+   684→                      lesson={currentLesson}
+   685→                      isOwner={isOwner}
+   686→                      mentorName={course.mentor.name}
+   687→                      user={user}
+   688→                    />
+   689→                  </TabsContent>
+   690→
+   691→                  {currentLesson.quizCount > 0 ? (
+   692→                    <TabsContent value="quiz" className="mt-4">
+   693→                      <LessonQuiz
+   694→                        key={currentLesson.id}
+   695→                        lessonId={currentLesson.id}
+   696→                        user={user}
+   697→                        isOwner={isOwner}
+   698→                      />
+   699→                    </TabsContent>
+   700→                  ) : null}
+   701→
+   702→                  <TabsContent value="notes" className="mt-4">
+   703→                    <LessonNotes
+   704→                      key={currentLesson.id}
+   705→                      lessonId={currentLesson.id}
+   706→                      user={user}
+   707→                      lessonTitle={currentLesson.title}
+   708→                    />
+   709→                  </TabsContent>
+   710→                </Tabs>
+   711→                )}
+   712→
+   713→                {/* Navegação */}
+   714→                <div className="mt-6 flex items-center justify-between gap-3 border-t border-stone-200 pt-5 dark:border-stone-800">
+   715→                  <Button
+   716→                    variant="outline"
+   717→                    className="h-11 rounded-full font-semibold"
+   718→                    onClick={goPrev}
+   719→                    disabled={currentIndex <= 0 || toggling}
+   720→                  >
+   721→                    <ChevronLeft aria-hidden className="h-4 w-4" /> Anterior
+   722→                  </Button>
+   723→                  <Button
+   724→                    variant={completedIds.includes(currentLesson.id) ? 'outline' : 'default'}
+   725→                    onClick={() => void toggleComplete(true)}
+   726→                    disabled={toggling}
+   727→                    className={cn(
+   728→                      'h-11 rounded-full font-semibold',
+   729→                      completedIds.includes(currentLesson.id) &&
+   730→                        'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300'
+   731→                    )}
+   732→                  >
+   733→                    {toggling ? (
+   734→                      'Salvando…'
+   735→                    ) : completedIds.includes(currentLesson.id) ? (
+   736→                      <>
+   737→                        <CheckCircle2 aria-hidden className="h-4 w-4" /> Concluída
+   738→                      </>
+   739→                    ) : (
+   740→                      <>
+   741→                        <CheckCircle2 aria-hidden className="h-4 w-4" /> Concluir e avançar
+   742→                      </>
+   743→                    )}
+   744→                  </Button>
+   745→                  <Button
+   746→                    variant="outline"
+   747→                    className="h-11 rounded-full font-semibold"
+   748→                    onClick={goNext}
+   749→                    disabled={currentIndex >= orderedLessons.length - 1 || toggling}
+   750→                  >
+   751→                    Próxima <ChevronRight aria-hidden className="h-4 w-4" />
+   752→                  </Button>
+   753→                </div>
+   754→                </motion.div>
+   755→              ) : null}
+   756→            </AnimatePresence>
+   757→            {!currentLesson && (
+   758→              <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-16 text-center dark:border-stone-700 dark:bg-stone-900">
+   759→                <Library aria-hidden className="h-8 w-8 text-stone-300 dark:text-stone-600" />
+   760→                <p className="text-sm text-stone-400 dark:text-stone-500">
+   761→                  Nenhuma aula publicada ainda — volte mais tarde.
+   762→                </p>
+   763→              </div>
+   764→            )}
+   765→          </div>
+   766→        </div>
+   767→
+   768→        {/* Coluna direita: lista de conteúdos (oculta no modo foco) */}
+   769→        {!focusMode && (
+   770→        <aside
+   771→          aria-label="Conteúdos do curso"
+   772→          className="flex min-h-0 flex-col border-t border-stone-200 bg-white lg:border-l lg:border-t-0 dark:border-stone-800 dark:bg-stone-900"
+   773→        >
+   774→          <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-2 pt-4">
+   775→            <p className="text-xs font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">
+   776→              Conteúdos do curso
+   777→            </p>
+   778→            <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+   779→              {completedIds.length}/{orderedLessons.length}
+   780→            </span>
+   781→          </div>
+   782→          <ContentsNav
+   783→            groups={lessonGroups}
+   784→            themeList={themeList}
+   785→            collapsedThemes={collapsedThemes}
+   786→            onToggleTheme={handleToggleTheme}
+   787→            currentLessonId={currentLesson?.id ?? null}
+   788→            completedIds={completedIds}
+   789→            onSelectLesson={selectLesson}
+   790→          />
+   791→
+   792→          {/* Mentor no rodapé da lista */}
+   793→          <div className="shrink-0 border-t border-stone-100 p-3 dark:border-stone-800">
+   794→            <div className="flex items-center gap-3 rounded-xl bg-stone-50 p-3 dark:bg-stone-950/50">
+   795→              <Avatar name={course.mentor.name} src={course.mentor.avatarUrl} size="md" />
+   796→              <div className="min-w-0 flex-1">
+   797→                <p className="truncate text-sm font-bold text-stone-800 dark:text-stone-200">{course.mentor.name}</p>
+   798→                <div className="mt-0.5 flex items-center gap-1.5">
+   799→                  <Stars rating={course.mentor.rating} size={12} />
+   800→                  <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400">
+   801→                    {course.mentor.rating > 0 ? course.mentor.rating.toFixed(1) : 'Novo'}
+   802→                  </span>
+   803→                </div>
+   804→              </div>
+   805→              <Button
+   806→                variant="ghost"
+   807→                size="sm"
+   808→                className="h-9 rounded-full text-xs font-semibold text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-900/30"
+   809→                onClick={() => navigate({ name: 'mentor', mentorId: course.mentor.id })}
+   810→                aria-label={`Ver perfil de ${course.mentor.name}`}
+   811→              >
+   812→                Perfil
+   813→              </Button>
+   814→            </div>
+   815→          </div>
+   816→        </aside>
+   817→        )}
+   818→      </div>
+   819→
+   820→      {/* ---------- MODO FOCO: botão flutuante de saída ---------- */}
+   821→      {focusMode && (
+   822→        <Button
+   823→          type="button"
+   824→          onClick={() => setFocusMode(false)}
+   825→          aria-label="Sair do modo foco"
+   826→          className="fixed bottom-6 right-6 z-50 h-11 rounded-full bg-emerald-950 px-5 text-sm font-bold text-white shadow-2xl shadow-emerald-950/40 ring-1 ring-emerald-400/25 hover:bg-emerald-900"
+   827→        >
+   828→          <Minimize2 aria-hidden className="h-4 w-4" />
+   829→          Sair do modo foco
+   830→        </Button>
+   831→      )}
+   832→
+   833→      {/* ---------- CONTEÚDOS DO CURSO (dialog p/ mobile) ---------- */}
+   834→      <Dialog open={contentsOpen} onOpenChange={setContentsOpen}>
+   835→        <DialogContent className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
+   836→          <DialogHeader className="shrink-0 gap-1 border-b border-stone-100 py-4 pl-5 pr-12 text-left dark:border-stone-800">
+   837→            <DialogTitle className="text-base font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+   838→              Conteúdos do curso
+   839→            </DialogTitle>
+   840→            <DialogDescription className="text-xs">
+   841→              {completedIds.length} de {orderedLessons.length}{' '}
+   842→              {orderedLessons.length === 1 ? 'aula concluída' : 'aulas concluídas'}
+   843→            </DialogDescription>
+   844→          </DialogHeader>
+   845→          <ContentsNav
+   846→            groups={lessonGroups}
+   847→            themeList={themeList}
+   848→            collapsedThemes={collapsedThemes}
+   849→            onToggleTheme={handleToggleTheme}
+   850→            currentLessonId={currentLesson?.id ?? null}
+   851→            completedIds={completedIds}
+   852→            onSelectLesson={(lessonId) => {
+   853→              selectLesson(lessonId)
+   854→              setContentsOpen(false)
+   855→            }}
+   856→            className="py-2"
+   857→          />
+   858→        </DialogContent>
+   859→      </Dialog>
+   860→
+   861→      {/* ---------- TUTOR IA: chat flutuante com base no conteúdo do curso ---------- */}
+   862→      {course && hasAccess && (
+   863→        <AiTutor
+   864→          courseId={course.id}
+   865→          courseTitle={course.title}
+   866→          mentorName={course.mentor.name}
+   867→          currentLessonId={currentLesson?.id ?? null}
+   868→          currentLessonTitle={currentLesson?.title ?? null}
+   869→          user={user}
+   870→          onLogin={() => navigate({ name: 'auth', mode: 'login' })}
+   871→          raised={focusMode}
+   872→        />
+   873→      )}
+   874→    </div>
+   875→  )
+   876→}
+   877→
+   878→/* ==================== NAVEGAÇÃO DE CONTEÚDOS (sidebar + dialog mobile) ==================== */
+   879→
+   880→function ContentsNav({
+   881→  groups,
+   882→  themeList,
+   883→  collapsedThemes,
+   884→  onToggleTheme,
+   885→  currentLessonId,
+   886→  completedIds,
+   887→  onSelectLesson,
+   888→  className,
+   889→}: {
+   890→  groups: LessonGroup[]
+   891→  themeList: CourseThemeDTO[]
+   892→  collapsedThemes: Record<string, boolean>
+   893→  onToggleTheme: (key: string) => void
+   894→  currentLessonId: string | null
+   895→  completedIds: string[]
+   896→  onSelectLesson: (lessonId: string) => void
+   897→  className?: string
+   898→}) {
+   899→  const totalLessons = groups.reduce((n, g) => n + g.lessons.length, 0)
+   900→
+   901→  return (
+   902→    <nav
+   903→      aria-label="Conteúdos do curso"
+   904→      className={cn(
+   905→        'min-h-0 flex-1 overflow-y-auto px-3 pb-3 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-stone-100 dark:[&::-webkit-scrollbar-track]:bg-stone-900 [&::-webkit-scrollbar]:w-1.5',
+   906→        className
+   907→      )}
+   908→    >
+   909→      {groups.map((group) => {
+   910→        const collapsible = themeList.length > 0
+   911→        const isCollapsed = collapsible && Boolean(collapsedThemes[group.key])
+   912→        const groupTotal = group.lessons.length
+   913→        const groupDone = group.lessons.filter((l) => completedIds.includes(l.id)).length
+   914→        return (
+   915→          <div key={group.key} className="space-y-1 py-1">
+   916→            {collapsible ? (
+   917→              <button
+   918→                type="button"
+   919→                onClick={() => onToggleTheme(group.key)}
+   920→                aria-expanded={!isCollapsed}
+   921→                aria-label={`${isCollapsed ? 'Expandir' : 'Recolher'} a seção ${group.title}`}
+   922→                className="flex min-h-11 w-full items-center gap-1.5 rounded-xl px-1.5 py-1.5 text-left transition-colors hover:bg-stone-50 dark:hover:bg-stone-800"
+   923→              >
+   924→                {isCollapsed ? (
+   925→                  <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-stone-400 dark:text-stone-500" />
+   926→                ) : (
+   927→                  <ChevronDown aria-hidden className="h-4 w-4 shrink-0 text-stone-400 dark:text-stone-500" />
+   928→                )}
+   929→                {group.theme ? (
+   930→                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+   931→                    {themeList.findIndex((t) => t.id === group.key) + 1}
+   932→                  </span>
+   933→                ) : (
+   934→                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
+   935→                    <Folder aria-hidden className="h-3.5 w-3.5 text-stone-500 dark:text-stone-400" />
+   936→                  </span>
+   937→                )}
+   938→                <span className="min-w-0 flex-1 truncate text-sm font-bold text-stone-700 dark:text-stone-200">
+   939→                  {group.title}
+   940→                </span>
+   941→                <span className="shrink-0 text-[11px] font-semibold text-stone-400 dark:text-stone-500">
+   942→                  {groupTotal} {groupTotal === 1 ? 'aula' : 'aulas'}
+   943→                </span>
+   944→                <Progress
+   945→                  value={groupTotal > 0 ? Math.round((groupDone / groupTotal) * 100) : 0}
+   946→                  aria-label={`Progresso da seção ${group.title}`}
+   947→                  className="h-1.5 w-10 shrink-0 [&_[data-slot=progress-indicator]]:bg-emerald-500"
+   948→                />
+   949→                <span className="w-9 shrink-0 text-right text-[10px] font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
+   950→                  {groupDone}/{groupTotal}
+   951→                </span>
+   952→              </button>
+   953→            ) : null}
+   954→            {!isCollapsed &&
+   955→              group.lessons.map((lesson) => {
+   956→                const isCurrent = currentLessonId === lesson.id
+   957→                const isCompleted = completedIds.includes(lesson.id)
+   958→                const live = lesson.kind === 'LIVE'
+   959→                const reading = lesson.kind === 'READING'
+   960→                return (
+   961→                  <button
+   962→                    key={lesson.id}
+   963→                    onClick={() => onSelectLesson(lesson.id)}
+   964→                    aria-current={isCurrent ? 'true' : undefined}
+   965→                    className={cn(
+   966→                      'flex min-h-14 w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors',
+   967→                      isCurrent
+
+[showing lines 468-967 of 1972; use offset=968 with limit to continue reading]
