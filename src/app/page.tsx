@@ -304,6 +304,7 @@ export default function Home() {
                   trackId={view.trackId}
                   bundleId={view.bundleId}
                   membershipId={view.membershipId}
+                  bookingId={view.bookingId}
                 />
               )}
               {view.name === 'certificate' && <CertificateView code={view.code} />}

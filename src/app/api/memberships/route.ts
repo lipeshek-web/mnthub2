@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { membershipBaseInclude, serializeMembership } from '@/lib/membership-serialize'
+import { expireDueSubscriptions } from '@/lib/subscriptions'
 import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
@@ -23,6 +24,12 @@ export async function GET(req: NextRequest) {
 
     const session = await resolveUser(req)
     const canSeeDrafts = Boolean(mentorUserId) && session?.id === mentorUserId
+
+    // Expira assinaturas vencidas (renewsAt < agora) e revoga o acesso que
+    // dependia delas — antes, renewsAt era só decorativo (acesso vitalício)
+    await expireDueSubscriptions().catch((err) =>
+      console.error('sweep de assinaturas vencidas falhou (não bloqueia)', err)
+    )
 
     const where: Record<string, unknown> = {}
     if (canSeeDrafts) {
@@ -87,7 +94,7 @@ export async function GET(req: NextRequest) {
         const base = serializeMembership(m, {
           coursesCount,
           subscriberCount: m._count.subscriptions,
-          myStatus: mine ? (mine.status as 'ACTIVE' | 'CANCELLED') : null,
+          myStatus: mine ? (mine.status as 'ACTIVE' | 'CANCELLED' | 'EXPIRED') : null,
           renewsAt: mine ? mine.renewsAt.toISOString() : null,
         })
         if (mentorUserId) {

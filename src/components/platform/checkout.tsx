@@ -72,9 +72,9 @@ const METHOD_LABEL: Record<string, string> = {
 const formatBRL = (value: number) =>
   value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })
 
-/** Resumo normalizado do item em checkout (curso, trilha ou pacote) */
+/** Resumo normalizado do item em checkout (curso, trilha, pacote, assinatura ou sessão 1:1) */
 interface ItemSummary {
-  kind: 'course' | 'track' | 'bundle' | 'membership'
+  kind: 'course' | 'track' | 'bundle' | 'membership' | 'booking'
   id: string
   title: string
   coverUrl: string | null
@@ -102,16 +102,21 @@ interface ItemSummary {
   membershipStats?: { coursesCount: number; sessionLabel: string }
 }
 
+/** Detalhe da sessão 1:1 (retorno de api.getBooking) */
+type BookingDetail = Awaited<ReturnType<(typeof api)['getBooking']>>
+
 export function CheckoutView({
   courseId,
   trackId,
   bundleId,
   membershipId,
+  bookingId,
 }: {
   courseId?: string
   trackId?: string
   bundleId?: string
   membershipId?: string
+  bookingId?: string
 }) {
   const navigate = useAppStore((s) => s.navigate)
   const setExploreTab = useAppStore((s) => s.setExploreTab)
@@ -123,6 +128,7 @@ export function CheckoutView({
   const membershipTuple = useState<MembershipDTO | null>(null)
   const membership = membershipTuple[0]
   const setMembership = membershipTuple[1]
+  const [booking, setBooking] = useState<BookingDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -158,12 +164,29 @@ export function CheckoutView({
     setLoading(true)
     setError(null)
     try {
-      if (membershipId) {
+      // Limpa todos os estados primeiro (troca de item do checkout)
+      setBooking(null)
+      setMembership(null)
+      setBundle(null)
+      setCourse(null)
+      setTrack(null)
+
+      if (bookingId) {
+        const b = await api.getBooking(bookingId)
+        setBooking(b)
+
+        if (!trackedRef.current) {
+          trackedRef.current = true
+          loadTrackingScripts()
+          trackEvent('begin_checkout', {
+            mentorId: b.mentor.id,
+            value: b.price,
+            contentName: `Sessão 1:1 — ${b.topic}`,
+          })
+        }
+      } else if (membershipId) {
         const { membership: m } = await api.getMembership(membershipId, user?.id)
         setMembership(m)
-        setBundle(null)
-        setCourse(null)
-        setTrack(null)
 
         if (!trackedRef.current) {
           trackedRef.current = true
@@ -177,9 +200,6 @@ export function CheckoutView({
       } else if (bundleId) {
         const { bundle: b } = await api.getBundle(bundleId, user?.id)
         setBundle(b)
-        setCourse(null)
-        setTrack(null)
-        setMembership(null)
 
         if (!trackedRef.current) {
           trackedRef.current = true
@@ -193,8 +213,6 @@ export function CheckoutView({
       } else if (trackId) {
         const d = await api.getTrack(trackId, user?.id)
         setTrack(d)
-        setCourse(null)
-        setMembership(null)
 
         // Pixels da plataforma recebem as conversões deste checkout
         if (!trackedRef.current) {
@@ -209,9 +227,6 @@ export function CheckoutView({
       } else if (courseId) {
         const d = await api.getCourse(courseId, user?.id)
         setCourse(d)
-        setTrack(null)
-        setBundle(null)
-        setMembership(null)
 
         // Pixels do mentor recebem as conversões deste checkout
         if (!trackedRef.current) {
@@ -235,7 +250,7 @@ export function CheckoutView({
     } finally {
       setLoading(false)
     }
-  }, [bundleId, courseId, trackId, membershipId, user?.id])
+  }, [bundleId, courseId, trackId, membershipId, bookingId, user?.id])
 
   useEffect(() => {
     void fetchSummary()
@@ -384,6 +399,7 @@ export function CheckoutView({
         trackId: item.kind === 'track' ? item.id : undefined,
         bundleId: item.kind === 'bundle' ? item.id : undefined,
         membershipId: item.kind === 'membership' ? item.id : undefined,
+        bookingId: item.kind === 'booking' ? item.id : undefined,
         paymentMethod,
         couponCode: couponApplied?.code || undefined,
         useCredits,
@@ -412,7 +428,7 @@ export function CheckoutView({
         transactionId: instant.order.id,
         contentName: item.title,
       })
-      toast.success('Pagamento aprovado! 🎉')
+      toast.success(isBooking ? 'Sessão paga e confirmada! 🎉' : 'Pagamento aprovado! 🎉')
       setOrder(instant)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Não foi possível concluir o pagamento.'
@@ -470,7 +486,7 @@ export function CheckoutView({
   }
 
   /* ---------- Erro ---------- */
-  if (error || (!course && !track && !bundle && !membership)) {
+  if (error || (!booking && !course && !track && !bundle && !membership)) {
     return (
       <div className="mx-auto w-full max-w-3xl px-4 py-16">
         <Card className="mx-auto max-w-md border-dashed">
@@ -491,8 +507,26 @@ export function CheckoutView({
     )
   }
 
-  /* ---------- Resumo normalizado (curso, trilha, pacote ou assinatura) ---------- */
-  const item: ItemSummary | null = membership
+  /* ---------- Resumo normalizado (curso, trilha, pacote, assinatura ou sessão) ---------- */
+  const item: ItemSummary | null = booking
+    ? {
+        kind: 'booking',
+        id: booking.id,
+        title: `Sessão 1:1 — ${booking.topic}`,
+        coverUrl: null,
+        category: 'Sessão de mentoria',
+        level: '',
+        price: booking.price,
+        mentor: {
+          id: booking.mentor.id,
+          name: booking.mentor.name,
+          rating: 0,
+          reviewCount: 0,
+          avatarUrl: booking.mentor.avatarUrl,
+        },
+        isEnrolled: booking.payStatus !== 'UNPAID',
+      }
+    : membership
     ? {
         kind: 'membership',
         id: membership.id,
@@ -591,6 +625,7 @@ export function CheckoutView({
   const isTrack = item.kind === 'track'
   const isBundle = item.kind === 'bundle'
   const isMembership = item.kind === 'membership'
+  const isBooking = item.kind === 'booking'
 
   // Descontos combinados: cupom + créditos de indicação
   const couponDiscount = couponApplied?.discount ?? 0
@@ -733,7 +768,20 @@ export function CheckoutView({
               </div>
             </dl>
 
-            {isBundle ? (
+            {isBooking ? (
+              <>
+                <p className="mt-1 text-xs leading-relaxed text-stone-400 dark:text-stone-500">
+                  Sua sessão com {item.mentor.name} está confirmada. O link da sala aparece no seu
+                  painel perto do horário ({booking?.startsAt.replace('T', ' às ')}).
+                </p>
+                <Button
+                  onClick={() => navigate({ name: 'dashboard' })}
+                  className="mt-4 h-12 w-full rounded-full font-bold"
+                >
+                  Ir para minhas sessões
+                </Button>
+              </>
+            ) : isBundle ? (
               <>
                 <p className="mt-1 text-xs leading-relaxed text-stone-400 dark:text-stone-500">
                   Todos os {item.bundleStats?.courses.length ?? 0} cursos do pacote já estão na sua conta.
@@ -824,7 +872,9 @@ export function CheckoutView({
       <Button
         variant="ghost"
         onClick={() =>
-          isBundle
+          isBooking
+            ? navigate({ name: 'dashboard' })
+            : isBundle
             ? (() => {
                 setExploreTab('bundles')
                 navigate({ name: 'marketplace' })
@@ -838,7 +888,15 @@ export function CheckoutView({
         className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-50"
       >
         <ArrowLeft aria-hidden className="h-4 w-4" />
-        {isBundle ? 'Voltar aos pacotes' : isMembership ? 'Voltar ao perfil' : isTrack ? 'Voltar à trilha' : 'Voltar ao curso'}
+        {isBooking
+          ? 'Voltar ao painel'
+          : isBundle
+          ? 'Voltar aos pacotes'
+          : isMembership
+          ? 'Voltar ao perfil'
+          : isTrack
+          ? 'Voltar à trilha'
+          : 'Voltar ao curso'}
       </Button>
       <h1 className="mt-1 text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50 sm:text-2xl">
         Checkout
@@ -873,7 +931,11 @@ export function CheckoutView({
               <CheckCircle2 aria-hidden className="h-7 w-7 text-emerald-700 dark:text-emerald-300" />
             </span>
             <p className="font-bold text-stone-900 dark:text-stone-50">
-              {isBundle
+              {isBooking
+                ? booking?.payStatus === 'PENDING'
+                  ? 'Já existe uma cobrança em andamento para esta sessão'
+                  : 'Esta sessão já está paga'
+                : isBundle
                 ? 'Você já tem acesso a todos os cursos deste pacote'
                 : isMembership
                   ? 'Você já tem esta assinatura ativa'
@@ -882,7 +944,9 @@ export function CheckoutView({
                     : 'Você já tem acesso a este curso'}
             </p>
             <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
-              {isBundle
+              {isBooking
+                ? 'Acompanhe o status no seu painel — a sessão aparece em “Próximas sessões”.'
+                : isBundle
                 ? `Sua conta já inclui os ${item.bundleStats?.courses.length ?? 0} cursos do pacote “${item.title}” — bons estudos!`
                 : isMembership
                   ? `Sua assinatura “${item.title}” já está ativa — todos os cursos de ${item.mentor.name} liberados.`
@@ -890,7 +954,9 @@ export function CheckoutView({
             </p>
             <Button
               onClick={() =>
-                isBundle
+                isBooking
+                  ? navigate({ name: 'dashboard' })
+                  : isBundle
                   ? navigate({ name: 'dashboard' })
                   : isMembership
                     ? navigate({ name: 'dashboard' })
@@ -900,7 +966,9 @@ export function CheckoutView({
               }
               className="mt-1 h-11 rounded-full px-6 font-bold"
             >
-              {isBundle
+              {isBooking
+                ? 'Ir para minhas sessões'
+                : isBundle
                 ? 'Ir para meus cursos'
                 : isMembership
                   ? 'Ir para meus cursos'
@@ -913,8 +981,9 @@ export function CheckoutView({
       )}
 
       {/* Item gratuito: matrícula direta (defensivo — trilhas/pacotes gratuitos normalmente
-          são inscritos direto na tela correspondente, sem passar pelo checkout) */}
-      {user && !item.isEnrolled && item.price === 0 && (
+          são inscritos direto na tela correspondente, sem passar pelo checkout;
+          sessão 1:1 com price 0 não tem o que pagar) */}
+      {user && !item.isEnrolled && item.price === 0 && !isBooking && (
         <div className="mt-5 flex flex-col items-center gap-2.5 rounded-2xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/50 p-8 text-center">
           <p className="font-bold text-stone-900 dark:text-stone-50">
             {isBundle ? 'Este pacote é gratuito' : isTrack ? 'Esta trilha é gratuita' : 'Este curso é gratuito'}
@@ -989,9 +1058,11 @@ export function CheckoutView({
                     <Badge className="rounded-full border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50">
                       {item.category}
                     </Badge>
-                    <Badge variant="outline" className="rounded-full border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-300">
-                      {LEVEL_LABELS[item.level] ?? item.level}
-                    </Badge>
+                    {(LEVEL_LABELS[item.level] ?? item.level) ? (
+                      <Badge variant="outline" className="rounded-full border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-300">
+                        {LEVEL_LABELS[item.level] ?? item.level}
+                      </Badge>
+                    ) : null}
                   </>
                 )}
               </div>

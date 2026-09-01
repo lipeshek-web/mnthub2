@@ -134,6 +134,8 @@ export interface BookingDTO {
   meetingRoom: string
   price: number
   createdAt: string
+  /** Estado do pagamento da sessão 1:1 (UNPAID = mostrar "Pagar") */
+  payStatus?: 'PAID' | 'PENDING' | 'UNPAID'
   mentor: {
     id: string
     userId: string
@@ -730,7 +732,7 @@ export interface MembershipDTO {
   /** Assinantes ativos (painel do mentor) */
   subscriberCount?: number
   /** Estado do usuário na requisição (view pública; null = não assinante) */
-  myStatus?: 'ACTIVE' | 'CANCELLED' | null
+  myStatus?: 'ACTIVE' | 'CANCELLED' | 'EXPIRED' | null
   /** Fim do ciclo pago (quando assinante) */
   renewsAt?: string | null
   /** Lista de assinantes (apenas no painel do mentor) */

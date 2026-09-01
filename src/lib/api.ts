@@ -211,6 +211,19 @@ export const api = {
   }) => request<BookingDTO>('/api/bookings', { method: 'POST', body: JSON.stringify(data) }),
   updateBooking: (id: string, data: { userId: string; action: 'confirm' | 'cancel' | 'complete' }) =>
     request<BookingDTO>(`/api/bookings/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  // Detalhe da sessão (checkout da sessão 1:1 — só mentor/mentoreado da sessão)
+  getBooking: (id: string) =>
+    request<{
+      id: string
+      topic: string
+      startsAt: string
+      durationMin: number
+      status: string
+      price: number
+      payStatus: 'PAID' | 'PENDING' | 'UNPAID'
+      mentor: { id: string; name: string; avatarUrl: string | null }
+      mentee: { id: string; name: string }
+    }>(`/api/bookings/${id}`),
 
   // Baixa o .ics via fetch autenticado (a rota exige sessão — <a href> não
   // anexa Authorization) e dispara o download no browser.
@@ -532,7 +545,7 @@ export const api = {
   // LP pública do mentor (tráfego pago) — por slug
   getMentorBySlug: (slug: string) => request<MentorLpDTO>(`/api/mentors/by-slug/${encodeURIComponent(slug)}`),
 
-  // Checkout — curso, trilha, pacote ou assinatura (gateway Asaas ou modo demonstração)
+  // Checkout — curso, trilha, pacote, assinatura ou sessão 1:1 (gateway Asaas ou modo demonstração)
   checkout: (
     data: {
       userId: string
@@ -540,6 +553,7 @@ export const api = {
       trackId?: string
       bundleId?: string
       membershipId?: string
+      bookingId?: string
       paymentMethod: 'PIX' | 'CREDIT_CARD' | 'BOLETO'
       couponCode?: string
       useCredits?: boolean
@@ -813,7 +827,7 @@ export const api = {
       }),
     paymentAction: (
       token: string,
-      data: { paymentId: string; action: 'confirm_asaas' | 'sync' | 'cancel' }
+      data: { paymentId: string; action: 'confirm_asaas' | 'sync' | 'cancel' | 'refund' }
     ) =>
       request<{ ok: boolean } & Record<string, unknown>>('/api/admin/payments', {
         method: 'POST',

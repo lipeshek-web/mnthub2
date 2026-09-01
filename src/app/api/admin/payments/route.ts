@@ -5,9 +5,11 @@ import {
   getAsaasConfig,
   getAsaasPayment,
   confirmAsaasPaymentInCash,
+  refundAsaasPayment,
   mapAsaasStatus,
 } from '@/lib/asaas'
-import { fulfillOrder } from '@/lib/fulfillment'
+import { fulfillOrder, revokeOrderAccess } from '@/lib/fulfillment'
+import { rateLimit, tooMany } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,6 +54,7 @@ export async function GET(req: NextRequest) {
               track: { select: { title: true } },
               bundle: { select: { title: true } },
               membership: { select: { title: true } },
+              booking: { select: { topic: true } },
             },
           },
         },
@@ -79,7 +82,7 @@ export async function GET(req: NextRequest) {
           p.order.track?.title ??
           p.order.bundle?.title ??
           p.order.membership?.title ??
-          'Pedido',
+          (p.order.booking ? `Sessão 1:1 — ${p.order.booking.topic}` : 'Pedido'),
         orderId: p.order.id,
       })),
       total,
@@ -96,6 +99,10 @@ export async function POST(req: NextRequest) {
   const guard = await requireAdmin(req)
   if ('error' in guard) return guard.error
   const { actor } = guard
+
+  // Ações financeiras (confirmar/estornar) — trava de operação em massa
+  const gate = rateLimit(`admin-payments:${actor.id}`, 30, 60_000)
+  if (!gate.ok) return tooMany(gate.retryAfterSec)
 
   try {
     const body = await req.json().catch(() => ({}))
@@ -175,6 +182,33 @@ export async function POST(req: NextRequest) {
       ])
       await audit(actor, 'payment.cancel', { paymentId, orderId: payment.orderId })
       return NextResponse.json({ ok: true })
+    }
+
+    // ---------- Estornar cobrança paga (dinheiro volta, acesso sai) ----------
+    if (action === 'refund') {
+      if (!PAID_STATUSES.includes(payment.status)) {
+        return NextResponse.json({ error: 'Só cobranças pagas podem ser estornadas.' }, { status: 400 })
+      }
+      if (payment.gateway === 'ASAAS' && payment.gatewayPaymentId) {
+        const config = await getAsaasConfig()
+        if (config.apiKey) {
+          try {
+            // Estorno real no gateway ANTES de revogar: se o Asaas recusar,
+            // nada muda localmente (dinheiro não saiu da plataforma)
+            await refundAsaasPayment(config, payment.gatewayPaymentId)
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Falha ao estornar no Asaas.'
+            return NextResponse.json({ error: `O gateway recusou o estorno: ${message}` }, { status: 502 })
+          }
+        }
+      }
+      await db.payment.update({
+        where: { id: payment.id },
+        data: { status: 'REFUNDED', lastEvent: 'admin_refund', lastEventAt: new Date() },
+      })
+      const result = await revokeOrderAccess(payment.orderId)
+      await audit(actor, 'payment.refund', { paymentId, orderId: payment.orderId, revoked: result.ok })
+      return NextResponse.json({ ok: result.ok, revoked: result.ok })
     }
 
     return NextResponse.json({ error: 'Ação desconhecida.' }, { status: 400 })

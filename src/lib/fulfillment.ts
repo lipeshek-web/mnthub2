@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { notify } from '@/lib/notify'
+import { activateSubscription } from '@/lib/subscriptions'
 
 // ==================== CONCLUSÃO DE PEDIDOS ====================
 // Único caminho que transforma um pedido pago em acesso liberado:
@@ -80,6 +81,7 @@ export async function fulfillOrder(orderId: string): Promise<FulfillResult> {
       },
       bundle: { select: { id: true, title: true, items: { select: { courseId: true } } } },
       membership: { select: { id: true, title: true, mentorId: true, price: true } },
+      booking: { select: { id: true, topic: true, status: true, startsAt: true, mentorId: true } },
       payments: { select: { id: true, status: true, gateway: true } },
     },
   })
@@ -107,12 +109,7 @@ export async function fulfillOrder(orderId: string): Promise<FulfillResult> {
   // ---------- Liberação por tipo de item ----------
   if (order.membershipId && order.membership) {
     const membership = order.membership
-    const renewsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-    await db.membershipSubscription.upsert({
-      where: { membershipId_userId: { membershipId: membership.id, userId } },
-      create: { membershipId: membership.id, userId, mentorId: membership.mentorId, status: 'ACTIVE', renewsAt },
-      update: { status: 'ACTIVE', startedAt: paidNow, renewsAt, cancelledAt: null },
-    })
+    await activateSubscription(membership.id, userId, membership.mentorId)
     // Matricula em TODOS os cursos publicados do mentor (acesso imediato)
     const courses = await db.course.findMany({
       where: { mentorId: membership.mentorId, isPublished: true },
@@ -152,6 +149,13 @@ export async function fulfillOrder(orderId: string): Promise<FulfillResult> {
       where: { courseId_studentId: { courseId: order.courseId, studentId: userId } },
       create: { courseId: order.courseId, studentId: userId, completedLessonIds: '[]' },
       update: {},
+    })
+  } else if (order.bookingId && order.booking) {
+    // Sessão 1:1 paga: pagamento confirma a sessão (mesmo que o mentor ainda
+    // não tenha aceito — dinheiro caiu, horário está reservado)
+    await db.booking.update({
+      where: { id: order.bookingId },
+      data: { status: 'CONFIRMED' },
     })
   }
 
@@ -252,10 +256,171 @@ export async function fulfillOrder(orderId: string): Promise<FulfillResult> {
       linkView: 'onboarding',
       refId: order.course.id,
     })
+  } else if (order.booking) {
+    const when = order.booking.startsAt.replace('T', ' às ')
+    await notify({
+      userId: order.mentor.userId,
+      kind: 'booking_paid',
+      title: `Sessão paga e confirmada: ${order.booking.topic} 💰`,
+      body: `${studentName} pagou a sessão de ${when}.`,
+      linkView: 'dashboard',
+      refId: order.booking.id,
+    })
+    await notify({
+      userId,
+      kind: 'booking_paid',
+      title: 'Pagamento confirmado! 🎉',
+      body: `Sua sessão "${order.booking.topic}" está confirmada. Até ${when}!`,
+      linkView: 'dashboard',
+      refId: order.booking.id,
+    })
   }
 
   // ---------- Indicação: 1ª compra paga (valor > 0) recompensa quem convidou ----------
   await rewardPendingReferral(userId, studentName, order.amount)
 
   return { ok: true, alreadyFulfilled: false, orderStatus: 'PAID' }
+}
+
+// ==================== ESTORNO (REFUND) ====================
+
+/**
+ * O usuário tem acesso ao curso por uma via DIFERENTE do pedido estornado?
+ * (pedido PAID direto/pacote/trilha que contenha o curso, ou assinatura
+ * ACTIVE com ciclo futuro do mesmo mentor)
+ */
+async function hasOtherPaidAccess(userId: string, courseId: string, mentorId: string, excludeOrderId: string): Promise<boolean> {
+  const paidOrders = await db.order.findMany({
+    where: { studentId: userId, status: 'PAID', id: { not: excludeOrderId } },
+    select: {
+      courseId: true,
+      bundle: { select: { items: { select: { courseId: true } } } },
+      track: { select: { items: { where: { type: 'COURSE' }, select: { courseId: true } } } },
+    },
+  })
+  if (
+    paidOrders.some((o) => o.courseId === courseId) ||
+    paidOrders.some((o) => o.bundle?.items.some((i) => i.courseId === courseId)) ||
+    paidOrders.some((o) => o.track?.items.some((i) => i.courseId === courseId))
+  ) {
+    return true
+  }
+  const sub = await db.membershipSubscription.findFirst({
+    where: { userId, mentorId, status: 'ACTIVE', renewsAt: { gt: new Date() } },
+    select: { id: true },
+  })
+  return Boolean(sub)
+}
+
+/** Remove a matrícula do curso SE não houver outra via paga de acesso */
+async function revokeEnrollmentIfNoOtherAccess(userId: string, courseId: string, mentorId: string, excludeOrderId: string) {
+  if (await hasOtherPaidAccess(userId, courseId, mentorId, excludeOrderId)) return
+  await db.enrollment.deleteMany({ where: { courseId, studentId: userId } })
+}
+
+export interface RevokeResult {
+  ok: boolean
+  alreadyRevoked: boolean
+}
+
+/**
+ * Estorna um pedido PAGO: marca REFUNDED (transição condicional — idempotente),
+ * devolve créditos usados, revoga o acesso concedido e notifica o aluno.
+ * Seguro chamar múltiplas vezes (webhook + admin): só a 1ª executa.
+ */
+export async function revokeOrderAccess(orderId: string): Promise<RevokeResult> {
+  // Claim atômico: só quem converte PAID→REFUNDED executa a revogação
+  const claim = await db.order.updateMany({
+    where: { id: orderId, status: 'PAID' },
+    data: { status: 'REFUNDED' },
+  })
+  if (claim.count === 0) {
+    const fresh = await db.order.findUnique({ where: { id: orderId }, select: { status: true } })
+    return { ok: fresh?.status === 'REFUNDED', alreadyRevoked: fresh?.status === 'REFUNDED' }
+  }
+
+  const order = await db.order.findUnique({
+    where: { id: orderId },
+    include: {
+      student: { select: { id: true, name: true } },
+      course: { select: { id: true, title: true, mentorId: true } },
+      track: {
+        select: {
+          id: true, title: true, mentorId: true,
+          items: { where: { type: 'COURSE' }, select: { courseId: true } },
+        },
+      },
+      bundle: { select: { id: true, title: true, mentorId: true, items: { select: { courseId: true } } } },
+      membership: { select: { id: true, title: true, mentorId: true } },
+      booking: { select: { id: true, topic: true } },
+      payments: { select: { id: true } },
+    },
+  })
+  if (!order) return { ok: false, alreadyRevoked: false }
+
+  const userId = order.studentId
+
+  try {
+    // ---------- Revogação por tipo ----------
+    if (order.membershipId && order.membership) {
+      // Encerra a assinatura imediatamente (estorno = fim do ciclo)
+      await db.membershipSubscription.updateMany({
+        where: { membershipId: order.membershipId, userId, status: 'ACTIVE' },
+        data: { status: 'CANCELLED', cancelledAt: new Date() },
+      })
+      const courses = await db.course.findMany({
+        where: { mentorId: order.membership.mentorId, isPublished: true },
+        select: { id: true },
+      })
+      for (const c of courses) {
+        await revokeEnrollmentIfNoOtherAccess(userId, c.id, order.membership.mentorId, order.id)
+      }
+    } else if (order.bundleId && order.bundle) {
+      for (const item of order.bundle.items) {
+        await revokeEnrollmentIfNoOtherAccess(userId, item.courseId, order.bundle.mentorId, order.id)
+      }
+    } else if (order.trackId && order.track) {
+      // Trilha: só remove a trackEnrollment se não houver outro pedido PAID da trilha
+      const otherTrackOrder = await db.order.findFirst({
+        where: { studentId: userId, trackId: order.trackId, status: 'PAID', id: { not: order.id } },
+        select: { id: true },
+      })
+      if (!otherTrackOrder) {
+        await db.trackEnrollment.deleteMany({ where: { trackId: order.trackId, studentId: userId } })
+      }
+      for (const item of order.track.items) {
+        if (!item.courseId) continue
+        await revokeEnrollmentIfNoOtherAccess(userId, item.courseId, order.track.mentorId, order.id)
+      }
+    } else if (order.courseId && order.course) {
+      await revokeEnrollmentIfNoOtherAccess(userId, order.courseId, order.course.mentorId, order.id)
+    } else if (order.bookingId && order.booking) {
+      // Sessão estornada: volta para o agendamento decidir (cancela)
+      await db.booking.updateMany({
+        where: { id: order.bookingId, status: { in: ['PENDING', 'CONFIRMED'] } },
+        data: { status: 'CANCELLED' },
+      })
+    }
+
+    // Créditos usados no pedido voltam para o saldo (foram consumidos no fulfill)
+    if (order.creditsUsed > 0) {
+      await db.user.update({
+        where: { id: userId },
+        data: { creditCents: { increment: Math.round(order.creditsUsed * 100) } },
+      })
+    }
+
+    await notify({
+      userId,
+      kind: 'order_refunded',
+      title: 'Pagamento estornado',
+      body: `O pedido de ${order.amount.toFixed(2).replace('.', ',')} foi estornado e o acesso revogado. Dúvidas? Fale com o suporte.`,
+      linkView: 'dashboard',
+      refId: order.id,
+    })
+  } catch (err) {
+    console.error('revokeOrderAccess falhou (pedido já está REFUNDED)', err)
+  }
+
+  return { ok: true, alreadyRevoked: false }
 }

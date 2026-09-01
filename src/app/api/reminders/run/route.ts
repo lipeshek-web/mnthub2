@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { notify } from '@/lib/notify'
+import { expireDueSubscriptions } from '@/lib/subscriptions'
 import { addDays, dateKey, parseNaive } from '@/lib/helpers'
 import { resolveUser, unauthorized } from '@/lib/session'
 
@@ -63,6 +64,13 @@ export async function POST(req: NextRequest) {
 
     const kinds: string[] = []
     let created = 0
+
+    // Sweep de assinaturas vencidas (renewsAt) — barato e idempotente; roda
+    // junto dos lembretes para não precisar de cron dedicado
+    await expireDueSubscriptions().catch((err) =>
+      console.error('reminders: sweep de assinaturas falhou (isolado)', err)
+    )
+
     const today = new Date()
     const todayKey = dateKey(today) // "YYYY-MM-DD" local
     const yesterdayKey = dateKey(addDays(today, -1))

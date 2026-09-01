@@ -145,6 +145,7 @@ model Booking {
   @@index([menteeId, startsAt])
 
   review Review?
+  orders Order[] // pedidos de pagamento desta sessão (1:1 pago)
 }
 
 model Review {
@@ -405,6 +406,8 @@ model Order {
   bundle        Bundle?           @relation(fields: [bundleId], references: [id], onDelete: Cascade)
   membershipId  String?
   membership    MentorMembership? @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  bookingId     String? @unique // sessão 1:1 paga (checkout por booking; 1 pedido por sessão)
+  booking       Booking?          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   studentId     String
   student       User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
   mentorId      String
@@ -590,7 +593,7 @@ model MembershipSubscription {
   userId       String
   user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   mentorId     String // denormalizado p/ consultas rápidas de acesso
-  status       String           @default("ACTIVE") // ACTIVE | CANCELLED
+  status       String           @default("ACTIVE") // ACTIVE | CANCELLED | EXPIRED (renewsAt vencido — sweep lib/subscriptions)
   startedAt    DateTime         @default(now())
   renewsAt     DateTime // startedAt + 30 dias (fim do ciclo pago)
   cancelledAt  DateTime?

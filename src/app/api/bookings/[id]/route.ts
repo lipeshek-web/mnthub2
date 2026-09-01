@@ -6,6 +6,54 @@ import { resolveUser, unauthorized } from '@/lib/session'
 export const dynamic = 'force-dynamic'
 
 /**
+ * GET /api/bookings/[id] — detalhe da sessão (checkout da sessão 1:1).
+ * Somente mentor ou mentorado da sessão — identidade pela SESSÃO.
+ */
+export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const session = await resolveUser(req)
+  if (!session) return unauthorized()
+  try {
+    const { id } = await ctx.params
+    const booking = await db.booking.findUnique({
+      where: { id },
+      include: {
+        mentor: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } },
+        mentee: { select: { id: true, name: true } },
+        orders: { select: { status: true } },
+      },
+    })
+    if (!booking) return NextResponse.json({ error: 'Sessão não encontrada.' }, { status: 404 })
+
+    const allowed =
+      booking.mentor.userId === session.id || booking.menteeId === session.id || session.role === 'ADMIN'
+    if (!allowed) return NextResponse.json({ error: 'Sem acesso a esta sessão.' }, { status: 403 })
+
+    return NextResponse.json({
+      id: booking.id,
+      topic: booking.topic,
+      startsAt: booking.startsAt,
+      durationMin: booking.durationMin,
+      status: booking.status,
+      price: booking.price,
+      payStatus: booking.orders.some((o) => o.status === 'PAID')
+        ? 'PAID'
+        : booking.orders.some((o) => o.status === 'PENDING')
+          ? 'PENDING'
+          : 'UNPAID',
+      mentor: {
+        id: booking.mentor.id,
+        name: booking.mentor.user.name,
+        avatarUrl: booking.mentor.user.avatarUrl,
+      },
+      mentee: booking.mentee,
+    })
+  } catch (err) {
+    console.error('GET /api/bookings/[id]', err)
+    return NextResponse.json({ error: 'Erro ao carregar a sessão.' }, { status: 500 })
+  }
+}
+
+/**
  * PATCH /api/bookings/[id]
  * body: { action: 'confirm' | 'cancel' | 'complete' } — a identidade vem da
  * SESSÃO (antes vinha do body e permitia confirmar/concluir/cancelar a sessão

@@ -222,6 +222,17 @@ export function confirmAsaasPaymentInCash(
   })
 }
 
+/**
+ * Estorno total da cobrança no Asaas (POST /payments/{id}/refund).
+ * PIX/cartão/boleto pagos podem ser estornados integralmente.
+ */
+export function refundAsaasPayment(config: AsaasConfig, paymentId: string): Promise<AsaasPayment> {
+  return asaasFetch<AsaasPayment>(config, `/payments/${paymentId}/refund`, {
+    method: 'POST',
+    body: {},
+  })
+}
+
 // ---------- Webhooks ----------
 
 /**

@@ -7,6 +7,9 @@ import { rateLimit, tooMany } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
+/** Sentinela p/ rollback da transação de agendamento (conflito de horário) */
+class BookingConflictError extends Error {}
+
 /** GET /api/bookings — sessões do usuário autenticado (como mentorado e como mentor) */
 export async function GET(req: NextRequest) {
   const session = await resolveUser(req)
@@ -21,6 +24,7 @@ export async function GET(req: NextRequest) {
         mentor: { include: { user: true } },
         mentee: true,
         review: true,
+        orders: { select: { status: true } },
       },
       orderBy: { startsAt: 'desc' },
     })
@@ -35,6 +39,12 @@ export async function GET(req: NextRequest) {
       meetingRoom: b.meetingRoom,
       price: b.price,
       createdAt: b.createdAt.toISOString(),
+      // estado do pagamento da sessão 1:1 (botão "Pagar" no painel)
+      payStatus: b.orders.some((o) => o.status === 'PAID')
+        ? 'PAID'
+        : b.orders.some((o) => o.status === 'PENDING')
+          ? 'PENDING'
+          : 'UNPAID',
       mentor: {
         id: b.mentor.id,
         userId: b.mentor.userId,
@@ -106,42 +116,72 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Este horário saiu da agenda do mentor. Atualize a página.' }, { status: 409 })
     }
 
-    // valida conflito de horários (só sessões na janela relevante — perf)
+    // valida conflito de horários + cria ATOMICAMENTE (anti double-booking):
+    // o INSERT primeiro (pega o write lock do SQLite), depois a checagem vê as
+    // linhas já commitadas das transações concorrentes — se conflitar, throw
+    // faz rollback. Antes (check-then-create) dois cliques simultâneos
+    // passavam na checagem juntos e ambos criavam a sessão.
     const start = parseNaive(startsAt).getTime()
     const end = start + durationMin * 60 * 1000
     // janela ±1 dia em torno do horário solicitado (strings naive ordenam bem)
     const dayBefore = new Date(start - 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
     const dayAfter = new Date(end + 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
-    const others = await db.booking.findMany({
-      where: {
-        mentorId,
-        status: { in: ['PENDING', 'CONFIRMED'] },
-        startsAt: { gte: dayBefore, lte: dayAfter },
-      },
-      select: { startsAt: true, durationMin: true },
-    })
-    const conflict = others.some((o) => {
-      const os = parseNaive(o.startsAt).getTime()
-      const oe = os + o.durationMin * 60 * 1000
-      return start < oe && os < end
-    })
-    if (conflict) {
-      return NextResponse.json({ error: 'Ops! Alguém acabou de agendar este horário. Escolha outro.' }, { status: 409 })
-    }
 
-    const booking = await db.booking.create({
-      data: {
-        mentorId,
-        menteeId,
-        startsAt,
-        durationMin,
-        topic,
-        notes: notes || null,
-        status: 'PENDING',
-        meetingRoom: `mentorhub-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`,
-        price: mentor.hourlyRate,
-      },
-    })
+    let booking
+    try {
+      booking = await db.$transaction(async (tx) => {
+        const created = await tx.booking.create({
+          data: {
+            mentorId,
+            menteeId,
+            startsAt,
+            durationMin,
+            topic,
+            notes: notes || null,
+            status: 'PENDING',
+            meetingRoom: `mentorhub-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`,
+            price: mentor.hourlyRate,
+          },
+        })
+        const others = await tx.booking.findMany({
+          where: {
+            mentorId,
+            status: { in: ['PENDING', 'CONFIRMED'] },
+            startsAt: { gte: dayBefore, lte: dayAfter },
+            id: { not: created.id },
+          },
+          select: { startsAt: true, durationMin: true },
+        })
+        const conflict = others.some((o) => {
+          const os = parseNaive(o.startsAt).getTime()
+          const oe = os + o.durationMin * 60 * 1000
+          return start < oe && os < end
+        })
+        if (conflict) {
+          throw new BookingConflictError()
+        }
+        return created
+      })
+    } catch (e) {
+      // Conflito real (rollback) OU falha da transação sob concorrência
+      // (timeout/write-conflict do SQLite) — em ambos o agendamento NÃO foi
+      // criado e o horário segue disputado: 409 pede novo horário ao usuário.
+      const code = (e as { code?: string })?.code
+      if (e instanceof BookingConflictError || code === 'P2034' || code === 'P2028') {
+        return NextResponse.json(
+          { error: 'Ops! Alguém acabou de agendar este horário. Escolha outro.' },
+          { status: 409 }
+        )
+      }
+      // Timeout de socket da transação concorrente (sem code estável)
+      if (e instanceof Error && /timeout|locked/i.test(e.message)) {
+        return NextResponse.json(
+          { error: 'Ops! Alguém acabou de agendar este horário. Escolha outro.' },
+          { status: 409 }
+        )
+      }
+      throw e
+    }
 
     // Notifica o mentor sobre a nova solicitação
     await notify({

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { timingSafeEqual } from 'crypto'
 import { db } from '@/lib/db'
 import { getAsaasConfig, mapAsaasStatus } from '@/lib/asaas'
-import { fulfillOrder } from '@/lib/fulfillment'
+import { fulfillOrder, revokeOrderAccess } from '@/lib/fulfillment'
 
 export const dynamic = 'force-dynamic'
 
@@ -96,11 +96,10 @@ export async function POST(req: NextRequest) {
           where: { id: payment.id },
           data: { status: 'REFUNDED', lastEvent: event, lastEventAt: now },
         })
-        const order = await db.order.findUnique({ where: { id: payment.orderId }, select: { status: true } })
-        if (order?.status === 'PAID') {
-          await db.order.update({ where: { id: payment.orderId }, data: { status: 'REFUNDED' } })
-        }
-        return NextResponse.json({ received: true })
+        // Estorno REAL: revoga o acesso concedido (matrículas/assinatura/sessão),
+        // devolve créditos usados e notifica o aluno — idempotente
+        const rev = await revokeOrderAccess(payment.orderId)
+        return NextResponse.json({ received: true, revoked: rev.ok })
       }
       default: {
         // PAYMENT_CREATED e outros: apenas registra o último evento

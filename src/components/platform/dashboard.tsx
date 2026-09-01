@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Clock,
   Compass,
+  CreditCard,
   Download,
   ExternalLink,
   Flame,
@@ -194,6 +195,7 @@ function BookingCard({
   onComplete,
   onCancel,
   onJoin,
+  onPay,
   onReview,
 }: {
   booking: BookingDTO
@@ -204,6 +206,7 @@ function BookingCard({
   onComplete: (booking: BookingDTO) => void
   onCancel: (booking: BookingDTO) => void
   onJoin: (booking: BookingDTO) => void
+  onPay: (booking: BookingDTO) => void
   onReview: (booking: BookingDTO, rating: number, comment: string) => Promise<void>
 }) {
   const isMentorSide = b.mentor.userId === userId
@@ -240,6 +243,12 @@ function BookingCard({
 
   const canJoin = b.status === 'CONFIRMED'
   const canReview = !isMentorSide && b.status === 'COMPLETED' && !b.reviewed
+  // Sessão 1:1 paga: botão Pagar quando ainda não pago/em cobrança
+  const canPay =
+    !isMentorSide &&
+    b.price > 0 &&
+    b.payStatus === 'UNPAID' &&
+    (b.status === 'PENDING' || b.status === 'CONFIRMED')
 
   const dialogContent: Record<ConfirmKind, { title: string; description: string; actionLabel: string }> = {
     reject: {
@@ -282,6 +291,7 @@ function BookingCard({
   const hasActions =
     (isMentorSide && (b.status === 'PENDING' || b.status === 'CONFIRMED')) ||
     canJoin ||
+    canPay ||
     (!isMentorSide && (b.status === 'PENDING' || b.status === 'CONFIRMED')) ||
     canReview
 
@@ -364,6 +374,12 @@ function BookingCard({
             {canJoin ? (
               <Button size="sm" onClick={() => onJoin(b)}>
                 <Video className="size-4" aria-hidden /> Entrar na sala
+              </Button>
+            ) : null}
+
+            {canPay ? (
+              <Button size="sm" onClick={() => onPay(b)}>
+                <CreditCard className="size-4" aria-hidden /> Pagar sessão ({currencyBRL(b.price)})
               </Button>
             ) : null}
 
@@ -727,6 +743,11 @@ export default function DashboardView() {
     (booking: BookingDTO) => navigate({ name: 'meeting', bookingId: booking.id }),
     [navigate]
   )
+  // Sessão 1:1 paga: leva ao checkout da sessão (PIX/cartão/boleto)
+  const handlePay = useCallback(
+    (booking: BookingDTO) => navigate({ name: 'checkout', bookingId: booking.id }),
+    [navigate]
+  )
   const handleReview = useCallback(
     async (booking: BookingDTO, rating: number, comment: string) => {
       if (!userId) return
@@ -820,6 +841,7 @@ export default function DashboardView() {
     onComplete: handleComplete,
     onCancel: handleCancel,
     onJoin: handleJoin,
+    onPay: handlePay,
     onReview: handleReview,
   }
 

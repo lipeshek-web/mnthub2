@@ -45,7 +45,13 @@ function isValidCpfCnpj(raw: string): boolean {
   return false
 }
 
-/** Aplica créditos de indicação (R$) sobre o valor pós-cupom — apenas cálculo */
+/**
+ * Aplica créditos de indicação (R$) sobre o valor pós-cupom — apenas cálculo.
+ * ANTI DOUBLE-SPEND: créditos já "reservados" por pedidos PENDING do usuário
+ * não ficam disponíveis — antes, dois checkouts simultâneos consumiam o
+ * mesmo saldo duas vezes (débito em fulfill campa no chão 0, segunda compra
+ * saía grátis).
+ */
 async function previewCredits(
   userId: string,
   basePrice: number,
@@ -54,10 +60,18 @@ async function previewCredits(
 ): Promise<{ amount: number; creditsUsed: number }> {
   const afterCoupon = Math.max(0, Math.round((basePrice - couponDiscount) * 100) / 100)
   if (!useCredits || afterCoupon <= 0) return { amount: afterCoupon, creditsUsed: 0 }
-  const user = await db.user.findUnique({ where: { id: userId }, select: { creditCents: true } })
-  const balance = user?.creditCents ?? 0
-  if (balance <= 0) return { amount: afterCoupon, creditsUsed: 0 }
-  const creditsUsed = Math.min(balance / 100, afterCoupon)
+  const [user, pending] = await Promise.all([
+    db.user.findUnique({ where: { id: userId }, select: { creditCents: true } }),
+    db.order.aggregate({
+      where: { studentId: userId, status: 'PENDING' },
+      _sum: { creditsUsed: true },
+    }),
+  ])
+  const reservedCents = Math.round((pending._sum.creditsUsed ?? 0) * 100)
+  const balanceCents = Math.max(0, (user?.creditCents ?? 0) - reservedCents)
+  if (balanceCents <= 0) return { amount: afterCoupon, creditsUsed: 0 }
+  const usable = balanceCents / 100
+  const creditsUsed = Math.min(usable, afterCoupon)
   const amount = Math.max(0, Math.round((afterCoupon - creditsUsed) * 100) / 100)
   return { amount, creditsUsed }
 }
@@ -76,6 +90,7 @@ export async function POST(req: NextRequest) {
     const trackId = String(body?.trackId ?? '')
     const bundleId = String(body?.bundleId ?? '')
     const membershipId = String(body?.membershipId ?? '')
+    const bookingId = String(body?.bookingId ?? '')
     const useCredits = body?.useCredits === true
     const billingType: AsaasBillingType =
       body?.paymentMethod === 'CREDIT_CARD'
@@ -86,7 +101,7 @@ export async function POST(req: NextRequest) {
     const couponCode = String(body?.couponCode ?? '').trim()
     const rawCpf = String(body?.cpfCnpj ?? '').trim()
 
-    const kindCount = [courseId, trackId, bundleId, membershipId].filter(Boolean).length
+    const kindCount = [courseId, trackId, bundleId, membershipId, bookingId].filter(Boolean).length
     if (!userId || kindCount !== 1) {
       return NextResponse.json({ error: 'Dados incompletos para o checkout.' }, { status: 400 })
     }
@@ -130,7 +145,7 @@ export async function POST(req: NextRequest) {
 
     // ---------- Resolução do item (comum aos 4 tipos) ----------
     interface ResolvedItem {
-      kind: 'COURSE' | 'TRACK' | 'BUNDLE' | 'MEMBERSHIP'
+      kind: 'COURSE' | 'TRACK' | 'BUNDLE' | 'MEMBERSHIP' | 'BOOKING'
       id: string
       title: string
       price: number
@@ -139,7 +154,41 @@ export async function POST(req: NextRequest) {
     }
     let item: ResolvedItem | null = null
 
-    if (membershipId) {
+    if (bookingId) {
+      // Sessão 1:1 paga — só o próprio mentorado paga, sessão válida e sem pedido
+      const booking = await db.booking.findUnique({
+        where: { id: bookingId },
+        include: { mentor: { include: { user: { select: { name: true } } } } },
+      })
+      if (!booking) {
+        return NextResponse.json({ error: 'Sessão não encontrada.' }, { status: 404 })
+      }
+      if (booking.menteeId !== userId) {
+        return NextResponse.json({ error: 'Esta sessão não é sua.' }, { status: 403 })
+      }
+      if (!['PENDING', 'CONFIRMED'].includes(booking.status)) {
+        return NextResponse.json(
+          { error: 'Esta sessão não está mais aberta para pagamento.' },
+          { status: 400 }
+        )
+      }
+      const existingOrder = await db.order.findUnique({ where: { bookingId } , select: { status: true } })
+      item = {
+        kind: 'BOOKING',
+        id: booking.id,
+        title: `Sessão 1:1 — ${booking.topic}`,
+        price: booking.price,
+        mentorId: booking.mentorId,
+        alreadyOwned:
+          booking.price <= 0
+            ? 'Esta sessão não tem valor a pagar.'
+            : existingOrder && ['PAID', 'PENDING'].includes(existingOrder.status)
+              ? existingOrder.status === 'PAID'
+                ? 'Esta sessão já está paga.'
+                : 'Já existe uma cobrança em andamento para esta sessão.'
+              : null,
+      }
+    } else if (membershipId) {
       const membership = await db.mentorMembership.findUnique({ where: { id: membershipId } })
       if (!membership || !membership.isPublished) {
         return NextResponse.json({ error: 'Assinatura não encontrada.' }, { status: 404 })
@@ -234,6 +283,7 @@ export async function POST(req: NextRequest) {
         trackId: item.kind === 'TRACK' ? item.id : null,
         bundleId: item.kind === 'BUNDLE' ? item.id : null,
         membershipId: item.kind === 'MEMBERSHIP' ? item.id : null,
+        bookingId: item.kind === 'BOOKING' ? item.id : null,
         studentId: userId,
         mentorId: item.mentorId,
         amount: finalAmount,
@@ -320,7 +370,7 @@ export async function POST(req: NextRequest) {
         customerId,
         billingType,
         value: finalAmount,
-        description: `MentorHub — ${item.kind === 'COURSE' ? 'Curso' : item.kind === 'TRACK' ? 'Trilha' : item.kind === 'BUNDLE' ? 'Pacote' : 'Assinatura'}: ${item.title}`.replace(/[\n\r]+/g, ' '),
+        description: `MentorHub — ${item.kind === 'COURSE' ? 'Curso' : item.kind === 'TRACK' ? 'Trilha' : item.kind === 'BUNDLE' ? 'Pacote' : item.kind === 'BOOKING' ? 'Sessão 1:1' : 'Assinatura'}: ${item.title}`.replace(/[\n\r]+/g, ' '),
         externalReference: order.id,
         callbackSuccessUrl: `${origin}/?checkout=obrigado`,
       })

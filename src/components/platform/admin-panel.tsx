@@ -381,7 +381,7 @@ export function AdminPanel() {
     }
   }
 
-  const paymentAction = async (paymentId: string, action: 'confirm_asaas' | 'sync' | 'cancel') => {
+  const paymentAction = async (paymentId: string, action: 'confirm_asaas' | 'sync' | 'cancel' | 'refund') => {
     setBusyPayment(paymentId + action)
     try {
       const res = await api.admin.paymentAction(token, { paymentId, action })
@@ -389,6 +389,8 @@ export function AdminPanel() {
         toast.success('Pagamento confirmado e acesso liberado! 🎉')
       } else if (action === 'sync') {
         toast.info(`Status sincronizado: ${String(res.status)}`)
+      } else if (action === 'refund') {
+        toast.success('Pagamento estornado e acesso revogado.')
       } else {
         toast.success('Cobrança cancelada.')
       }
@@ -905,6 +907,26 @@ export function AdminPanel() {
                             aria-label="Cancelar cobrança"
                           >
                             <X className="h-3.5 w-3.5" aria-hidden />
+                          </Button>
+                        )}
+                        {p.status === 'RECEIVED' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 rounded-full text-rose-600 dark:text-rose-400"
+                            disabled={busyPayment !== null}
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  `Estornar ${p.itemTitle}? O dinheiro volta e o acesso é revogado.`
+                                )
+                              ) {
+                                void paymentAction(p.id, 'refund')
+                              }
+                            }}
+                            aria-label="Estornar pagamento"
+                          >
+                            Estornar
                           </Button>
                         )}
                       </div>
