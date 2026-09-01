@@ -134,11 +134,15 @@ export interface BookingDTO {
   meetingRoom: string
   price: number
   createdAt: string
+  /** FREE = sessão gratuita · PAID = já paga · UNPAID = aguardando pagamento (price > 0) */
+  paymentStatus: 'FREE' | 'PAID' | 'UNPAID'
   mentor: {
     id: string
     userId: string
     name: string
     headline: string
+    /** Presente apenas no GET único (/api/bookings/[id], usado no checkout da sessão) */
+    avatarUrl?: string | null
   }
   mentee: {
     id: string
@@ -899,6 +903,10 @@ export interface AdminPaymentDTO {
   userEmail: string
   itemTitle: string
   orderId: string
+  /** Fluxo de reembolso (solicitação do aluno → decisão do admin) */
+  refundStatus?: 'REQUESTED' | 'APPROVED' | 'REJECTED' | null
+  refundReason?: string | null
+  refundRequestedAt?: string | null
 }
 
 export interface AdminPaymentsResponseDTO {

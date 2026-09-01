@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { notify } from '@/lib/notify'
+import { formatWhen, notify } from '@/lib/notify'
 
 // ==================== CONCLUSÃO DE PEDIDOS ====================
 // Único caminho que transforma um pedido pago em acesso liberado:
@@ -76,6 +76,14 @@ export async function fulfillOrder(orderId: string): Promise<FulfillResult> {
       },
       bundle: { select: { id: true, title: true, items: { select: { courseId: true } } } },
       membership: { select: { id: true, title: true, mentorId: true, price: true } },
+      booking: {
+        select: {
+          id: true,
+          topic: true,
+          startsAt: true,
+          mentor: { include: { user: { select: { id: true, name: true } } } },
+        },
+      },
       payments: { select: { id: true, status: true, gateway: true } },
     },
   })
@@ -101,7 +109,10 @@ export async function fulfillOrder(orderId: string): Promise<FulfillResult> {
   const paidNow = new Date()
 
   // ---------- Liberação por tipo de item ----------
-  if (order.membershipId && order.membership) {
+  if (order.bookingId && order.booking) {
+    // Sessão 1:1 paga: não há matrícula a criar — o mentor confirma depois de
+    // pago (PATCH /api/bookings/[id] exige pedido PAID quando price > 0).
+  } else if (order.membershipId && order.membership) {
     const membership = order.membership
     const renewsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
     await db.membershipSubscription.upsert({
@@ -174,18 +185,27 @@ export async function fulfillOrder(orderId: string): Promise<FulfillResult> {
         }
       }
     }
-    // Créditos de indicação usados no pedido
+    // Créditos de indicação usados no pedido — débito ATÔMICO e condicional:
+    // dois pedidos quitados em paralelo não podem mais gastar o mesmo saldo
+    // (antes ambos liam o saldo e o último write sobrescrevia = double-spend).
     if (order.creditsUsed > 0) {
       const debitCents = Math.round(order.creditsUsed * 100)
-      const fresh = await tx.user.findUnique({
-        where: { id: userId },
-        select: { creditCents: true },
+      const claim = await tx.user.updateMany({
+        where: { id: userId, creditCents: { gte: debitCents } },
+        data: { creditCents: { decrement: debitCents } },
       })
-      const balance = fresh?.creditCents ?? 0
-      await tx.user.update({
-        where: { id: userId },
-        data: { creditCents: Math.max(0, balance - debitCents) },
-      })
+      if (claim.count === 0) {
+        // Saldo caiu entre o checkout e o pagamento (outro pedido consumiu os
+        // créditos): debita o que restar — o dinheiro do gateway já caiu.
+        const fresh = await tx.user.findUnique({
+          where: { id: userId },
+          select: { creditCents: true },
+        })
+        await tx.user.update({
+          where: { id: userId },
+          data: { creditCents: Math.max(0, fresh?.creditCents ?? 0) },
+        })
+      }
     }
     // Marca a cobrança como paga
     const payment = order.payments[0]
@@ -203,7 +223,25 @@ export async function fulfillOrder(orderId: string): Promise<FulfillResult> {
   })
 
   // ---------- Notificações ----------
-  if (order.membershipId && order.membership) {
+  if (order.bookingId && order.booking) {
+    // Sessão 1:1 paga: avisa as duas partes (o mentor precisa CONFIRMAR)
+    await notify({
+      userId,
+      kind: 'session_paid',
+      title: 'Pagamento da sessão confirmado! ✅',
+      body: `"${order.booking.topic}" · ${formatWhen(order.booking.startsAt)} — o mentor ${order.mentor.user.name} vai confirmar em breve.`,
+      linkView: 'dashboard',
+      refId: order.booking.id,
+    })
+    await notify({
+      userId: order.mentor.userId,
+      kind: 'session_paid',
+      title: `Sessão paga por ${studentName} 💰`,
+      body: `"${order.booking.topic}" · ${formatWhen(order.booking.startsAt)} — confirme a sessão para garantir o horário.`,
+      linkView: 'dashboard',
+      refId: order.booking.id,
+    })
+  } else if (order.membershipId && order.membership) {
     const membership = order.membership
     await notify({
       userId: order.mentor.userId,

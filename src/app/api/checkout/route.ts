@@ -4,6 +4,7 @@ import { getAsaasConfig, ensureAsaasCustomer, createAsaasPayment, getPixQrCode, 
 import { resolveCoupon, fulfillOrder } from '@/lib/fulfillment'
 import { resolveUser, unauthorized } from '@/lib/session'
 import { clientIp, rateLimit, tooMany } from '@/lib/rate-limit'
+import { expireDueSubscriptions } from '@/lib/membership-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -76,6 +77,7 @@ export async function POST(req: NextRequest) {
     const trackId = String(body?.trackId ?? '')
     const bundleId = String(body?.bundleId ?? '')
     const membershipId = String(body?.membershipId ?? '')
+    const bookingId = String(body?.bookingId ?? '')
     const useCredits = body?.useCredits === true
     const billingType: AsaasBillingType =
       body?.paymentMethod === 'CREDIT_CARD'
@@ -86,7 +88,7 @@ export async function POST(req: NextRequest) {
     const couponCode = String(body?.couponCode ?? '').trim()
     const rawCpf = String(body?.cpfCnpj ?? '').trim()
 
-    const kindCount = [courseId, trackId, bundleId, membershipId].filter(Boolean).length
+    const kindCount = [courseId, trackId, bundleId, membershipId, bookingId].filter(Boolean).length
     if (!userId || kindCount !== 1) {
       return NextResponse.json({ error: 'Dados incompletos para o checkout.' }, { status: 400 })
     }
@@ -128,9 +130,9 @@ export async function POST(req: NextRequest) {
     }
     const userCpf: string = gatewayActive ? rawCpf.replace(/\D/g, '') : (user.cpfCnpj ?? '')
 
-    // ---------- Resolução do item (comum aos 4 tipos) ----------
+    // ---------- Resolução do item (comum aos 5 tipos) ----------
     interface ResolvedItem {
-      kind: 'COURSE' | 'TRACK' | 'BUNDLE' | 'MEMBERSHIP'
+      kind: 'COURSE' | 'TRACK' | 'BUNDLE' | 'MEMBERSHIP' | 'SESSION'
       id: string
       title: string
       price: number
@@ -139,7 +141,52 @@ export async function POST(req: NextRequest) {
     }
     let item: ResolvedItem | null = null
 
-    if (membershipId) {
+    if (bookingId) {
+      // Sessão 1:1: paga ANTES de o mentor confirmar (o agendamento nasce PENDING)
+      const booking = await db.booking.findUnique({
+        where: { id: bookingId },
+        select: {
+          id: true,
+          menteeId: true,
+          topic: true,
+          status: true,
+          price: true,
+          mentorId: true,
+        },
+      })
+      if (!booking) {
+        return NextResponse.json({ error: 'Sessão não encontrada.' }, { status: 404 })
+      }
+      if (booking.menteeId !== userId) {
+        return NextResponse.json({ error: 'Esta sessão não pertence à sua conta.' }, { status: 403 })
+      }
+      if (booking.status !== 'PENDING') {
+        return NextResponse.json(
+          { error: 'Esta sessão não pode mais ser paga (já confirmada, concluída ou cancelada).' },
+          { status: 409 }
+        )
+      }
+      if (booking.price <= 0) {
+        return NextResponse.json(
+          { error: 'Esta sessão é gratuita — aguarde o mentor confirmar.' },
+          { status: 400 }
+        )
+      }
+      const alreadyPaid = await db.order.findFirst({
+        where: { bookingId, studentId: userId, status: 'PAID' },
+        select: { id: true },
+      })
+      item = {
+        kind: 'SESSION',
+        id: booking.id,
+        title: `Sessão 1:1 · ${booking.topic}`,
+        price: booking.price,
+        mentorId: booking.mentorId,
+        alreadyOwned: alreadyPaid ? 'Esta sessão já foi paga — aguarde a confirmação do mentor.' : null,
+      }
+    } else if (membershipId) {
+      // Encerra assinaturas vencidas antes do check "já tem assinatura ativa"
+      await expireDueSubscriptions()
       const membership = await db.mentorMembership.findUnique({ where: { id: membershipId } })
       if (!membership || !membership.isPublished) {
         return NextResponse.json({ error: 'Assinatura não encontrada.' }, { status: 404 })
@@ -234,6 +281,7 @@ export async function POST(req: NextRequest) {
         trackId: item.kind === 'TRACK' ? item.id : null,
         bundleId: item.kind === 'BUNDLE' ? item.id : null,
         membershipId: item.kind === 'MEMBERSHIP' ? item.id : null,
+        bookingId: item.kind === 'SESSION' ? item.id : null,
         studentId: userId,
         mentorId: item.mentorId,
         amount: finalAmount,
@@ -320,7 +368,7 @@ export async function POST(req: NextRequest) {
         customerId,
         billingType,
         value: finalAmount,
-        description: `MentorHub — ${item.kind === 'COURSE' ? 'Curso' : item.kind === 'TRACK' ? 'Trilha' : item.kind === 'BUNDLE' ? 'Pacote' : 'Assinatura'}: ${item.title}`.replace(/[\n\r]+/g, ' '),
+        description: `MentorHub — ${item.kind === 'COURSE' ? 'Curso' : item.kind === 'TRACK' ? 'Trilha' : item.kind === 'BUNDLE' ? 'Pacote' : item.kind === 'SESSION' ? 'Sessão 1:1' : 'Assinatura'}: ${item.title}`.replace(/[\n\r]+/g, ' '),
         externalReference: order.id,
         callbackSuccessUrl: `${origin}/?checkout=obrigado`,
       })

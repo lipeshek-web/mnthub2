@@ -7,6 +7,7 @@ import {
   Check,
   CheckCheck,
   CheckCircle2,
+  CircleDollarSign,
   Clock,
   Compass,
   Download,
@@ -145,6 +146,11 @@ function PendingRequestRow({
           <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
             {when} · {formatTimeLabel(b.startsAt)}–{addMinutesToTime(b.startsAt, b.durationMin)} ·{' '}
             {b.durationMin} min · {currencyBRL(b.price)}
+            {b.price > 0 && b.paymentStatus === 'UNPAID' && (
+              <span className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-950/50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:text-amber-300">
+                <Clock className="size-3" aria-hidden /> aguardando pagamento
+              </span>
+            )}
           </p>
         </div>
       </div>
@@ -195,6 +201,7 @@ function BookingCard({
   onCancel,
   onJoin,
   onReview,
+  onPay,
 }: {
   booking: BookingDTO
   userId: string
@@ -205,6 +212,7 @@ function BookingCard({
   onCancel: (booking: BookingDTO) => void
   onJoin: (booking: BookingDTO) => void
   onReview: (booking: BookingDTO, rating: number, comment: string) => Promise<void>
+  onPay: (booking: BookingDTO) => void
 }) {
   const isMentorSide = b.mentor.userId === userId
   const otherName = isMentorSide ? b.mentee.name : b.mentor.name
@@ -240,6 +248,8 @@ function BookingCard({
 
   const canJoin = b.status === 'CONFIRMED'
   const canReview = !isMentorSide && b.status === 'COMPLETED' && !b.reviewed
+  // Ciclo financeiro: sessão cobrada precisa de pagamento antes da confirmação
+  const needsPayment = !isMentorSide && b.price > 0 && b.paymentStatus === 'UNPAID' && b.status === 'PENDING'
 
   const dialogContent: Record<ConfirmKind, { title: string; description: string; actionLabel: string }> = {
     reject: {
@@ -283,7 +293,8 @@ function BookingCard({
     (isMentorSide && (b.status === 'PENDING' || b.status === 'CONFIRMED')) ||
     canJoin ||
     (!isMentorSide && (b.status === 'PENDING' || b.status === 'CONFIRMED')) ||
-    canReview
+    canReview ||
+    needsPayment
 
   return (
     <Card className="overflow-hidden p-0">
@@ -324,6 +335,16 @@ function BookingCard({
           <span>{b.durationMin} min</span>
           <span aria-hidden className="text-stone-300 dark:text-stone-600">·</span>
           <span className="font-semibold text-stone-700 dark:text-stone-200">{currencyBRL(b.price)}</span>
+          {b.price > 0 && b.paymentStatus === 'UNPAID' && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-950/50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:text-amber-300">
+              <Clock className="size-3" aria-hidden /> pagamento pendente
+            </span>
+          )}
+          {b.price > 0 && b.paymentStatus === 'PAID' && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-950/50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+              <CheckCircle2 className="size-3" aria-hidden /> pago
+            </span>
+          )}
           {isUpcomingEvent ? (
             <a
               href={gcalUrl}
@@ -344,6 +365,12 @@ function BookingCard({
 
         {hasActions ? (
           <div className="flex flex-wrap gap-2 border-t border-stone-100 pt-3 dark:border-stone-800">
+            {needsPayment ? (
+              <Button size="sm" disabled={busy} onClick={() => onPay(b)}>
+                <CircleDollarSign className="size-4" aria-hidden /> Pagar agora
+              </Button>
+            ) : null}
+
             {isMentorSide && b.status === 'PENDING' ? (
               <>
                 <Button size="sm" disabled={busy} onClick={() => onConfirm(b)}>
@@ -821,6 +848,7 @@ export default function DashboardView() {
     onCancel: handleCancel,
     onJoin: handleJoin,
     onReview: handleReview,
+    onPay: (b: BookingDTO) => navigate({ name: 'checkout', bookingId: b.id }),
   }
 
   return (

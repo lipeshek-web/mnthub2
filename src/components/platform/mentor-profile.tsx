@@ -618,7 +618,7 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
     }
     setSubmitting(true)
     try {
-      await api.createBooking({
+      const created = await api.createBooking({
         menteeId: user.id,
         mentorId: mentor.id,
         startsAt: selectedSlot,
@@ -626,8 +626,15 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
         topic: topic.trim(),
         notes: notes.trim() || undefined,
       })
-      toast.success('Solicitação enviada! O mentor confirmará em breve. 🎉')
-      navigate({ name: 'dashboard' })
+      // Ciclo financeiro (Sprint 2): sessão cobrada paga PRIMEIRO — o mentor
+      // só confirma depois do pedido PAID. Sessões gratuitas seguem direto.
+      if (created.price > 0) {
+        toast.success('Sessão reservada! Finalize o pagamento para o mentor confirmar. 💳')
+        navigate({ name: 'checkout', bookingId: created.id })
+      } else {
+        toast.success('Solicitação enviada! O mentor confirmará em breve. 🎉')
+        navigate({ name: 'dashboard' })
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Erro ao agendar')
       loadSlots(selectedDate)

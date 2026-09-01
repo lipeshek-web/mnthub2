@@ -401,6 +401,30 @@ export function AdminPanel() {
     }
   }
 
+  /** Reembolso: aprovar (estorna + revoga acesso) ou recusar a solicitação do aluno */
+  const refundDecision = async (orderId: string, action: 'approve' | 'reject', itemTitle: string) => {
+    if (
+      action === 'approve' &&
+      !window.confirm(`Estornar "${itemTitle}"? O acesso concedido será revogado e os créditos devolvidos. Esta ação não pode ser desfeita.`)
+    )
+      return
+    setBusyPayment(orderId + action)
+    try {
+      await api.adminRefundDecision(orderId, action)
+      toast.success(
+        action === 'approve'
+          ? 'Reembolso aprovado: pedido estornado e acesso revogado.'
+          : 'Solicitação de reembolso recusada.'
+      )
+      loadPayments()
+      loadStats()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro na ação.')
+    } finally {
+      setBusyPayment(null)
+    }
+  }
+
   const userAction = async (targetId: string, action: 'promote' | 'demote' | 'block' | 'unblock') => {
     setBusyUser(targetId + action)
     try {
@@ -850,6 +874,21 @@ export function AdminPanel() {
                         </p>
                       </div>
                       <StatusBadge status={p.status} />
+                      {p.refundStatus === 'REQUESTED' && p.orderStatus === 'PAID' && (
+                        <Badge className="border-amber-300 dark:border-amber-800 bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300">
+                          Reembolso solicitado
+                        </Badge>
+                      )}
+                      {p.refundStatus === 'APPROVED' && (
+                        <Badge className="border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300">
+                          Estornado
+                        </Badge>
+                      )}
+                      {p.refundStatus === 'REJECTED' && (
+                        <Badge variant="outline" className="border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-400">
+                          Reembolso recusado
+                        </Badge>
+                      )}
                       <span className="text-sm font-bold text-stone-800 dark:text-stone-100">
                         {currencyBRL(p.value)}
                       </span>
@@ -906,6 +945,35 @@ export function AdminPanel() {
                           >
                             <X className="h-3.5 w-3.5" aria-hidden />
                           </Button>
+                        )}
+                        {p.refundStatus === 'REQUESTED' && p.orderStatus === 'PAID' && (
+                          <>
+                            <Button
+                              size="sm"
+                              className="h-8 rounded-full text-xs font-bold"
+                              disabled={busyPayment !== null}
+                              onClick={() => void refundDecision(p.orderId, 'approve', p.itemTitle)}
+                            >
+                              {busyPayment === p.orderId + 'approve' ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                              ) : (
+                                'Aprovar estorno'
+                              )}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 rounded-full text-xs font-bold"
+                              disabled={busyPayment !== null}
+                              onClick={() => void refundDecision(p.orderId, 'reject', p.itemTitle)}
+                            >
+                              {busyPayment === p.orderId + 'reject' ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                              ) : (
+                                'Recusar'
+                              )}
+                            </Button>
+                          </>
                         )}
                       </div>
                     </li>

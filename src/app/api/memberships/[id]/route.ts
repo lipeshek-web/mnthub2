@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { membershipBaseInclude, serializeMembership } from '@/lib/membership-serialize'
+import { expireDueSubscriptions } from '@/lib/membership-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +13,8 @@ export async function GET(
   try {
     const { id } = await params
     const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
+    // Encerra assinaturas vencidas antes de reportar o estado do usuário
+    await expireDueSubscriptions()
     const membership = await db.mentorMembership.findUnique({
       where: { id },
       include: {

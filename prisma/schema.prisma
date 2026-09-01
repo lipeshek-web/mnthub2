@@ -145,6 +145,7 @@ model Booking {
   @@index([menteeId, startsAt])
 
   review Review?
+  orders Order[] // pagamento da sessão (price > 0 exige checkout antes da confirmação do mentor)
 }
 
 model Review {
@@ -394,7 +395,7 @@ model TrackEnrollment {
 
 // ==================== CHECKOUT & TRACKING (tráfego pago) ====================
 
-/// Pedido de curso, trilha ou pacote (checkout via Asaas ou demonstrativo)
+/// Pedido de curso, trilha, pacote, assinatura ou sessão 1:1 (checkout via Asaas ou demonstrativo)
 model Order {
   id            String            @id @default(cuid())
   courseId      String?
@@ -405,6 +406,8 @@ model Order {
   bundle        Bundle?           @relation(fields: [bundleId], references: [id], onDelete: Cascade)
   membershipId  String?
   membership    MentorMembership? @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  bookingId     String?
+  booking       Booking?          @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   studentId     String
   student       User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
   mentorId      String
@@ -415,6 +418,11 @@ model Order {
   couponCode    String? // cupom aplicado (se houve)
   discount      Float             @default(0) // valor descontado em R$ (cupom)
   creditsUsed   Float             @default(0) // créditos de indicação usados em R$
+
+  // Fluxo de reembolso: aluno solicita → admin aprova (estorna + revoga acesso) ou recusa
+  refundStatus      String?   // REQUESTED | APPROVED | REJECTED
+  refundReason      String?   // mensagem do aluno ao solicitar
+  refundRequestedAt DateTime?
 
   payments Payment[]
 

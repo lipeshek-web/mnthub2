@@ -48,10 +48,14 @@ export async function GET(req: NextRequest) {
               id: true,
               status: true,
               amount: true,
+              refundStatus: true,
+              refundReason: true,
+              refundRequestedAt: true,
               course: { select: { title: true } },
               track: { select: { title: true } },
               bundle: { select: { title: true } },
               membership: { select: { title: true } },
+              booking: { select: { topic: true, price: true } },
             },
           },
         },
@@ -79,8 +83,11 @@ export async function GET(req: NextRequest) {
           p.order.track?.title ??
           p.order.bundle?.title ??
           p.order.membership?.title ??
-          'Pedido',
+          (p.order.booking ? `Sessão 1:1 · ${p.order.booking.topic}` : 'Pedido'),
         orderId: p.order.id,
+        refundStatus: p.order.refundStatus,
+        refundReason: p.order.refundReason,
+        refundRequestedAt: p.order.refundRequestedAt?.toISOString() ?? null,
       })),
       total,
       page,

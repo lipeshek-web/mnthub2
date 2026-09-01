@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { membershipBaseInclude, serializeMembership } from '@/lib/membership-serialize'
+import { expireDueSubscriptions } from '@/lib/membership-access'
 import { resolveUser } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
@@ -34,11 +35,15 @@ export async function GET(req: NextRequest) {
       where.isPublished = true
     }
 
-    // Re-sincroniza matrículas dos planos ativos do usuário:
+    // Encerra assinaturas cujo ciclo pago venceu (renewsAt ≤ agora) — antes
+    // o vencimento nunca era conferido e a assinatura ficava "ativa" para sempre.
+    await expireDueSubscriptions()
+
+    // Re-sincroniza matrículas dos planos com ciclo VIGENTE (renewsAt > agora):
     // cursos publicados DEPOIS da assinatura também ficam disponíveis.
     if (userId) {
       const activeSubs = await db.membershipSubscription.findMany({
-        where: { userId, status: 'ACTIVE' },
+        where: { userId, status: 'ACTIVE', renewsAt: { gt: new Date() } },
         select: { mentorId: true },
       })
       for (const sub of activeSubs) {

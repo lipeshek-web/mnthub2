@@ -5,8 +5,8 @@ import { resolveCoupon, type CouponKind } from '@/lib/coupons'
 export const dynamic = 'force-dynamic'
 
 /**
- * POST /api/coupons/validate — valida um cupom para curso, trilha, pacote OU assinatura (antes do checkout).
- * body: { code, userId?, courseId?, trackId?, bundleId?, membershipId? }
+ * POST /api/coupons/validate — valida um cupom para curso, trilha, pacote, assinatura OU sessão 1:1 (antes do checkout).
+ * body: { code, userId?, courseId?, trackId?, bundleId?, membershipId?, bookingId? }
  * userId habilita o escopo NEW_ACCOUNTS (cupom só na 1ª compra).
  * → { ok, code, label, discount, finalPrice }
  */
@@ -19,8 +19,9 @@ export async function POST(req: NextRequest) {
     const trackId = String(body?.trackId ?? '').trim()
     const bundleId = String(body?.bundleId ?? '').trim()
     const membershipId = String(body?.membershipId ?? '').trim()
+    const bookingId = String(body?.bookingId ?? '').trim()
 
-    if (!rawCode || [courseId, trackId, bundleId, membershipId].filter(Boolean).length !== 1) {
+    if (!rawCode || [courseId, trackId, bundleId, membershipId, bookingId].filter(Boolean).length !== 1) {
       return NextResponse.json({ error: 'Informe o cupom e o item do checkout.' }, { status: 400 })
     }
 
@@ -37,14 +38,17 @@ export async function POST(req: NextRequest) {
     const membership = membershipId
       ? await db.mentorMembership.findUnique({ where: { id: membershipId }, select: { id: true, title: true, price: true, mentorId: true } })
       : null
+    const booking = bookingId
+      ? await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, topic: true, price: true, mentorId: true } })
+      : null
 
-    const item = course ?? track ?? bundle ?? membership
+    const item = course ?? track ?? bundle ?? membership ?? booking
     if (!item) return NextResponse.json({ error: 'Item não encontrado.' }, { status: 404 })
     if (item.price <= 0) {
       return NextResponse.json({ error: 'Este item é gratuito — cupom não é necessário.' }, { status: 400 })
     }
 
-    const kind: CouponKind = course ? 'COURSE' : track ? 'TRACK' : bundle ? 'BUNDLE' : 'MEMBERSHIP'
+    const kind: CouponKind = course ? 'COURSE' : track ? 'TRACK' : bundle ? 'BUNDLE' : booking ? 'SESSION' : 'MEMBERSHIP'
     const { error, coupon, discount, label } = await resolveCoupon(rawCode, {
       userId,
       item: { kind, id: item.id, mentorId: item.mentorId, price: item.price },
