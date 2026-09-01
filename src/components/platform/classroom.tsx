@@ -211,6 +211,19 @@ export function ClassroomView({ courseId }: { courseId: string }) {
     }
   }, [focusMode])
 
+  // Aba ativa do corpo da aula (Material/Resumo IA/Perguntas/Quiz/Anotações) —
+  // controlada para que a barra de abas possa ficar FIXA no topo do corpo,
+  // fora da área rolável.
+  const [activeTab, setActiveTab] = useState('lesson')
+  // Container de rolagem do conteúdo da aula (usado para voltar ao topo)
+  const lessonScrollRef = useRef<HTMLDivElement | null>(null)
+
+  // Ao trocar de aula: retorna à aba Material e rola o conteúdo de volta ao topo
+  useEffect(() => {
+    setActiveTab('lesson')
+    lessonScrollRef.current?.scrollTo({ top: 0 })
+  }, [currentLessonId])
+
   // Aula inicial: a indicada na view (retorno do leitor) ou a primeira ainda
   // não concluída (só define uma vez por curso)
   const initializedRef = useRef<string | null>(null)
@@ -240,6 +253,10 @@ export function ClassroomView({ courseId }: { courseId: string }) {
     orderedLessons.length > 0 ? Math.round((completedIds.length / orderedLessons.length) * 100) : 0
   const courseCompleted =
     orderedLessons.length > 0 && completedIds.length >= orderedLessons.length
+
+  // Aulas em vídeo no modo foco: o palco É o conteúdo — abas ficam ocultas
+  const lessonIsVideo = currentLesson?.kind === 'RECORDED' && Boolean(currentLesson.videoUrl)
+  const showTabsBar = currentLesson != null && !(focusMode && lessonIsVideo)
 
   const handleToggleTheme = (key: string) =>
     setCollapsedThemes((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -457,25 +474,73 @@ export function ClassroomView({ courseId }: { courseId: string }) {
         </div>
       </div>
 
-      {/* ---------- CORPO: PLAYER + CONTEÚDOS (sidebar oculta no modo foco) ---------- */}
+      {/* ---------- CORPO: PLAYER + CONTEÚDOS (sidebar oculta no modo foco) ----------
+          Layout de três zonas: a barra de abas fica FIXA no topo do corpo (logo
+          abaixo do cabeçalho do curso) e a barra de ação (Anterior · Concluir ·
+          Próxima) fica FIXA no rodapé — apenas o conteúdo da aula rola entre as
+          duas, sem nunca passar por baixo de nenhuma delas. */}
       <div
         className={cn(
-          'grid min-h-0 flex-1 grid-cols-1',
+          'flex min-h-0 flex-1 flex-col lg:grid',
           focusMode ? 'lg:grid-cols-1' : 'lg:grid-cols-[1fr_380px]'
         )}
       >
         {/* Coluna esquerda: aula — conteúdo interno largo p/ vídeos grandes */}
-        <div className="min-h-0 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className={cn('mx-auto w-full', focusMode ? 'max-w-4xl' : 'max-w-5xl')}>
-            <AnimatePresence mode="wait">
-              {currentLesson ? (
-                <motion.div
-                  key={currentLesson.id}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.22 }}
-                >
+        <section aria-label="Aula atual" className="flex min-h-0 flex-1 flex-col">
+          {currentLesson ? (
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="flex min-h-0 flex-1 flex-col gap-0"
+          >
+            {/* ---------- ABAS FIXAS NO TOPO DO CORPO (abaixo do cabeçalho) ---------- */}
+            {showTabsBar && (
+              <div className="flex shrink-0 items-center gap-3 border-b border-stone-200 bg-stone-50 py-2 pl-3 pr-3 sm:pl-6 sm:pr-6 lg:pl-8 lg:pr-8 dark:border-stone-800 dark:bg-stone-950">
+                <TabsList className="h-10 w-full justify-start overflow-x-auto rounded-full bg-stone-100 p-1 [scrollbar-width:none] sm:w-auto dark:bg-stone-800 [&::-webkit-scrollbar]:hidden">
+                  <TabsTrigger value="lesson" className="rounded-full">
+                    <FileText aria-hidden className="h-4 w-4" />
+                    <span className="hidden sm:inline">Material</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="aisummary" className="rounded-full">
+                    <Sparkles aria-hidden className="h-4 w-4" />
+                    <span className="hidden sm:inline">Resumo IA</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="qa" className="rounded-full">
+                    <MessageCircle aria-hidden className="h-4 w-4" />
+                    Perguntas
+                    {currentLesson.questionCount > 0 ? ` (${currentLesson.questionCount})` : ''}
+                  </TabsTrigger>
+                  {currentLesson.quizCount > 0 ? (
+                    <TabsTrigger value="quiz" className="rounded-full">
+                      <ListChecks aria-hidden className="h-4 w-4" />
+                      Quiz ({currentLesson.quizCount})
+                    </TabsTrigger>
+                  ) : null}
+                  <TabsTrigger value="notes" className="rounded-full">
+                    <PencilLine aria-hidden className="h-4 w-4" />
+                    <span className="hidden sm:inline">Anotações</span>
+                  </TabsTrigger>
+                </TabsList>
+                <p className="ml-auto hidden shrink-0 text-xs font-semibold tabular-nums text-stone-400 sm:block dark:text-stone-500">
+                  Aula {currentIndex + 1} de {orderedLessons.length}
+                </p>
+              </div>
+            )}
+
+            {/* ---------- CONTEÚDO DA AULA (única área que rola) ---------- */}
+            <div
+              ref={lessonScrollRef}
+              className="min-h-0 flex-1 overscroll-contain overflow-y-auto p-4 sm:p-6 lg:p-8"
+            >
+              <div className={cn('mx-auto w-full', focusMode ? 'max-w-4xl' : 'max-w-5xl')}>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentLesson.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.22 }}
+                  >
                 {currentLesson.kind === 'LIVE' ? (
                   <LivePanel lesson={currentLesson} isOwner={isOwner} />
                 ) : currentLesson.kind === 'READING' ? (
@@ -586,36 +651,11 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                   </div>
                 ) : null}
 
-                {/* Abas: material / perguntas / anotações (ocultas no modo foco apenas
-                    para aulas em vídeo — o palco é o conteúdo; aulas de texto/leitura
-                    mantêm o material visível, pois ele É o conteúdo da aula) */}
-                {!(focusMode && currentLesson.kind === 'RECORDED' && currentLesson.videoUrl) && (
-                <Tabs defaultValue="lesson" className="mt-6">
-                  <TabsList className="h-11 w-full justify-start overflow-x-auto rounded-full bg-stone-100 dark:bg-stone-800 p-1 sm:w-auto">
-                    <TabsTrigger value="lesson" className="rounded-full">
-                      <FileText aria-hidden className="h-4 w-4" />
-                      <span className="hidden sm:inline">Material</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="aisummary" className="rounded-full">
-                      <Sparkles aria-hidden className="h-4 w-4" />
-                      <span className="hidden sm:inline">Resumo IA</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="qa" className="rounded-full">
-                      <MessageCircle aria-hidden className="h-4 w-4" />
-                      Perguntas
-                      {currentLesson.questionCount > 0 ? ` (${currentLesson.questionCount})` : ''}
-                    </TabsTrigger>
-                    {currentLesson.quizCount > 0 ? (
-                      <TabsTrigger value="quiz" className="rounded-full">
-                        <ListChecks aria-hidden className="h-4 w-4" />
-                        Quiz ({currentLesson.quizCount})
-                      </TabsTrigger>
-                    ) : null}
-                    <TabsTrigger value="notes" className="rounded-full">
-                      <PencilLine aria-hidden className="h-4 w-4" />
-                      <span className="hidden sm:inline">Anotações</span>
-                    </TabsTrigger>
-                  </TabsList>
+                {/* Painéis das abas — o SELETOR ficou fixo no topo do corpo (barra
+                    própria acima); aqui ficam apenas os conteúdos de cada aba.
+                    Ocultos no modo foco de aulas em vídeo (o palco é o conteúdo). */}
+                {showTabsBar && (
+                <div className="mt-6">
 
                   <TabsContent value="lesson" className="mt-4">
                     {currentLesson.kind === 'READING' ? (
@@ -707,69 +747,87 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                       lessonTitle={currentLesson.title}
                     />
                   </TabsContent>
-                </Tabs>
+                </div>
                 )}
 
-                {/* Navegação */}
-                <div className="mt-6 flex items-center justify-between gap-3 border-t border-stone-200 pt-5 dark:border-stone-800">
-                  <Button
-                    variant="outline"
-                    className="h-11 rounded-full font-semibold"
-                    onClick={goPrev}
-                    disabled={currentIndex <= 0 || toggling}
-                  >
-                    <ChevronLeft aria-hidden className="h-4 w-4" /> Anterior
-                  </Button>
-                  <Button
-                    variant={completedIds.includes(currentLesson.id) ? 'outline' : 'default'}
-                    onClick={() => void toggleComplete(true)}
-                    disabled={toggling}
-                    className={cn(
-                      'h-11 rounded-full font-semibold',
-                      completedIds.includes(currentLesson.id) &&
-                        'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300'
-                    )}
-                  >
-                    {toggling ? (
-                      'Salvando…'
-                    ) : completedIds.includes(currentLesson.id) ? (
-                      <>
-                        <CheckCircle2 aria-hidden className="h-4 w-4" /> Concluída
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 aria-hidden className="h-4 w-4" /> Concluir e avançar
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-11 rounded-full font-semibold"
-                    onClick={goNext}
-                    disabled={currentIndex >= orderedLessons.length - 1 || toggling}
-                  >
-                    Próxima <ChevronRight aria-hidden className="h-4 w-4" />
-                  </Button>
-                </div>
                 </motion.div>
-              ) : null}
-            </AnimatePresence>
-            {!currentLesson && (
+              </AnimatePresence>
+              </div>
+            </div>
+
+            {/* ---------- BARRA DE AÇÃO FIXA NO RODAPÉ: Anterior · Concluir · Próxima ---------- */}
+            <div className="shrink-0 border-t border-stone-200 bg-white pb-[calc(0.625rem+env(safe-area-inset-bottom))] pl-3 pr-3 pt-2.5 sm:pl-6 sm:pr-6 lg:pl-8 lg:pr-8 dark:border-stone-800 dark:bg-stone-900">
+              <div
+                className={cn(
+                  'mx-auto flex w-full items-center justify-between gap-2',
+                  focusMode ? 'max-w-4xl' : 'max-w-5xl'
+                )}
+              >
+                <Button
+                  variant="outline"
+                  className="h-11 shrink-0 rounded-full font-semibold"
+                  onClick={goPrev}
+                  disabled={currentIndex <= 0 || toggling}
+                  aria-label="Aula anterior"
+                >
+                  <ChevronLeft aria-hidden className="h-4 w-4" />
+                  <span className="hidden sm:inline">Anterior</span>
+                </Button>
+                <Button
+                  variant={completedIds.includes(currentLesson.id) ? 'outline' : 'default'}
+                  onClick={() => void toggleComplete(true)}
+                  disabled={toggling}
+                  className={cn(
+                    'h-11 min-w-0 rounded-full font-semibold',
+                    completedIds.includes(currentLesson.id) &&
+                      'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300'
+                  )}
+                >
+                  {toggling ? (
+                    'Salvando…'
+                  ) : completedIds.includes(currentLesson.id) ? (
+                    <>
+                      <CheckCircle2 aria-hidden className="h-4 w-4" /> Concluída
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 aria-hidden className="h-4 w-4" />
+                      <span className="hidden sm:inline">Concluir e avançar</span>
+                      <span className="sm:hidden">Concluir</span>
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-11 shrink-0 rounded-full font-semibold"
+                  onClick={goNext}
+                  disabled={currentIndex >= orderedLessons.length - 1 || toggling}
+                  aria-label="Próxima aula"
+                >
+                  <span className="hidden sm:inline">Próxima</span>
+                  <ChevronRight aria-hidden className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </Tabs>
+          ) : (
+            <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-6">
               <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-16 text-center dark:border-stone-700 dark:bg-stone-900">
                 <Library aria-hidden className="h-8 w-8 text-stone-300 dark:text-stone-600" />
                 <p className="text-sm text-stone-400 dark:text-stone-500">
                   Nenhuma aula publicada ainda — volte mais tarde.
                 </p>
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+          )}
+        </section>
 
-        {/* Coluna direita: lista de conteúdos (oculta no modo foco) */}
+        {/* Coluna direita: lista de conteúdos (desktop; no mobile abre pelo botão
+            "Ver conteúdos" do cabeçalho) — oculta no modo foco */}
         {!focusMode && (
         <aside
           aria-label="Conteúdos do curso"
-          className="flex min-h-0 flex-col border-t border-stone-200 bg-white lg:border-l lg:border-t-0 dark:border-stone-800 dark:bg-stone-900"
+          className="hidden min-h-0 flex-col border-t border-stone-200 bg-white lg:flex lg:border-l lg:border-t-0 dark:border-stone-800 dark:bg-stone-900"
         >
           <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-2 pt-4">
             <p className="text-xs font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">
@@ -823,7 +881,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
           type="button"
           onClick={() => setFocusMode(false)}
           aria-label="Sair do modo foco"
-          className="fixed bottom-6 right-6 z-50 h-11 rounded-full bg-emerald-950 px-5 text-sm font-bold text-white shadow-2xl shadow-emerald-950/40 ring-1 ring-emerald-400/25 hover:bg-emerald-900"
+          className="fixed bottom-20 right-6 z-50 h-11 rounded-full bg-emerald-950 px-5 text-sm font-bold text-white shadow-2xl shadow-emerald-950/40 ring-1 ring-emerald-400/25 hover:bg-emerald-900"
         >
           <Minimize2 aria-hidden className="h-4 w-4" />
           Sair do modo foco

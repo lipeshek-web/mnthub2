@@ -95,14 +95,15 @@ export function AiTutor(props: AiTutorProps) {
 
   return (
     <>
-      {/* Botão flutuante (no modo foco, sobe p/ não cobrir o "sair") */}
+      {/* Botão flutuante (sempre acima da barra de ação fixa da sala; no modo
+          foco, sobe mais p/ não cobrir o botão "sair do modo foco") */}
       <Button
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Abrir Tutor IA do curso"
         className={cn(
           'fixed right-6 z-40 h-12 rounded-full bg-emerald-700 pl-4 pr-5 text-sm font-bold text-white shadow-2xl shadow-emerald-900/30 ring-1 ring-emerald-500/30 hover:bg-emerald-800 focus-visible:ring-2 focus-visible:ring-emerald-400',
-          raised ? 'bottom-[5.5rem]' : 'bottom-6'
+          raised ? 'bottom-[8.5rem]' : 'bottom-[5.5rem]'
         )}
       >
         <Sparkles aria-hidden className="h-4 w-4" />
