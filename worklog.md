@@ -2189,3 +2189,17 @@ Stage Summary:
 - Bug do anfitrião eliminado na raiz: não existe mais "declarar que é anfitrião" — o papel vem assinado do backend no token (HOST=mentor), exibido como badge para ambos; sala própria P2P sem lobby, sem login externo e sem serviço de terceiros mudando política
 - Sala com UX de app de chamadas real: controles sticky (mobile acima da tab bar, desktop no rodapé), vídeo como foco, badges de mídia do par, cronômetro, degradação graciosa de permissões e reconexão automática
 - E2E duplo aprovado (mentor + aluno simultâneos via gateway), convite por deep link ?booking= funcionando
+
+---
+Task ID: W-33b (merge das linhagens git)
+Agent: Z.ai Code (main)
+Task: Reintegrar a linhagem remota (perdida na recriação do workspace) ao histórico local
+
+Work Log:
+- O ambiente foi recriado e o git local renasceu com W-29..W-33; o remote tinha a unificação antiga (W-9..W-19 + W-27..W-31 + W-32 PageSpeed + mobile API v1 + app Expo + fluxo de reembolso)
+- Merge com resolução semântica: ours nos conflitos de rotas/UI (linha local verificada com lint/tsc/E2E), combinados coupons (BOOKING|SESSION), notify (+session_paid, refund_*), types (payStatus + paymentStatus opcional), schema Order (+refundStatus/refundReason/refundRequestedAt — db:push aplicado + dev reiniciado para recarregar o Prisma client), api.ts sem getBooking duplicado, rotas de reembolso restauradas do remote, worklog unificado (W-32=PageSpeed no remote; W-33=reunião aqui)
+- Validação pós-merge: lint 0/0, tsc limpo em src/, / 200, /api/v1/courses 200, /api/orders/x/refund-request 405 (rota viva), meeting-token 401 sem sessão, sala de reunião reconectada (Ana GUEST entrou, "aguardando Carlos") após restart
+- Push: 2d04d26..64b7980 main → origin/main (sync completo, upstream refeito)
+
+Stage Summary:
+- Nenhuma das duas linhagens perdeu trabalho: app mobile Expo + API v1 + reembolsos (remote) convivem com segurança por sessão, circuito do dinheiro e sala de vídeo própria (local)
