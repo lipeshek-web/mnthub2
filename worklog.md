@@ -2060,3 +2060,25 @@ Stage Summary:
 - GitHub recebe as duas histórias unidas: W-1..W-19 (remote) + linhagem local (W-27..W-31) sem reescrever histórico
 - API v1 do mobile de volta ao repositório (produção depende dela), código vivo intacto (schema/seed/bookings/components = versões W-30/W-29b)
 - .env fora do GitHub; worklog completo como memória única do projeto
+
+---
+Task ID: W-32
+Agent: Z.ai Code (main)
+Task: Landing page extremamente leve — otimização PageSpeed (JS crítico, SSR e animações)
+
+Work Log:
+- DIAGNÓSTICO: landing-mentee.tsx (2.313 linhas) + navbar + promo-bar puxavam framer-motion (~40KB gzip) para o caminho crítico; SSR entregava apenas spinner "preparando sua experiência" (LCP tarde, CLS na troca); FAQ usava Radix Accordion; ui/toaster (Radix) era peso morto no layout
+- NOVOS ARQUIVOS: src/hooks/use-mounted.ts (useMounted + useHydrationSafe via useSyncExternalStore), src/hooks/use-in-view-once.ts (useInViewOnce com IntersectionObserver nativo + usePrefersReducedMotion via matchMedia/useSyncExternalStore), src/components/platform/reveal.tsx (Reveal: conteúdo nasce visível no SSR; abaixo da dobra esconde via classe e anima com IO — manipulação de classes no DOM, zero setState/re-render)
+- CSS (globals.css): .mh-reveal-hidden/.mh-reveal-in (transition), @keyframes mh-slide-in/mh-slide-down (troca de slides/banners), details.mh-faq (chevron girando) — tudo com prefers-reduced-motion respeitado
+- landing-mentee.tsx: framer-motion removido (motion.section/div/li → Reveal; AnimatePresence do HeroRotator → key + .mh-slide-in; useInView → useInViewOnce; useReducedMotion → usePrefersReducedMotion); FAQ → <details name="mentorhub-faq"> nativo (exclusivo no Chromium/Safari, degrada bem); hero sem animação de entrada (LCP imediato); guard useMounted para leitura de user (SSR = convidado)
+- navbar.tsx: layoutId pill → span estático; busca mobile AnimatePresence → .mh-slide-down
+- promo-bar.tsx: rotação motion.p → key + .mh-slide-in; localStorage do dismissed movido p/ inicializador lazy (hidratação determinística)
+- page.tsx: spinner removido — o shell guest COMPLETO (PromoBar+Navbar+landing+footer) vai no HTML do SSR (139KB de conteúdo real); user = mounted ? storeUser : null; AuthView e MarketplaceView viraram dynamic() (foram os últimos a puxar framer-motion na carga)
+- layout.tsx: Toaster do ui/toaster (Radix) removido — a plataforma usa sonner (LazyToaster no page)
+- VERIFICAÇÃO (agent-browser): SSR HTML contém landing inteira (H1, seções, FAQ details ×6); zero chunks framer-motion na carga da home; FAQ exclusivo funcionando; carrossel troca slide; fetches preguiçosos disparam (+8 mentores, +10 cursos, +4 trilhas, +79 aulas); CTA → marketplace e → for-mentors (chunk lazy) ok; login real (Ana) → H1 "Olá, Ana!" sem mismatch; reload logado sem nenhum erro de hidratação; mobile 390px ok; footer ok; lint limpo
+- framer-motion segue disponível apenas nos chunks lazy (marketplace, classroom, ai-tutor, landing-mentor)
+
+Stage Summary:
+- Carga inicial da home: framer-motion, Radix Accordion e Radix Toaster saíram do bundle crítico; LCP agora é o H1 no HTML estático (sem spinner, sem espera de JS)
+- Padrão estabelecido: Reveal (CSS+IO) para animações de scroll, .mh-slide-in para trocas de slide, <details> para acordeões, useInViewOnce para fetch sob demanda, useMounted para leitura de estado persistido sem mismatch
+- Arquivos novos: hooks/use-mounted.ts, hooks/use-in-view-once.ts, components/platform/reveal.tsx

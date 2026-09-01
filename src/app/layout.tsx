@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/platform/theme-provider";
 import { PwaRegister } from "@/components/platform/pwa-register";
 
@@ -67,7 +66,6 @@ export default function RootLayout({
           {children}
           <PwaRegister />
         </ThemeProvider>
-        <Toaster />
       </body>
     </html>
   );

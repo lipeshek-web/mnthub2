@@ -123,3 +123,76 @@
 }
 
 /* mentorhub theme */
+
+/* ============ Animações leves (zero JS libs) ============ */
+/* Reveal progressivo: conteúdo nasce visível no SSR; abaixo da dobra o
+   cliente aplica .mh-reveal-hidden e anima com .mh-reveal-in (transition). */
+.mh-reveal-hidden {
+  opacity: 0;
+  transform: translateY(16px);
+}
+.mh-reveal-in {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 0.5s ease-out,
+    transform 0.5s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mh-reveal-hidden,
+  .mh-reveal-in {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* Entrada de slide (troca de slides do hero / barra promocional / busca mobile).
+   Replay automático a cada mudança de key no React. */
+@keyframes mh-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.mh-slide-in {
+  animation: mh-slide-in 0.28s ease-out both;
+}
+@keyframes mh-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.mh-slide-down {
+  animation: mh-slide-down 0.2s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mh-slide-in,
+  .mh-slide-down {
+    animation: none;
+  }
+}
+
+/* FAQ nativo com <details>: chevron gira quando aberto (sem JS) */
+details.mh-faq > summary::-webkit-details-marker {
+  display: none;
+}
+details.mh-faq > summary {
+  list-style: none;
+  cursor: pointer;
+}
+details.mh-faq[open] .mh-faq-chevron {
+  transform: rotate(180deg);
+}
+.mh-faq-chevron {
+  transition: transform 0.2s ease;
+}
