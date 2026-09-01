@@ -1819,3 +1819,21 @@ Stage Summary:
 - Agendamento 1:1 blindado contra corrida (transação + 409 amigável) — acabou o double-booking
 - Fluxo de reembolso do aluno (solicitação → decisão do admin) visível no painel de cobranças, com auditoria
 - Smoke W-30 24/24, lint/tsc limpos, E2E browser do caminho dourado (aluno compra → mentor confirma) aprovado
+
+---
+Task ID: W-29b
+Agent: Z.ai Code (main)
+Task: REFADO do Sprint 1 — o trabalho original (commit 3d7b899) foi PERDIDO numa restauração do sandbox: as 5 rotas voltaram a derivar identidade de query/body e o smoke-w29.ts sumiu. Reimplementação + extensão p/ PATCH/DELETE.
+
+Work Log:
+- DIAGNÓSTICO: worklog saltava de W-28 direto p/ W-30 e não havia commit do Sprint 1 no histórico; verificação no código confirmou as 5 rotas sem session-first e scripts/smoke-w29.ts inexistente
+- GET session-first (identidade = sessão, não query): library/[id] (IDOR de conteúdo: anônimo forjava userId de inscrito e lia PDF/texto restrito), tracks/[id] (vazava progresso/matrícula de terceiros), bundles/[id] (rascunho agora só p/ o dono autenticado — include mentor.userId), memberships/[id] (vazava myStatus/renewsAt de terceiros), coupons/validate (sessão vence body.userId; fallback anônimo mantido p/ compatibilidade)
+- BÔNUS DE SEGURANÇA (mesma classe, mesmos arquivos): PATCH/DELETE de library/[id], tracks/[id], bundles/[id], memberships/[id] agora exigem sessão (mentor.userId é PÚBLICO na API — body.userId/query forjável permitia editar/excluir conteúdo alheio; 401 via unauthorized())
+- TRACKS: gate de rascunho no GET ([id] não checava isPublished) — não-dono recebe 404
+- SMOKE scripts/smoke-w29.ts (bun scripts/smoke-w29.ts): 14/14 PASS — IDOR de conteúdo (anônimo forjado → canRead false/content null; inscrita autenticada → conteúdo), PATCH forjando dono → 401 + título intacto, PATCH legítimo → 200, tracks myEnrollment (null anônimo/presente autenticada), memberships myStatus (null/ACTIVE), cupom NEW_ACCOUNTS (fallback anônimo ok, sessão vence body forjado, conta com 1ª compra rejeitada)
+- REGRESSÃO: smoke-w30.ts 24/24 PASS; lint 0/0; dev.log sem erros; frontend intacto (api.ts request já anexa Authorization; qs({userId}) virou inócuo)
+
+Stage Summary:
+- Sprint 1 restaurado de verdade: nenhuma rota de leitura/escrita deriva identidade de query/body nas 5 famílias (library/tracks/bundles/memberships/coupons)
+- Buracos extras fechados que o Sprint 1 original não cobria: escrita (PATCH/DELETE) nas mesmas rotas + rascunho de trilha no GET [id]
+- Smoke W-29b 14/14 + W-30 24/24 (nenhuma regressão no ciclo financeiro)

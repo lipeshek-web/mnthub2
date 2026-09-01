@@ -1,20 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 import { bundleBaseInclude, serializeBundle, serializeBundleDetail } from '@/lib/bundle-serialize'
 
 export const dynamic = 'force-dynamic'
 
-/** GET /api/bundles/[id]?userId= — detalhe do pacote (checkout) */
+/** GET /api/bundles/[id] — detalhe do pacote (checkout); identidade pela sessão */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
+    const session = await resolveUser(req)
+    const userId = session?.id || ''
 
     const bundle = await db.bundle.findUnique({
       where: { id },
-      include: bundleBaseInclude(),
+      include: { ...bundleBaseInclude(), mentor: { select: { userId: true } } },
     })
-    if (!bundle || (!bundle.isPublished && !userId)) {
+    // Rascunho: visível apenas para o dono autenticado (antes: qualquer userId na query liberava)
+    if (!bundle || (!bundle.isPublished && bundle.mentor.userId !== userId)) {
       return NextResponse.json({ error: 'Pacote não encontrado.' }, { status: 404 })
     }
 
@@ -33,13 +36,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   }
 }
 
-/** DELETE /api/bundles/[id]?userId= — remove pacote do próprio mentor */
+/** DELETE /api/bundles/[id] — remove pacote do próprio mentor (identidade pela sessão) */
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
+    const session = await resolveUser(req)
+    if (!session) return unauthorized()
 
-    const profile = await db.mentorProfile.findUnique({ where: { userId } })
+    const profile = await db.mentorProfile.findUnique({ where: { userId: session.id } })
     if (!profile) return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 403 })
 
     const bundle = await db.bundle.findUnique({ where: { id } })

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser } from '@/lib/session'
 import { resolveCoupon, type CouponKind } from '@/lib/coupons'
 
 export const dynamic = 'force-dynamic'
@@ -7,14 +8,16 @@ export const dynamic = 'force-dynamic'
 /**
  * POST /api/coupons/validate — valida um cupom para curso, trilha, pacote, assinatura OU sessão 1:1 (antes do checkout).
  * body: { code, userId?, courseId?, trackId?, bundleId?, membershipId?, bookingId? }
- * userId habilita o escopo NEW_ACCOUNTS (cupom só na 1ª compra).
+ * userId da SESSÃO tem precedência (o do corpo é forjável); sem sessão mantém fallback
+ * anônimo p/ compatibilidade (NEW_ACCOUNTS não deve ser usado sem login).
  * → { ok, code, label, discount, finalPrice }
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}))
     const rawCode = String(body?.code ?? '').trim()
-    const userId = String(body?.userId ?? '').trim()
+    const session = await resolveUser(req)
+    const userId = session?.id || String(body?.userId ?? '').trim()
     const courseId = String(body?.courseId ?? '').trim()
     const trackId = String(body?.trackId ?? '').trim()
     const bundleId = String(body?.bundleId ?? '').trim()

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 import {
   parseTrackItems,
   serializeTrack,
@@ -11,11 +12,13 @@ export const dynamic = 'force-dynamic'
 
 const LEVELS = ['INICIANTE', 'INTERMEDIARIO', 'AVANCADO']
 
-/** GET /api/tracks/[id]?userId= — detalhe da trilha (+ progresso do usuário) */
+/** GET /api/tracks/[id] — detalhe da trilha (+ progresso do usuário da SESSÃO).
+ *  userId da query era forjável: vazava progresso/matrícula de terceiros. */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
+    const session = await resolveUser(req)
+    const userId = session?.id || ''
 
     const track = (await db.track.findUnique({
       where: { id },
@@ -42,6 +45,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     })) as unknown as TrackRow
 
     if (!track) return NextResponse.json({ error: 'Trilha não encontrada.' }, { status: 404 })
+    // Rascunho: visível apenas para o dono autenticado
+    if (!track.isPublished && track.mentor.user.id !== userId) {
+      return NextResponse.json({ error: 'Trilha não encontrada.' }, { status: 404 })
+    }
 
     const base = serializeTrack(track)
 
@@ -128,13 +135,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   }
 }
 
-/** PATCH /api/tracks/[id] — atualiza trilha (somente dono) */
+/** PATCH /api/tracks/[id] — atualiza trilha (somente dono autenticado pela sessão) */
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params
-    const body = await req.json()
-    const userId = String(body?.userId ?? '')
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const body = await req.json().catch(() => ({}))
+    const session = await resolveUser(req)
+    if (!session) return unauthorized()
+    const userId = session.id
 
     const track = await db.track.findUnique({ where: { id }, include: { mentor: true } })
     if (!track) return NextResponse.json({ error: 'Trilha não encontrada.' }, { status: 404 })
@@ -206,12 +214,13 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
 }
 
-/** DELETE /api/tracks/[id]?userId= — remove trilha (somente dono) */
+/** DELETE /api/tracks/[id] — remove trilha (somente dono autenticado pela sessão) */
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const session = await resolveUser(req)
+    if (!session) return unauthorized()
+    const userId = session.id
 
     const track = await db.track.findUnique({ where: { id }, include: { mentor: true } })
     if (!track) return NextResponse.json({ error: 'Trilha não encontrada.' }, { status: 404 })

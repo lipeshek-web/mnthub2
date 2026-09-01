@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 import { membershipBaseInclude, serializeMembership } from '@/lib/membership-serialize'
 import { expireDueSubscriptions } from '@/lib/membership-access'
 
 export const dynamic = 'force-dynamic'
 
-/** GET /api/memberships/[id]?userId= — plano único (checkout, perfil público) */
+/** GET /api/memberships/[id] — plano único (checkout, perfil público).
+ *  Identidade pela sessão — userId da query deixava ver o status/renewsAt de terceiros. */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
+    const session = await resolveUser(req)
+    const userId = session?.id || ''
     // Encerra assinaturas vencidas antes de reportar o estado do usuário
     await expireDueSubscriptions()
     const membership = await db.mentorMembership.findUnique({
@@ -47,17 +50,18 @@ export async function GET(
   }
 }
 
-/** DELETE /api/memberships/[id]?userId= — remove o plano do próprio mentor (cascade nos vínculos) */
+/** DELETE /api/memberships/[id] — remove o plano do próprio mentor (sessão; cascade nos vínculos) */
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
-    if (!userId) {
-      return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const session = await resolveUser(req)
+    if (!session) {
+      return unauthorized()
     }
+    const userId = session.id
     const profile = await db.mentorProfile.findUnique({ where: { userId } })
     if (!profile) {
       return NextResponse.json({ error: 'Perfil de mentor não encontrado.' }, { status: 403 })

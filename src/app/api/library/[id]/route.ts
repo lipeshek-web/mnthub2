@@ -1,18 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 const KINDS = ['ARTICLE', 'BOOK']
 const LEVELS = ['INICIANTE', 'INTERMEDIARIO', 'AVANCADO']
 
-/** GET /api/library/[id]?userId= — detalhe do artigo/livro.
+/** GET /api/library/[id] — detalhe do artigo/livro.
  *  canRead: publicado OU autor OU inscrito em qualquer curso que use o item em uma aula.
- *  pdfUrl/content só vêm preenchidos quando canRead. */
+ *  pdfUrl/content só vêm preenchidos quando canRead.
+ *  Identidade SEMPRE pela sessão — userId da query é forjável e liberava PDF/texto
+ *  restrito para anônimos (IDOR de conteúdo). */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
+    const session = await resolveUser(req)
+    const userId = session?.id || ''
 
     const item = await db.libraryItem.findUnique({
       where: { id },
@@ -89,13 +93,15 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   }
 }
 
-/** PATCH /api/library/[id] — atualiza item (somente o autor/mentor dono) */
+/** PATCH /api/library/[id] — atualiza item (somente o autor/mentor dono).
+ *  Identidade pela sessão — o mentor.userId é público, body.userId era forjável. */
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params
-    const body = await req.json()
-    const userId = String(body?.userId ?? '')
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const body = await req.json().catch(() => ({}))
+    const session = await resolveUser(req)
+    if (!session) return unauthorized()
+    const userId = session.id
 
     const item = await db.libraryItem.findUnique({ where: { id }, include: { mentor: true } })
     if (!item) return NextResponse.json({ error: 'Conteúdo não encontrado.' }, { status: 404 })
@@ -161,12 +167,13 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
 }
 
-/** DELETE /api/library/[id]?userId= — remove item (somente dono); aulas ficam com libraryItemId null (SetNull) */
+/** DELETE /api/library/[id] — remove item (somente dono autenticado); aulas ficam com libraryItemId null (SetNull) */
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params
-    const userId = (req.nextUrl.searchParams.get('userId') || '').trim()
-    if (!userId) return NextResponse.json({ error: 'Usuário não informado.' }, { status: 400 })
+    const session = await resolveUser(req)
+    if (!session) return unauthorized()
+    const userId = session.id
 
     const item = await db.libraryItem.findUnique({ where: { id }, include: { mentor: true } })
     if (!item) return NextResponse.json({ error: 'Conteúdo não encontrado.' }, { status: 404 })
