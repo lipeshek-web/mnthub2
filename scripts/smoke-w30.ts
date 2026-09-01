@@ -241,12 +241,23 @@ async function main() {
     o.bundle?.items.forEach((i) => coveredCourseIds.add(i.courseId))
     o.track?.items.forEach((i) => coveredCourseIds.add(i.courseId))
   }
+  // Assinaturas ACTIVE concedem acesso a TODOS os cursos do mentor — a trava
+  // de acesso independente preservaria a matrícula no estorno. O teste precisa
+  // de um curso de um mentor SEM assinatura ativa da ana (estado legítimo do
+  // banco, ex.: assinatura criada no E2E).
+  const activeSubMentorIds = (
+    await db.membershipSubscription.findMany({
+      where: { userId: ana.id, status: 'ACTIVE' },
+      select: { mentorId: true },
+    })
+  ).map((s) => s.mentorId)
   const rCourse = await db.course.findFirst({
     where: {
       isPublished: true,
       price: { gt: 0 },
       enrollments: { none: { studentId: ana.id } },
       id: { notIn: Array.from(coveredCourseIds) },
+      mentorId: { notIn: activeSubMentorIds },
     },
     select: { id: true, title: true, price: true },
   })

@@ -11,7 +11,7 @@ import { db } from '@/lib/db'
 //   MENTOR       → apenas itens do mentor alvo (criado pelo admin)
 // Cupons de mentor (scope MENTOR + mentorId setado) valem só nos itens dele.
 
-export type CouponKind = 'COURSE' | 'TRACK' | 'BUNDLE' | 'MEMBERSHIP'
+export type CouponKind = 'COURSE' | 'TRACK' | 'BUNDLE' | 'MEMBERSHIP' | 'BOOKING'
 
 export interface CouponItemContext {
   kind: CouponKind

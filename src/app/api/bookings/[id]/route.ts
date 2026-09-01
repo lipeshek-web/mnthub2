@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { formatWhen, notify } from '@/lib/notify'
 import { resolveUser, unauthorized } from '@/lib/session'
+import { brandedEmail, sendEmail } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 
@@ -91,6 +92,20 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
         linkView: 'dashboard',
         refId: booking.id,
       })
+      await sendEmail({
+        to: booking.mentee.email,
+        kind: 'booking_confirmed',
+        subject: `Sessão confirmada com ${booking.mentor.user.name} — MentorHub`,
+        html: brandedEmail({
+          title: 'Sua sessão foi confirmada!',
+          lines: [
+            `<strong>${booking.mentor.user.name}</strong> confirmou a sessão "${booking.topic}".`,
+            `Quando: <strong>${formatWhen(booking.startsAt)}</strong>.`,
+            'Prepare suas perguntas com antecedência e teste câmera e microfone.',
+          ],
+          cta: { label: 'Ver minhas sessões', url: `${req.nextUrl.origin}/` },
+        }),
+      })
     }
 
     if (action === 'cancel') {
@@ -99,6 +114,19 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       if (!['PENDING', 'CONFIRMED'].includes(booking.status))
         return NextResponse.json({ error: 'Esta sessão não pode mais ser cancelada.' }, { status: 400 })
       await db.booking.update({ where: { id }, data: { status: 'CANCELLED' } })
+      const cancelEmail = (to: string, name: string) =>
+        sendEmail({
+          to,
+          kind: 'booking_cancelled',
+          subject: `Sessão cancelada — MentorHub`,
+          html: brandedEmail({
+            title: 'Uma sessão foi cancelada',
+            lines: [
+              `A sessão "${booking.topic}" (${formatWhen(booking.startsAt)}) foi cancelada por <strong>${name}</strong>.`,
+              'Você pode combinar uma nova data pelo perfil do mentor.',
+            ],
+          }),
+        })
       // Notifica a outra parte (quem cancelou já sabe)
       if (isMentor) {
         await notify({
@@ -109,6 +137,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
           linkView: 'dashboard',
           refId: booking.id,
         })
+        await cancelEmail(booking.mentee.email, booking.mentor.user.name)
       } else {
         await notify({
           userId: booking.mentor.userId,
@@ -118,6 +147,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
           linkView: 'dashboard',
           refId: booking.id,
         })
+        await cancelEmail(booking.mentor.user.email, booking.mentee.name)
       }
     }
 
@@ -133,6 +163,19 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
         body: `Como foi a sessão de ${booking.topic} com ${booking.mentor.user.name}?`,
         linkView: 'dashboard',
         refId: booking.id,
+      })
+      await sendEmail({
+        to: booking.mentee.email,
+        kind: 'booking_completed',
+        subject: 'Como foi sua sessão? — MentorHub',
+        html: brandedEmail({
+          title: 'Sessão concluída ⭐',
+          lines: [
+            `A sessão "${booking.topic}" com <strong>${booking.mentor.user.name}</strong> foi concluída.`,
+            'Sua avaliação ajuda outros alunos a encontrarem os melhores mentores.',
+          ],
+          cta: { label: 'Avaliar a sessão', url: `${req.nextUrl.origin}/` },
+        }),
       })
     }
 

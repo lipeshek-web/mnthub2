@@ -87,9 +87,9 @@ function relativeTime(iso: string) {
  * Badge único: mensagens + notificações não lidas em UM request autenticado
  * (antes eram 2 polls — messages/unread 45s + notifications 60s). Pausa com a
  * aba oculta e atualiza ao voltar o foco. `refresh()` força revalidação depois
- * de ações locais (ex.: marcar tudo como lido).
+ * de ações locais (ex.: marcar tudo como lido). Compartilhado com a tab bar mobile.
  */
-function useBadges() {
+export function useBadges() {
   const userId = useAppStore((s) => s.user?.id)
   const [badges, setBadges] = useState({ messages: 0, notifications: 0 })
   const aliveRef = useRef(true)

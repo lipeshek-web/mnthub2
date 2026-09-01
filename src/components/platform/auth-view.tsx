@@ -2,9 +2,11 @@
 
 import { useEffect, useState, type FormEvent } from 'react'
 import {
+  CheckCircle2,
   Eye,
   EyeOff,
   GraduationCap,
+  KeyRound,
   Library,
   Loader2,
   ShieldCheck,
@@ -13,6 +15,13 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -44,11 +53,19 @@ interface FieldErrors {
   password?: string
 }
 
-export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }) {
+export function AuthView({
+  initialMode,
+  resetToken,
+}: {
+  initialMode?: 'login' | 'register' | 'reset'
+  resetToken?: string
+}) {
   const setUser = useAppStore((s) => s.setUser)
   const navigate = useAppStore((s) => s.navigate)
 
-  const [tab, setTab] = useState<'login' | 'register'>(initialMode ?? 'login')
+  const [tab, setTab] = useState<'login' | 'register'>(
+    initialMode === 'register' ? 'register' : 'login'
+  )
 
   // ----- Entrar -----
   const [loginEmail, setLoginEmail] = useState('')
@@ -82,9 +99,24 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
   const [mfaMode, setMfaMode] = useState<'totp' | 'recovery'>('totp')
   const [mfaRecoveryCode, setMfaRecoveryCode] = useState('')
 
+  // ----- Esqueci minha senha (dialog) -----
+  const [forgotOpen, setForgotOpen] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [forgotError, setForgotError] = useState<string | null>(null)
+  const [forgotResult, setForgotResult] = useState<{ delivery: 'email' | 'outbox'; resetUrl?: string } | null>(null)
+
+  // ----- Redefinir senha (link do e-mail, modo reset) -----
+  const isReset = initialMode === 'reset' && Boolean(resetToken)
+  const [resetPassword, setResetPassword] = useState('')
+  const [resetConfirm, setResetConfirm] = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
+  const [resetDone, setResetDone] = useState(false)
+
   // Sincroniza quando a view chega com outro modo (ex.: clique em "Criar conta" no navbar)
   useEffect(() => {
-    if (initialMode) setTab(initialMode)
+    if (initialMode === 'login' || initialMode === 'register') setTab(initialMode)
   }, [initialMode])
 
   useEffect(() => {
@@ -261,7 +293,70 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
   }
 
   const handleForgotPassword = () => {
-    toast.info('Em breve! Por enquanto, use uma conta demo ou crie a sua.')
+    setForgotError(null)
+    setForgotResult(null)
+    setForgotOpen(true)
+  }
+
+  const handleForgotSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    setForgotError(null)
+    const email = forgotEmail.trim()
+    if (!EMAIL_RE.test(email)) {
+      setForgotError('Informe um e-mail válido.')
+      return
+    }
+    setForgotLoading(true)
+    try {
+      const res = await api.forgotPassword(email)
+      setForgotResult(res)
+    } catch (err) {
+      setForgotError(err instanceof Error ? err.message : 'Erro ao enviar. Tente novamente.')
+    } finally {
+      setForgotLoading(false)
+    }
+  }
+
+  /** Modo demonstração (sem SMTP): segue direto para o formulário de nova senha */
+  const openResetFromLink = (url: string) => {
+    try {
+      const t = new URL(url).searchParams.get('reset')
+      if (t) {
+        setForgotOpen(false)
+        navigate({ name: 'auth', mode: 'reset', resetToken: t })
+        return
+      }
+    } catch {
+      /* cai no fallback */
+    }
+    window.location.href = url
+  }
+
+  const handleResetSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    setResetError(null)
+    if (resetPassword.length < 6) {
+      setResetError('A senha deve ter pelo menos 6 caracteres.')
+      return
+    }
+    if (resetPassword !== resetConfirm) {
+      setResetError('As senhas não coincidem.')
+      return
+    }
+    if (!resetToken) {
+      setResetError('Link inválido. Peça um novo e-mail de redefinição.')
+      return
+    }
+    setResetLoading(true)
+    try {
+      await api.resetPassword(resetToken, resetPassword)
+      setResetDone(true)
+      toast.success('Senha alterada com sucesso!')
+    } catch (err) {
+      setResetError(err instanceof Error ? err.message : 'Não foi possível redefinir a senha.')
+    } finally {
+      setResetLoading(false)
+    }
   }
 
   return (
@@ -321,6 +416,89 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
       {/* ---------- Painel direito: formulário ---------- */}
       <section className="flex items-center justify-center p-4 sm:p-6 lg:p-8 xl:p-12">
         <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900 p-6 shadow-sm sm:p-8">
+          {/* ----- Modo redefinir senha (chegou pelo link do e-mail) ----- */}
+          {isReset ? (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+                  Definir nova senha
+                </h2>
+                <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+                  Escolha uma nova senha para acessar sua conta.
+                </p>
+              </div>
+
+              {resetDone ? (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                    <p>Senha alterada com sucesso! Faça login com a nova senha.</p>
+                  </div>
+                  <Button
+                    onClick={() => navigate({ name: 'auth', mode: 'login' })}
+                    className="h-11 w-full rounded-full text-sm font-bold"
+                  >
+                    Entrar na plataforma
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleResetSubmit} noValidate className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="reset-password" className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                      Nova senha
+                    </Label>
+                    <Input
+                      id="reset-password"
+                      type="password"
+                      value={resetPassword}
+                      onChange={(e) => {
+                        setResetPassword(e.target.value)
+                        if (resetError) setResetError(null)
+                      }}
+                      autoComplete="new-password"
+                      className="h-11 rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="reset-confirm" className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                      Confirmar nova senha
+                    </Label>
+                    <Input
+                      id="reset-confirm"
+                      type="password"
+                      value={resetConfirm}
+                      onChange={(e) => {
+                        setResetConfirm(e.target.value)
+                        if (resetError) setResetError(null)
+                      }}
+                      autoComplete="new-password"
+                      className="h-11 rounded-xl"
+                    />
+                  </div>
+                  {resetError && (
+                    <p role="alert" className="text-xs font-medium text-rose-600 dark:text-rose-400">
+                      {resetError}
+                    </p>
+                  )}
+                  <Button
+                    type="submit"
+                    disabled={resetLoading}
+                    className="h-11 w-full rounded-full text-sm font-bold"
+                  >
+                    {resetLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                        Salvando…
+                      </>
+                    ) : (
+                      'Salvar nova senha'
+                    )}
+                  </Button>
+                </form>
+              )}
+            </div>
+          ) : (
+          <>
           <Tabs value={tab} onValueChange={switchTab}>
             <TabsList className="grid h-11 w-full grid-cols-2 rounded-full bg-stone-100 dark:bg-stone-800 p-1">
               <TabsTrigger
@@ -736,6 +914,77 @@ export function AuthView({ initialMode }: { initialMode?: 'login' | 'register' }
               ) : null}
             </div>
           </div>
+          </>
+          )}
+
+          {/* ----- Dialog: esqueci minha senha ----- */}
+          <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Recuperar senha</DialogTitle>
+                <DialogDescription>
+                  Informe o e-mail da sua conta e enviaremos um link para você criar uma nova senha.
+                </DialogDescription>
+              </DialogHeader>
+
+              {forgotResult ? (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                    <p>
+                      {forgotResult.delivery === 'email'
+                        ? 'Enviamos um link de redefinição para o seu e-mail. Ele vale por 30 minutos.'
+                        : 'Link de redefinição gerado (ambiente de demonstração, sem e-mail configurado).' }
+                    </p>
+                  </div>
+                  {forgotResult.resetUrl && (
+                    <Button onClick={() => openResetFromLink(forgotResult.resetUrl!)} className="w-full rounded-full">
+                      <KeyRound className="h-4 w-4" /> Definir nova senha agora
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <form onSubmit={handleForgotSubmit} noValidate className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="forgot-email" className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                      E-mail da conta
+                    </Label>
+                    <Input
+                      id="forgot-email"
+                      type="email"
+                      value={forgotEmail}
+                      onChange={(e) => {
+                        setForgotEmail(e.target.value)
+                        if (forgotError) setForgotError(null)
+                      }}
+                      placeholder="voce@exemplo.com"
+                      autoComplete="email"
+                      className="h-11 rounded-xl"
+                    />
+                    {forgotError && (
+                      <p role="alert" className="text-xs font-medium text-rose-600 dark:text-rose-400">
+                        {forgotError}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    type="submit"
+                    disabled={forgotLoading}
+                    className="h-11 w-full rounded-full text-sm font-bold"
+                  >
+                    {forgotLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                        Enviando…
+                      </>
+                    ) : (
+                      'Enviar link de redefinição'
+                    )}
+                  </Button>
+                </form>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
       </section>
     </div>

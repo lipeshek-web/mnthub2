@@ -845,6 +845,25 @@ export interface AdminUsersResponseDTO {
   pages: number
 }
 
+/** E-mail transacional na fila (outbox) — painel admin, aba E-mails */
+export interface AdminEmailDTO {
+  id: string
+  to: string
+  subject: string
+  kind: string
+  status: 'PENDING' | 'SENT' | 'LOGGED' | 'FAILED'
+  provider: string
+  error: string | null
+  bodyHtml: string
+  createdAt: string
+}
+
+export interface AdminEmailsResponseDTO {
+  emails: AdminEmailDTO[]
+  total: number
+  smtpConfigured: boolean
+}
+
 export interface AsaasSettingsDTO {
   configured: boolean
   env: 'sandbox' | 'production'

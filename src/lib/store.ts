@@ -6,7 +6,7 @@ import type { UserDTO } from './types'
 
 export type AppView =
   | { name: 'home' }
-  | { name: 'auth'; mode?: 'login' | 'register' } // login / criar conta
+  | { name: 'auth'; mode?: 'login' | 'register' | 'reset'; resetToken?: string } // login / criar conta / redefinir senha (link do e-mail)
   | { name: 'marketplace' }
   | { name: 'mentor'; mentorId: string }
   | { name: 'course'; courseId: string }

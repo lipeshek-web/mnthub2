@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { notify } from '@/lib/notify'
 import { activateSubscription } from '@/lib/subscriptions'
+import { brandedEmail, sendEmail } from '@/lib/email'
 
 // ==================== CONCLUSÃO DE PEDIDOS ====================
 // Único caminho que transforma um pedido pago em acesso liberado:
@@ -69,7 +70,7 @@ export async function fulfillOrder(orderId: string): Promise<FulfillResult> {
   const order = await db.order.findUnique({
     where: { id: orderId },
     include: {
-      student: { select: { id: true, name: true, creditCents: true } },
+      student: { select: { id: true, name: true, email: true, creditCents: true } },
       mentor: { include: { user: { select: { id: true, name: true } } } },
       course: { select: { id: true, title: true } },
       track: {
@@ -279,6 +280,35 @@ export async function fulfillOrder(orderId: string): Promise<FulfillResult> {
   // ---------- Indicação: 1ª compra paga (valor > 0) recompensa quem convidou ----------
   await rewardPendingReferral(userId, studentName, order.amount)
 
+  // ---------- Recibo por e-mail (fila outbox; SMTP opcional) ----------
+  const itemLabel = order.course?.title
+    ? `Curso "${order.course.title}"`
+    : order.track?.title
+      ? `Trilha "${order.track.title}"`
+      : order.bundle?.title
+        ? `Pacote "${order.bundle.title}"`
+        : order.membership?.title
+          ? `Assinatura "${order.membership.title}"`
+          : order.booking?.topic
+            ? `Sessão 1:1 "${order.booking.topic}"`
+            : 'Pedido'
+  const brl = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || ''
+  await sendEmail({
+    to: order.student.email,
+    kind: 'order_paid',
+    subject: `Compra confirmada: ${itemLabel} — MentorHub`,
+    html: brandedEmail({
+      title: 'Pagamento confirmado! 🎉',
+      lines: [
+        `<strong>${itemLabel}</strong> já está liberado na sua conta.`,
+        `Valor pago: <strong>${brl(order.amount)}</strong>${order.creditsUsed > 0 ? ` (com ${brl(order.creditsUsed)} de créditos)` : ''}.`,
+        'Bons estudos!',
+      ],
+      ...(appUrl ? { cta: { label: 'Acessar meus cursos', url: `${appUrl}/` } } : {}),
+    }),
+  })
+
   return { ok: true, alreadyFulfilled: false, orderStatus: 'PAID' }
 }
 
@@ -342,7 +372,7 @@ export async function revokeOrderAccess(orderId: string): Promise<RevokeResult> 
   const order = await db.order.findUnique({
     where: { id: orderId },
     include: {
-      student: { select: { id: true, name: true } },
+      student: { select: { id: true, name: true, email: true } },
       course: { select: { id: true, title: true, mentorId: true } },
       track: {
         select: {
@@ -417,6 +447,19 @@ export async function revokeOrderAccess(orderId: string): Promise<RevokeResult> 
       body: `O pedido de ${order.amount.toFixed(2).replace('.', ',')} foi estornado e o acesso revogado. Dúvidas? Fale com o suporte.`,
       linkView: 'dashboard',
       refId: order.id,
+    })
+    await sendEmail({
+      to: order.student.email,
+      kind: 'order_refunded',
+      subject: 'Seu pagamento foi estornado — MentorHub',
+      html: brandedEmail({
+        title: 'Estorno processado',
+        lines: [
+          `O pedido de <strong>R$ ${order.amount.toFixed(2).replace('.', ',')}</strong> foi estornado e o acesso correspondente foi revogado.`,
+          'O reembolso segue o prazo do meio de pagamento utilizado.',
+          'Dúvidas? Fale com o suporte respondendo este e-mail.',
+        ],
+      }),
     })
   } catch (err) {
     console.error('revokeOrderAccess falhou (pedido já está REFUNDED)', err)

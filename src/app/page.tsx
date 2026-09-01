@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { GraduationCap } from 'lucide-react'
 import { toast } from 'sonner'
 import { Navbar } from '@/components/platform/navbar'
+import { MobileTabbar } from '@/components/platform/mobile-tabbar'
 import { PromoBar } from '@/components/platform/promo-bar'
 import { PlatformFooter } from '@/components/platform/footer'
 import { MarketplaceView } from '@/components/platform/marketplace'
@@ -163,6 +164,7 @@ export default function Home() {
     const mentorSlug = sp.get('mentor')?.trim()
     const courseId = sp.get('course')?.trim()
     const certCode = sp.get('cert')?.trim()
+    const resetToken = sp.get('reset')?.trim()
 
     // 1. Atribuição (last non-direct click, janela de 7 dias)
     captureAttributionFromUrl(mentorSlug)
@@ -179,6 +181,8 @@ export default function Home() {
       navigate({ name: 'course', courseId })
     } else if (certCode) {
       navigate({ name: 'certificate', code: certCode })
+    } else if (resetToken) {
+      navigate({ name: 'auth', mode: 'reset', resetToken })
     }
     trackEvent('page_view')
 
@@ -282,13 +286,15 @@ export default function Home() {
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
       >
         {/* Wrapper interno garante o footer colado no fundo em páginas curtas */}
-        <div className="flex min-h-full flex-col">
+        <div className="flex min-h-full flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
           {needsAuth ? (
             <AuthView />
           ) : (
             <>
               {view.name === 'home' && <LandingMenteeView />}
-              {view.name === 'auth' && <AuthView initialMode={view.mode} />}
+              {view.name === 'auth' && (
+                <AuthView initialMode={view.mode} resetToken={view.resetToken} />
+              )}
               {view.name === 'for-mentors' && <LandingMentor />}
               {view.name === 'marketplace' && <MarketplaceView />}
               {view.name === 'mentor' && <MentorProfileView mentorId={view.mentorId} />}
@@ -330,6 +336,10 @@ export default function Home() {
           <ReaderView itemId={view.itemId} />
         </div>
       )}
+
+      {/* Tab bar mobile (<md): navegação inferior estilo app — some em telas
+          imersivas (classroom/reader), na LP pública e na autenticação */}
+      {!immersive && view.name !== 'mentor-lp' && view.name !== 'auth' && <MobileTabbar />}
 
       <LazyToaster />
     </div>

@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { notify } from '@/lib/notify'
+import { brandedEmail, sendEmail } from '@/lib/email'
 
 // ==================== CICLO DE VIDA DA ASSINATURA ====================
 // renewsAt era apenas decorativo: assinante pagava 1 mês e tinha acesso
@@ -53,7 +54,7 @@ export async function expireDueSubscriptions(): Promise<number> {
     take: 50,
     orderBy: { renewsAt: 'asc' },
     include: {
-      user: { select: { id: true, name: true } },
+      user: { select: { id: true, name: true, email: true } },
       membership: { select: { id: true, title: true, mentorId: true } },
     },
   })
@@ -105,6 +106,18 @@ export async function expireDueSubscriptions(): Promise<number> {
           refId: sub.id,
         })
       }
+      await sendEmail({
+        to: sub.user.email,
+        kind: 'membership_expired',
+        subject: `Sua assinatura "${sub.membership.title}" expirou — MentorHub`,
+        html: brandedEmail({
+          title: 'Assinatura expirada',
+          lines: [
+            `O ciclo do plano <strong>"${sub.membership.title}"</strong> terminou em ${sub.renewsAt.toLocaleDateString('pt-BR')}.`,
+            'Seu progresso nos cursos continua salvo — renove para recuperar o acesso a todos os conteúdos.',
+          ],
+        }),
+      })
     } catch (err) {
       console.error('expireDueSubscriptions: falha em uma assinatura (isolada)', err)
     }

@@ -21,6 +21,7 @@ import {
   KeyRound,
   Library,
   Loader2,
+  Mail,
   QrCode,
   RefreshCw,
   Route,
@@ -38,6 +39,13 @@ import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -57,6 +65,8 @@ import type {
   AdminStatsDTO,
   AdminUserDTO,
   AdminUsersResponseDTO,
+  AdminEmailDTO,
+  AdminEmailsResponseDTO,
   AsaasSettingsDTO,
   PlatformCouponDTO,
 } from '@/lib/types'
@@ -145,6 +155,9 @@ export function AdminPanel() {
   // ---------- Auditoria ----------
   const [auditLogs, setAuditLogs] = useState<{ logs: { id: string; actorName: string; action: string; meta: string; createdAt: string }[]; total: number } | null>(null)
   const [auditLoading, setAuditLoading] = useState(true)
+  const [emails, setEmails] = useState<AdminEmailsResponseDTO | null>(null)
+  const [emailsLoading, setEmailsLoading] = useState(true)
+  const [emailPreview, setEmailPreview] = useState<AdminEmailDTO | null>(null)
 
   /** Sem token de sessão admin (login antigo ou expirado) — pede novo login */
   const needsRelogin = !token
@@ -218,6 +231,16 @@ export function AdminPanel() {
       .finally(() => setAuditLoading(false))
   }, [token])
 
+  const loadEmails = useCallback(() => {
+    if (!token) return
+    setEmailsLoading(true)
+    api.admin
+      .emails(token)
+      .then(setEmails)
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Erro ao carregar e-mails.'))
+      .finally(() => setEmailsLoading(false))
+  }, [token])
+
   const loadCoupons = useCallback(() => {
     if (!token) return
     setCouponsLoading(true)
@@ -239,6 +262,7 @@ export function AdminPanel() {
     if (tab === 'coupons') loadCoupons()
     if (tab === 'security') loadMfa()
     if (tab === 'audit') loadAudit()
+    if (tab === 'emails') loadEmails()
   }, [tab])
 
   // ==================== Ações ====================
@@ -571,6 +595,9 @@ export function AdminPanel() {
           </TabsTrigger>
           <TabsTrigger value="audit" className="rounded-xl text-xs font-bold sm:text-sm">
             <BadgeCheck className="h-4 w-4" aria-hidden /> Auditoria
+          </TabsTrigger>
+          <TabsTrigger value="emails" className="rounded-xl text-xs font-bold sm:text-sm">
+            <Mail className="h-4 w-4" aria-hidden /> E-mails
           </TabsTrigger>
         </TabsList>
 
@@ -1631,6 +1658,99 @@ export function AdminPanel() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ==================== E-MAILS (OUTBOX) ==================== */}
+        <TabsContent value="emails" className="mt-5">
+          <Card className="rounded-2xl">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                  E-mails transacionais {emails ? `(${emails.total})` : ''}
+                </h2>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
+                    emails?.smtpConfigured
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                      : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                  }`}
+                >
+                  {emails?.smtpConfigured ? 'SMTP configurado — entrega ativa' : 'Sem SMTP — modo fila (outbox)'}
+                </span>
+              </div>
+              {emailsLoading ? (
+                <div className="mt-4 space-y-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-12 rounded-xl" />
+                  ))}
+                </div>
+              ) : (
+                <ul className="mt-3 max-h-[28rem] divide-y divide-stone-100 overflow-y-auto pr-1 dark:divide-stone-800 [scrollbar-width:thin]">
+                  {emails?.emails.map((m) => (
+                    <li key={m.id} className="flex items-center gap-3 py-2.5">
+                      <span
+                        className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                          m.status === 'SENT'
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                            : m.status === 'LOGGED'
+                              ? 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300'
+                              : m.status === 'FAILED'
+                                ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                                : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                        }`}
+                      >
+                        {m.status}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-semibold text-stone-700 dark:text-stone-200">
+                          {m.subject}
+                        </p>
+                        <p className="truncate text-[11px] text-stone-400 dark:text-stone-500">
+                          {m.to} · {m.kind}
+                          {m.error ? ` · ${m.error}` : ''}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-[11px] text-stone-400 dark:text-stone-500">
+                        {new Date(m.createdAt).toLocaleDateString('pt-BR')}{' '}
+                        {new Date(m.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <Button variant="outline" size="sm" className="h-7 shrink-0 rounded-full text-[11px]" onClick={() => setEmailPreview(m)}>
+                        Ver
+                      </Button>
+                    </li>
+                  ))}
+                  {emails?.emails.length === 0 && (
+                    <li className="py-8 text-center text-sm text-stone-400 dark:text-stone-500">
+                      Nenhum e-mail na fila ainda.
+                    </li>
+                  )}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Preview do HTML do e-mail */}
+        <Dialog open={Boolean(emailPreview)} onOpenChange={(open) => !open && setEmailPreview(null)}>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="pr-6 text-base">{emailPreview?.subject}</DialogTitle>
+              <DialogDescription>
+                {emailPreview?.to} · {emailPreview?.kind} ·{' '}
+                {emailPreview
+                  ? new Date(emailPreview.createdAt).toLocaleString('pt-BR')
+                  : ''}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[55vh] overflow-y-auto rounded-xl border border-stone-200 dark:border-stone-800">
+              <iframe
+                title="Pré-visualização do e-mail"
+                srcDoc={emailPreview?.bodyHtml ?? ''}
+                sandbox=""
+                className="h-[50vh] w-full bg-white"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
       </Tabs>
     </div>
   )

@@ -45,6 +45,7 @@ import { Avatar, Stars } from '@/components/platform/avatar'
 import { api } from '@/lib/api'
 import { groupSessionLabel } from '@/lib/membership-serialize'
 import { LEVEL_LABELS, avatarGradient, currencyBRL } from '@/lib/helpers'
+import { crossZoneHint } from '@/lib/tz'
 import { getAttribution, loadTrackingScripts, trackEvent } from '@/lib/tracking'
 import { useAppStore } from '@/lib/store'
 import type {
@@ -626,6 +627,8 @@ export function CheckoutView({
   const isBundle = item.kind === 'bundle'
   const isMembership = item.kind === 'membership'
   const isBooking = item.kind === 'booking'
+  // Fuso: mostra a conversão quando o navegador do usuário difere do fuso da plataforma
+  const bookingTzHint = booking ? crossZoneHint(booking.startsAt) : null
 
   // Descontos combinados: cupom + créditos de indicação
   const couponDiscount = couponApplied?.discount ?? 0
@@ -772,7 +775,8 @@ export function CheckoutView({
               <>
                 <p className="mt-1 text-xs leading-relaxed text-stone-400 dark:text-stone-500">
                   Sua sessão com {item.mentor.name} está confirmada. O link da sala aparece no seu
-                  painel perto do horário ({booking?.startsAt.replace('T', ' às ')}).
+                  painel perto do horário ({booking?.startsAt.replace('T', ' às ')}
+                  {bookingTzHint ? ` · ${bookingTzHint}` : ''}).
                 </p>
                 <Button
                   onClick={() => navigate({ name: 'dashboard' })}

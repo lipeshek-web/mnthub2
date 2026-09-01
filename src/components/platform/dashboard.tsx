@@ -70,6 +70,7 @@ import {
   nowNaive,
   relativeDayLabel,
 } from '@/lib/helpers'
+import { crossZoneHint } from '@/lib/tz'
 import { useAppStore } from '@/lib/store'
 import type {
   BookingDTO,
@@ -212,6 +213,7 @@ function BookingCard({
   const isMentorSide = b.mentor.userId === userId
   const otherName = isMentorSide ? b.mentee.name : b.mentor.name
   const when = relativeDayLabel(b.startsAt) ?? formatDayLabel(b.startsAt)
+  const tzHint = crossZoneHint(b.startsAt)
   // #8: "Google Calendar" só para sessões futuras aguardando confirmação/confirmadas
   const isUpcomingEvent =
     (b.status === 'PENDING' || b.status === 'CONFIRMED') && b.startsAt >= nowNaive()
@@ -329,6 +331,9 @@ function BookingCard({
           <span className="inline-flex items-center gap-1.5 font-medium text-stone-700 dark:text-stone-200">
             <CalendarDays className="size-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden />
             {when} · {formatTimeLabel(b.startsAt)}–{addMinutesToTime(b.startsAt, b.durationMin)}
+            {tzHint && (
+              <span className="font-medium text-amber-700 dark:text-amber-300">({tzHint})</span>
+            )}
           </span>
           <span aria-hidden className="text-stone-300 dark:text-stone-600">·</span>
           <span>{b.durationMin} min</span>

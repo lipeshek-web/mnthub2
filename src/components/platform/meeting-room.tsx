@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
   CalendarDays,
@@ -40,6 +40,7 @@ import {
   formatTimeLabel,
   relativeDayLabel,
 } from '@/lib/helpers'
+import { crossZoneHint } from '@/lib/tz'
 import { useAppStore } from '@/lib/store'
 import type { BookingDTO } from '@/lib/types'
 import { toast } from 'sonner'
@@ -52,6 +53,11 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
   const [notFound, setNotFound] = useState(false)
   const [localNotes, setLocalNotes] = useState('')
   const [ending, setEnding] = useState(false)
+  // Autosave das anotações privadas (MeetingNote no banco — sobrevive a refresh)
+  const [noteStatus, setNoteStatus] = useState<'idle' | 'dirty' | 'saved' | 'error'>('idle')
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dirtyRef = useRef(false)
+  const localNotesRef = useRef(localNotes)
 
   const load = useCallback(async () => {
     if (!user) {
@@ -60,12 +66,22 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
     }
     setLoading(true)
     setNotFound(false)
+    dirtyRef.current = false
+    setNoteStatus('idle')
+    setLocalNotes('')
     try {
       const all = await api.listBookings(user.id)
       const found = all.find((b) => b.id === bookingId) ?? null
       if (found) {
         setBooking(found)
-        setLocalNotes(found.notes ?? '')
+        // Anotações privadas do usuário logado (não confundir com booking.notes,
+        // que é o contexto enviado na CRIAÇÃO do agendamento)
+        try {
+          const n = await api.getMeetingNotes(bookingId)
+          if (!dirtyRef.current) setLocalNotes(n.body ?? '')
+        } catch {
+          /* segue com vazio */
+        }
       } else {
         setNotFound(true)
       }
@@ -81,6 +97,42 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
   }, [load])
 
   const isMentorSide = Boolean(booking && user && booking.mentor.userId === user.id)
+
+  // ----- Autosave das anotações (debounce 900ms + flush na desmontagem) -----
+  useEffect(() => {
+    localNotesRef.current = localNotes
+  }, [localNotes])
+
+  const persistNotes = useCallback(
+    async (value: string) => {
+      try {
+        await api.saveMeetingNotes(bookingId, value)
+        dirtyRef.current = false
+        setNoteStatus('saved')
+      } catch {
+        setNoteStatus('error')
+      }
+    },
+    [bookingId]
+  )
+
+  const handleNotesChange = (value: string) => {
+    setLocalNotes(value)
+    dirtyRef.current = true
+    setNoteStatus('dirty')
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => void persistNotes(value), 900)
+  }
+
+  // Flush imediato ao sair da sala (troca de tela sem esperar o debounce)
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+      if (!dirtyRef.current) return
+      const value = localNotesRef.current
+      void api.saveMeetingNotes(bookingId, value).catch(() => {})
+    }
+  }, [bookingId])
 
   const roomUrl = useMemo(() => {
     if (!booking || !user) return ''
@@ -161,6 +213,7 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
   const status = STATUS_META[booking.status] ?? STATUS_META.PENDING
   const relative = relativeDayLabel(booking.startsAt)
   const blocked = booking.status === 'CANCELLED' || booking.status === 'COMPLETED'
+  const tzHint = crossZoneHint(booking.startsAt)
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-14 pt-6">
@@ -182,6 +235,7 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
         {relative && <strong className="font-semibold text-stone-700 dark:text-stone-200">{relative} · </strong>}
         {formatDayLabelLong(booking.startsAt)} · {formatTimeLabel(booking.startsAt)} →{' '}
         {addMinutesToTime(booking.startsAt, booking.durationMin)}
+        {tzHint && <span className="text-amber-700 dark:text-amber-300">· {tzHint}</span>}
       </p>
 
       {booking.status === 'PENDING' && (
@@ -266,20 +320,44 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
 
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Anotações da sessão
+                Minhas anotações (privadas)
               </p>
               <Textarea
                 value={localNotes}
-                onChange={(e) => setLocalNotes(e.target.value)}
+                onChange={(e) => handleNotesChange(e.target.value)}
                 rows={3}
                 placeholder="Registre insights, combinados e próximos passos enquanto conversam..."
                 className="mt-2"
-                aria-label="Anotações da sessão"
+                aria-label="Minhas anotações da sessão"
               />
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                As anotações ficam salvas nesta tela durante a reunião.
+              <p
+                className={
+                  noteStatus === 'error'
+                    ? 'mt-1 text-[11px] font-medium text-rose-600 dark:text-rose-400'
+                    : 'mt-1 text-[11px] text-muted-foreground'
+                }
+                aria-live="polite"
+              >
+                {noteStatus === 'dirty'
+                  ? 'Salvando…'
+                  : noteStatus === 'saved'
+                    ? 'Salvo ✓'
+                    : noteStatus === 'error'
+                      ? 'Não foi possível salvar. Tente novamente.'
+                      : 'Salvas na sua conta — visíveis só para você.'}
               </p>
             </div>
+
+            {booking.notes && (
+              <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 dark:border-stone-800 dark:bg-stone-950/50">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Contexto do agendamento
+                </p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-stone-700 dark:text-stone-300">
+                  {booking.notes}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

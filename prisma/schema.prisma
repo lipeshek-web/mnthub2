@@ -60,6 +60,8 @@ model User {
   mfaChallenges  MfaChallenge[]
   auditLogs      AuditLog[]
   payments       Payment[]
+  passwordResetTokens PasswordResetToken[]
+  meetingNotes   MeetingNote[]
 }
 
 model MentorProfile {
@@ -146,6 +148,7 @@ model Booking {
 
   review Review?
   orders Order[] // pedidos de pagamento desta sessão (1:1 pago)
+  meetingNotes MeetingNote[] // anotações privadas da sessão (uma por participante)
 }
 
 model Review {
@@ -717,6 +720,52 @@ model MfaChallenge {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+/// Token de redefinição de senha ("esqueci minha senha"): o token cru só
+/// existe no e-mail/link; no banco fica apenas o sha256. Uso único, 30 min.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique // sha256 hex do token
+  expiresAt DateTime
+  usedAt    DateTime? // preenchido no consumo (uso único)
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+/// Fila de e-mails transacionais. Todo e-mail passa por aqui: com SMTP
+/// configurado (SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS) é enviado via
+/// nodemailer; sem SMTP fica registrado (status LOGGED) para inspeção no
+/// painel admin — nada de transação real dependente de e-mail.
+model EmailOutbox {
+  id        String   @id @default(cuid())
+  to        String
+  subject   String
+  kind      String // password_reset | password_changed | order_paid | order_refunded | membership_expired | booking_confirmed | booking_completed | booking_cancelled
+  bodyHtml  String
+  status    String   @default("PENDING") // PENDING | SENT | LOGGED | FAILED
+  provider  String   @default("outbox") // smtp | outbox
+  error     String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+/// Anotações privadas da sessão 1:1 (uma por participante). Separada de
+/// Booking.notes, que guarda o contexto enviado na CRIAÇÃO do agendamento.
+model MeetingNote {
+  id        String   @id @default(cuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body      String   @default("")
+  updatedAt DateTime @updatedAt
+
+  @@unique([bookingId, authorId])
 }
 
 /// Trilha de auditoria das ações administrativas (quem fez o quê, quando)

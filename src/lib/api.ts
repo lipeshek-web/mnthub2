@@ -7,6 +7,7 @@ import type {
   AiTutorChatMessage,
   AsaasSettingsDTO,
   AuditLogDTO,
+  AdminEmailsResponseDTO,
   AvailabilitySlotInput,
   AdminCouponsResponseDTO,
   BookingDTO,
@@ -211,6 +212,25 @@ export const api = {
   }) => request<BookingDTO>('/api/bookings', { method: 'POST', body: JSON.stringify(data) }),
   updateBooking: (id: string, data: { userId: string; action: 'confirm' | 'cancel' | 'complete' }) =>
     request<BookingDTO>(`/api/bookings/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  // Anotações privadas da sessão 1:1 (uma por participante, autosave)
+  getMeetingNotes: (bookingId: string) =>
+    request<{ body: string; updatedAt: string | null }>(`/api/bookings/${bookingId}/notes`),
+  saveMeetingNotes: (bookingId: string, body: string) =>
+    request<{ body: string; updatedAt: string }>(`/api/bookings/${bookingId}/notes`, {
+      method: 'PUT',
+      body: JSON.stringify({ body }),
+    }),
+  // "Esqueci minha senha" + redefinição (link por e-mail; sem SMTP o link volta na resposta)
+  forgotPassword: (email: string) =>
+    request<{ ok: boolean; delivery: 'email' | 'outbox'; resetUrl?: string }>('/api/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+  resetPassword: (token: string, password: string) =>
+    request<{ ok: boolean }>('/api/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    }),
   // Detalhe da sessão (checkout da sessão 1:1 — só mentor/mentoreado da sessão)
   getBooking: (id: string) =>
     request<{
@@ -869,5 +889,11 @@ export const api = {
         `/api/admin/audit${qs({ page })}`,
         { headers: { 'x-admin-token': token } }
       ),
+
+    // Fila de e-mails transacionais (outbox)
+    emails: (token: string) =>
+      request<AdminEmailsResponseDTO>('/api/admin/emails', {
+        headers: { 'x-admin-token': token },
+      }),
   },
 }
