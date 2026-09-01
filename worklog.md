@@ -2244,3 +2244,21 @@ Work Log:
 Stage Summary:
 - Sala de aula com layout de app de curso real: abas sempre visíveis no topo do corpo (abaixo do cabeçalho) e Anterior/Concluir/Próxima sempre visíveis no rodapé — o aluno marca progresso e navega de qualquer ponto da aula, sem rolar; conteúdo nunca passa por baixo das barras (zonas flex, não overlay)
 - Mobile tratado como cidadão de primeira classe: barra compacta com ícones, abas roláveis sem scrollbar, sidebar só no dialog, safe-area respeitada
+
+---
+Task ID: W-36
+Agent: Z.ai Code (main) + agent-browser (E2E)
+Task: Checkout dando erro — análise de bugs, correção e push
+
+Work Log:
+- DIAGNÓSTICO (dev.log): POST /api/checkout 500 em route.ts:280 (db.order.create) com "attempt to write a readonly database" (SQLITE_READONLY_DBMOVED, código 1032) — afetava TODA escrita (também /api/track e /api/memberships). Causa: o arquivo db/custom.db foi substituído (git checkout do db no W-35 / restore de snapshot) com o servidor RODANDO; o pool do Prisma manteve o handle do inode antigo e o SQLite recusa escrita no arquivo trocado até o processo reiniciar
+- CORREÇÃO IMEDIATA: restart do dev server → escritas voltaram (200)
+- CORREÇÃO ESTRUTURAL (src/lib/db.ts): extensão PrismaClient query.$allModels.$allOperations — detecta erro readonly (message match), faz $disconnect+$connect no cliente BASE (guardado em baseDb) e reexecuta a operação UMA vez; sem loop, com promise única deduplicando heals simultâneos; zero overhead no caminho feliz; inerte com Turso (banco remoto não tem esse erro). Uso de tx dentro de $transaction interativos não passa pela extensão (sem risco de retry fora da transação)
+- BUG DE TIPO (bônus): @prisma/client 6.11.x patchado endureceu o tipo do adapter e divergiu do @prisma/adapter-libsql 6.11.1 (SqlDriverAdapterFactory nem exportado mais) — tsc apontava 1 erro em src/; corrigido com cast para o próprio ConstructorParameters<typeof PrismaClient>[0]; tsc 0 erros em src/
+- VALIDAÇÃO: tsc 0 em src/; lint 0/0; teste ao vivo do heal — troca de inode do db (rm+cp) sob o servidor: erro readonly logado (1 ocorrência), escrita seguinte 200, dados persistidos no arquivo novo (antes: 500 até restart); segundo teste com o PRÓPRIO git checkout db/custom.db: escrita 200 (2 ocorrências readonly no log = 2 heals); smoke APIs (courses/mentors/memberships/promo-bar) 200
+- E2E CHECKOUT (browser, login ana): curso pago R$199 → cupom ESCOLA50 recusado com mensagem correta (só contas novas, scope NEW_ACCOUNTS) → cupom BEMVINDO10 (10%) aplicado (R$179,10) → créditos R$60 aplicados (R$119,10) → Pagar → "Pagamento confirmado!" pedido #CMTJ7BT2 (PAID, PIX, SIMULATED RECEIVED), matrícula criada, saldo 60→0, uses do cupom 0→1 — fluxo e consistência 100%; dados de teste revertidos (git checkout db) antes do commit
+- NOTA OPERACIONAL: sessão do usuário é token Bearer (localStorage) — fetch manual sem header Authorization devolve 401; usar o client de api.ts
+
+Stage Summary:
+- Checkout (e qualquer escrita) agora sobrevive à substituição do arquivo do banco sob o servidor vivo: o Prisma detecta o SQLITE_READONLY_DBMOVED, reabre a conexão e refaz a operação — fim dos 500 misteriosos pós git checkout/pull do db ou restore de snapshot; falha real de disco/permissão continua propagando com a mensagem original
+- Fluxo de checkout revalidado ponta a ponta no browser com cupom + créditos + pedido + matrícula + saldo + usos, tudo consistente no banco
