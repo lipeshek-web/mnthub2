@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "MentorHub",
+    "slug": "mentorhub",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "mentorhub",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0c0a09",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mentorhub.mobile",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsLocalNetworking": true
+        }
+      }
+    },
+    "android": {
+      "package": "com.mentorhub.mobile"
+    },
+    "plugins": ["expo-router"]
+  }
+}

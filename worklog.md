@@ -1648,6 +1648,210 @@ Stage Summary:
 - Artigos com identidade própria: papel de revista tipográfico, proporcionalmente do mesmo tamanho dos livros, só mudando o formato
 - 3 publicações com capas reais no ar (Inovação, Gestão Financeira para Jovens, Como Estudar com Pomodoro) abrindo PDFs placeholder que o usuário troca depois pelo painel do mentor; capas novas futuras bastam reenviar no formulário da Biblioteca
 ---
+Task ID: W-9
+Agent: Z.ai Code (main)
+Task: Restauração completa do ambiente após downgrade — código + banco voltaram ao estado de produção (W-1..W-8) sem perder dados
+
+Work Log:
+- Diagnóstico: rollback do ambiente revertou código (components de W-2..W-8 sumiram: sem admin-panel, promo-bar, messages-view etc.), worklog (terminava na era task-12), banco (db/custom.db 368KB, schema antigo — sem Coupon/User.role/Payment/AuditLog, 6 itens de biblioteca) e .next (recompilado com código velho); git HEAD também parava na era task-12 (13 commits, fsck sem objetos soltos, sem stash)
+- Fonte da restauração encontrada: /tmp/my-project — snapshot COMPLETO de 30/Ago 09:57 (momento pré-downgrade): worklog até W-8, 32 components (admin-panel, ai-tutor, ai-lesson-summary, bundles/membership managers, promo-bar, pwa-register, referrals, certificate, messages-view, theme-provider...), 32 grupos de rotas API, DB de 823KB íntegro (PRAGMA integrity_check ok) e uploads do usuário em upload/ (montagem ossfs que sobreviveu ao rollback)
+- DB do snapshot verificado antes de restaurar: 38 tabelas (AdminSession, AiLessonSummary, AuditLog, Bundle, Certificate, Coupon, CourseReview, DirectMessage, MfaChallenge, MembershipSubscription, Notification, Payment, PlatformSetting, Referral, WeeklyGoal...), admin gustavonv@yandex.com (ADMIN), cupons BEMVINDO10 (SITE_WIDE, na barra) e ESCOLA50 (NEW_ACCOUNTS, na barra), 9 itens de biblioteca com os 3 livros de capa real, 1 Payment, 29 AuditLogs
+- Cópia de segurança do snapshot em /home/z/restore-snapshot-0830 (51MB) antes de qualquer operação
+- Restauração: dev server antigo morto (pkill), rsync -rt --delete do snapshot sobre /home/z/my-project excluindo .git/node_modules/.next/upload/db (upload é FUSE ossfs — chgrp falha esperada, arquivos intactos); dry-run limpo = alvo idêntico ao snapshot; .next removido para recompilação limpa
+- bun install (26 pacotes novos: qrcode etc.), prisma generate
+- Instabilidade descoberta: dev servers iniciados manualmente (setsid nohup bun run dev) morrem em segundos sem trace — cgroup sem OOM (failcnt 0, limite 4GB); solução: usar o launcher oficial do ambiente .zscripts/dev.sh (bun install → db:push no-op → bun run dev → mini-services), mesma via usada pela plataforma; servidor estável desde então
+- Verificação E2E: GET / 200; /api/promo-bar serve ESCOLA50 + BEMVINDO10; /api/library?sort=recent devolve 9 itens com Pomodoro/Gestão/Inovação primeiro; capa e PDF placeholder servidos (200); landing 1440 com estante W-8 (3 capas reais + 2 papéis de revista + livro gradiente); navbar visitante sem "Minhas mentorias"; login carlos@demo.com → "Minhas mentorias" + dashboard "Olá, Carlos!" + badge de notificações; dev.log sem erros
+- Checkpoint de segurança: git commit a5cef7a "restore: full recovery of latest production state (W-1..W-8 + DB)" — próximo downgrade pode ser revertido com git checkout
+
+Stage Summary:
+- Ambiente 100% restaurado ao estado de produção de 30/Ago manhã: todo o código W-1..W-8 (Apple redesign, promo bar com cupons, ESG, estante de livros/papéis, Asaas + MFA no admin, chat, PWA, trilhas, quizzes/XP, bundles, memberships, referrals, certificados, AI tutor/summary)
+- Banco de dados intacto com dados reais do usuário: conta ADMIN, cupons, publicações com capas reais, histórico de pagamentos/auditoria
+- Redundância: cópia do snapshot em /home/z/restore-snapshot-0830 + commit a5cef7a no git
+- Aprendizado operacional: iniciar o dev server SEMPRE via .zscripts/dev.sh (servidores manuais são mortos pelo ambiente); snapshot /tmp/my-project é volátil — manter commits git frequentes como política
+---
+Task ID: W-10
+Agent: Z.ai Code (main)
+Task: Modo imersivo (sem header/footer) no login/cadastro, no painel admin e nos fluxos de criação de cursos/aulas — contas demo em menu retraído, botão de fechar no admin e dialogs fullscreen estilo Apple
+
+Work Log:
+- Shell (page.tsx): flag immersive estendida para view 'auth', view 'admin' e needsAuth (guest caindo em view protegida vê o login imersivo) — PromoBar, Navbar e Footer somem nessas telas; classroom/reader continuam overlay tela cheia como antes
+- Auth (auth-view.tsx): contas demo agora vivem num Collapsible RETRAÍDO por padrão — trigger card com ícone Users, título + hint "Entre com um clique · senha demo123" e chevron giratório; divisor "ou continue com" virou só "ou"; pills de login demo intactos dentro do conteúdo
+- Fix de layout no auth: sections ganharam min-w-0 (grid blowout — a tablist grid-cols-2 forçava min-content 415px e causava 25px de overflow horizontal no mobile 390) e o grid raiz trocou min-h-full → min-h-dvh (com a tela sempre imersiva, dvh dá altura definida: painel esmeralda agora cobre a viewport inteira, antes parava em ~685px)
+- Admin (admin-panel.tsx): botão "Voltar" virou botão circular estilo iOS (X em fundo stone, hover escurece, aria-label "Fechar administração e voltar ao site"); mesma moeda no estado needsRelogin (X absoluto no canto) — imersivo, resta só o conteúdo do painel
+- Onboarding: dialog de curso (Novo/Editar) e LessonsManagerDialog viraram SHEETS fullscreen estilo Apple — DialogContent com showCloseButton={false}, classes de override (top-0/left-0, translate 0, h-dvh, max-w-none, rounded-none, border-0, p-0, flex flex-col, gap-0, zoom 100), header fixo com backdrop-blur + hairline (título semibold tracking-tight + X circular), corpo rolável com coluna centralizada (max-w-xl curso / max-w-2xl aulas) e footer fixo com ações (Cancelar ghost + ação principal rounded-full)
+- Lista de aulas sem max-h-64 (o corpo do sheet rola); form "Adicionar aula" em card rounded-xl p-4; QuizManager e AlertDialog de exclusão continuam modais centrados sobrepostos ao sheet
+- Estilo Apple nos dois dialogs: todos os inputs/selects/textareas h-11 rounded-xl (título, descrição, categoria, nível, preço, mentorias, aula: título, tema, novo tema, data/hora, duração ×3, link transmissão, vídeo ×2, conteúdo biblioteca, conteúdo textual, resumo), botões de tipo de aula rounded-xl, footer actions rounded-full
+- Verificação: lint 0/0; tsc limpo (excl. examples/skills); E2E agent-browser — home 1440 mantém nav+footer+promo; /auth sem nav/footer/promo com demo retraído (aria-expanded=false, 0 pills), expandiu com 20 contas, login demo Carlos funcionou; dialogs de curso e aulas medidos fullscreen (1280×577 e 390×844 exatos, radius 0, corpo rolando, X presente); screenshots light+dark desktop e mobile 390; overflow 0 em todas as telas testadas; console limpo; dev.log sem erros; commit 3c2b271
+- NÃO verificado no browser: painel admin renderizado (senha do gustavonv@yandex.com desconhecida — não toquei no banco); mudanças lá são de baixo risco (flag imersiva no shell + botão circular) e seguem o mesmo padrão validado nas outras telas
+
+Stage Summary:
+- Login/cadastro, admin e editor de cursos/aulas agora são experiências fullscreen: nada de header, footer ou barra promocional — só o conteúdo (padrão que o usuário quer ver no futuro do produto)
+- Contas demo escondidas atrás de um menu retraído no login; admin fecha com um X circular; criar curso e gerenciar aulas viraram sheets Apple com topo fixo, corpo centralizado e rodapé de ações
+- Dois bugs de layout do auth aproveitados e corrigidos: overflow horizontal de 25px no mobile (min-w-0) e painel esmeralda não esticando até o fim da tela (min-h-dvh)
+- Checkpoint git 3c2b271 (próximo downgrade → git checkout)
+---
+Task ID: W-11
+Agent: Z.ai Code (main)
+Task: Performance da landing/explorar (PageSpeed ~60) + capas dos mentores mostrando imagem errada
+
+Work Log:
+- Diagnóstico com performance API: landing tinha 30 <link rel=preload as=font> no head (~943KB de woff2 em toda página) — os 24 loaders next/font/google do catálogo de fontes de mentor (lib/fonts.ts) usavam preload default true, mesmo sem a página usar nenhuma delas
+- Fix nº 1: preload: false nas 24 fontes (continuam self-hosted e funcionam nas LPs de mentor — baixam sob demanda via @font-face). Preloads caíram 30 → 2 (só Geist Sans/Mono latin); fontes de 943KB → 79KB por página
+- Fix nº 2 (imagens): script PIL one-off converteu tudo para WebP — 3 capas de livro 1500×2250 (972/1586/933KB) → 800px webp (64/30/42KB); 13 avatares 1024² (~100KB) → 320² (8-21KB); 9 capas de curso + 7 capas de mentor + 1 trilha 1344×768 → 800px (12-53KB); pasta seed: 6.4MB → 778KB (−88%)
+- Fix nº 3 (a capa do mentor): a arte real do Gustavo (a8909600-….jpg 1584×672 "CIBERSEGURANÇA & DIREITO DIGITAL | FUSÃO PRÁTICA" com logo MentorHub) estava enviada em public/uploads mas ÓRFÃ — o banco apontava para uma imagem antiga 1400×350 que exibia só um canto escuro cortado. Convertida (728KB → 86KB webp) e MentorProfile.coverUrl atualizado para /uploads/mentor-capa-gustavo.webp; avatar do Gustavo otimizado (196KB PNG → 6KB webp, mesma foto)
+- Migração de banco idempotente (bun:sqlite, backup prévio em db/custom.backup-w11.db): 37 linhas — User.avatarUrl ×14, MentorProfile.coverUrl ×8, Course.coverUrl ×9, Track.coverUrl ×1, LibraryItem.coverUrl ×5; 0 referências .png restantes (verificado por query); PNGs originais mantidos no disco como rede de segurança
+- seed.ts: 28 referências /uploads/seed/*.png → *.webp (0 png restantes) — instalações novas já nascem otimizadas
+- Avatar component: decoding="async" adicionado ao <img>; capas de livro/curso/trilha/artigo em landing e marketplace JÁ tinham loading=lazy + decoding=async (conferido tag por tag)
+- Verificação: lint 0/0; tsc limpo; E2E — landing 1440: 44 requests, preloads 2, fontes 79KB, página inteira rolada = imagens 294KB (as 3 capas reais em 65/42/31KB); explorar: 0 imagens quebradas, 0 .png, imagens 460KB; LP do Gustavo exibe o banner completo correto (screenshot); biblioteca com capas webp nítidas (screenshot); dev.log sem 404/500
+- INFRA: dev server tinha morrido de novo — subido via .zscripts/dev.sh (launcher oficial, estável)
+- OBS: oscore do PageSpeed real de produção não é medível daqui (sem bun run build por política), mas os dois maiores custos por página (fontes pré-carregadas e PNGs gigantes) foram eliminados; em dev a landing caiu de 1.96MB para 1.54MB rolada inteira — em produção a diferença é maior ainda (sem chunks de dev)
+
+Stage Summary:
+- Toda página do site deixou de pré-carregar ~900KB de fontes que não usava — agora só Geist (79KB) vem de fábrica; fontes de mentor baixam apenas quando uma LP personalizada as usa
+- Imagens 88% mais leves em todo o catálogo (seed 6.4MB → 778KB) com qualidade visual preservada (WebP q82-84, LANCZOS)
+- A capa do mentor Gustavo Novaes Cruz agora é a arte real que ele produziu (banner completo com logo), não mais o recorte escuro antigo
+- Backup do banco em db/custom.backup-w11.db + PNGs originais preservados + checkpoint git (reversível)
+
+---
+Task ID: W-12
+Agent: Z.ai Code (main) + subagentes (geração do app Expo)
+Task: API REST pública v1 (JWT Bearer) para consumo mobile + app Expo completo em mobile-app/
+
+Work Log:
+- Contrato fechado em docs/api-v1.md: 17 endpoints sob /api/v1, JWT HS256 Bearer (30 dias), erros { error } em pt-BR, CORS liberado, todas as URLs de mídia retornam ABSOLUTAS (DB guarda caminhos relativos)
+- src/lib/mobile-auth.ts: JWT assinado com node:crypto (zero deps novas); secret = MOBILE_JWT_SECRET (adicionado ao .env com valor aleatório) → fallback NEXTAUTH_SECRET → dev; requireMobileUser recusa token inválido e conta bloqueada; streak exibido passa por activeStreak()
+- src/lib/api-v1.ts (respostas CORS, absolutize, paginação, avgRating) + api-v1-serialize.ts (serializadores estáveis de library/courses/lessons/mentors/bookings) + src/middleware.ts (preflight OPTIONS só no matcher /api/v1/:path*)
+- Rotas: auth/login (recusa 2FA com mensagem clara — v1 não faz TOTP), auth/me, library (lista+detalhe), courses (lista com flag enrolled; detalhe agrupa aulas por tema e ZERA videoUrl/content/meetingUrl/attachments quando não inscrito → locked:true), courses/[id]/enroll POST (gratuito inscreve e notifica mentor; pago → 402 { error, price }) e PATCH (toggle aula com a MESMA gamificação do site: awardXp anti-farm + bônus 100%), mentors (lista ordenada por nota), mentors/[id] (perfil+avaliações), mentors/[id]/slots (janelas de 30min/60min cruzando Availability × bookings ativos × horários passados), bookings GET/POST (validações idênticas ao site: agenda, conflito, auto-agendamento) + PATCH cancel, dashboard (progresso %, próximas sessões, novos livros, recomendados por popularidade, meta semanal via XpEvent), notifications GET + read-all
+- mobile-app/ (Expo SDK 54 + expo-router 6 + TS): login com SecureStore e logout automático em 401; 5 tabs (Início c/ dashboard, Livros, Cursos, Mentorias c/ agendamento em 3 passos, Perfil c/ notificações); detalhes livro (PDF via expo-web-browser / artigo legível), curso (progresso, concluir aula com +XP, 402 → direciona pro site) e mentor (slots → agendar); lib/api.ts tipa os 17 endpoints; ~3.400 linhas; README.md com tabela de EXPO_PUBLIC_API_URL (web/emulador/celular físico) + eas build
+- mobile-app/ excluído do tsconfig e ESLint da raiz (não poluem o build do site)
+- Bugs corrigidos durante E2E: (1) comparação de assinatura JWT com encodings divergentes (utf8 vs base64url) → 401 em toda rota autenticada; (2) orderBy createdAt em CourseTheme (não existe) → 500 no detalhe do curso; (3) select de headline em User (campo é de MentorProfile) → 500 em mentors/[id] e library/[id]; (4) avatarUrl relativa no login/me → absolutize aplicado
+- Verificação: lint 0 erros; tsc limpo (só pré-existentes em examples/); E2E curl completo: login ok/401/403, me, library lista+detalhe (PDF absoluto), courses lista+detalhe (locked correto, 4 temas), enroll grátis idempotente, 402 pago com price, toggle aula (XP 10 na 1ª vez, 0 no re-complete), mentors por nota, slots com padrão semanal (domingo vazio), booking 201 → listado → cancelado (some do dashboard), notifications+read-all, OPTIONS 204 com CORS, token adulterado → 401; smoke pós-restart do dev server: 9/9 endpoints 200; fluxo completo reexecutado DE DENTRO do browser (CORS real) com sucesso; homepage renderiza normal (middleware não afeta rotas fora de /api/v1)
+
+Stage Summary:
+- O sistema agora expõe uma API pública completa e autenticada (Bearer JWT) — base pronta para qualquer cliente externo (mobile, integrações, futuras parcerias); contrato documentado em docs/api-v1.md
+- App Expo completo em mobile-app/ pronto para: npm install → .env com EXPO_PUBLIC_API_URL → npx expo start no Expo Go (Android/iPhone); binários de loja via eas build; alunos consomem livros (PDF/artigo), cursos (vídeo/texto/ao vivo com progresso e XP) e mentorias (agendar/cancelar) pelo celular
+- Contas com 2FA ativo não entram no app v1 (usar site) — comportamento documentado no login da API
+- DB intocado: nenhuma migração de schema foi necessária (API lógica sobre o modelo existente); único registro de teste criado (booking) foi cancelado na sequência
+
+---
+Task ID: W-13
+Agent: Z.ai Code (main)
+Task: Edição do app Expo compatível com Expo Snack (mobile-app-snack/)
+
+Work Log:
+- Resposta à pergunta do usuário ("posso colocar no expo snack?"): a pasta mobile-app/ NÃO roda direto no Snack porque ele não suporta expo-router (entrada é App.tsx único, navegação via React Navigation)
+- Criada mobile-app-snack/ (34 arquivos, ~3.400 linhas preservadas): src/ (components, lib, theme) copiado 1:1; 9 telas convertidas app/* → src/screens/ com nomes novos (LoginScreen, HomeScreen, LivrosScreen, CursosScreen, MentoriasScreen, PerfilScreen, LivroScreen, CursoScreen, MentorScreen)
+- Conversões mecanicas: useRouter/useLocalSearchParams/Stack.Screen/Redirect → useNavigation/useRoute/goBack/navigate + gate de auth; paths ../../src/ → ../
+- App.tsx novo: SafeAreaProvider → AuthProvider → gate (splash/login/NavigationContainer) → BottomTabs (Início, Livros, Cursos, Mentorias, Perfil) + NativeStack (Livro, Curso, Mentor), tema de navegação derivado de theme.ts
+- lib/api.ts adaptado: EXPO_PUBLIC_API_URL → DEFAULT_SERVER_URL + setServerUrl/getServerUrl/siteUrl() persistidos em SecureStore (chave mentorhub.server.url); request() garante ensureStorageLoaded(); mensagem de erro de rede menciona o campo do login
+- LoginScreen ganhou campo "Servidor da API" (necessário porque Snack não tem .env); 2 useRouter órfãos removidos de sub-componentes do MentorScreen
+- tsconfig.json e eslint.config.mjs: mobile-app-snack excluído (não afeta build do site)
+- Verificação: esbuild parse 34/34 arquivos OK; grep 0 resíduos de expo-router/router/Stack.Screen/SITE_URL; bun run lint limpo; dev server saudável
+- README.md com passo a passo do Snack (SDK 54, dependências a adicionar, URL pública do servidor, contas demo, limites e caminho EAS para produção)
+
+Stage Summary:
+- mobile-app-snack/ é colável direto no snack.expo.dev (React Navigation em vez de expo-router + campo Servidor da API em vez de .env)
+- mobile-app/ permanece a versão de produção (expo-router + EAS build); nenhuma mudança no site/Next.js além de excludes de tooling
+
+---
+Task ID: W-14
+Agent: Z.ai Code (main)
+Task: Checkpoint de segurança no git (proteção contra perdas/rollbacks)
+
+Work Log:
+- Inventário: 721 arquivos rastreados; ambiente já faz auto-commits (UUIDs); último auto-commit 77dd356 já continha o mobile-app-snack completo; só pendia db/custom.db (mudanças de uso normal pós-W-13)
+- Commit consolidado b54baf6 "checkpoint W-13: API REST v1 (JWT) + app Expo alunos (mobile-app) + edição Expo Snack (mobile-app-snack) — site estável"
+- Tag anotada checkpoint-w13 criada com instruções de rollback embutidas (git checkout checkpoint-w13 -- . para arquivos; git reset --hard checkpoint-w13 para voltar tudo, incluindo db/custom.db)
+- Working tree limpo (0 pendências) após o commit
+- Sem remote configurado: snapshots são locais (uma pasta .git). Backup externo exigiria remote (GitHub etc.)
+
+Stage Summary:
+- Estado atual gravado e nomeado: commit b54baf6 = tag checkpoint-w13; qualquer mudança futura pode ser revertida com um comando
+- Histórico de marcos: 5395609 (W-11 perf) → auto-commits → b54baf6 (W-13 completo)
+
+---
+Task ID: W-15
+Agent: Z.ai Code (main)
+Task: Snack edition "jogar e funcionar" — App.js + URL de produção + ZIP
+
+Work Log:
+- Usuário informou a URL de produção (https://mentorhub.space-z.ai) e pediu: entrada App.js (padrão do Snack) + zip pronto
+- Teste da API na produção: POST /api/v1/auth/login → 200; GET /api/v1/library → 200 (lista pública por design; detalhe/rotas de aluno exigem Bearer)
+- mobile-app-snack/src/lib/api.ts: DEFAULT_SERVER_URL = "https://mentorhub.space-z.ai" (com comentário ✅); placeholder do campo Servidor da API no LoginScreen atualizado
+- App.tsx convertido → App.js em JavaScript puro (removidos tipos NavigationTheme/anotações) — entrada padrão do Snack; JSX em .js é padrão RN/Metro
+- README reescrito: Opção A (zip) / Opção B (copiar), servidor já configurado, estrutura com App.js
+- ZIP gerado em public/mentorhub-mobile-snack.zip (64KB, 35 arquivos: App.js, README.md, src/ completo) — servido com HTTP 200 (verificado via curl localhost:3000)
+- Sintaxe revalidada com esbuild (App.js com loader jsx; api.ts; LoginScreen.tsx)
+- Commit do checkpoint
+
+Stage Summary:
+- Fluxo do usuário: baixa https://mentorhub.space-z.ai/mentorhub-mobile-snack.zip → extrai → arrasta App.js + src no snack.expo.dev (SDK 54) → adiciona 7 dependências → login ana@demo.com/demo123 funciona sem tocar em nada
+- URL de produção embutida em DEFAULT_SERVER_URL; campo Servidor da API continua como override em runtime
+
+---
+Task ID: W-16
+Agent: Z.ai Code (main)
+Task: Fix Snack — "Unable to resolve module '@react-navigation/native-stack.js'"
+
+Work Log:
+- Diagnóstico: o runtime do Snack não resolve @react-navigation/native-stack (module://); native e bottom-tabs resolveram (erro apontava só a linha do import do native-stack em App.js)
+- Fix conforme pedido do usuário (trocar dependência): @react-navigation/native-stack → @react-navigation/stack (stack JS, amplamente suportado no Snack)
+- App.js: import "react-native-gesture-handler" no topo (requisito do stack JS); createStackNavigator; screenOptions com cardStyle backgroundColor theme.colors.bg (sem flash branco nas transições)
+- README: lista de dependências atualizada (9 itens — stack + gesture-handler + masked-view no lugar de native-stack) + nota explicando erros "module://" e que native-stack não existe no Snack
+- ZIP regenerado (65KB, HTTP 200 em /mentorhub-mobile-snack.zip); esbuild OK; commit 26b346e
+
+Stage Summary:
+- Snack edition agora usa só dependências que resolvem no runtime do Snack; usuário deve adicionar as 9 dependências do README (remover native-stack se tiver adicionado)
+
+---
+Task ID: W-17
+Agent: Z.ai Code (main)
+Task: Snack ainda dava erro native-stack — usuário relatou "parece que não atualizou o zip"
+
+Work Log:
+- Diagnóstico: ZIP no servidor JÁ estava corrigido (extraído e verificado: App.js linha 27 = createStackNavigator de @react-navigation/stack; zero imports de native-stack; W-16 commit 26b346e). Erro em App.js:25 = Snack rodando o App.js antigo (cache do navegador no download do ZIP e/ou arquivos velhos no editor do Snack)
+- Cache-proof: novo artefato public/mentorhub-mobile-snack-v2.zip (nome novo = navegador não pode servir o antigo do cache); zip antigo também regenerado com o README novo
+- Novo atalho: public/snack-App-js.txt (App.js em texto puro) — usuário abre https://mentorhub.space-z.ai/snack-App-js.txt, copia tudo e cola por cima do App.js no Snack (não precisa nem baixar zip)
+- README: Opção A aponta para o v2; nova Opção A2 (colar o App.js.txt); seção "🩺 Se o erro @react-navigation/native-stack continuar" (checklist: conferir linha 27 do App.js, remover native-stack do painel Dependencies, recarregar preview); intro corrigida (stack JS) e estrutura com App.js
+- Validação: 3 artefatos HTTP 200 em localhost:3000; esbuild OK (App.js jsx, LoginScreen.tsx, api.ts); zip v2 conferido (0 native-stack)
+
+Stage Summary:
+- Links finais: https://mentorhub.space-z.ai/mentorhub-mobile-snack-v2.zip · https://mentorhub.space-z.ai/snack-App-js.txt
+- Causa raiz não era o código: era estado velho no Snack/cache; checklist no README cobre recorrência
+
+---
+Task ID: W-18
+Agent: Z.ai Code (main)
+Task: Push do repositório para GitHub (lipeshek-web/mnthub2)
+
+Work Log:
+- Ambiente sem credenciais GitHub (sem gh CLI, sem token em env, sem credential helper)
+- Segurança: .env estava trackeado (DATABASE_URL, MOBILE_JWT_SECRET) — git rm --cached .env (arquivo mantido local) + regra .env.local no .gitignore; commit d6b9bf1
+- Snapshot: db/custom.db commitado junto (estado atual)
+- Remote adicionado: origin → https://github.com/lipeshek-web/mnthub2.git; branch já é main
+- Push testado com GIT_TERMINAL_PROMPT=0 → falha só de auth ("could not read Username") = URL OK, falta PAT
+- Repo leve (maior arquivo 1.5MB, sem risco de limite do GitHub)
+
+Stage Summary:
+- Tudo pronto para push: falta o usuário gerar um Personal Access Token (repo scope) e colar no chat
+- Comando pendente: git push -u origin main (com token que o usuário fornecer)
+
+---
+Task ID: W-19
+Agent: Z.ai Code (main)
+Task: Executar o push para GitHub (conclusão do W-18)
+
+Work Log:
+- Snapshot final do db commitado pré-push (2782f5b)
+- Push via URL temporária com token; remote resetado para URL limpa logo em seguida (token NÃO persistido em .git/config, sem credential helper)
+- Resultado: main -> main (novo branch), upstream tracking configurado
+- Verificação: origin/main = 2782f5b; 32 commits no histórico; 723 arquivos; grep -x ".env" vazio no tree remoto (segredo não vazou)
+
+Stage Summary:
+- Backup completo no GitHub: https://github.com/lipeshek-web/mnthub2 (histórico W-1→W-19)
+- Token usado uma única vez em memória; recomendado ao usuário revogá-lo no GitHub (foi colado no chat)
+- Próximos pushes exigirão novo token (ou o usuário configurar credencial local)
+---
 Task ID: 4
 Agent: general-purpose (browser e2e do Snack)
 Task: Teste e2e do snack publicado 5SQWUSi5Rv3jLU6Zg_V4V
@@ -1837,3 +2041,22 @@ Stage Summary:
 - Sprint 1 restaurado de verdade: nenhuma rota de leitura/escrita deriva identidade de query/body nas 5 famílias (library/tracks/bundles/memberships/coupons)
 - Buracos extras fechados que o Sprint 1 original não cobria: escrita (PATCH/DELETE) nas mesmas rotas + rascunho de trilha no GET [id]
 - Smoke W-29b 14/14 + W-30 24/24 (nenhuma regressão no ciclo financeiro)
+
+---
+Task ID: W-31
+Agent: Z.ai Code (main)
+Task: Sincronização git — unir as duas linhagens (local W-27+ / remote W-19) e enviar tudo ao GitHub
+
+Work Log:
+- PUSH rejeitado: remote tinha 22 commits que o local não tinha (linhagem antiga W-9..W-19 terminando em 6dbb94c) — ancestral comum f73aba5 permitiu merge sem force-push
+- MERGE FETCH_HEAD com -X ours (código local é a verdade atual): 239 conflitos add/add resolvidos com a versão local (tool-results, src, public, mobile-app)
+- HÍBRIDOS CORRIGIDOS (o -X ours aplicou trechos não-conflitantes do remote em arquivos vivos): prisma/schema.prisma, prisma/seed.ts, src/app/api/bookings/route.ts, tsconfig.json, auth-view/avatar/marketplace/onboarding, src/lib/fonts.ts — todos restaurados ao HEAD (o schema/seed/bookings do local têm as mudanças do W-30; os do remote eram da era W-19)
+- RESTAURADO DO REMOTE (valor real): API v1 do mobile (src/app/api/v1/** 13 rotas + src/lib/api-v1.ts, api-v1-serialize.ts, mobile-auth.ts, middleware.ts com CORS preflight p/ /api/v1) — o backend que o app Expo/web exportado usa em produção; src/components/platform/social-links.tsx; docs/api-v1.md; mobile-app/ e arquivos históricos (backups, tool-results, uploads)
+- SEGURANÇA: .env DESRASTREADO (git rm --cached; .gitignore já cobre .env*) — o remote o tinha removido no W-19, o merge o traria de volta; arquivo segue local
+- WORKLOG UNIFICADO: entradas W-9..W-19 do remote (perdidas no local na restauração paralela) inseridas entre W-8 e as entradas da linhagem atual — histórico contínuo 1→W-31
+- A executar após o commit: push final; recomendação de rotação do PAT colado no chat
+
+Stage Summary:
+- GitHub recebe as duas histórias unidas: W-1..W-19 (remote) + linhagem local (W-27..W-31) sem reescrever histórico
+- API v1 do mobile de volta ao repositório (produção depende dela), código vivo intacto (schema/seed/bookings/components = versões W-30/W-29b)
+- .env fora do GitHub; worklog completo como memória única do projeto
