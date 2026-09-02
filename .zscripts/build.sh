@@ -135,6 +135,16 @@ if [ -d "public" ]; then
     cp -r public "$BUILD_DIR/next-service-dist/"
 fi
 
+# Copia .env (se existir) para dentro do standalone — variáveis de RUNTIME
+# (ex.: TURSO_DATABASE_URL / TURSO_AUTH_TOKEN do modo nuvem) não são embutidas
+# pelo Next no standalone; sem isso a produção sobe sem config e cai no
+# SQLite empacotado (dados congelados no publish). Mantém também a cópia do
+# banco empacotado como fallback (start.sh decide em runtime).
+if [ -f ".env" ]; then
+    cp .env "$BUILD_DIR/next-service-dist/.env"
+    echo "  - Copiado .env para next-service-dist (config de runtime: modo nuvem)"
+fi
+
 # Python 不继承 workspace-agent 的 /home/z/.venv。若项目包含 Python 源码或
 # 依赖清单，在构建期将生产依赖固化到产物，并保持 Python 源码的项目相对路径。
 PROJECT_DIR="$NEXTJS_PROJECT_DIR" BUILD_DIR="$BUILD_DIR" \

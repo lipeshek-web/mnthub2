@@ -2300,3 +2300,20 @@ Stage Summary:
 - App 100% em modo nuvem: TODOS os dados agora vivem no Turso (libsql://mentorhub-guxxtavu...) e sobrevivem a rebuild/downgrade de sandbox e a deploys de produção
 - Produção fica populada se as MESMAS 2 env vars forem definidas na hospedagem (TURSO_DATABASE_URL + TURSO_AUTH_TOKEN) — sem elas, o app cai no SQLite local vazio (comportamento antigo preservado)
 - scripts/turso-sync.ts corrigido em 3 pontos e validado de ponta a ponta; local db/custom.db continua como fallback/backup
+
+---
+Task ID: W-39
+Agent: Z.ai Code (main)
+Task: Produção (mentorhub.space-z.ai) vazia/500 — integrar modo nuvem ao pipeline de deploy da plataforma
+
+Work Log:
+- DIAGNÓSTICO: o domínio de produção NÃO é este sandbox — Caddy local (:81→3000) só serve o preview; curls pelo domínio não aparecem no dev.log. Produção = deployment separado da plataforma: build.sh empacota standalone (.next/standalone + static + public + Caddyfile + start.sh), database-runtime-build.sh copia o db/custom.db do PREVIEW congelado no publish, start.sh sobe em FC com DATABASE_URL=file:/app/db/custom.db
+- CAUSA DO VAZIO/500: (1) build.sh NÃO copiava .env — TURSO_* nunca chegavam à produção; (2) start.sh fixava DATABASE_URL apontando pro banco empacotado congelado na data do publish; (3) rotas com db no domínio dão 500 (admin/emails: 401 local vs 500 domínio) e /api/courses 500 — banco do deployment sem schema/dados corretos
+- FIX 1 (.zscripts/build.sh): copiar .env do workspace para next-service-dist/.env no pacote (guard [ -f ]) — as credenciais do modo nuvem viajam com o deploy; .env segue FORA do git (secreto), mas VIAJA no artefato
+- FIX 2 (.zscripts/start.sh): carregar ./.env empacotado com set -a/. ./.env/set +a antes de iniciar o server.js (Next standalone não embute .env) + fallback seguro: se DATABASE_URL (vindo do .env do sandbox, file:/home/z/...) apontar para arquivo inexistente no deployment, recai para o banco empacotado — e se TURSO_DATABASE_URL vier no .env, o db.ts prioriza a nuvem de qualquer forma (segurança dupla)
+- VALIDAÇÃO: sh -n nos dois scripts; simulação do trecho de env em /bin/sh (dash): .env carregado, TURSO_DATABASE_URL definido, fallback de caminho correto; next.config.ts tem output:"standalone" (guard do build não dispara)
+- PRÓXIMO PASSO (usuário): REPUBLICAR o site na plataforma — o novo build leva o .env e a produção sobe lendo/escrevendo no MESMO Turso do sandbox (dados completos e persistentes; republishes não congelam mais dados)
+
+Stage Summary:
+- Pipeline de deploy da plataforma agora é cloud-aware: produção (mentorhub.space-z.ai) lê/escreve no Turso igual ao sandbox; fim dos dados congelados/zerados a cada publish
+- Fallbacks preservados: sem .env, comportamento antigo (SQLite empacotado); DATABASE_URL inválida no deployment recai para o banco empacotado em vez de 500
