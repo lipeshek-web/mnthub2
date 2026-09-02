@@ -39,16 +39,33 @@ if (diff.status !== 0 || !diff.stdout) {
   console.error('[db:to-turso] Falha ao gerar o DDL do schema:', diff.stderr || diff.stdout)
   process.exit(1)
 }
+// Prisma >= 6.11 não emite mais "--> statement-breakpoint" no output do
+// `migrate diff --script`: cada statement vem num BLOCO separado por linha
+// em branco (e um comentário "-- CreateTable/CreateIndex/..." no topo).
+// Split por linha em branco + descarte de linhas de comentário cobre os
+// dois formatos (markers antigos somem no trim, blocos novos são partidos).
 const statements = diff.stdout
-  .split('--> statement-breakpoint')
-  .map((s) => s.trim())
+  .split(/\n\s*\n/)
+  .map((block) =>
+    block
+      .split('\n')
+      .filter((l) => !l.trimStart().startsWith('--'))
+      .join('\n')
+      .trim()
+  )
   .filter(Boolean)
 
 const remote = createClient({ url, authToken: authToken || undefined })
 
 console.log(`[db:to-turso] Aplicando schema (${statements.length} statements) no Turso...`)
 for (const stmt of statements) {
-  await remote.execute(stmt)
+  try {
+    await remote.execute(stmt)
+  } catch (e) {
+    // Idempotente: em re-execuções o schema já existe — ignora só "already
+    // exists" (a docstring promete re-runs seguros); qualquer outro erro sobe.
+    if (!/already exists/i.test(String((e as Error)?.message ?? e))) throw e
+  }
 }
 
 // ---------- 2. Copiar os dados do arquivo local ----------
@@ -59,7 +76,34 @@ const tablesResult = await local.execute(
 const tables = tablesResult.rows.map((r) => String(r.name))
 
 console.log(`[db:to-turso] Copiando dados de ${tables.length} tabelas...`)
+
+// ---------- 2b. Ordem topológica (pais antes dos filhos) ----------
+// O sqlite_master NÃO garante dependência; copiar filho antes do pai estoura
+// FOREIGN KEY constraint no Turso. Kahn sobre PRAGMA foreign_key_list.
+const deps = new Map<string, Set<string>>()
 for (const table of tables) {
+  const fks = await local.execute(`PRAGMA foreign_key_list("${table}")`)
+  deps.set(
+    table,
+    new Set(fks.rows.map((r) => String(r[2])).filter((t) => tables.includes(t) && t !== table))
+  )
+}
+const ordered: string[] = []
+const done = new Set<string>()
+let pending = [...tables]
+while (pending.length > 0) {
+  const ready = pending.filter((t) => [...(deps.get(t) ?? [])].every((d) => done.has(d)))
+  if (ready.length === 0) {
+    throw new Error(`[db:to-turso] Ciclo de FKs entre tabelas: ${pending.join(', ')}`)
+  }
+  for (const t of ready) {
+    ordered.push(t)
+    done.add(t)
+  }
+  pending = pending.filter((t) => !done.has(t))
+}
+
+for (const table of ordered) {
   const rows = await local.execute({ sql: `SELECT * FROM "${table}"`, args: [] })
   if (rows.rows.length === 0) {
     console.log(`  - ${table}: 0 linhas`)

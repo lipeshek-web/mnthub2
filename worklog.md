@@ -2279,3 +2279,24 @@ Work Log:
 Stage Summary:
 - Ambiente de aprendizado de volta ao estado W-35/W-36: barras fixas (abas no topo do corpo, Anterior/Concluir/Próxima no rodapé), modo mobile compacto e fix de checkout readonly — nada foi reescrito, tudo veio do origin/main (prova de que o GitHub é o backup confiável)
 - Causa raiz dos "downgrades" é o restore de snapshot do ambiente (substitui código, remote, node_modules e db de uma vez); recuperação padrão documentada: re-adicionar remote → fetch → reset --hard origin/main → bun install → restart do server
+
+---
+Task ID: W-38
+Agent: Z.ai Code (main) + agent-browser (E2E)
+Task: Migração do banco para Turso (modo nuvem) — produção deixa de ficar vazia
+
+Work Log:
+- Contexto: site de produção sobe com banco zerado porque todos os dados (20 usuários, cursos, livros da biblioteca, matrículas...) viviam SOMENTE no arquivo local db/custom.db (SQLite); deploy não leva dados e o seed nunca roda lá
+- Usuário criou banco gratuito no Turso e forneceu credenciais; criado .env com TURSO_DATABASE_URL + TURSO_AUTH_TOKEN (+ DATABASE_URL local p/ prisma CLI) — .env* está no .gitignore, token NUNCA vai pro git (verificado com git check-ignore)
+- BUG FIX 1 (scripts/turso-sync.ts): prisma >= 6.11 não emite mais "--> statement-breakpoint" no `migrate diff --script` — o split antigo produzia 1 bloco gigante e o Turso recusava (SQL_MANY_STATEMENTS). Novo split: blocos separados por linha em branco + descarte de linhas de comentário (88 statements reconhecidos)
+- BUG FIX 2 (scripts/turso-sync.ts): schema step idempotente — re-execuções falhavam em "table User already exists"; agora só erros "already exists" são ignorados (docstring já prometia re-runs seguros)
+- BUG FIX 3 (scripts/turso-sync.ts): cópia de dados em ORDEM TOPOLÓGICA (Kahn sobre PRAGMA foreign_key_list) — sqlite_master não garante dependência e a cópia anterior estourava FOREIGN KEY constraint (filho antes do pai); ciclo de FKs agora reporta as tabelas envolvidas
+- Migração concluída: 41 tabelas (38 com dados — 20 users, 10 courses, 79 lessons, 9 library items, 943 tracking events, orders, enrollments, quizzes, payment config...) + schema completo no Turso
+- Server reiniciado em modo NUVEM (db.ts resolve TURSO_DATABASE_URL primeiro via PrismaLibSQL adapter)
+- PROVA DE NUVEM (E2E): User.xp da ana 135 no Turso antes; "Concluir e avançar" na UI → toast +10 XP → TURSO xp=145 e XpEvent 18→19; arquivo LOCAL permaneceu 135 (app não grava mais nele); /api/library servindo livros; dev.log sem erros
+- Dados de teste revertidos cirurgicamente no Turso (DELETE XpEvent do teste, Enrollment Cyber de volta a [], xp 145→135) — verificado: xp=135, 7 LESSON XpEvents, enrollment []
+
+Stage Summary:
+- App 100% em modo nuvem: TODOS os dados agora vivem no Turso (libsql://mentorhub-guxxtavu...) e sobrevivem a rebuild/downgrade de sandbox e a deploys de produção
+- Produção fica populada se as MESMAS 2 env vars forem definidas na hospedagem (TURSO_DATABASE_URL + TURSO_AUTH_TOKEN) — sem elas, o app cai no SQLite local vazio (comportamento antigo preservado)
+- scripts/turso-sync.ts corrigido em 3 pontos e validado de ponta a ponta; local db/custom.db continua como fallback/backup
