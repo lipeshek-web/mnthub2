@@ -2,14 +2,14 @@
 
 App do aluno do MentorHub, publicado e testado de ponta a ponta. Dois jeitos de abrir:
 
-1. **Expo Snack (link direto):** **https://snack.expo.dev/FWCc9ZbogSpzF5wEtonPp**
+1. **Expo Snack (link direto):** **https://snack.expo.dev/rFIS7l6RH6dq12wOssZyv**
    - No preview **Web** (painel direito) ou no celular com o app **Expo Go** escaneando o QR Code ("My Device").
-   - Publicado via API oficial (`exp.host/--/api/v2/snack/save`) com código + assets + 11 dependências — abrindo o link, já está tudo lá (nada de copiar/colar).
+   - Publicado via API oficial (`exp.host/--/api/v2/snack/save`) com código (50 arquivos) + 11 dependências — abrindo o link, já está tudo lá (nada de copiar/colar).
 2. **Web app no site:** **https://mentorhub.space-z.ai/app-mobile/** — o mesmo código exportado (`expo export --platform web`) e servido junto do site (atualizado a cada publish).
 
 Mesma API (`/api/v1`, JWT Bearer 30 dias), mesmo visual, mesmos dados do Turso em produção.
 
-> ⚠️ Se o preview Web do Snack ficar em "Loading..." infinito, teste em aba normal/atualizada do navegador — em browsers com service workers/sockets restritos o runtime do Snack não sobe (comprovado: até o snack de exemplo da Expo fica preso nesse caso).
+> ⚠️ **Lição crítica (2026-09-02):** projetos salvos no Snack contendo arquivos do tipo **ASSET** deixam o preview Web eternamente em "Loading..." (provado por probes A/B: snack idêntico com assets trava; sem assets roda). Por isso as páginas dos livros são embutidas como **data URI base64 dentro do código** (`src/lib/bookPagesData/`) e o publish (`scripts/publish-snack.js`) envia SOMENTE arquivos CODE. O manifest do runtime via EAS Update também pode responder 429 (cota da conta anônima), mas isso NÃO impede o preview web de rodar.
 
 ## 🔑 Login
 
@@ -36,10 +36,11 @@ mobile-app-snack/
 ├── App.js            # entrada do Snack: gate de sessão + navegação (pager de abas + stack)
 ├── index.js          # entrada p/ rodar FORA do Snack (expo start/export) — registerRootComponent
 ├── app.json / babel.config.js / package.json   # harness local (o Snack ignora)
-├── assets/pages/     # páginas PNG dos livros (embutidas no app)
+├── scripts/          # embed-pages.js (gera data URIs) + publish-snack.js (publica no Snack)
 └── src/
     ├── theme.ts
     ├── lib/          # api.ts (cliente v1), auth.tsx, theme.tsx, tabs.tsx, bookPages.ts, format.ts, hooks
+    │   └── bookPagesData/  # páginas PNG dos livros como data URI base64 (gerado; não editar à mão)
     ├── components/   # 20 componentes (PdfReader é o leitor nativo)
     └── screens/      # 11 telas
 ```
@@ -61,4 +62,15 @@ bunx expo export --platform web   # gera dist/ (vai para public/app-mobile no pu
 
 ## 📦 ZIP (backup)
 
-`https://mentorhub.space-z.ai/mentorhub-mobile-snack-v3.zip` — código + páginas embutidas (as versões antigas v2/sem-sufixo estão obsoletas).
+`https://mentorhub.space-z.ai/mentorhub-mobile-snack-v4.zip` — código com páginas embutidas como data URI (as versões antigas v3/v2/sem-sufixo estão obsoletas).
+
+## 🛠 Regenerar páginas / publicar
+
+```bash
+# 1. Renderizar páginas novas de um PDF (opcional — só p/ livros novos)
+bun scripts/render-pages.js
+# 2. Embutir as páginas como data URI em src/lib/bookPagesData/
+bun scripts/embed-pages.js
+# 3. Publicar no Snack (imprime o link)
+bun scripts/publish-snack.js
+```

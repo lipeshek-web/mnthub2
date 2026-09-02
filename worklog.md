@@ -2379,3 +2379,25 @@ Stage Summary:
 - Leitor de PDF é 100% NATIVO (pager próprio, zoom 2x por dois toques, modo noturno, retomada) — zero browser/WebView para os livros; rota /api/v1/library/:id/reader agora existe para os dinâmicos
 - App provado rodando contra a produção real (Turso) em browser: login, dashboard, biblioteca+leitor, cursos, mentorias
 - Pendência conhecida: livros futuros precisam de páginas renderizadas (pdftoppm) + entrada no manifesto para o leitor nativo; enquanto isso o app mostra "Abrir PDF original"
+
+---
+Task ID: W-42
+Agent: Z.ai Code (main)
+Task: Corrigir o app Expo Snack que não abria ("tela branca / Loading eterno" no preview web do Expo) — diagnóstico de rede + fix definitivo + re-publicação com link testado
+
+Work Log:
+- DIAGNÓSTICO (o que o usuário via): editor do Snack abre, preview Web fica na barra roxa "Loading..." para sempre. Confirmado reproduzir no Chromium headless com o snack oficial FWCc9ZbogSpzF5wEtonPp (SDK 54)
+- Achados de rede: (1) o manifest do runtime via EAS Update (u.expo.dev) responde HTTP 429 "Monthly Updating Users exceeded" na conta anônima — mas isso NÃO é o bloqueador do preview web; (2) a página do snack chegou a dar erro server-side transitório ao buscar o snack, mas volta sozinha; (3) todos os snacks anônimos compartilham o mesmo EAS project id
+- BISECT com 6 snacks-sonda publicados via exp.host/--/api/v2/snack/save e verificados no browser: SDK 51/52/53/54 mínimo = RODA; SDK 54 com as 11 dependências do app = RODA; SDK 54 com 16 arquivos ASSET (PNG) + código trivial = TRAVA no Loading; app completo sem os arquivos de config da raiz = TRAVA. → CULPADO ISOLADO: a presença de arquivos ASSET no projeto salvo trava o bundler/runtime do Snack (sem erro, sem log)
+- FIX: páginas dos livros deixaram de ser assets e viraram CÓDIGO — novo script scripts/embed-pages.js gera src/lib/bookPagesData/{arquitetura,dados,gestao,inovacao,pomodoro}Pages.ts com data URI base64 (2.6 MB no total); src/lib/bookPages.ts reescrito para consumir os módulos (source { uri: dataURI }); assets/pages removido do projeto; scripts/publish-snack.js reescrito para enviar SÓ arquivos CODE (50 arquivos, 2.84 MB) + manifest SDK 54 + 11 deps, pulando package.json/index.js/babel.config.js/app.json/README/bun.lock/scripts
+- VALIDAÇÃO LOCAL: expo export --platform web compilou sem erros (bundle 4.47 MB); servido na 3021 e testado no browser: login ana@demo.com ok contra a produção, dashboard (135 XP), abrir "Arquitetura que Escala" → LEITOR NATIVO renderizou página 1 de 7 via data URI no expo-image, navegação para página 2 ok (progresso avançou)
+- PUBLICAÇÃO: novo snack rFIS7l6RH6dq12wOssZyv → https://snack.expo.dev/rFIS7l6RH6dq12wOssZyv (HTTP 200). Preview Web RODOU de primeira: login screen → login DENTRO do preview contra a produção → dashboard → aba Livros → lista 9 itens → card "Como Estudar com Pomodoro" → detalhe → "Ler agora" → LEITOR NATIVO abriu "Página 1 de 1" com a página PNG nítida, barra de progresso, modo noturno e setas de navegação
+- Nota de automação: wheel não rola o app no runtime do Snack (só toques/cliques reais); viewport 900x1900 fez o painel de preview crescer e permitiu chegar nos elementos abaixo da dobra
+- ENTREGÁVEIS: public/mentorhub-mobile-snack-v4.zip (código com data URIs, 1.9 MB); public/app-mobile/ re-sincronizado com o novo export; README reescrito (novo link, lição do ASSET, scripts embed-pages/publish)
+- Limpeza: .tmp-snack-probe removido; servidor 3021 desligado; browser fechado
+
+Stage Summary:
+- LINK NOVO OFICIAL: https://snack.expo.dev/rFIS7l6RH6dq12wOssZyv (abre e RODA no preview Web — verificado de ponta a ponta inclusive o leitor de PDF nativo; Expo Go via QR também deve funcionar pois o bundle é o mesmo)
+- Causa raiz do app "que não iniciava": arquivos ASSET no snack salvo travam o runtime em "Loading..." eterno — nunca publicar ASSET no Snack; páginas agora são data URI no código (scripts/embed-pages.js regenera)
+- O 429 do EAS Update (u.expo.dev) continua na conta anônima, mas não impede o preview web; se um dia o QR/Expo Go falhar, é essa cota — aí vale logar o snack numa conta Expo própria
+- Fallback estático atualizado: https://mentorhub.space-z.ai/app-mobile/ (mesmo código) + zip v4
