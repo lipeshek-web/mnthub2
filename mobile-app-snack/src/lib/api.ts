@@ -133,6 +133,24 @@ export function errMessage(err: unknown): string {
   return "Algo deu errado. Tente novamente.";
 }
 
+/**
+ * true quando o 404 significa "rota não existe neste servidor" (site desatualizado)
+ * e não "item não encontrado". A API real responde 404 com JSON { error: ... };
+ * quando a rota não existe, o Next.js responde com HTML — que não faz parse de JSON
+ * e chega aqui sem payload. Usado para dar uma mensagem útil em vez de
+ * "Conteúdo não encontrado." em recursos novos (checkout, mensagens...).
+ */
+export function isMissingEndpoint(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 404 && !err.payload;
+}
+
+/** Mensagem para recurso que exige o site publicado na versão mais recente. */
+export const SERVER_OUTDATED_MESSAGE =
+  "Este recurso ainda não está ativo no servidor — publique o site (versão mais recente) para liberar por aqui.";
+
+/** Mensagem curta de servidor desatualizado (usada em banners/notas discretas). */
+export const SERVER_OUTDATED_SHORT = "Recurso novo — ativa ao publicar a versão mais recente do site.";
+
 /* ------------------------------------------------------------------ */
 /* Logout automático em 401                                            */
 /* ------------------------------------------------------------------ */
@@ -836,6 +854,22 @@ export async function getPaymentStatus(paymentId: string): Promise<PaymentStatus
 
 export async function listThreads(): Promise<ThreadsResponse> {
   return request<ThreadsResponse>("/messages/threads");
+}
+
+/**
+ * Caixa de entrada tolerante: em servidor desatualizado (rota /messages ausente)
+ * devolve caixa VAZIA em vez de estourar erro — a aba mostra o estado amigável
+ * "Nenhuma conversa ainda" em vez de um erro que assusta o aluno.
+ */
+export async function listThreadsSafe(): Promise<ThreadsResponse> {
+  try {
+    return await listThreads();
+  } catch (err) {
+    if (isMissingEndpoint(err)) {
+      return { unreadTotal: 0, threads: [] };
+    }
+    throw err;
+  }
 }
 
 /* 23) Conversa com um par (GET marca como lidas as recebidas) */

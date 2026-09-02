@@ -20,7 +20,9 @@ import { Ionicons } from "@expo/vector-icons";
 import {
   errMessage,
   getUnreadCount,
+  isMissingEndpoint,
   listMessages,
+  SERVER_OUTDATED_MESSAGE,
   sendMessage,
   type DirectMessage,
 } from "../lib/api";
@@ -55,6 +57,8 @@ export default function ChatScreen() {
   const [items, setItems] = useState<DirectMessage[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** true quando o servidor ainda não tem a rota de mensagens (site desatualizado). */
+  const [unavailable, setUnavailable] = useState(false);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
@@ -64,11 +68,23 @@ export default function ChatScreen() {
       const res = await listMessages(peerId);
       setItems(res.items);
       setError(null);
+      setUnavailable(false);
       // A abertura/conversa marca como lidas no servidor — sincroniza o badge.
-      const unread = await getUnreadCount();
-      unreadStore.set(unread.count);
+      try {
+        const unread = await getUnreadCount();
+        unreadStore.set(unread.count);
+      } catch {
+        /* badge é cosmético — nunca derruba a conversa */
+      }
     } catch (err) {
-      setError(errMessage(err));
+      if (isMissingEndpoint(err)) {
+        // Site desatualizado: mostra a conversa vazia (não um erro).
+        setItems((prev) => prev ?? []);
+        setUnavailable(true);
+        setError(null);
+      } else {
+        setError(errMessage(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -107,7 +123,7 @@ export default function ChatScreen() {
       // Falhou: remove a otimística e devolve o texto no campo.
       setItems((prev) => (prev ?? []).filter((m) => m.id !== optimistic.id));
       setDraft(text);
-      setError(errMessage(err));
+      setError(isMissingEndpoint(err) ? SERVER_OUTDATED_MESSAGE : errMessage(err));
     } finally {
       setSending(false);
       sendingRef.current = false;
@@ -137,7 +153,7 @@ export default function ChatScreen() {
           ) : error && !items ? (
             <ErrorBox message={error} onRetry={() => void load()} />
           ) : (
-            <ChatList items={items ?? []} />
+            <ChatList items={items ?? []} unavailable={unavailable} />
           )}
         </View>
 
@@ -181,7 +197,7 @@ export default function ChatScreen() {
 }
 
 /** Lista de mensagens: FlatList invertida (padrão chat, mantém o fim visível). */
-function ChatList({ items }: { items: DirectMessage[] }) {
+function ChatList({ items, unavailable }: { items: DirectMessage[]; unavailable?: boolean }) {
   const styles = makeStyles();
   const reversed = [...items].reverse();
   if (reversed.length === 0) {
@@ -189,7 +205,11 @@ function ChatList({ items }: { items: DirectMessage[] }) {
       <View style={styles.emptyWrap}>
         <Ionicons name="chatbubble-ellipses-outline" size={34} color={theme.colors.textFaint} />
         <Text style={styles.emptyTitle}>Comece a conversa</Text>
-        <Text style={styles.emptyText}>Envie a primeira mensagem — normalmente respondemos em até um dia.</Text>
+        <Text style={styles.emptyText}>
+          {unavailable
+            ? "As mensagens serão ativadas quando o site for publicado na versão mais recente."
+            : "Envie a primeira mensagem — normalmente respondemos em até um dia."}
+        </Text>
       </View>
     );
   }

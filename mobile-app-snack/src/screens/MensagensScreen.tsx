@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { errMessage, listThreads, type Thread } from "../lib/api";
+import { errMessage, listThreadsSafe, type Thread } from "../lib/api";
 import { formatRelativeTime } from "../lib/format";
 import { unreadStore } from "../lib/unread";
 import { theme } from "../theme";
@@ -31,7 +31,9 @@ export default function MessagesScreen() {
     else setRefreshing(true);
     setError(null);
     try {
-      const res = await listThreads();
+      // Safe: servidor sem a rota de mensagens (site desatualizado) devolve caixa
+      // vazia — a aba mostra o estado amigável, nunca um erro assustador.
+      const res = await listThreadsSafe();
       setThreads(res.threads);
       unreadStore.set(res.unreadTotal);
     } catch (err) {

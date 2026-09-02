@@ -1,18 +1,21 @@
 /**
- * Detalhe do curso (tela mais rica do app):
- * - Não inscrito: hero com capa em gradiente, mentor, rating, preço e botão
- *   "Inscrever-se" (402 = curso pago → Alert com preço e opção de comprar no site).
- * - Inscrito: progresso destacado, card "Aula atual" (descrição, assistir/materiais,
- *   concluir +XP, navegação anterior/próxima) e lista compacta de aulas com
- *   círculo numerado/check — toque na linha seleciona a aula, círculo alterna
- *   a conclusão.
+ * Detalhe do curso (tela mais rica do app) — CONTENT-FIRST:
+ * - Inscrito: abre DIRETO na aula atual com o conteúdo em foco (vídeo em destaque,
+ *   texto completo, materiais, concluir +XP, anterior/próxima). O índice completo
+ *   do curso fica escondido atrás do botão "Índice" (header ou faixa de progresso),
+ *   que abre um modal com todas as aulas por tema.
+ * - Não inscrito: página de vendas — capa em gradiente, mentor, rating, preço,
+ *   descrição e prévia bloqueada das aulas + CTA "Inscrever-se" (402 = curso pago
+ *   → Checkout completo dentro do app).
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { savePendingCheckout } from "../lib/pendingCheckout";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   RefreshControl,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -71,11 +74,13 @@ export default function CourseDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [enrolling, setEnrolling] = useState(false);
   const [togglingIds, setTogglingIds] = useState<string[]>([]);
-  const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
-  // Aula em destaque no card "Aula atual" (selecionada pelo usuário ou a próxima pendente).
+  /** Modal do índice do curso (aberto pelo botão "Índice" / faixa de progresso). */
+  const [indexOpen, setIndexOpen] = useState(false);
+  // Aula em destaque no foco (selecionada pelo usuário ou a próxima pendente).
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [xpToast, setXpToast] = useState<string | null>(null);
   const xpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollRef = useRef<ScrollView | null>(null);
 
   const load = useCallback(
     async (mode: "initial" | "refresh") => {
@@ -224,7 +229,24 @@ export default function CourseDetailScreen() {
 
   function goToLesson(offset: number) {
     const next = allLessons[currentIndex + offset];
-    if (next) setSelectedLessonId(next.id);
+    if (next) {
+      setSelectedLessonId(next.id);
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+    }
+  }
+
+  /** Toque numa aula: bloqueada avisa para se inscrever; livre seleciona e volta ao topo. */
+  function handleSelectLesson(lesson: Lesson) {
+    if (lesson.locked) {
+      Alert.alert(
+        "Aula bloqueada",
+        "Inscreva-se no curso para desbloquear todas as aulas."
+      );
+      return;
+    }
+    setSelectedLessonId(lesson.id);
+    setIndexOpen(false);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
   }
 
   const sections: Array<{ key: string; title: string; description: string | null; lessons: Lesson[] }> = [];
@@ -259,8 +281,26 @@ export default function CourseDetailScreen() {
         <ErrorBox message={error} onRetry={() => void load("initial")} />
       ) : detail && course ? (
         <View style={styles.flex}>
-          <ScreenHeader title="Curso" onBack={() => navigation.goBack()} />
+          <ScreenHeader
+            title={enrolled ? course.title : "Curso"}
+            onBack={() => navigation.goBack()}
+            right={
+              enrolled ? (
+                <TouchableOpacity
+                  style={styles.indexButton}
+                  onPress={() => setIndexOpen(true)}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Abrir índice do curso"
+                >
+                  <Ionicons name="list" size={17} color={theme.colors.accent} />
+                  <Text style={styles.indexButtonText}>Índice</Text>
+                </TouchableOpacity>
+              ) : undefined
+            }
+          />
           <ScrollView
+            ref={scrollRef}
             style={styles.flex}
             contentContainerStyle={styles.content}
             showsVerticalScrollIndicator={false}
@@ -274,6 +314,58 @@ export default function CourseDetailScreen() {
               />
             }
           >
+            {enrolled ? (
+              <>
+                {/* Faixa de progresso — toque abre o índice completo do curso */}
+                <TouchableOpacity
+                  style={styles.progressStrip}
+                  onPress={() => setIndexOpen(true)}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ver progresso e abrir o índice do curso"
+                >
+                  <View style={styles.progressStripInfo}>
+                    <ProgressBar pct={pct} height={8} />
+                    <Text style={styles.progressStripText}>
+                      {pct}% · {completedIds.length} de {totalLessons} aulas concluídas
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={15} color={theme.colors.textFaint} />
+                </TouchableOpacity>
+
+                {/* CONTEÚDO EM FOCO — a aula atual abre direto, sem índice no meio */}
+                {currentLesson ? (
+                  <LessonFocus
+                    lesson={currentLesson}
+                    position={currentIndex + 1}
+                    total={allLessons.length}
+                    coverUrl={course.coverUrl}
+                    completed={completedIds.includes(currentLesson.id)}
+                    toggling={togglingIds.includes(currentLesson.id)}
+                    canPrev={currentIndex > 0}
+                    canNext={currentIndex < allLessons.length - 1}
+                    onPrev={() => goToLesson(-1)}
+                    onNext={() => goToLesson(1)}
+                    onToggleComplete={() => void handleToggleLesson(currentLesson)}
+                    onOpen={(url) => void openInBrowser(url)}
+                  />
+                ) : (
+                  <EmptyState
+                    icon="library-outline"
+                    title="Nenhuma aula publicada"
+                    message="As aulas deste curso aparecerão aqui em breve."
+                  />
+                )}
+
+                {course.description ? (
+                  <View style={styles.aboutBlock}>
+                    <Text style={styles.aboutTitle}>Sobre este curso</Text>
+                    <Text style={styles.aboutText}>{course.description}</Text>
+                  </View>
+                ) : null}
+              </>
+            ) : (
+              <>
             {/* Hero: capa com gradiente e título sobreposto */}
             <View style={styles.hero}>
               <RemoteImage
@@ -339,55 +431,16 @@ export default function CourseDetailScreen() {
 
             {course.description ? <Text style={styles.description}>{course.description}</Text> : null}
 
-            {/* Progresso (inscrito) ou aviso de bloqueio */}
-            {enrolled ? (
-              <View style={styles.progressCard}>
-                <View style={styles.progressHeader}>
-                  <Text style={styles.progressTitle}>Seu progresso</Text>
-                  <View style={styles.progressPill}>
-                    <Text style={styles.progressPct}>{pct}%</Text>
-                  </View>
-                </View>
-                <ProgressBar pct={pct} height={10} />
-                <Text style={styles.progressMeta}>
-                  {completedIds.length} de {totalLessons} aulas concluídas
-                </Text>
-                {pct >= 100 ? (
-                  <Text style={styles.progressDone}>Curso concluído — parabéns!</Text>
-                ) : null}
-              </View>
-            ) : (
-              <View style={styles.lockedBanner}>
-                <Ionicons name="lock-closed" size={14} color={theme.colors.warning} />
-                <Text style={styles.lockedBannerText}>
-                  Inscreva-se para desbloquear todas as aulas deste curso.
-                </Text>
-              </View>
-            )}
+            {/* Aviso de bloqueio (página de vendas) */}
+            <View style={styles.lockedBanner}>
+              <Ionicons name="lock-closed" size={14} color={theme.colors.warning} />
+              <Text style={styles.lockedBannerText}>
+                Inscreva-se para desbloquear todas as aulas deste curso.
+              </Text>
+            </View>
 
-            {/* Card "Aula atual" em destaque (inscrito) */}
-            {enrolled && currentLesson ? (
-              <CurrentLessonCard
-                lesson={currentLesson}
-                position={currentIndex + 1}
-                total={allLessons.length}
-                completed={completedIds.includes(currentLesson.id)}
-                toggling={togglingIds.includes(currentLesson.id)}
-                expanded={expandedLessonId === currentLesson.id}
-                canPrev={currentIndex > 0}
-                canNext={currentIndex < allLessons.length - 1}
-                onPrev={() => goToLesson(-1)}
-                onNext={() => goToLesson(1)}
-                onToggleComplete={() => void handleToggleLesson(currentLesson)}
-                onToggleExpand={() =>
-                  setExpandedLessonId((prev) => (prev === currentLesson.id ? null : currentLesson.id))
-                }
-                onOpen={(url) => void openInBrowser(url)}
-              />
-            ) : null}
-
-            {/* Lista compacta de aulas por tema (aulas sem tema ficam no topo) */}
-            {sections.length === 0 && enrolled ? (
+            {/* Prévia das aulas por tema (bloqueadas na página de vendas) */}
+            {sections.length === 0 ? (
               <EmptyState
                 icon="library-outline"
                 title="Nenhuma aula publicada"
@@ -410,13 +463,15 @@ export default function CourseDetailScreen() {
                         locked={lesson.locked}
                         toggling={togglingIds.includes(lesson.id)}
                         active={currentLesson?.id === lesson.id}
-                        onSelect={() => setSelectedLessonId(lesson.id)}
+                        onSelect={() => handleSelectLesson(lesson)}
                         onToggleComplete={() => void handleToggleLesson(lesson)}
                       />
                     ))}
                   </View>
                 </View>
               ))
+            )}
+              </>
             )}
 
             <View style={styles.bottomSpacer} />
@@ -453,6 +508,27 @@ export default function CourseDetailScreen() {
               <Text style={styles.xpToastText}>{xpToast}</Text>
             </View>
           ) : null}
+
+          {/* Modal do índice completo — aberto pelo botão "Índice" ou pela faixa de progresso */}
+          {enrolled ? (
+            <IndexModal
+              visible={indexOpen}
+              onClose={() => setIndexOpen(false)}
+              mentor={course.mentor}
+              sections={sections}
+              completedIds={completedIds}
+              currentLessonId={currentLesson?.id ?? null}
+              totalLessons={totalLessons}
+              pct={pct}
+              togglingIds={togglingIds}
+              onSelect={handleSelectLesson}
+              onToggleComplete={(lesson) => void handleToggleLesson(lesson)}
+              onOpenMentor={() => {
+                setIndexOpen(false);
+                navigation.navigate("Mentor", { id: course.mentor.id });
+              }}
+            />
+          ) : null}
         </View>
       ) : null}
     </Screen>
@@ -461,41 +537,45 @@ export default function CourseDetailScreen() {
 
 /* --------------------------- Subcomponentes ---------------------------- */
 
-/** Card "Aula atual": descrição, ações, concluir (+XP) e navegação anterior/próxima. */
-function CurrentLessonCard({
+/**
+ * FOCO DA AULA: conteúdo aberto na hora — vídeo em destaque (capa + play),
+ * texto completo já renderizado (sem botão "ver conteúdo"), sala ao vivo,
+ * materiais, concluir (+XP) e navegação anterior/próxima.
+ */
+function LessonFocus({
   lesson,
   position,
   total,
+  coverUrl,
   completed,
   toggling,
-  expanded,
   canPrev,
   canNext,
   onPrev,
   onNext,
   onToggleComplete,
-  onToggleExpand,
   onOpen,
 }: {
   lesson: Lesson;
   position: number;
   total: number;
+  coverUrl: string | null;
   completed: boolean;
   toggling: boolean;
-  expanded: boolean;
   canPrev: boolean;
   canNext: boolean;
   onPrev: () => void;
   onNext: () => void;
   onToggleComplete: () => void;
-  onToggleExpand: () => void;
   onOpen: (url: string) => void;
 }) {
   const styles = makeStyles();
   const kindMeta = KIND_META[lesson.kind];
   const videoUrl = !lesson.locked && lesson.kind === "RECORDED" ? lesson.videoUrl : null;
   const meetingUrl = !lesson.locked && lesson.kind === "LIVE" ? lesson.meetingUrl : null;
-  const textContent = !lesson.locked && lesson.kind === "TEXT" ? lesson.content : null;
+  // Conteúdo em foco: texto rico da aula (ou descrição) já aberto — zero atrito.
+  const bodyRich = !lesson.locked && lesson.content ? lesson.content : null;
+  const bodyPlain = !lesson.locked && !lesson.content ? lesson.description : null;
   const liveWhen =
     !lesson.locked && lesson.kind === "LIVE" && lesson.startsAt ? formatNaiveLong(lesson.startsAt) : null;
   const attachments = lesson.locked ? [] : lesson.attachments ?? [];
@@ -508,12 +588,7 @@ function CurrentLessonCard({
         </Text>
         <Chip label={kindMeta.label} tone="accent" />
       </View>
-      <Text style={styles.currentTitle}>{lesson.title}</Text>
-      {lesson.description ? (
-        <Text style={styles.currentDescription} numberOfLines={4}>
-          {lesson.description}
-        </Text>
-      ) : null}
+      <Text style={styles.focusTitle}>{lesson.title}</Text>
       <View style={styles.currentMetaRow}>
         {lesson.durationMin > 0 ? (
           <>
@@ -524,53 +599,64 @@ function CurrentLessonCard({
         {liveWhen ? <Text style={styles.currentLiveWhen}>Encontro: {liveWhen}</Text> : null}
       </View>
 
-      {/* Ações da aula: assistir / sala / conteúdo / materiais */}
-      {!lesson.locked ? (
-        <View style={styles.lessonActions}>
-          {videoUrl ? (
-            <ActionButton icon="play" label="Assistir aula" onPress={() => onOpen(videoUrl)} />
-          ) : null}
-          {meetingUrl ? (
-            <ActionButton
-              icon="videocam"
-              label="Abrir sala de transmissão"
-              onPress={() => onOpen(meetingUrl)}
-            />
-          ) : null}
-          {textContent ? (
-            <>
-              <ActionButton
-                icon={expanded ? "eye-off-outline" : "eye-outline"}
-                label={expanded ? "Ocultar conteúdo" : "Ver conteúdo da aula"}
-                onPress={onToggleExpand}
-              />
-              {expanded ? (
-                <View style={styles.lessonContent}>
-                  <RichText text={textContent} />
-                </View>
-              ) : null}
-            </>
-          ) : null}
-          {attachments.length > 0 ? (
-            <View style={styles.attachments}>
-              {attachments.map((attachment) => (
-                <TouchableOpacity
-                  key={attachment.url}
-                  style={styles.attachmentRow}
-                  onPress={() => onOpen(attachment.url)}
-                  activeOpacity={0.8}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Abrir material ${attachment.name}`}
-                >
-                  <Ionicons name="attach" size={13} color={theme.colors.accent} />
-                  <Text style={styles.attachmentName} numberOfLines={1}>
-                    {attachment.name}
-                  </Text>
-                  <Ionicons name="open-outline" size={13} color={theme.colors.textFaint} />
-                </TouchableOpacity>
-              ))}
+      {/* CONTEÚDO */}
+      {videoUrl ? (
+        <TouchableOpacity
+          style={styles.playCard}
+          onPress={() => onOpen(videoUrl)}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={`Assistir aula ${lesson.title}`}
+        >
+          <RemoteImage
+            uri={coverUrl}
+            style={styles.playCover}
+            recyclingKey={lesson.id}
+            fallbackIcon="play-circle-outline"
+            errorIcon="image-outline"
+            iconSize={34}
+          />
+          <View style={styles.playOverlay}>
+            <View style={styles.playIconWrap}>
+              <Ionicons name="play" size={26} color={theme.colors.onAccent} />
             </View>
-          ) : null}
+            <Text style={styles.playLabel}>Assistir aula</Text>
+          </View>
+        </TouchableOpacity>
+      ) : null}
+      {meetingUrl ? (
+        <View style={styles.lessonActions}>
+          <ActionButton
+            icon="videocam"
+            label="Abrir sala de transmissão"
+            onPress={() => onOpen(meetingUrl)}
+          />
+        </View>
+      ) : null}
+      {bodyRich ? (
+        <View style={styles.lessonContent}>
+          <RichText text={bodyRich} />
+        </View>
+      ) : null}
+      {bodyPlain ? <Text style={styles.focusBody}>{bodyPlain}</Text> : null}
+      {attachments.length > 0 ? (
+        <View style={styles.attachments}>
+          {attachments.map((attachment) => (
+            <TouchableOpacity
+              key={attachment.url}
+              style={styles.attachmentRow}
+              onPress={() => onOpen(attachment.url)}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={`Abrir material ${attachment.name}`}
+            >
+              <Ionicons name="attach" size={13} color={theme.colors.accent} />
+              <Text style={styles.attachmentName} numberOfLines={1}>
+                {attachment.name}
+              </Text>
+              <Ionicons name="open-outline" size={13} color={theme.colors.textFaint} />
+            </TouchableOpacity>
+          ))}
         </View>
       ) : null}
 
@@ -638,6 +724,112 @@ function CurrentLessonCard({
         </TouchableOpacity>
       </View>
     </View>
+  );
+}
+
+/** Índice completo do curso em modal — só abre quando o aluno pede (botão/faixa). */
+function IndexModal({
+  visible,
+  onClose,
+  mentor,
+  sections,
+  completedIds,
+  currentLessonId,
+  totalLessons,
+  pct,
+  togglingIds,
+  onSelect,
+  onToggleComplete,
+  onOpenMentor,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  mentor: { id: string; name: string; avatarUrl: string | null };
+  sections: Array<{ key: string; title: string; description: string | null; lessons: Lesson[] }>;
+  completedIds: string[];
+  currentLessonId: string | null;
+  totalLessons: number;
+  pct: number;
+  togglingIds: string[];
+  onSelect: (lesson: Lesson) => void;
+  onToggleComplete: (lesson: Lesson) => void;
+  onOpenMentor: () => void;
+}) {
+  const styles = makeStyles();
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <SafeAreaView style={styles.modalWrap}>
+        <View style={styles.modalHeader}>
+          <View style={styles.modalHeaderInfo}>
+            <Text style={styles.modalTitle} numberOfLines={1}>
+              Índice do curso
+            </Text>
+            <Text style={styles.modalMeta}>
+              {pct}% concluído · {completedIds.length} de {totalLessons} aulas
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.modalClose}
+            onPress={onClose}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Fechar índice"
+          >
+            <Ionicons name="close" size={20} color={theme.colors.text} />
+          </TouchableOpacity>
+        </View>
+        <ScrollView style={styles.flex} contentContainerStyle={styles.modalBody} showsVerticalScrollIndicator={false}>
+          <TouchableOpacity
+            style={styles.mentorRow}
+            onPress={onOpenMentor}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={`Ver perfil de ${mentor.name}`}
+          >
+            <Avatar uri={mentor.avatarUrl} name={mentor.name} size={34} />
+            <View style={styles.mentorInfo}>
+              <Text style={styles.mentorName} numberOfLines={1}>
+                Por {mentor.name}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={15} color={theme.colors.textFaint} />
+          </TouchableOpacity>
+
+          {sections.length === 0 ? (
+            <EmptyState
+              icon="library-outline"
+              title="Nenhuma aula publicada"
+              message="As aulas deste curso aparecerão aqui."
+            />
+          ) : (
+            sections.map((section) => (
+              <View key={section.key} style={styles.section}>
+                <Text style={styles.sectionTitle}>{section.title}</Text>
+                {section.description ? (
+                  <Text style={styles.sectionDescription}>{section.description}</Text>
+                ) : null}
+                <View style={styles.lessonsList}>
+                  {section.lessons.map((lesson, index) => (
+                    <LessonRow
+                      key={lesson.id}
+                      lesson={lesson}
+                      number={index + 1}
+                      completed={completedIds.includes(lesson.id)}
+                      locked={lesson.locked}
+                      toggling={togglingIds.includes(lesson.id)}
+                      active={currentLessonId === lesson.id}
+                      onSelect={() => onSelect(lesson)}
+                      onToggleComplete={() => onToggleComplete(lesson)}
+                    />
+                  ))}
+                </View>
+              </View>
+            ))
+          )}
+          <View style={styles.bottomSpacer} />
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
   );
 }
 
@@ -845,6 +1037,123 @@ const makeStyles = () =>
     progressPct: { color: theme.colors.accent, fontSize: 13, fontWeight: "700" },
     progressMeta: { color: theme.colors.textMuted, fontSize: 12, fontWeight: "600" },
     progressDone: { color: theme.colors.accent, fontSize: 13, fontWeight: "700" },
+
+    /* Faixa de progresso compacta (content-first) — toque abre o índice */
+    progressStrip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.sm,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.accentBorder,
+      borderRadius: theme.radius.md,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm + 2,
+      marginTop: theme.spacing.xs,
+    },
+    progressStripInfo: { flex: 1, gap: 6 },
+    progressStripText: { color: theme.colors.textMuted, fontSize: 11.5, fontWeight: "700" },
+
+    /* Botão "Índice" no header */
+    indexButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingHorizontal: 12,
+      height: 36,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.accentSoft,
+      borderWidth: 1,
+      borderColor: theme.colors.accentBorder,
+    },
+    indexButtonText: { color: theme.colors.accent, fontSize: 13, fontWeight: "800" },
+
+    /* Foco da aula */
+    focusTitle: {
+      color: theme.colors.text,
+      fontSize: 20,
+      fontWeight: "800",
+      lineHeight: 26,
+      letterSpacing: -0.3,
+    },
+    focusBody: { color: theme.colors.textMuted, fontSize: 14, lineHeight: 21 },
+
+    /* Card de vídeo em destaque (capa + play) */
+    playCard: {
+      height: 200,
+      borderRadius: theme.radius.md,
+      overflow: "hidden",
+      backgroundColor: theme.colors.surfaceAlt,
+    },
+    playCover: { width: "100%", height: "100%", backgroundColor: theme.colors.surfaceAlt },
+    playOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.colors.overlay,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+    },
+    playIconWrap: {
+      width: 58,
+      height: 58,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingLeft: 4,
+    },
+    playLabel: {
+      color: theme.colors.white,
+      fontSize: 13,
+      fontWeight: "800",
+      textShadowColor: "rgba(0, 0, 0, 0.4)",
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 3,
+    },
+
+    /* Sobre este curso (rodapé discreto da aula) */
+    aboutBlock: {
+      marginTop: theme.spacing.lg,
+      paddingHorizontal: theme.spacing.sm,
+      gap: 4,
+    },
+    aboutTitle: {
+      color: theme.colors.text,
+      fontSize: 13,
+      fontWeight: "800",
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    aboutText: { color: theme.colors.textMuted, fontSize: 13.5, lineHeight: 20 },
+
+    /* Modal do índice completo */
+    modalWrap: { flex: 1, backgroundColor: theme.colors.bg },
+    modalHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: theme.spacing.md,
+      paddingHorizontal: theme.spacing.lg,
+      paddingTop: theme.spacing.lg,
+      paddingBottom: theme.spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.border,
+      backgroundColor: theme.colors.bg,
+    },
+    modalHeaderInfo: { flex: 1, gap: 2 },
+    modalTitle: { color: theme.colors.text, fontSize: 19, fontWeight: "800", letterSpacing: -0.3 },
+    modalMeta: { color: theme.colors.textMuted, fontSize: 12.5, fontWeight: "600" },
+    modalClose: {
+      width: 40,
+      height: 40,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modalBody: { paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl },
 
     /* Bloqueio */
     lockedBanner: {

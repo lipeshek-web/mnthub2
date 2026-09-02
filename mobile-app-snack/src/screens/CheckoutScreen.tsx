@@ -34,6 +34,8 @@ import {
   errMessage,
   getPaymentStatus,
   getPaymentsConfig,
+  isMissingEndpoint,
+  SERVER_OUTDATED_MESSAGE,
   validateCoupon,
   type CouponValidation,
   type PaymentsConfig,
@@ -92,6 +94,8 @@ export default function CheckoutScreen() {
   const { kind, itemId, title, price, mentorName, mentorAvatarUrl } = params;
 
   const [config, setConfig] = useState<PaymentsConfig | null>(null);
+  /** true quando o servidor ainda não tem as rotas de checkout (site desatualizado). */
+  const [serverOutdated, setServerOutdated] = useState(false);
   const [method, setMethod] = useState<PaymentMethod>("PIX");
   const [cpf, setCpf] = useState("");
   const [couponCode, setCouponCode] = useState("");
@@ -117,8 +121,12 @@ export default function CheckoutScreen() {
       .then((c) => {
         if (alive) setConfig(c);
       })
-      .catch(() => {
-        if (alive) setConfig({ gateway: "SIMULADO", env: null });
+      .catch((err) => {
+        if (!alive) return;
+        // Sem a rota de config (site desatualizado) seguimos em modo demonstração,
+        // mas avisamos o usuário ANTES de ele tentar pagar.
+        if (isMissingEndpoint(err)) setServerOutdated(true);
+        setConfig({ gateway: "SIMULADO", env: null });
       });
     return () => {
       alive = false;
@@ -169,7 +177,11 @@ export default function CheckoutScreen() {
       setCoupon(res);
     } catch (err) {
       setCoupon(null);
-      setCouponError(err instanceof ApiError ? err.message : "Cupom inválido.");
+      if (isMissingEndpoint(err)) {
+        setCouponError("Cupons ativam quando o site é publicado na versão mais recente.");
+      } else {
+        setCouponError(err instanceof ApiError ? err.message : "Cupom inválido.");
+      }
     } finally {
       setCheckingCoupon(false);
     }
@@ -219,6 +231,12 @@ export default function CheckoutScreen() {
         // Já tem acesso — trata como sucesso
         setStage("success");
         if (kind === "course") void clearPendingCheckout();
+        return;
+      }
+      if (isMissingEndpoint(err)) {
+        // 404 de rota inexistente = site desatualizado — mensagem útil em vez de
+        // "Conteúdo não encontrado." (o usuário publica o site e resolve).
+        setError(SERVER_OUTDATED_MESSAGE);
         return;
       }
       setError(errMessage(err));
@@ -361,6 +379,20 @@ export default function CheckoutScreen() {
     <Screen edges={["top", "left", "right", "bottom"]}>
       <ScreenHeader title="Finalizar compra" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.formContent} showsVerticalScrollIndicator={false}>
+        {/* Aviso de servidor desatualizado (rotas de checkout ausentes) */}
+        {serverOutdated ? (
+          <View style={styles.outdatedBox}>
+            <Ionicons name="cloud-upload-outline" size={18} color={theme.colors.info} />
+            <View style={styles.outdatedTextWrap}>
+              <Text style={styles.outdatedTitle}>Site precisa ser atualizado</Text>
+              <Text style={styles.outdatedText}>
+                A compra pelo app fica disponível assim que o site for publicado na versão mais
+                recente (botão Publicar na plataforma).
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
         {/* Resumo do item */}
         <View style={styles.card}>
           <View style={styles.itemRow}>
@@ -651,6 +683,20 @@ const makeStyles = () =>
       paddingVertical: 10,
     },
     demoText: { color: theme.colors.info, fontSize: 12.5, flex: 1, lineHeight: 18 },
+    outdatedBox: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 10,
+      backgroundColor: theme.colors.infoSoft,
+      borderColor: theme.colors.infoBorder,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderRadius: theme.radius.md,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.md,
+    },
+    outdatedTextWrap: { flex: 1, gap: 2 },
+    outdatedTitle: { color: theme.colors.info, fontSize: 13.5, fontWeight: "800" },
+    outdatedText: { color: theme.colors.info, fontSize: 12.5, lineHeight: 18 },
     safeRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: theme.spacing.sm },
     safeText: { color: theme.colors.textFaint, fontSize: 11.5, flex: 1, lineHeight: 16 },
 
