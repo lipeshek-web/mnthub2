@@ -1,0 +1,1070 @@
+     1→/**
+     2→ * Detalhe do curso (tela mais rica do app):
+     3→ * - Não inscrito: hero com capa em gradiente, mentor, rating, preço e botão
+     4→ *   "Inscrever-se" (402 = curso pago → Alert com preço e opção de comprar no site).
+     5→ * - Inscrito: progresso destacado, card "Aula atual" (descrição, assistir/materiais,
+     6→ *   concluir +XP, navegação anterior/próxima) e lista compacta de aulas com
+     7→ *   círculo numerado/check — toque na linha seleciona a aula, círculo alterna
+     8→ *   a conclusão.
+     9→ */
+    10→import React, { useCallback, useEffect, useRef, useState } from "react";
+    11→import { savePendingCheckout } from "../lib/pendingCheckout";
+    12→import {
+    13→  ActivityIndicator,
+    14→  Alert,
+    15→  Linking,
+    16→  RefreshControl,
+    17→  ScrollView,
+    18→  StyleSheet,
+    19→  Text,
+    20→  TouchableOpacity,
+    21→  View,
+    22→} from "react-native";
+    23→import { useNavigation, useRoute } from "@react-navigation/native";
+    24→import * as WebBrowser from "expo-web-browser";
+    25→import { Ionicons } from "@expo/vector-icons";
+    26→import { LinearGradient } from "expo-linear-gradient";
+    27→import {
+    28→  ApiError,
+    29→  siteUrl,
+    30→  enrollCourse,
+    31→  errMessage,
+    32→  getCourse,
+    33→  toggleLessonCompletion,
+    34→  type CourseDetailResponse,
+    35→  type Lesson,
+    36→  type LessonKind,
+    37→} from "../lib/api";
+    38→import {
+    39→  formatDuration,
+    40→  formatNaiveLong,
+    41→  formatNumber,
+    42→  formatPrice,
+    43→  levelLabel,
+    44→} from "../lib/format";
+    45→import { theme } from "../theme";
+    46→import { Avatar } from "../components/Avatar";
+    47→import { Chip } from "../components/Chip";
+    48→import { EmptyState } from "../components/EmptyState";
+    49→import { ErrorBox } from "../components/ErrorBox";
+    50→import { LoadingList } from "../components/LoadingList";
+    51→import { ProgressBar } from "../components/ProgressBar";
+    52→import { RemoteImage } from "../components/RemoteImage";
+    53→import { RichText } from "../components/RichText";
+    54→import { Screen } from "../components/Screen";
+    55→import { ScreenHeader } from "../components/ScreenHeader";
+    56→import { Stars } from "../components/Stars";
+    57→
+    58→const KIND_META: Record<LessonKind, { label: string; icon: keyof typeof Ionicons.glyphMap }> = {
+    59→  RECORDED: { label: "Vídeo", icon: "play-circle-outline" },
+    60→  TEXT: { label: "Leitura", icon: "document-text-outline" },
+    61→  LIVE: { label: "Ao vivo", icon: "videocam-outline" },
+    62→};
+    63→
+    64→export default function CourseDetailScreen() {
+    65→  const styles = makeStyles();
+    66→  const navigation = useNavigation<any>();
+    67→  const params = (useRoute<any>().params ?? {}) as { id: string };
+    68→  const courseId = Array.isArray(params.id) ? params.id[0] : params.id;
+    69→
+    70→  const [detail, setDetail] = useState<CourseDetailResponse | null>(null);
+    71→  const [loading, setLoading] = useState(true);
+    72→  const [refreshing, setRefreshing] = useState(false);
+    73→  const [error, setError] = useState<string | null>(null);
+    74→  const [enrolling, setEnrolling] = useState(false);
+    75→  const [togglingIds, setTogglingIds] = useState<string[]>([]);
+    76→  const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
+    77→  // Aula em destaque no card "Aula atual" (selecionada pelo usuário ou a próxima pendente).
+    78→  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+    79→  const [xpToast, setXpToast] = useState<string | null>(null);
+    80→  const xpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    81→
+    82→  const load = useCallback(
+    83→    async (mode: "initial" | "refresh") => {
+    84→      if (!courseId) return;
+    85→      if (mode === "initial") setLoading(true);
+    86→      else setRefreshing(true);
+    87→      setError(null);
+    88→      try {
+    89→        const res = await getCourse(courseId);
+    90→        setDetail(res);
+    91→      } catch (err) {
+    92→        setError(errMessage(err));
+    93→      } finally {
+    94→        setLoading(false);
+    95→        setRefreshing(false);
+    96→      }
+    97→    },
+    98→    [courseId]
+    99→  );
+   100→
+   101→  useEffect(() => {
+   102→    void load("initial");
+   103→  }, [load]);
+   104→
+   105→  // Limpa o timer do toast de XP ao desmontar.
+   106→  useEffect(() => {
+   107→    return () => {
+   108→      if (xpTimerRef.current) clearTimeout(xpTimerRef.current);
+   109→    };
+   110→  }, []);
+   111→
+   112→  function showXpToast(text: string) {
+   113→    setXpToast(text);
+   114→    if (xpTimerRef.current) clearTimeout(xpTimerRef.current);
+   115→    xpTimerRef.current = setTimeout(() => setXpToast(null), 2400);
+   116→  }
+   117→
+   118→  async function openInBrowser(url: string) {
+   119→    try {
+   120→      await WebBrowser.openBrowserAsync(url);
+   121→    } catch {
+   122→      Alert.alert("Não foi possível abrir", "Verifique sua conexão e tente novamente.");
+   123→    }
+   124→  }
+   125→
+   126→  
+   127→async function openExternal(url: string) {
+   128→    try {
+   129→      await Linking.openURL(url);
+   130→    } catch {
+   131→      Alert.alert("Não foi possível abrir o link", url);
+   132→    }
+   133→  }
+   134→
+   135→  async function handleEnroll() {
+   136→    if (!detail || enrolling) return;
+   137→    setEnrolling(true);
+   138→    try {
+   139→      await enrollCourse(detail.course.id);
+   140→      Alert.alert("Inscrição confirmada!", "Agora você tem acesso a todas as aulas deste curso.");
+   141→      await load("refresh");
+   142→    } catch (err) {
+   143→      if (err instanceof ApiError && err.status === 402) {
+   144→        // Curso pago: checkout no site seguro. Guarda a intenção de compra —
+   145→        // se a sessão cair antes de concluir, o app retoma direto neste curso
+   146→        // após o novo login.
+   147→        const price =
+   148→          typeof err.payload?.price === "number" ? err.payload.price : detail.course.price;
+   149→        await savePendingCheckout(detail.course.id);
+   150→        Alert.alert(
+   151→          "Finalizar compra do curso",
+   152→          `${err.message}${price > 0 ? `\n\nValor do curso: ${formatPrice(price)}` : ""}\n\nO pagamento é processado no site seguro do MentorHub — você volta pro app depois de concluir.`,
+   153→          [
+   154→            { text: "Depois", style: "cancel" },
+   155→            {
+   156→              text: "Continuar para o pagamento",
+   157→              onPress: () =>
+   158→                void openExternal(`${siteUrl()}/cursos/${detail.course.id}?checkout=1&from=app`),
+   159→            },
+   160→          ]
+   161→        );
+   162→      } else {
+   163→        Alert.alert("Não foi possível se inscrever", errMessage(err));
+   164→      }
+   165→    } finally {
+   166→      setEnrolling(false);
+   167→    }
+   168→  }
+   169→
+   170→  async function handleToggleLesson(lesson: Lesson) {
+   171→    if (!detail || togglingIds.includes(lesson.id)) return;
+   172→    setTogglingIds((prev) => [...prev, lesson.id]);
+   173→    try {
+   174→      const res = await toggleLessonCompletion(detail.course.id, lesson.id);
+   175→      setDetail((prev) =>
+   176→        prev
+   177→          ? {
+   178→              ...prev,
+   179→              enrollment: {
+   180→                completedLessonIds: res.completedLessonIds,
+   181→                completedAt: prev.enrollment?.completedAt ?? null,
+   182→              },
+   183→            }
+   184→          : prev
+   185→      );
+   186→      if (res.courseCompleted) {
+   187→        Alert.alert(
+   188→          "Curso concluído!",
+   189→          `Parabéns! Você finalizou "${detail.course.title}".` +
+   190→            (res.xpAwarded > 0 ? ` +${res.xpAwarded} XP de recompensa.` : "")
+   191→        );
+   192→      } else if (res.xpAwarded > 0) {
+   193→        showXpToast(`Aula concluída! +${res.xpAwarded} XP`);
+   194→      }
+   195→    } catch (err) {
+   196→      Alert.alert("Não foi possível atualizar", errMessage(err));
+   197→    } finally {
+   198→      setTogglingIds((prev) => prev.filter((id) => id !== lesson.id));
+   199→    }
+   200→  }
+   201→
+   202→  /* ----------------------------- Derivados ----------------------------- */
+   203→
+   204→  const course = detail?.course ?? null;
+   205→  const enrollment = detail?.enrollment ?? null;
+   206→  const enrolled = enrollment !== null;
+   207→  const completedIds = enrollment?.completedLessonIds ?? [];
+   208→  const allLessons = detail
+   209→    ? [...detail.lessons, ...detail.themes.flatMap((courseTheme) => courseTheme.lessons)]
+   210→    : [];
+   211→  const totalLessons = detail
+   212→    ? detail.course.lessonCount > 0
+   213→      ? detail.course.lessonCount
+   214→      : allLessons.length
+   215→    : 0;
+   216→  const pct = totalLessons > 0 ? Math.round((completedIds.length / totalLessons) * 100) : 0;
+   217→
+   218→  /* Aula atual: selecionada > primeira não concluída > primeira do curso. */
+   219→  const currentLesson =
+   220→    allLessons.find((lesson) => lesson.id === selectedLessonId) ??
+   221→    allLessons.find((lesson) => !lesson.locked && !completedIds.includes(lesson.id)) ??
+   222→    allLessons[0] ??
+   223→    null;
+   224→  const currentIndex = currentLesson
+   225→    ? allLessons.findIndex((lesson) => lesson.id === currentLesson.id)
+   226→    : -1;
+   227→
+   228→  function goToLesson(offset: number) {
+   229→    const next = allLessons[currentIndex + offset];
+   230→    if (next) setSelectedLessonId(next.id);
+   231→  }
+   232→
+   233→  const sections: Array<{ key: string; title: string; description: string | null; lessons: Lesson[] }> = [];
+   234→  if (detail) {
+   235→    if (detail.lessons.length > 0) {
+   236→      sections.push({
+   237→        key: "no-theme",
+   238→        title: detail.themes.length > 0 ? "Aulas iniciais" : "Aulas",
+   239→        description: null,
+   240→        lessons: detail.lessons,
+   241→      });
+   242→    }
+   243→    [...detail.themes]
+   244→      .sort((a, b) => a.order - b.order)
+   245→      .forEach((courseTheme) => {
+   246→        if (courseTheme.lessons.length > 0) {
+   247→          sections.push({
+   248→            key: courseTheme.id,
+   249→            title: courseTheme.title,
+   250→            description: courseTheme.description,
+   251→            lessons: courseTheme.lessons,
+   252→          });
+   253→        }
+   254→      });
+   255→  }
+   256→
+   257→  return (
+   258→    <Screen edges={["top", "left", "right", "bottom"]}>
+   259→      {loading ? (
+   260→        <LoadingList label="Carregando curso..." />
+   261→      ) : error && !detail ? (
+   262→        <ErrorBox message={error} onRetry={() => void load("initial")} />
+   263→      ) : detail && course ? (
+   264→        <View style={styles.flex}>
+   265→          <ScreenHeader title="Curso" onBack={() => navigation.goBack()} />
+   266→          <ScrollView
+   267→            style={styles.flex}
+   268→            contentContainerStyle={styles.content}
+   269→            showsVerticalScrollIndicator={false}
+   270→            refreshControl={
+   271→              <RefreshControl
+   272→                refreshing={refreshing}
+   273→                onRefresh={() => void load("refresh")}
+   274→                tintColor={theme.colors.accent}
+   275→                colors={[theme.colors.accent]}
+   276→                progressBackgroundColor={theme.colors.surface}
+   277→              />
+   278→            }
+   279→          >
+   280→            {/* Hero: capa com gradiente e título sobreposto */}
+   281→            <View style={styles.hero}>
+   282→              <RemoteImage
+   283→                uri={course.coverUrl}
+   284→                style={styles.heroCover}
+   285→                recyclingKey={course.id}
+   286→                fallbackIcon="play-circle-outline"
+   287→                errorIcon="image-outline"
+   288→                iconSize={38}
+   289→              />
+   290→              <LinearGradient
+   291→                colors={["transparent", theme.colors.overlay]}
+   292→                start={{ x: 0, y: 0 }}
+   293→                end={{ x: 0, y: 1 }}
+   294→                style={styles.heroGradient}
+   295→              >
+   296→                <Text style={styles.heroTitle} numberOfLines={3}>
+   297→                  {course.title}
+   298→                </Text>
+   299→              </LinearGradient>
+   300→            </View>
+   301→
+   302→            {/* Mentor + rating */}
+   303→            <TouchableOpacity
+   304→              style={styles.mentorRow}
+   305→              onPress={() => navigation.navigate("Mentor", { id: course.mentor.id })}
+   306→              activeOpacity={0.85}
+   307→            >
+   308→              <Avatar uri={course.mentor.avatarUrl} name={course.mentor.name} size={38} />
+   309→              <View style={styles.mentorInfo}>
+   310→                <Text style={styles.mentorName} numberOfLines={1}>
+   311→                  Por {course.mentor.name}
+   312→                </Text>
+   313→                <View style={styles.ratingRow}>
+   314→                  <Stars value={course.rating} size={12} />
+   315→                  <Text style={styles.ratingText}>
+   316→                    {(course.rating ?? 0).toFixed(1)} ({course.reviewCount})
+   317→                  </Text>
+   318→                </View>
+   319→              </View>
+   320→              <Ionicons name="chevron-forward" size={16} color={theme.colors.textFaint} />
+   321→            </TouchableOpacity>
+   322→
+   323→            {/* Metadados */}
+   324→            <View style={styles.chipsRow}>
+   325→              <Chip label={course.category} tone="accent" />
+   326→              {levelLabel(course.level) ? <Chip label={levelLabel(course.level)} tone="outline" /> : null}
+   327→              {course.liveCount > 0 ? <Chip label={`${course.liveCount} ao vivo`} /> : null}
+   328→            </View>
+   329→            <Text style={styles.metaLine}>
+   330→              {course.lessonCount} aulas
+   331→              {course.totalDurationMin > 0 ? ` · ${formatDuration(course.totalDurationMin)}` : ""}
+   332→              {course.studentCount > 0 ? ` · ${formatNumber(course.studentCount)} alunos` : ""}
+   333→            </Text>
+   334→
+   335→            {/* Preço */}
+   336→            <View style={styles.priceRow}>
+   337→              <Text style={[styles.price, course.price > 0 ? null : styles.priceFree]}>
+   338→                {formatPrice(course.price)}
+   339→              </Text>
+   340→              {enrolled ? <Chip label="Inscrito" tone="accent" /> : null}
+   341→            </View>
+   342→
+   343→            {course.description ? <Text style={styles.description}>{course.description}</Text> : null}
+   344→
+   345→            {/* Progresso (inscrito) ou aviso de bloqueio */}
+   346→            {enrolled ? (
+   347→              <View style={styles.progressCard}>
+   348→                <View style={styles.progressHeader}>
+   349→                  <Text style={styles.progressTitle}>Seu progresso</Text>
+   350→                  <View style={styles.progressPill}>
+   351→                    <Text style={styles.progressPct}>{pct}%</Text>
+   352→                  </View>
+   353→                </View>
+   354→                <ProgressBar pct={pct} height={10} />
+   355→                <Text style={styles.progressMeta}>
+   356→                  {completedIds.length} de {totalLessons} aulas concluídas
+   357→                </Text>
+   358→                {pct >= 100 ? (
+   359→                  <Text style={styles.progressDone}>Curso concluído — parabéns!</Text>
+   360→                ) : null}
+   361→              </View>
+   362→            ) : (
+   363→              <View style={styles.lockedBanner}>
+   364→                <Ionicons name="lock-closed" size={14} color={theme.colors.warning} />
+   365→                <Text style={styles.lockedBannerText}>
+   366→                  Inscreva-se para desbloquear todas as aulas deste curso.
+   367→                </Text>
+   368→              </View>
+   369→            )}
+   370→
+   371→            {/* Card "Aula atual" em destaque (inscrito) */}
+   372→            {enrolled && currentLesson ? (
+   373→              <CurrentLessonCard
+   374→                lesson={currentLesson}
+   375→                position={currentIndex + 1}
+   376→                total={allLessons.length}
+   377→                completed={completedIds.includes(currentLesson.id)}
+   378→                toggling={togglingIds.includes(currentLesson.id)}
+   379→                expanded={expandedLessonId === currentLesson.id}
+   380→                canPrev={currentIndex > 0}
+   381→                canNext={currentIndex < allLessons.length - 1}
+   382→                onPrev={() => goToLesson(-1)}
+   383→                onNext={() => goToLesson(1)}
+   384→                onToggleComplete={() => void handleToggleLesson(currentLesson)}
+   385→                onToggleExpand={() =>
+   386→                  setExpandedLessonId((prev) => (prev === currentLesson.id ? null : currentLesson.id))
+   387→                }
+   388→                onOpen={(url) => void openInBrowser(url)}
+   389→              />
+   390→            ) : null}
+   391→
+   392→            {/* Lista compacta de aulas por tema (aulas sem tema ficam no topo) */}
+   393→            {sections.length === 0 && enrolled ? (
+   394→              <EmptyState
+   395→                icon="library-outline"
+   396→                title="Nenhuma aula publicada"
+   397→                message="As aulas deste curso aparecerão aqui."
+   398→              />
+   399→            ) : (
+   400→              sections.map((section) => (
+   401→                <View key={section.key} style={styles.section}>
+   402→                  <Text style={styles.sectionTitle}>{section.title}</Text>
+   403→                  {section.description ? (
+   404→                    <Text style={styles.sectionDescription}>{section.description}</Text>
+   405→                  ) : null}
+   406→                  <View style={styles.lessonsList}>
+   407→                    {section.lessons.map((lesson, index) => (
+   408→                      <LessonRow
+   409→                        key={lesson.id}
+   410→                        lesson={lesson}
+   411→                        number={index + 1}
+   412→                        completed={completedIds.includes(lesson.id)}
+   413→                        locked={lesson.locked}
+   414→                        toggling={togglingIds.includes(lesson.id)}
+   415→                        active={currentLesson?.id === lesson.id}
+   416→                        onSelect={() => setSelectedLessonId(lesson.id)}
+   417→                        onToggleComplete={() => void handleToggleLesson(lesson)}
+   418→                      />
+   419→                    ))}
+   420→                  </View>
+   421→                </View>
+   422→              ))
+   423→            )}
+   424→
+   425→            <View style={styles.bottomSpacer} />
+   426→          </ScrollView>
+   427→
+   428→          {/* CTA de inscrição */}
+   429→          {!enrolled ? (
+   430→            <View style={styles.footer}>
+   431→              <TouchableOpacity
+   432→                style={[styles.cta, enrolling && styles.ctaDisabled]}
+   433→                onPress={() => void handleEnroll()}
+   434→                disabled={enrolling}
+   435→                activeOpacity={0.85}
+   436→                accessibilityRole="button"
+   437→                accessibilityLabel="Inscrever-se no curso"
+   438→              >
+   439→                {enrolling ? (
+   440→                  <ActivityIndicator size="small" color={theme.colors.onAccent} />
+   441→                ) : (
+   442→                  <Text style={styles.ctaText}>
+   443→                    {course.price > 0
+   444→                      ? `Inscrever-se · ${formatPrice(course.price)}`
+   445→                      : "Inscrever-se gratuitamente"}
+   446→                  </Text>
+   447→                )}
+   448→              </TouchableOpacity>
+   449→            </View>
+   450→          ) : null}
+   451→
+   452→          {/* Toast de XP */}
+   453→          {xpToast ? (
+   454→            <View pointerEvents="none" style={styles.xpToast}>
+   455→              <Ionicons name="flash" size={13} color={theme.colors.onAccent} />
+   456→              <Text style={styles.xpToastText}>{xpToast}</Text>
+   457→            </View>
+   458→          ) : null}
+   459→        </View>
+   460→      ) : null}
+   461→    </Screen>
+   462→  );
+   463→}
+   464→
+   465→/* --------------------------- Subcomponentes ---------------------------- */
+   466→
+   467→/** Card "Aula atual": descrição, ações, concluir (+XP) e navegação anterior/próxima. */
+   468→function CurrentLessonCard({
+   469→  lesson,
+   470→  position,
+   471→  total,
+   472→  completed,
+   473→  toggling,
+   474→  expanded,
+   475→  canPrev,
+   476→  canNext,
+   477→  onPrev,
+   478→  onNext,
+   479→  onToggleComplete,
+   480→  onToggleExpand,
+   481→  onOpen,
+   482→}: {
+   483→  lesson: Lesson;
+   484→  position: number;
+   485→  total: number;
+   486→  completed: boolean;
+   487→  toggling: boolean;
+   488→  expanded: boolean;
+   489→  canPrev: boolean;
+   490→  canNext: boolean;
+   491→  onPrev: () => void;
+   492→  onNext: () => void;
+   493→  onToggleComplete: () => void;
+   494→  onToggleExpand: () => void;
+   495→  onOpen: (url: string) => void;
+   496→}) {
+   497→  const styles = makeStyles();
+   498→  const kindMeta = KIND_META[lesson.kind];
+   499→  const videoUrl = !lesson.locked && lesson.kind === "RECORDED" ? lesson.videoUrl : null;
+   500→  const meetingUrl = !lesson.locked && lesson.kind === "LIVE" ? lesson.meetingUrl : null;
+   501→  const textContent = !lesson.locked && lesson.kind === "TEXT" ? lesson.content : null;
+   502→  const liveWhen =
+   503→    !lesson.locked && lesson.kind === "LIVE" && lesson.startsAt ? formatNaiveLong(lesson.startsAt) : null;
+   504→  const attachments = lesson.locked ? [] : lesson.attachments ?? [];
+   505→
+   506→  return (
+   507→    <View style={styles.currentCard}>
+   508→      <View style={styles.currentHeader}>
+   509→        <Text style={styles.currentOverline}>
+   510→          Aula atual · {position} de {total}
+   511→        </Text>
+   512→        <Chip label={kindMeta.label} tone="accent" />
+   513→      </View>
+   514→      <Text style={styles.currentTitle}>{lesson.title}</Text>
+   515→      {lesson.description ? (
+   516→        <Text style={styles.currentDescription} numberOfLines={4}>
+   517→          {lesson.description}
+   518→        </Text>
+   519→      ) : null}
+   520→      <View style={styles.currentMetaRow}>
+   521→        {lesson.durationMin > 0 ? (
+   522→          <>
+   523→            <Ionicons name="time-outline" size={12} color={theme.colors.textFaint} />
+   524→            <Text style={styles.currentMeta}>{formatDuration(lesson.durationMin)}</Text>
+   525→          </>
+   526→        ) : null}
+   527→        {liveWhen ? <Text style={styles.currentLiveWhen}>Encontro: {liveWhen}</Text> : null}
+   528→      </View>
+   529→
+   530→      {/* Ações da aula: assistir / sala / conteúdo / materiais */}
+   531→      {!lesson.locked ? (
+   532→        <View style={styles.lessonActions}>
+   533→          {videoUrl ? (
+   534→            <ActionButton icon="play" label="Assistir aula" onPress={() => onOpen(videoUrl)} />
+   535→          ) : null}
+   536→          {meetingUrl ? (
+   537→            <ActionButton
+   538→              icon="videocam"
+   539→              label="Abrir sala de transmissão"
+   540→              onPress={() => onOpen(meetingUrl)}
+   541→            />
+   542→          ) : null}
+   543→          {textContent ? (
+   544→            <>
+   545→              <ActionButton
+   546→                icon={expanded ? "eye-off-outline" : "eye-outline"}
+   547→                label={expanded ? "Ocultar conteúdo" : "Ver conteúdo da aula"}
+   548→                onPress={onToggleExpand}
+   549→              />
+   550→              {expanded ? (
+   551→                <View style={styles.lessonContent}>
+   552→                  <RichText text={textContent} />
+   553→                </View>
+   554→              ) : null}
+   555→            </>
+   556→          ) : null}
+   557→          {attachments.length > 0 ? (
+   558→            <View style={styles.attachments}>
+   559→              {attachments.map((attachment) => (
+   560→                <TouchableOpacity
+   561→                  key={attachment.url}
+   562→                  style={styles.attachmentRow}
+   563→                  onPress={() => onOpen(attachment.url)}
+   564→                  activeOpacity={0.8}
+   565→                  accessibilityRole="button"
+   566→                  accessibilityLabel={`Abrir material ${attachment.name}`}
+   567→                >
+   568→                  <Ionicons name="attach" size={13} color={theme.colors.accent} />
+   569→                  <Text style={styles.attachmentName} numberOfLines={1}>
+   570→                    {attachment.name}
+   571→                  </Text>
+   572→                  <Ionicons name="open-outline" size={13} color={theme.colors.textFaint} />
+   573→                </TouchableOpacity>
+   574→              ))}
+   575→            </View>
+   576→          ) : null}
+   577→        </View>
+   578→      ) : null}
+   579→
+   580→      {/* Concluir aula (+XP) — toque novamente para desmarcar */}
+   581→      <TouchableOpacity
+   582→        style={[styles.completeButton, completed ? styles.completeButtonDone : null]}
+   583→        onPress={onToggleComplete}
+   584→        disabled={toggling || lesson.locked}
+   585→        activeOpacity={0.85}
+   586→        accessibilityRole="checkbox"
+   587→        accessibilityState={{ checked: completed }}
+   588→        accessibilityLabel={
+   589→          completed
+   590→            ? `Desmarcar aula ${lesson.title} como concluída`
+   591→            : `Marcar aula ${lesson.title} como concluída`
+   592→        }
+   593→      >
+   594→        {toggling ? (
+   595→          <ActivityIndicator size="small" color={completed ? theme.colors.accent : theme.colors.onAccent} />
+   596→        ) : (
+   597→          <>
+   598→            <Ionicons
+   599→              name={completed ? "checkmark" : "flash"}
+   600→              size={completed ? 16 : 15}
+   601→              color={completed ? theme.colors.accent : theme.colors.onAccent}
+   602→            />
+   603→            <Text style={[styles.completeButtonText, completed ? styles.completeButtonTextDone : null]}>
+   604→              {completed ? "Aula concluída" : "Marcar como concluída (+XP)"}
+   605→            </Text>
+   606→          </>
+   607→        )}
+   608→      </TouchableOpacity>
+   609→
+   610→      {/* Aula anterior / próxima */}
+   611→      <View style={styles.currentNav}>
+   612→        <TouchableOpacity
+   613→          style={[styles.navButton, !canPrev ? styles.navButtonDisabled : null]}
+   614→          onPress={onPrev}
+   615→          disabled={!canPrev}
+   616→          activeOpacity={0.8}
+   617→          accessibilityRole="button"
+   618→          accessibilityLabel="Aula anterior"
+   619→        >
+   620→          <Ionicons
+   621→            name="chevron-back"
+   622→            size={15}
+   623→            color={canPrev ? theme.colors.textMuted : theme.colors.textFaint}
+   624→          />
+   625→          <Text style={styles.navButtonText}>Anterior</Text>
+   626→        </TouchableOpacity>
+   627→        <TouchableOpacity
+   628→          style={[styles.navButton, !canNext ? styles.navButtonDisabled : null]}
+   629→          onPress={onNext}
+   630→          disabled={!canNext}
+   631→          activeOpacity={0.8}
+   632→          accessibilityRole="button"
+   633→          accessibilityLabel="Próxima aula"
+   634→        >
+   635→          <Text style={styles.navButtonText}>Próxima</Text>
+   636→          <Ionicons
+   637→            name="chevron-forward"
+   638→            size={15}
+   639→            color={canNext ? theme.colors.textMuted : theme.colors.textFaint}
+   640→          />
+   641→        </TouchableOpacity>
+   642→      </View>
+   643→    </View>
+   644→  );
+   645→}
+   646→
+   647→/** Linha compacta de aula: número/check, título e duração. Toque seleciona a aula atual. */
+   648→function LessonRow({
+   649→  lesson,
+   650→  number,
+   651→  completed,
+   652→  locked,
+   653→  toggling,
+   654→  active,
+   655→  onSelect,
+   656→  onToggleComplete,
+   657→}: {
+   658→  lesson: Lesson;
+   659→  number: number;
+   660→  completed: boolean;
+   661→  locked: boolean;
+   662→  toggling: boolean;
+   663→  active: boolean;
+   664→  onSelect: () => void;
+   665→  onToggleComplete: () => void;
+   666→}) {
+   667→  const styles = makeStyles();
+   668→  const endLabel =
+   669→    lesson.durationMin > 0 ? formatDuration(lesson.durationMin) : KIND_META[lesson.kind].label;
+   670→
+   671→  return (
+   672→    <TouchableOpacity
+   673→      style={[styles.lessonRow, active ? styles.lessonRowActive : null]}
+   674→      onPress={onSelect}
+   675→      activeOpacity={0.8}
+   676→      accessibilityRole="button"
+   677→      accessibilityLabel={`Selecionar aula ${lesson.title}`}
+   678→      accessibilityState={{ selected: active }}
+   679→    >
+   680→      {locked ? (
+   681→        <View style={styles.lockBox}>
+   682→          <Ionicons name="lock-closed" size={14} color={theme.colors.textFaint} />
+   683→        </View>
+   684→      ) : (
+   685→        <TouchableOpacity
+   686→          style={[
+   687→            styles.stepCircle,
+   688→            completed ? styles.stepCircleDone : null,
+   689→            active && !completed ? styles.stepCircleActive : null,
+   690→          ]}
+   691→          onPress={onToggleComplete}
+   692→          disabled={toggling}
+   693→          activeOpacity={0.8}
+   694→          accessibilityRole="checkbox"
+   695→          accessibilityState={{ checked: completed }}
+   696→          accessibilityLabel={
+   697→            completed
+   698→              ? `Desmarcar aula ${lesson.title} como concluída`
+   699→              : `Marcar aula ${lesson.title} como concluída`
+   700→          }
+   701→        >
+   702→          {toggling ? (
+   703→            <ActivityIndicator size="small" color={completed ? theme.colors.onAccent : theme.colors.accent} />
+   704→          ) : completed ? (
+   705→            <Ionicons name="checkmark" size={15} color={theme.colors.onAccent} />
+   706→          ) : (
+   707→            <Text style={styles.stepNumber}>{number}</Text>
+   708→          )}
+   709→        </TouchableOpacity>
+   710→      )}
+   711→      <Text
+   712→        style={[
+   713→          styles.lessonRowTitle,
+   714→          completed ? styles.lessonRowTitleDone : null,
+   715→          locked ? styles.lessonRowTitleLocked : null,
+   716→          active ? styles.lessonRowTitleActive : null,
+   717→        ]}
+   718→        numberOfLines={2}
+   719→      >
+   720→        {lesson.title}
+   721→      </Text>
+   722→      <Text style={styles.lessonRowEnd}>{endLabel}</Text>
+   723→    </TouchableOpacity>
+   724→  );
+   725→}
+   726→
+   727→function ActionButton({
+   728→  icon,
+   729→  label,
+   730→  onPress,
+   731→}: {
+   732→  icon: keyof typeof Ionicons.glyphMap;
+   733→  label: string;
+   734→  onPress: () => void;
+   735→}) {
+   736→  const styles = makeStyles();
+   737→  return (
+   738→    <TouchableOpacity
+   739→      style={styles.actionButton}
+   740→      onPress={onPress}
+   741→      activeOpacity={0.85}
+   742→      accessibilityRole="button"
+   743→    >
+   744→      <Ionicons name={icon} size={14} color={theme.colors.accent} />
+   745→      <Text style={styles.actionButtonText}>{label}</Text>
+   746→    </TouchableOpacity>
+   747→  );
+   748→}
+   749→
+   750→/* ------------------------------- Estilos ------------------------------- */
+   751→
+   752→const makeStyles = () =>
+   753→  StyleSheet.create({
+   754→    flex: { flex: 1 },
+   755→    content: {
+   756→      paddingHorizontal: theme.spacing.lg,
+   757→      paddingBottom: theme.spacing.xxl,
+   758→    },
+   759→
+   760→    /* Hero */
+   761→    hero: {
+   762→      height: 190,
+   763→      borderRadius: theme.radius.lg,
+   764→      overflow: "hidden",
+   765→      backgroundColor: theme.colors.surfaceAlt,
+   766→    },
+   767→    heroCover: {
+   768→      width: "100%",
+   769→      height: "100%",
+   770→      backgroundColor: theme.colors.surfaceAlt,
+   771→    },
+   772→    heroGradient: {
+   773→      ...StyleSheet.absoluteFillObject,
+   774→      justifyContent: "flex-end",
+   775→      padding: theme.spacing.md,
+   776→    },
+   777→    heroTitle: {
+   778→      color: theme.colors.white,
+   779→      fontSize: 20,
+   780→      fontWeight: "700",
+   781→      lineHeight: 26,
+   782→      letterSpacing: -0.3,
+   783→      textShadowColor: "rgba(0, 0, 0, 0.35)",
+   784→      textShadowOffset: { width: 0, height: 1 },
+   785→      textShadowRadius: 4,
+   786→    },
+   787→
+   788→    /* Mentor */
+   789→    mentorRow: {
+   790→      flexDirection: "row",
+   791→      alignItems: "center",
+   792→      gap: theme.spacing.md,
+   793→      padding: theme.spacing.md,
+   794→      backgroundColor: theme.colors.surface,
+   795→      borderWidth: StyleSheet.hairlineWidth,
+   796→      borderColor: theme.colors.border,
+   797→      borderRadius: theme.radius.lg,
+   798→      marginTop: theme.spacing.md,
+   799→    },
+   800→    mentorInfo: { flex: 1, gap: 3 },
+   801→    mentorName: { color: theme.colors.text, fontSize: 14, fontWeight: "600" },
+   802→    ratingRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+   803→    ratingText: { color: theme.colors.textMuted, fontSize: 12, fontWeight: "600" },
+   804→
+   805→    /* Metadados */
+   806→    chipsRow: {
+   807→      flexDirection: "row",
+   808→      flexWrap: "wrap",
+   809→      gap: theme.spacing.sm,
+   810→      marginTop: theme.spacing.md,
+   811→    },
+   812→    metaLine: { color: theme.colors.textFaint, fontSize: 12, fontWeight: "600", marginTop: 8 },
+   813→    priceRow: {
+   814→      flexDirection: "row",
+   815→      alignItems: "center",
+   816→      gap: theme.spacing.md,
+   817→      marginTop: theme.spacing.md,
+   818→    },
+   819→    price: { color: theme.colors.text, fontSize: 20, fontWeight: "700" },
+   820→    priceFree: { color: theme.colors.accent },
+   821→    description: {
+   822→      color: theme.colors.textMuted,
+   823→      fontSize: 14,
+   824→      lineHeight: 21,
+   825→      marginTop: theme.spacing.md,
+   826→    },
+   827→
+   828→    /* Progresso */
+   829→    progressCard: {
+   830→      backgroundColor: theme.colors.surface,
+   831→      borderWidth: 1,
+   832→      borderColor: theme.colors.accentBorder,
+   833→      borderRadius: theme.radius.lg,
+   834→      padding: theme.spacing.md,
+   835→      marginTop: theme.spacing.lg,
+   836→      gap: theme.spacing.sm,
+   837→    },
+   838→    progressHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+   839→    progressTitle: { color: theme.colors.text, fontSize: 14, fontWeight: "700" },
+   840→    progressPill: {
+   841→      paddingHorizontal: 10,
+   842→      paddingVertical: 3,
+   843→      borderRadius: theme.radius.full,
+   844→      backgroundColor: theme.colors.accentSoft,
+   845→      borderWidth: 1,
+   846→      borderColor: theme.colors.accentBorder,
+   847→    },
+   848→    progressPct: { color: theme.colors.accent, fontSize: 13, fontWeight: "700" },
+   849→    progressMeta: { color: theme.colors.textMuted, fontSize: 12, fontWeight: "600" },
+   850→    progressDone: { color: theme.colors.accent, fontSize: 13, fontWeight: "700" },
+   851→
+   852→    /* Bloqueio */
+   853→    lockedBanner: {
+   854→      flexDirection: "row",
+   855→      alignItems: "center",
+   856→      gap: theme.spacing.sm,
+   857→      backgroundColor: theme.colors.warningSoft,
+   858→      borderWidth: 1,
+   859→      borderColor: theme.colors.warningBorder,
+   860→      borderRadius: theme.radius.md,
+   861→      padding: theme.spacing.md,
+   862→      marginTop: theme.spacing.lg,
+   863→    },
+   864→    lockedBannerText: { flex: 1, color: theme.colors.warning, fontSize: 12, lineHeight: 17 },
+   865→
+   866→    /* Seções de aulas */
+   867→    section: { marginTop: theme.spacing.xl },
+   868→    sectionTitle: { color: theme.colors.text, fontSize: 17, fontWeight: "700" },
+   869→    sectionDescription: {
+   870→      color: theme.colors.textMuted,
+   871→      fontSize: 13,
+   872→      lineHeight: 18,
+   873→      marginTop: 4,
+   874→    },
+   875→    lessonsList: { gap: theme.spacing.md, marginTop: theme.spacing.md },
+   876→    /* Card "Aula atual" em destaque */
+   877→    currentCard: {
+   878→      backgroundColor: theme.colors.surface,
+   879→      borderWidth: 1,
+   880→      borderColor: theme.colors.accentBorder,
+   881→      borderRadius: theme.radius.lg,
+   882→      padding: theme.spacing.lg,
+   883→      marginTop: theme.spacing.lg,
+   884→      gap: theme.spacing.md,
+   885→    },
+   886→    currentHeader: {
+   887→      flexDirection: "row",
+   888→      alignItems: "center",
+   889→      justifyContent: "space-between",
+   890→      gap: theme.spacing.sm,
+   891→    },
+   892→    currentOverline: {
+   893→      flex: 1,
+   894→      color: theme.colors.accent,
+   895→      fontSize: 11,
+   896→      fontWeight: "700",
+   897→      letterSpacing: 0.8,
+   898→      textTransform: "uppercase",
+   899→    },
+   900→    currentTitle: {
+   901→      color: theme.colors.text,
+   902→      fontSize: 18,
+   903→      fontWeight: "700",
+   904→      lineHeight: 24,
+   905→      letterSpacing: -0.2,
+   906→    },
+   907→    currentDescription: { color: theme.colors.textMuted, fontSize: 14, lineHeight: 20 },
+   908→    currentMetaRow: { flexDirection: "row", alignItems: "center", gap: 5, flexWrap: "wrap" },
+   909→    currentMeta: { color: theme.colors.textFaint, fontSize: 12, fontWeight: "600" },
+   910→    currentLiveWhen: { color: theme.colors.info, fontSize: 12, fontWeight: "600" },
+   911→
+   912→    /* Botão concluir aula (+XP) */
+   913→    completeButton: {
+   914→      flexDirection: "row",
+   915→      alignItems: "center",
+   916→      justifyContent: "center",
+   917→      gap: 6,
+   918→      paddingVertical: 13,
+   919→      borderRadius: theme.radius.md,
+   920→      backgroundColor: theme.colors.accent,
+   921→      minHeight: 48,
+   922→    },
+   923→    completeButtonDone: {
+   924→      backgroundColor: theme.colors.accentSoft,
+   925→      borderWidth: 1,
+   926→      borderColor: theme.colors.accentBorder,
+   927→    },
+   928→    completeButtonText: { color: theme.colors.onAccent, fontSize: 14, fontWeight: "700" },
+   929→    completeButtonTextDone: { color: theme.colors.accent },
+   930→
+   931→    /* Navegação anterior/próxima */
+   932→    currentNav: { flexDirection: "row", gap: theme.spacing.sm },
+   933→    navButton: {
+   934→      flex: 1,
+   935→      flexDirection: "row",
+   936→      alignItems: "center",
+   937→      justifyContent: "center",
+   938→      gap: 4,
+   939→      paddingVertical: 11,
+   940→      borderRadius: theme.radius.md,
+   941→      borderWidth: 1,
+   942→      borderColor: theme.colors.border,
+   943→      backgroundColor: theme.colors.surfaceAlt,
+   944→      minHeight: 44,
+   945→    },
+   946→    navButtonDisabled: { opacity: 0.4 },
+   947→    navButtonText: { color: theme.colors.textMuted, fontSize: 13, fontWeight: "600" },
+   948→
+   949→    /* Lista compacta de aulas */
+   950→    lessonRow: {
+   951→      flexDirection: "row",
+   952→      alignItems: "center",
+   953→      gap: theme.spacing.md,
+   954→      padding: theme.spacing.md,
+   955→      backgroundColor: theme.colors.surface,
+   956→      borderWidth: StyleSheet.hairlineWidth,
+   957→      borderColor: theme.colors.border,
+   958→      borderRadius: theme.radius.md,
+   959→    },
+   960→    lessonRowActive: {
+   961→      backgroundColor: theme.colors.accentSoft,
+   962→      borderWidth: 1,
+   963→      borderColor: theme.colors.accentBorder,
+   964→    },
+   965→    lessonRowTitle: { flex: 1, color: theme.colors.text, fontSize: 14, fontWeight: "600", lineHeight: 19 },
+   966→    lessonRowTitleDone: { textDecorationLine: "line-through", color: theme.colors.textMuted },
+   967→    lessonRowTitleLocked: { color: theme.colors.textMuted },
+   968→    lessonRowTitleActive: { color: theme.colors.accent },
+   969→    lessonRowEnd: { color: theme.colors.textFaint, fontSize: 12, fontWeight: "600" },
+   970→
+   971→    /* Círculo numerado / check de conclusão */
+   972→    stepCircle: {
+   973→      width: 26,
+   974→      height: 26,
+   975→      borderRadius: theme.radius.full,
+   976→      borderWidth: 2,
+   977→      borderColor: theme.colors.borderStrong,
+   978→      backgroundColor: theme.colors.surfaceAlt,
+   979→      alignItems: "center",
+   980→      justifyContent: "center",
+   981→    },
+   982→    stepCircleDone: {
+   983→      backgroundColor: theme.colors.accent,
+   984→      borderColor: theme.colors.accent,
+   985→    },
+   986→    stepCircleActive: { borderColor: theme.colors.accent },
+   987→    stepNumber: { color: theme.colors.textMuted, fontSize: 12, fontWeight: "700" },
+   988→    lockBox: {
+   989→      width: 26,
+   990→      height: 26,
+   991→      borderRadius: theme.radius.full,
+   992→      backgroundColor: theme.colors.surfaceAlt,
+   993→      alignItems: "center",
+   994→      justifyContent: "center",
+   995→    },
+   996→
+   997→    /* Ações da aula (card "Aula atual") */
+   998→    lessonActions: { gap: theme.spacing.sm },
+   999→    actionButton: {
+  1000→      flexDirection: "row",
+  1001→      alignItems: "center",
+  1002→      justifyContent: "center",
+  1003→      gap: 6,
+  1004→      paddingVertical: 10,
+  1005→      borderRadius: theme.radius.md,
+  1006→      backgroundColor: theme.colors.accentSoft,
+  1007→      borderWidth: 1,
+  1008→      borderColor: theme.colors.accentBorder,
+  1009→    },
+  1010→    actionButtonText: { color: theme.colors.accent, fontSize: 13, fontWeight: "700" },
+  1011→    lessonContent: {
+  1012→      backgroundColor: theme.colors.bg,
+  1013→      borderWidth: StyleSheet.hairlineWidth,
+  1014→      borderColor: theme.colors.border,
+  1015→      borderRadius: theme.radius.md,
+  1016→      padding: theme.spacing.md,
+  1017→    },
+  1018→    attachments: { gap: 6 },
+  1019→    attachmentRow: {
+  1020→      flexDirection: "row",
+  1021→      alignItems: "center",
+  1022→      gap: 6,
+  1023→      paddingVertical: 7,
+  1024→      paddingHorizontal: 10,
+  1025→      borderRadius: theme.radius.sm,
+  1026→      backgroundColor: theme.colors.surfaceAlt,
+  1027→    },
+  1028→    attachmentName: { flex: 1, color: theme.colors.textMuted, fontSize: 12, fontWeight: "600" },
+  1029→
+  1030→    /* CTA de inscrição */
+  1031→    footer: {
+  1032→      borderTopWidth: StyleSheet.hairlineWidth,
+  1033→      borderTopColor: theme.colors.border,
+  1034→      paddingHorizontal: theme.spacing.lg,
+  1035→      paddingVertical: theme.spacing.md,
+  1036→      backgroundColor: theme.colors.bg,
+  1037→    },
+  1038→    cta: {
+  1039→      alignItems: "center",
+  1040→      justifyContent: "center",
+  1041→      paddingVertical: 14,
+  1042→      borderRadius: theme.radius.md,
+  1043→      backgroundColor: theme.colors.accent,
+  1044→      minHeight: 50,
+  1045→    },
+  1046→    ctaDisabled: { opacity: 0.55 },
+  1047→    ctaText: { color: theme.colors.onAccent, fontSize: 15, fontWeight: "700" },
+  1048→
+  1049→    /* Toast de XP */
+  1050→    xpToast: {
+  1051→      position: "absolute",
+  1052→      top: theme.spacing.sm,
+  1053→      alignSelf: "center",
+  1054→      flexDirection: "row",
+  1055→      alignItems: "center",
+  1056→      gap: 5,
+  1057→      paddingHorizontal: 14,
+  1058→      paddingVertical: 8,
+  1059→      borderRadius: theme.radius.full,
+  1060→      backgroundColor: theme.colors.accent,
+  1061→      shadowColor: "#000",
+  1062→      shadowOpacity: 0.3,
+  1063→      shadowRadius: 8,
+  1064→      shadowOffset: { width: 0, height: 3 },
+  1065→      elevation: 6,
+  1066→    },
+  1067→    xpToastText: { color: theme.colors.onAccent, fontSize: 13, fontWeight: "700" },
+  1068→    bottomSpacer: { height: theme.spacing.lg },
+  1069→  });
+  1070→
