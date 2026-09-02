@@ -145,6 +145,28 @@ if [ -f ".env" ]; then
     echo "  - Copiado .env para next-service-dist (config de runtime: modo nuvem)"
 fi
 
+# ─── FIX Bun ESM: shim para "@libsql/isomorphic-fetch" ───
+# O @prisma/adapter-libsql aninha @libsql/client@0.8.x → hrana-client, que faz
+# `export { fetch, Request, Headers } from "@libsql/isomorphic-fetch"`. Dentro
+# do standalone, o Bun FALHA a resolução desse pacote (mesmo presente no
+# node_modules — inclusive com paths explícitos). O pacote é apenas um shim de
+# globalThis (fetch/Request/Headers — Node 18+/Bun já têm). Substituímos o
+# import estático por um shim local relativo: zero resolução, determinístico.
+find "$BUILD_DIR/next-service-dist/node_modules" -type d -name hrana-client -path "*@libsql*" 2>/dev/null | while read -r HC; do
+    for d in "$HC/lib-esm" "$HC/lib-esm/http"; do
+        [ -d "$d" ] && grep -rq '"@libsql/isomorphic-fetch"' "$d" 2>/dev/null || continue
+        printf 'const _fetch = globalThis.fetch;\nconst _Request = globalThis.Request;\nconst _Headers = globalThis.Headers;\nexport { _fetch as fetch, _Request as Request, _Headers as Headers };\n' > "$d/fetch-shim.mjs"
+        grep -rl '"@libsql/isomorphic-fetch"' "$d" --include='*.js' 2>/dev/null | xargs -r sed -i 's|"@libsql/isomorphic-fetch"|"./fetch-shim.mjs"|g'
+        echo "  - shim ESM isomorphic-fetch aplicado: $d"
+    done
+    for d in "$HC/lib-cjs" "$HC/lib-cjs/http"; do
+        [ -d "$d" ] && grep -rq '"@libsql/isomorphic-fetch"' "$d" 2>/dev/null || continue
+        printf 'module.exports = { fetch: globalThis.fetch, Request: globalThis.Request, Headers: globalThis.Headers };\n' > "$d/fetch-shim.cjs"
+        grep -rl '"@libsql/isomorphic-fetch"' "$d" --include='*.js' 2>/dev/null | xargs -r sed -i 's|"@libsql/isomorphic-fetch"|"./fetch-shim.cjs"|g'
+        echo "  - shim CJS isomorphic-fetch aplicado: $d"
+    done
+done
+
 # Python 不继承 workspace-agent 的 /home/z/.venv。若项目包含 Python 源码或
 # 依赖清单，在构建期将生产依赖固化到产物，并保持 Python 源码的项目相对路径。
 PROJECT_DIR="$NEXTJS_PROJECT_DIR" BUILD_DIR="$BUILD_DIR" \

@@ -2317,3 +2317,20 @@ Work Log:
 Stage Summary:
 - Pipeline de deploy da plataforma agora é cloud-aware: produção (mentorhub.space-z.ai) lê/escreve no Turso igual ao sandbox; fim dos dados congelados/zerados a cada publish
 - Fallbacks preservados: sem .env, comportamento antigo (SQLite empacotado); DATABASE_URL inválida no deployment recai para o banco empacotado em vez de 500
+
+---
+Task ID: W-40
+Agent: Z.ai Code (main)
+Task: Produção ainda 500 pós republish — bug de resolução ESM do Bun no standalone (@libsql/isomorphic-fetch) resolvido com shim
+
+Work Log:
+- Republish do usuário GEROU build novo aqui (4 builds em /tmp: 02:53→03:43; o de 03:43 tem .env no pacote ✓, start.sh novo ✓) e o BUILD/chunks servidos no domínio BATEM com o artefato (hashes 33d3f2c0..., 34d93378...) — deploy ok, mas /api/courses seguia 500
+- REPRODUZIDO LOCALMENTE rodando o próprio artefato (bun server.js, porta 3100): "Cannot find module '@libsql/isomorphic-fetch' from .../adapter-libsql/node_modules/@libsql/client/node_modules/@libsql/hrana-client/lib-esm/index.js" — o Turbopack cria stub .next/node_modules/@prisma/adapter-libsql-<hash>/ e a cadeia ESM do Bun falha a resolução do pacote DENTRO do standalone
+- CAUSA RAIZ (isolada empiricamente): bun NÃO resolve '@libsql/isomorphic-fetch' a partir do contexto aninhado — node resolve, bun falha (até com paths explícitos!); quirk do resolver ESM do bun com node_modules aninhados no standalone. O pacote em si é só um shim de globalThis (node.js re-exporta fetch/Request/Headers)
+- FIX DETERMINÍSTICO (.zscripts/build.sh): pós-cópia do standalone, p/ cada hrana-client aninhado — grava fetch-shim.mjs (ESM) e fetch-shim.cjs (CJS) que re-exportam globalThis.fetch/Request/Headers e reescreve os 6 arquivos (lib-esm/{index,http/stream,http/client}.js + lib-cjs idem) trocando o specifier por "./fetch-shim.*" — zero resolução de módulo envolvida
+- VALIDAÇÃO: shim aplicado manualmente no artefato 03:43 → bun server.js local → / 200 e /api/courses retornando OS DADOS DO TURSO (prova end-to-end do runtime de produção); dev server local (3000) intacto; workspace node_modules também shimado (4 dirs, incl. hrana-client raiz)
+- Cleanup: builds antigos de /tmp removidos (mantido o de 03:43 p/ referência)
+
+Stage Summary:
+- Runtime de produção PROVADO funcionando localmente com o próprio artefato: standalone + .env + Turso = dados servindo; o próximo republish leva o shim embutido no build.sh e deve subir 100% em mentorhub.space-z.ai
+- Se um futuro @prisma/adapter-libsql trouxer hrana-client novo, o find/grep do build.sh re-aplica o shim sozinho (idempotente, cobre lib-esm/lib-cjs)
