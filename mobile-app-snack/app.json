@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "MentorHub",
+    "slug": "mentorhub-mobile-snack",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "platforms": ["ios", "android", "web"],
+    "web": {
+      "output": "single",
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

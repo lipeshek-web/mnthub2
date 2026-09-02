@@ -2358,3 +2358,24 @@ Stage Summary:
 - Persistência CONFIRMADA em toda a cadeia: produção lê Turso (10/10 cursos), único client com prioridade nuvem, zero writes locais, publish não toca no Turso (só substitui o fallback empacotado)
 - Cadeia à prova de downgrade: mesmo com .env apagado por snapshot, o git restaura cloud.env e o próximo publish sai em modo nuvem — dados do gateway/usuários/cursos jamais voltam a "sumir"
 - Fluxo do usuário (configurar Asaas → republish → republish...) persiste: settings em PlatformSetting (Turso), payments em Payment (Turso)
+
+---
+Task ID: W-41
+Agent: Z.ai Code (main)
+Task: App Expo Snack do aluno — conserto completo + leitor de PDF nativo + publicação com link direto (pedido do usuário)
+
+Work Log:
+- RECON: tentativa anterior (W-27) deixou mobile-app-snack/ completo (App.js 340L + 11 telas + 20 componentes + 16 PNGs de páginas embutidas) e API /api/v1 (JWT Bearer 30d, CORS via middleware + v1Json). Achado o BUG CENTRAL: api.ts chama GET /api/v1/library/:id/reader, rota que NUNCA existiu no backend (404 HTML confirmado em produção) → o fallback dinâmico do leitor nunca funcionou
+- BACKEND: criada src/app/api/v1/library/[id]/reader/route.ts (manifesto de páginas com URLs absolutas via absolutize; 404 amigável p/ livros sem páginas) + src/lib/library-pages-manifest.ts (5 livros, 16 páginas) + páginas estáticas copiadas para public/library-pages/<itemId>/pN.png (servidas pelo site; <Image> não precisa de CORS)
+- PUBLICAÇÃO: snack completo publicado via POST exp.host/--/api/v2/snack/save (45 arquivos CODE + 16 ASSET + 11 deps com as versões EXATAS de bundledNativeModules do SDK 54) → https://snack.expo.dev/FWCc9ZbogSpzF5wEtonPp (HTTP 200, id FWCc9ZbogSpzF5wEtonPp)
+- VERIFICAÇÃO NO BROWSER (agent-browser): preview Web do Snack fica preso em "Loading..." no SANDBOX — experimento de controle provou que até o snack de exemplo da Expo não roda aqui (runtime do snack precisa de service workers/sockets bloqueados no headless) → não é problema do app. Editor mostra "No errors" no compile do projeto inteiro
+- VERIFICAÇÃO RUNTIME REAL (a que importa): montado harness local em mobile-app-snack (package.json com as versões oficiais SDK 54, app.json, babel.config.js, index.js com registerRootComponent) → expo export --platform web compilou SEM erros (bundle 1.79MB) → servido na 3021 e testado de ponta a ponta no browser
+- DURANTE O HARNESS: descoberto que export sem index.js/entry NÃO monta (módulo 0 só define o componente; ninguém chama registerRootComponent) — os "erros p" enigmáticos eram ruído do ambiente; também mapeado que clique sintético el.click() não navega o pager do RN-web (pointer events reais exigidos) — clique real do browser navega perfeitamente
+- E2E APROVADO (screenshots /tmp/app-*.png): login screen dark+esmeralda renderiza → login ana@demo.com/demo123 contra a PRODUÇÃO → dashboard "Olá, Ana" com 135 XP, ofensiva, meta semanal, continuar estudando, novos livros → Biblioteca com 9 itens e capas → LIVRO "Arquitetura que Escala": LEITOR DE PDF NATIVO abriu na página 1 de 7 (imagens nítidas, sem WebView/browser), navegação p3 via setas, barra de progresso, MODO NOTURNO ✓ → Cursos com 10 cursos reais, preços R$, badge "Inscrito" → Mentorias com mentores, fotos, R$/hora, ratings
+- ENTREGÁVEIS EXTRAS: web export VERIFICADO publicado em public/app-mobile/ (https://mentorhub.space-z.ai/app-mobile/ após o próximo publish) + mentorhub-mobile-snack-v3.zip + README reescrito com links e instruções
+
+Stage Summary:
+- Snack OFICIAL do usuário: https://snack.expo.dev/FWCc9ZbogSpzF5wEtonPp (abre pronto — sem copiar/colar; Web preview ou Expo Go via QR)
+- Leitor de PDF é 100% NATIVO (pager próprio, zoom 2x por dois toques, modo noturno, retomada) — zero browser/WebView para os livros; rota /api/v1/library/:id/reader agora existe para os dinâmicos
+- App provado rodando contra a produção real (Turso) em browser: login, dashboard, biblioteca+leitor, cursos, mentorias
+- Pendência conhecida: livros futuros precisam de páginas renderizadas (pdftoppm) + entrada no manifesto para o leitor nativo; enquanto isso o app mostra "Abrir PDF original"
