@@ -133,6 +133,21 @@ export function errMessage(err: unknown): string {
   return "Algo deu errado. Tente novamente.";
 }
 
+/**
+ * 404 SEM payload JSON = rota que não existe no servidor (site desatualizado).
+ * Serve para o app degradar com elegância enquanto o site novo não é publicado.
+ */
+export function isMissingEndpoint(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 404 && !err.payload;
+}
+
+/** Mensagem para recurso que exige o site publicado na versão mais recente. */
+export const SERVER_OUTDATED_MESSAGE =
+  "Este recurso ainda não está ativo no servidor — publique o site (versão mais recente) para liberar por aqui.";
+
+/** Mensagem curta de servidor desatualizado (usada em banners/notas discretas). */
+export const SERVER_OUTDATED_SHORT = "Recurso novo — ativa ao publicar a versão mais recente do site.";
+
 /* ------------------------------------------------------------------ */
 /* Logout automático em 401                                            */
 /* ------------------------------------------------------------------ */
@@ -454,8 +469,10 @@ export interface Booking {
   meetingRoom: string | null;
   price: number;
   createdAt: string;
-  mentor: { id: string; name: string; headline: string | null; avatarUrl: string | null };
+  mentor: { id: string; userId?: string; name: string; headline: string | null; avatarUrl: string | null };
   reviewed: boolean;
+  /** true quando já existe pedido pago para esta sessão. */
+  paid?: boolean;
 }
 
 export interface BookingInput {

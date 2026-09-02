@@ -1,25 +1,11 @@
+// Publica o MentorHub Mobile no Snack — versão SEM ASSETS (data URIs no código).
+// ASSET files travam o runtime do Snack em "Loading..." (provado por probes).
+// Envia apenas App.js + src/** como CODE, manifest SDK 54 + 12 dependências
+// (expo-clipboard = copiar código PIX no checkout).
 const fs = require("fs");
 const path = require("path");
 
 const root = "/home/z/my-project/mobile-app-snack";
-const code = {};
-let assetCount = 0;
-function walk(dir) {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    const rel = path.relative(root, full).split(path.sep).join("/");
-    if (entry.isDirectory()) { walk(full); continue; }
-    if (/\.(js|jsx|ts|tsx|md)$/.test(entry.name)) {
-      code[rel] = { type: "CODE", contents: fs.readFileSync(full, "utf-8") };
-    } else if (/\.(png|jpg|jpeg|webp|gif)$/.test(entry.name)) {
-      code[rel] = { type: "ASSET", contents: fs.readFileSync(full).toString("base64") };
-      assetCount++;
-    }
-  }
-}
-walk(root);
-console.log("arquivos de código:", Object.keys(code).length - assetCount, "| assets:", assetCount);
-
 const deps = {
   "@react-navigation/native":      "*",
   "@react-navigation/stack":       "*",
@@ -35,11 +21,37 @@ const deps = {
   "@expo/vector-icons":            "^15.0.3",
 };
 
+const code = {};
+let totalBytes = 0;
+function walk(dir) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    const rel = path.relative(root, full).split(path.sep).join("/");
+    if (entry.isDirectory()) {
+      // pula nada além do que não é código-fonte do app
+      if (rel === "node_modules" || rel === "dist" || rel === "scripts" || rel === ".tmp") continue;
+      walk(full);
+      continue;
+    }
+    if (rel === "package.json" || rel === "index.js" || rel === "babel.config.js" ||
+        rel === "app.json" || rel === "README.md" || rel === "bun.lock" ||
+        rel.startsWith("assets/") || rel.endsWith(".lock")) continue;
+    if (/\.(js|jsx|ts|tsx)$/.test(entry.name)) {
+      code[rel] = { type: "CODE", contents: fs.readFileSync(full, "utf-8") };
+      totalBytes += Buffer.byteLength(code[rel].contents);
+    }
+  }
+}
+walk(root);
+const files = Object.keys(code);
+console.log(`arquivos CODE: ${files.length}, total ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
+console.log("raízes:", [...new Set(files.map(f => f.split("/")[0]))].join(", "));
+
 const payload = {
   manifest: {
     sdkVersion: "54.0.0",
-    name: "MentorHub Mobile",
-    description: "App do aluno — leitor de PDF nativo, busca global, cursos e mentorias, checkout PIX/cartão no app e mensagens com mentores (API https://mentorhub.space-z.ai). Login: ana@demo.com / demo123",
+    name: "MentorHub — App do Aluno",
+    description: "App do aluno: leitor de PDF nativo (páginas embutidas), livros, cursos com COMPRA no app (PIX/cartão/boleto via Asaas) e mensagens com mentores — API https://mentorhub.space-z.ai. Login demo: ana@demo.com / demo123",
     dependencies: deps,
   },
   code,
@@ -54,5 +66,9 @@ const res = await fetch("https://exp.host/--/api/v2/snack/save", {
 });
 const text = await res.text();
 console.log("HTTP", res.status);
-try { console.log(JSON.stringify(JSON.parse(text), null, 1).slice(0, 400)); }
-catch { console.log(text.slice(0, 400)); }
+try {
+  const j = JSON.parse(text);
+  console.log("id:", j.id);
+} catch {
+  console.log(text.slice(0, 300));
+}

@@ -16,7 +16,7 @@
 import { createContext, useContext } from "react";
 
 /** Abas válidas, na ordem de exibição. */
-export const TAB_NAMES = ["Início", "Livros", "Cursos", "Mentorias"] as const;
+export const TAB_NAMES = ["Início", "Livros", "Cursos", "Mentorias", "Mensagens"] as const;
 
 export type TabName = (typeof TAB_NAMES)[number];
 

@@ -16,7 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import {
   cancelBooking,
@@ -98,6 +98,13 @@ export default function MentorshipsScreen() {
     }
   }, [segment, loadBookings]);
 
+  // Volta do checkout → revalida as sessões (botão "Pagar agora" some ao pagar).
+  useFocusEffect(
+    useCallback(() => {
+      if (bookingsLoadedRef.current) void loadBookings("refresh");
+    }, [loadBookings])
+  );
+
   function confirmCancel(booking: Booking) {
     Alert.alert(
       "Cancelar sessão",
@@ -127,6 +134,18 @@ export default function MentorshipsScreen() {
     } finally {
       setCancellingId(null);
     }
+  }
+
+  /** Sessão pendente de pagamento → checkout completo dentro do app. */
+  function handlePayBooking(booking: Booking) {
+    navigation.push("Checkout", {
+      kind: "booking",
+      itemId: booking.id,
+      title: `Sessão 1:1 — ${booking.topic}`,
+      price: booking.price,
+      mentorName: booking.mentor.name,
+      mentorAvatarUrl: booking.mentor.avatarUrl ?? null,
+    });
   }
 
   /* ------------------------------- Render ------------------------------- */
@@ -206,7 +225,14 @@ export default function MentorshipsScreen() {
           style={styles.flex}
           data={bookings}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <BookingRow item={item} cancellingId={cancellingId} onCancel={confirmCancel} />}
+          renderItem={({ item }) => (
+            <BookingRow
+              item={item}
+              cancellingId={cancellingId}
+              onCancel={confirmCancel}
+              onPay={handlePayBooking}
+            />
+          )}
           contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl
@@ -288,13 +314,16 @@ function BookingRow({
   item,
   cancellingId,
   onCancel,
+  onPay,
 }: {
   item: Booking;
   cancellingId: string | null;
   onCancel: (booking: Booking) => void;
+  onPay: (booking: Booking) => void;
 }) {
   const styles = makeStyles();
   const cancellable = item.status === "PENDING" || item.status === "CONFIRMED";
+  const payPending = cancellable && item.price > 0 && !item.paid;
   const cancelling = cancellingId === item.id;
   return (
     <View style={styles.bookingCard}>
@@ -312,7 +341,24 @@ function BookingRow({
         <Text style={styles.bookingWhen}>
           {formatNaiveLong(item.startsAt)} · {item.durationMin} min
         </Text>
-        {item.price > 0 ? <Text style={styles.bookingPrice}>{formatPrice(item.price)}</Text> : null}
+        {item.price > 0 ? (
+          <Text style={styles.bookingPrice}>
+            {formatPrice(item.price)}
+            {item.paid ? " · pago ✓" : ""}
+          </Text>
+        ) : null}
+        {payPending ? (
+          <TouchableOpacity
+            style={styles.payButton}
+            onPress={() => onPay(item)}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={`Pagar sessão com ${item.mentor.name}`}
+          >
+            <Ionicons name="card-outline" size={15} color={theme.colors.onAccent} />
+            <Text style={styles.payButtonText}>Pagar agora</Text>
+          </TouchableOpacity>
+        ) : null}
         {cancellable ? (
           <TouchableOpacity
             style={styles.cancelButton}
@@ -416,4 +462,15 @@ const makeStyles = () =>
     borderColor: theme.colors.dangerBorder,
   },
   cancelText: { color: theme.colors.dangerText, fontSize: 12, fontWeight: "700" },
+  payButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: theme.colors.accent,
+    borderRadius: theme.radius.sm,
+    paddingVertical: 10,
+    marginTop: 2,
+  },
+  payButtonText: { color: theme.colors.onAccent, fontSize: 13, fontWeight: "800" },
 });

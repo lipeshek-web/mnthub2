@@ -31,8 +31,10 @@ import { Ionicons } from "@expo/vector-icons";
 import {
   errMessage,
   getConversation,
+  isMissingEndpoint,
   listThreads,
   sendMessage,
+  SERVER_OUTDATED_MESSAGE,
   type ChatMessage,
   type MessagePeer,
   type ThreadsResponse,
@@ -109,7 +111,14 @@ function ThreadsListView({ onOpenThread }: { onOpenThread: (peer: MessagePeer) =
       setData(res);
       setError(null);
     } catch (err) {
-      setError(errMessage(err));
+      // Servidor sem as rotas novas (site desatualizado): caixa vazia amigável,
+      // NUNCA cara de erro.
+      if (isMissingEndpoint(err)) {
+        setData({ unreadTotal: 0, threads: [] });
+        setError(null);
+      } else {
+        setError(errMessage(err));
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -261,7 +270,13 @@ function ConversationView({ peer, onBackToList }: { peer: MessagePeer; onBackToL
       setPeerCache(res.peer);
       setError(null);
     } catch (err) {
-      setError(errMessage(err));
+      if (isMissingEndpoint(err)) {
+        // Servidor desatualizado: conversa aparece vazia (dica "Diga oi").
+        setItems([]);
+        setError(null);
+      } else {
+        setError(errMessage(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -297,11 +312,15 @@ function ConversationView({ peer, onBackToList }: { peer: MessagePeer; onBackToL
       setDraft("");
       requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
     } catch (err) {
-      const message = errMessage(err);
-      if (/Sessão expirada/i.test(message)) {
-        // 401 já deslogou o app via handler global
+      if (isMissingEndpoint(err)) {
+        Alert.alert("Mensagens ainda não ativas", SERVER_OUTDATED_MESSAGE);
       } else {
-        Alert.alert("Não foi possível enviar", message);
+        const message = errMessage(err);
+        if (/Sessão expirada/i.test(message)) {
+          // 401 já deslogou o app via handler global
+        } else {
+          Alert.alert("Não foi possível enviar", message);
+        }
       }
     } finally {
       setSending(false);

@@ -2262,3 +2262,184 @@ Work Log:
 Stage Summary:
 - Checkout (e qualquer escrita) agora sobrevive à substituição do arquivo do banco sob o servidor vivo: o Prisma detecta o SQLITE_READONLY_DBMOVED, reabre a conexão e refaz a operação — fim dos 500 misteriosos pós git checkout/pull do db ou restore de snapshot; falha real de disco/permissão continua propagando com a mensagem original
 - Fluxo de checkout revalidado ponta a ponta no browser com cupom + créditos + pedido + matrícula + saldo + usos, tudo consistente no banco
+
+---
+Task ID: W-37
+Agent: Z.ai Code (main) + agent-browser (E2E)
+Task: Downgrade do ambiente novamente — recuperação do workspace a partir do origin/main
+
+Work Log:
+- DIAGNÓSTICO: workspace restaurado a um snapshot ANTIGO (era W-31) — git log terminava em fbf7ec8 (W-31), remote origin NÃO existia mais, node_modules sem socket.io-client/@prisma/adapter-libsql; os commits W-32..W-36 (incluindo barras fixas da sala 1a3f751/e4ff613 e o fix de checkout 87f3f47/56b7191) sumiram LOCALMENTE, mas estavam intactos no GitHub
+- RECUPERAÇÃO: git remote add origin (mesma URL com token) + git fetch → origin/main em 56b7191 (W-36) → backup do db local em /tmp → git reset --hard origin/main; código, db e worklog restaurados aos últimos valores publicados
+- DEPENDÊNCIAS: bun install recolocou socket.io-client 4.8.3 e @prisma/adapter-libsql 6.11.1 (o downgrade também reverteu node_modules) — / volta a 200
+- SERVER: dev server reiniciado limpo (o db trocou de inode sob o processo antigo = cenário exato do bug readonly; o restart evita, e o self-heal do W-36 cobre casos futuros)
+- VALIDAÇÃO E2E (agent-browser, login ana@demo.com): sala de aula com tablist Material/Resumo IA/Perguntas/Quiz/Anotações no topo do corpo + barra Anterior/Concluir/Próxima no rodapé; desktop 1366 — tablistTop=69, btnBottomGap=10; mobile 390 — rótulo central "Concluir" (abreviação mobile ativa), conteúdo longo (sh=1385 vs ch=665) rola scrollTop 0→306 com as barras IMÓVEIS (tlTop 65→65, btnGap 10→10) e sem sobreposição (scroll container entre as duas barras); troca de aula reseta aba p/ Material e scrollTop=0; "Concluir" → toast "🎉 Aula concluída! +10 XP" (escrita no db OK, sem readonly); page errors vazio
+- Dados: apenas progresso de teste da ana (+10 XP) — db restaurado ao estado do HEAD antes do commit
+
+Stage Summary:
+- Ambiente de aprendizado de volta ao estado W-35/W-36: barras fixas (abas no topo do corpo, Anterior/Concluir/Próxima no rodapé), modo mobile compacto e fix de checkout readonly — nada foi reescrito, tudo veio do origin/main (prova de que o GitHub é o backup confiável)
+- Causa raiz dos "downgrades" é o restore de snapshot do ambiente (substitui código, remote, node_modules e db de uma vez); recuperação padrão documentada: re-adicionar remote → fetch → reset --hard origin/main → bun install → restart do server
+
+---
+Task ID: W-38
+Agent: Z.ai Code (main) + agent-browser (E2E)
+Task: Migração do banco para Turso (modo nuvem) — produção deixa de ficar vazia
+
+Work Log:
+- Contexto: site de produção sobe com banco zerado porque todos os dados (20 usuários, cursos, livros da biblioteca, matrículas...) viviam SOMENTE no arquivo local db/custom.db (SQLite); deploy não leva dados e o seed nunca roda lá
+- Usuário criou banco gratuito no Turso e forneceu credenciais; criado .env com TURSO_DATABASE_URL + TURSO_AUTH_TOKEN (+ DATABASE_URL local p/ prisma CLI) — .env* está no .gitignore, token NUNCA vai pro git (verificado com git check-ignore)
+- BUG FIX 1 (scripts/turso-sync.ts): prisma >= 6.11 não emite mais "--> statement-breakpoint" no `migrate diff --script` — o split antigo produzia 1 bloco gigante e o Turso recusava (SQL_MANY_STATEMENTS). Novo split: blocos separados por linha em branco + descarte de linhas de comentário (88 statements reconhecidos)
+- BUG FIX 2 (scripts/turso-sync.ts): schema step idempotente — re-execuções falhavam em "table User already exists"; agora só erros "already exists" são ignorados (docstring já prometia re-runs seguros)
+- BUG FIX 3 (scripts/turso-sync.ts): cópia de dados em ORDEM TOPOLÓGICA (Kahn sobre PRAGMA foreign_key_list) — sqlite_master não garante dependência e a cópia anterior estourava FOREIGN KEY constraint (filho antes do pai); ciclo de FKs agora reporta as tabelas envolvidas
+- Migração concluída: 41 tabelas (38 com dados — 20 users, 10 courses, 79 lessons, 9 library items, 943 tracking events, orders, enrollments, quizzes, payment config...) + schema completo no Turso
+- Server reiniciado em modo NUVEM (db.ts resolve TURSO_DATABASE_URL primeiro via PrismaLibSQL adapter)
+- PROVA DE NUVEM (E2E): User.xp da ana 135 no Turso antes; "Concluir e avançar" na UI → toast +10 XP → TURSO xp=145 e XpEvent 18→19; arquivo LOCAL permaneceu 135 (app não grava mais nele); /api/library servindo livros; dev.log sem erros
+- Dados de teste revertidos cirurgicamente no Turso (DELETE XpEvent do teste, Enrollment Cyber de volta a [], xp 145→135) — verificado: xp=135, 7 LESSON XpEvents, enrollment []
+
+Stage Summary:
+- App 100% em modo nuvem: TODOS os dados agora vivem no Turso (libsql://mentorhub-guxxtavu...) e sobrevivem a rebuild/downgrade de sandbox e a deploys de produção
+- Produção fica populada se as MESMAS 2 env vars forem definidas na hospedagem (TURSO_DATABASE_URL + TURSO_AUTH_TOKEN) — sem elas, o app cai no SQLite local vazio (comportamento antigo preservado)
+- scripts/turso-sync.ts corrigido em 3 pontos e validado de ponta a ponta; local db/custom.db continua como fallback/backup
+
+---
+Task ID: W-39
+Agent: Z.ai Code (main)
+Task: Produção (mentorhub.space-z.ai) vazia/500 — integrar modo nuvem ao pipeline de deploy da plataforma
+
+Work Log:
+- DIAGNÓSTICO: o domínio de produção NÃO é este sandbox — Caddy local (:81→3000) só serve o preview; curls pelo domínio não aparecem no dev.log. Produção = deployment separado da plataforma: build.sh empacota standalone (.next/standalone + static + public + Caddyfile + start.sh), database-runtime-build.sh copia o db/custom.db do PREVIEW congelado no publish, start.sh sobe em FC com DATABASE_URL=file:/app/db/custom.db
+- CAUSA DO VAZIO/500: (1) build.sh NÃO copiava .env — TURSO_* nunca chegavam à produção; (2) start.sh fixava DATABASE_URL apontando pro banco empacotado congelado na data do publish; (3) rotas com db no domínio dão 500 (admin/emails: 401 local vs 500 domínio) e /api/courses 500 — banco do deployment sem schema/dados corretos
+- FIX 1 (.zscripts/build.sh): copiar .env do workspace para next-service-dist/.env no pacote (guard [ -f ]) — as credenciais do modo nuvem viajam com o deploy; .env segue FORA do git (secreto), mas VIAJA no artefato
+- FIX 2 (.zscripts/start.sh): carregar ./.env empacotado com set -a/. ./.env/set +a antes de iniciar o server.js (Next standalone não embute .env) + fallback seguro: se DATABASE_URL (vindo do .env do sandbox, file:/home/z/...) apontar para arquivo inexistente no deployment, recai para o banco empacotado — e se TURSO_DATABASE_URL vier no .env, o db.ts prioriza a nuvem de qualquer forma (segurança dupla)
+- VALIDAÇÃO: sh -n nos dois scripts; simulação do trecho de env em /bin/sh (dash): .env carregado, TURSO_DATABASE_URL definido, fallback de caminho correto; next.config.ts tem output:"standalone" (guard do build não dispara)
+- PRÓXIMO PASSO (usuário): REPUBLICAR o site na plataforma — o novo build leva o .env e a produção sobe lendo/escrevendo no MESMO Turso do sandbox (dados completos e persistentes; republishes não congelam mais dados)
+
+Stage Summary:
+- Pipeline de deploy da plataforma agora é cloud-aware: produção (mentorhub.space-z.ai) lê/escreve no Turso igual ao sandbox; fim dos dados congelados/zerados a cada publish
+- Fallbacks preservados: sem .env, comportamento antigo (SQLite empacotado); DATABASE_URL inválida no deployment recai para o banco empacotado em vez de 500
+
+---
+Task ID: W-40
+Agent: Z.ai Code (main)
+Task: Produção ainda 500 pós republish — bug de resolução ESM do Bun no standalone (@libsql/isomorphic-fetch) resolvido com shim
+
+Work Log:
+- Republish do usuário GEROU build novo aqui (4 builds em /tmp: 02:53→03:43; o de 03:43 tem .env no pacote ✓, start.sh novo ✓) e o BUILD/chunks servidos no domínio BATEM com o artefato (hashes 33d3f2c0..., 34d93378...) — deploy ok, mas /api/courses seguia 500
+- REPRODUZIDO LOCALMENTE rodando o próprio artefato (bun server.js, porta 3100): "Cannot find module '@libsql/isomorphic-fetch' from .../adapter-libsql/node_modules/@libsql/client/node_modules/@libsql/hrana-client/lib-esm/index.js" — o Turbopack cria stub .next/node_modules/@prisma/adapter-libsql-<hash>/ e a cadeia ESM do Bun falha a resolução do pacote DENTRO do standalone
+- CAUSA RAIZ (isolada empiricamente): bun NÃO resolve '@libsql/isomorphic-fetch' a partir do contexto aninhado — node resolve, bun falha (até com paths explícitos!); quirk do resolver ESM do bun com node_modules aninhados no standalone. O pacote em si é só um shim de globalThis (node.js re-exporta fetch/Request/Headers)
+- FIX DETERMINÍSTICO (.zscripts/build.sh): pós-cópia do standalone, p/ cada hrana-client aninhado — grava fetch-shim.mjs (ESM) e fetch-shim.cjs (CJS) que re-exportam globalThis.fetch/Request/Headers e reescreve os 6 arquivos (lib-esm/{index,http/stream,http/client}.js + lib-cjs idem) trocando o specifier por "./fetch-shim.*" — zero resolução de módulo envolvida
+- VALIDAÇÃO: shim aplicado manualmente no artefato 03:43 → bun server.js local → / 200 e /api/courses retornando OS DADOS DO TURSO (prova end-to-end do runtime de produção); dev server local (3000) intacto; workspace node_modules também shimado (4 dirs, incl. hrana-client raiz)
+- Cleanup: builds antigos de /tmp removidos (mantido o de 03:43 p/ referência)
+
+Stage Summary:
+- Runtime de produção PROVADO funcionando localmente com o próprio artefato: standalone + .env + Turso = dados servindo; o próximo republish leva o shim embutido no build.sh e deve subir 100% em mentorhub.space-z.ai
+- Se um futuro @prisma/adapter-libsql trouxer hrana-client novo, o find/grep do build.sh re-aplica o shim sozinho (idempotente, cobre lib-esm/lib-cjs)
+
+---
+Task ID: W-40
+Agent: Z.ai Code (main)
+Task: Auditoria de persistência pós-publish (dados do gateway Asaas / usuários / cursos sobrevivem a republish?) + commit pro git
+
+Work Log:
+- Usuário confirmou: "agora sim funcionou" — produção (mentorhub.space-z.ai) exibindo dados após republish com pipeline cloud-aware (W-39 + shim W-39b)
+- AUDITORIA DE PERSISTÊNCIA (4 ângulos):
+  1. Clientes de banco: `rg "new PrismaClient"` → SOMENTE src/lib/db.ts (única porta de entrada, com prioridade TURSO_*); nenhuma rota bypassa o Turso
+  2. Writes em disco: rg writeFile/writeFileSync/createWriteStream/appendFile em src/ → ZERO (nada salvo em disco local que se perca no republish)
+  3. Boot: sem instrumentation.ts; start.sh não roda seed/migrate (só server.js + mini-services + caddy) — nenhum processo sobrescreve dados no deploy
+  4. Sondas de produção: /api/courses → HTTP 200 com 10 cursos (= Turso: 10); /api/admin/emails → 401 (env carregado, db ok; antes era 500) — MODO NUVEM ATIVO
+- Turso atual: 20 users / 10 courses / 9 library / 4 payments / 0 platformSettings (gateway Asaas ainda não configurado — settings vão para PlatformSetting via setSetting → Turso)
+- LACUNA ENCONTRADA: .env vive só no workspace (gitignored); downgrade de snapshot (já ocorreu 2x) apagaria o .env → próximo publish sairia sem TURSO_* → produção cairia no SQLite congelado ("vazio" de novo)
+- FIX: criado .zscripts/cloud.env (versionado; TURSO_DATABASE_URL + TURSO_AUTH_TOKEN + documentação do porquê) e build.sh com resolução em 3 ramos: .env presente → usa .env; senão cloud.env → copia como .env do artefato com aviso; nenhum → erro explícito no log de build
+- Teste funcional dos 3 ramos (harness isolado /tmp/zbtest): ramo 1→1, ramo 2→2 (cópia contém TURSO_DATABASE_URL), ramo 3→3; bash -n OK; cloud.env restaurado
+- git check-ignore .zscripts/cloud.env → NÃO ignorado (padrão .env* só captura basenames começando com .env)
+- Token Turso sem claim exp (não expira); repo privado — secret versionado como seguro-degradado, documentado no próprio arquivo
+
+Stage Summary:
+- Persistência CONFIRMADA em toda a cadeia: produção lê Turso (10/10 cursos), único client com prioridade nuvem, zero writes locais, publish não toca no Turso (só substitui o fallback empacotado)
+- Cadeia à prova de downgrade: mesmo com .env apagado por snapshot, o git restaura cloud.env e o próximo publish sai em modo nuvem — dados do gateway/usuários/cursos jamais voltam a "sumir"
+- Fluxo do usuário (configurar Asaas → republish → republish...) persiste: settings em PlatformSetting (Turso), payments em Payment (Turso)
+
+---
+Task ID: W-41
+Agent: Z.ai Code (main)
+Task: App Expo Snack do aluno — conserto completo + leitor de PDF nativo + publicação com link direto (pedido do usuário)
+
+Work Log:
+- RECON: tentativa anterior (W-27) deixou mobile-app-snack/ completo (App.js 340L + 11 telas + 20 componentes + 16 PNGs de páginas embutidas) e API /api/v1 (JWT Bearer 30d, CORS via middleware + v1Json). Achado o BUG CENTRAL: api.ts chama GET /api/v1/library/:id/reader, rota que NUNCA existiu no backend (404 HTML confirmado em produção) → o fallback dinâmico do leitor nunca funcionou
+- BACKEND: criada src/app/api/v1/library/[id]/reader/route.ts (manifesto de páginas com URLs absolutas via absolutize; 404 amigável p/ livros sem páginas) + src/lib/library-pages-manifest.ts (5 livros, 16 páginas) + páginas estáticas copiadas para public/library-pages/<itemId>/pN.png (servidas pelo site; <Image> não precisa de CORS)
+- PUBLICAÇÃO: snack completo publicado via POST exp.host/--/api/v2/snack/save (45 arquivos CODE + 16 ASSET + 11 deps com as versões EXATAS de bundledNativeModules do SDK 54) → https://snack.expo.dev/FWCc9ZbogSpzF5wEtonPp (HTTP 200, id FWCc9ZbogSpzF5wEtonPp)
+- VERIFICAÇÃO NO BROWSER (agent-browser): preview Web do Snack fica preso em "Loading..." no SANDBOX — experimento de controle provou que até o snack de exemplo da Expo não roda aqui (runtime do snack precisa de service workers/sockets bloqueados no headless) → não é problema do app. Editor mostra "No errors" no compile do projeto inteiro
+- VERIFICAÇÃO RUNTIME REAL (a que importa): montado harness local em mobile-app-snack (package.json com as versões oficiais SDK 54, app.json, babel.config.js, index.js com registerRootComponent) → expo export --platform web compilou SEM erros (bundle 1.79MB) → servido na 3021 e testado de ponta a ponta no browser
+- DURANTE O HARNESS: descoberto que export sem index.js/entry NÃO monta (módulo 0 só define o componente; ninguém chama registerRootComponent) — os "erros p" enigmáticos eram ruído do ambiente; também mapeado que clique sintético el.click() não navega o pager do RN-web (pointer events reais exigidos) — clique real do browser navega perfeitamente
+- E2E APROVADO (screenshots /tmp/app-*.png): login screen dark+esmeralda renderiza → login ana@demo.com/demo123 contra a PRODUÇÃO → dashboard "Olá, Ana" com 135 XP, ofensiva, meta semanal, continuar estudando, novos livros → Biblioteca com 9 itens e capas → LIVRO "Arquitetura que Escala": LEITOR DE PDF NATIVO abriu na página 1 de 7 (imagens nítidas, sem WebView/browser), navegação p3 via setas, barra de progresso, MODO NOTURNO ✓ → Cursos com 10 cursos reais, preços R$, badge "Inscrito" → Mentorias com mentores, fotos, R$/hora, ratings
+- ENTREGÁVEIS EXTRAS: web export VERIFICADO publicado em public/app-mobile/ (https://mentorhub.space-z.ai/app-mobile/ após o próximo publish) + mentorhub-mobile-snack-v3.zip + README reescrito com links e instruções
+
+Stage Summary:
+- Snack OFICIAL do usuário: https://snack.expo.dev/FWCc9ZbogSpzF5wEtonPp (abre pronto — sem copiar/colar; Web preview ou Expo Go via QR)
+- Leitor de PDF é 100% NATIVO (pager próprio, zoom 2x por dois toques, modo noturno, retomada) — zero browser/WebView para os livros; rota /api/v1/library/:id/reader agora existe para os dinâmicos
+- App provado rodando contra a produção real (Turso) em browser: login, dashboard, biblioteca+leitor, cursos, mentorias
+- Pendência conhecida: livros futuros precisam de páginas renderizadas (pdftoppm) + entrada no manifesto para o leitor nativo; enquanto isso o app mostra "Abrir PDF original"
+
+---
+Task ID: W-42
+Agent: Z.ai Code (main)
+Task: Corrigir o app Expo Snack que não abria ("tela branca / Loading eterno" no preview web do Expo) — diagnóstico de rede + fix definitivo + re-publicação com link testado
+
+Work Log:
+- DIAGNÓSTICO (o que o usuário via): editor do Snack abre, preview Web fica na barra roxa "Loading..." para sempre. Confirmado reproduzir no Chromium headless com o snack oficial FWCc9ZbogSpzF5wEtonPp (SDK 54)
+- Achados de rede: (1) o manifest do runtime via EAS Update (u.expo.dev) responde HTTP 429 "Monthly Updating Users exceeded" na conta anônima — mas isso NÃO é o bloqueador do preview web; (2) a página do snack chegou a dar erro server-side transitório ao buscar o snack, mas volta sozinha; (3) todos os snacks anônimos compartilham o mesmo EAS project id
+- BISECT com 6 snacks-sonda publicados via exp.host/--/api/v2/snack/save e verificados no browser: SDK 51/52/53/54 mínimo = RODA; SDK 54 com as 11 dependências do app = RODA; SDK 54 com 16 arquivos ASSET (PNG) + código trivial = TRAVA no Loading; app completo sem os arquivos de config da raiz = TRAVA. → CULPADO ISOLADO: a presença de arquivos ASSET no projeto salvo trava o bundler/runtime do Snack (sem erro, sem log)
+- FIX: páginas dos livros deixaram de ser assets e viraram CÓDIGO — novo script scripts/embed-pages.js gera src/lib/bookPagesData/{arquitetura,dados,gestao,inovacao,pomodoro}Pages.ts com data URI base64 (2.6 MB no total); src/lib/bookPages.ts reescrito para consumir os módulos (source { uri: dataURI }); assets/pages removido do projeto; scripts/publish-snack.js reescrito para enviar SÓ arquivos CODE (50 arquivos, 2.84 MB) + manifest SDK 54 + 11 deps, pulando package.json/index.js/babel.config.js/app.json/README/bun.lock/scripts
+- VALIDAÇÃO LOCAL: expo export --platform web compilou sem erros (bundle 4.47 MB); servido na 3021 e testado no browser: login ana@demo.com ok contra a produção, dashboard (135 XP), abrir "Arquitetura que Escala" → LEITOR NATIVO renderizou página 1 de 7 via data URI no expo-image, navegação para página 2 ok (progresso avançou)
+- PUBLICAÇÃO: novo snack rFIS7l6RH6dq12wOssZyv → https://snack.expo.dev/rFIS7l6RH6dq12wOssZyv (HTTP 200). Preview Web RODOU de primeira: login screen → login DENTRO do preview contra a produção → dashboard → aba Livros → lista 9 itens → card "Como Estudar com Pomodoro" → detalhe → "Ler agora" → LEITOR NATIVO abriu "Página 1 de 1" com a página PNG nítida, barra de progresso, modo noturno e setas de navegação
+- Nota de automação: wheel não rola o app no runtime do Snack (só toques/cliques reais); viewport 900x1900 fez o painel de preview crescer e permitiu chegar nos elementos abaixo da dobra
+- ENTREGÁVEIS: public/mentorhub-mobile-snack-v4.zip (código com data URIs, 1.9 MB); public/app-mobile/ re-sincronizado com o novo export; README reescrito (novo link, lição do ASSET, scripts embed-pages/publish)
+- Limpeza: .tmp-snack-probe removido; servidor 3021 desligado; browser fechado
+
+Stage Summary:
+- LINK NOVO OFICIAL: https://snack.expo.dev/rFIS7l6RH6dq12wOssZyv (abre e RODA no preview Web — verificado de ponta a ponta inclusive o leitor de PDF nativo; Expo Go via QR também deve funcionar pois o bundle é o mesmo)
+- Causa raiz do app "que não iniciava": arquivos ASSET no snack salvo travam o runtime em "Loading..." eterno — nunca publicar ASSET no Snack; páginas agora são data URI no código (scripts/embed-pages.js regenera)
+- O 429 do EAS Update (u.expo.dev) continua na conta anônima, mas não impede o preview web; se um dia o QR/Expo Go falhar, é essa cota — aí vale logar o snack numa conta Expo própria
+- Fallback estático atualizado: https://mentorhub.space-z.ai/app-mobile/ (mesmo código) + zip v4
+
+---
+Task ID: W-43
+Agent: Z.ai Code (main)
+Task: App Snack v1.1 — compra COMPLETA dentro do app (PIX/cartão/boleto/cupom) + aba de Mensagens com chat 1:1 (pedido do usuário pós "quase perfeito")
+
+Work Log:
+- BACKEND (ponte de identidade): o app usa JWT próprio (mobile-auth) e as rotas de dinheiro/mensagens do site usam o token de sessão HMAC — criado src/lib/v1-bridge.ts que valida o JWT do app, EMITE um token de sessão web para o mesmo usuário e reconstrói a requisição; os handlers web (/api/checkout, /api/payments/status, /api/coupons/validate, /api/messages*) são REUTILIZADOS sem nenhuma duplicação (v1Passthrough troca só os headers por CORS v1)
+- ROTAS NOVAS /api/v1: checkout (POST), payments/status (GET), payments/config (GET público: ASAAS vs SIMULADO), coupons/validate (POST), messages (GET marca lidas + POST envia), messages/threads (GET caixa de entrada), messages/unread (GET badge); middleware de CORS já cobre /api/v1/* (OPTIONS 204 testado)
+- ENRIQUECIMENTOS: /api/v1/mentors/[id] agora devolve mentor.userId (destino das mensagens diretas); serializeMobileBooking/loadMobileBookings incluem mentor.userId + orders → flag `paid` por sessão
+- TESTES DE VERDADE (curl contra dev server): login, config=SIMULADO, threads (Ana↔Carlos existente), envio de mensagem, unread, coupon inválido → erro correto, CHECKOUT DEMO → order PAID + enrollment criada, CORS preflight 204 com ACAO * — TUDO OK; dados de teste REMOVIDOS do Turso depois (2x: teste curl + E2E browser: 2 orders, 2 payments, 1 enrollment, 1 mensagem)
+- APP (4 telas novas/alteradas): CheckoutScreen completa (resumo do item, PIX/Cartão/Boleto, cupom com validação p/ cursos, CPF/CNPJ mascarado só quando gateway ativo, PIX = QR data URI + copia-e-cola com expo-clipboard + polling 4s via payments/status, modo demo aprovando na hora, sucesso → "Começar a estudar"); CursoScreen 402 → navigation.push("Checkout") + useFocusEffect recarrega ao voltar (Inscrito + aulas liberadas sem reabrir); MentorScreen push Checkout pós-agendamento pago + botão "Enviar mensagem" no footer; MentoriasScreen "Pagar agora" nas sessões price>0 não pagas + selo "pago ✓" + refresh on focus
+- MENSAGENS: nova 5ª aba (tabs.tsx + App.js) MensagensScreen (threads com avatar, preview, tempo relativo, badge de não lidas, polling 15s em foco), ChatScreen (FlatList invertida, bolhas minhas/dele com "lida", envio otimista com rollback, polling 4s, KeyboardAvoidingView iOS), store mínimo src/lib/unread.ts + useSyncExternalStore desenha badge vermelho na tab bar
+- FIX DE LAYOUT WEB descoberto no E2E: div interna do SafeAreaProvider com flex:0 0 auto deixava o conteúdo 52-59px mais alto que o viewport (tab bar ia abaixo do vinco no export estático) — SafeAreaProvider com style height/width 100% + overflow hidden; docH==innerH confirmado
+- E2E REAL (expo export web + serve :3021 + agent-browser, login ana@demo.com): dashboard ✓ → aba Mensagens ✓ → chat Carlos ✓ (histórico, envio "Teste do chat novo no app 🚀" com confirmação lida) → Cursos → Direito Digital R$199 → Inscrever-se → CHECKOUT IN-APP renderizou (PIX selecionado, aviso demo, cupom, total) → Pagar → "Pagamento confirmado" → "Começar a estudar" → curso INSCRITO com progresso e aula atual desbloqueadas ✓ → perfil Carlos com "Enviar mensagem" → chat aberto ✓ → Minhas sessões: sessão paga com selo "pago ✓", outra com "Pagar agora" → pagou Marina R$150 → voltou: Confirmada + "pago ✓", botão sumiu ✓
+- PUBLICAÇÃO: scripts/publish-snack.js recriado (API v2 snack/save; dependências também no TOPO do payload como record {name:{version}} — erro 400 aprendido; SÓ arquivos CODE: 54 arquivos, 2.90MB, 12 deps com versões exatas do SDK 54 incl. expo-clipboard ~8.0.8) → NOVO SNACK https://snack.expo.dev/Kaem6wqj7dUG6LZ72YoMc (editor carrega com "No errors, 492 warnings"); preview web do snack não roda no headless deste sandbox (trava CDP — limitação já conhecida do W-41; o MESMO código passou E2E completo local)
+- ENTREGÁVEIS: public/app-mobile re-sincronizado (fallback https://mentorhub.space-z.ai/app-mobile/), mentorhub-mobile-snack-v5.zip (1.9MB completo com data URIs), README atualizado (link novo + features + aviso de publish), commit dd75fbf pushed
+
+Stage Summary:
+- Compra e pagamento de sessão agora são 100% in-app: PIX com QR + copia-e-cola + polling, cartão, boleto, cupom, CPF quando o Asaas estiver ativo; nada de "comprar pelo site"
+- Mensagens completas: 5ª aba com badge global de não lidas, chat com leitura/envio em tempo quase real (polling), entrada pelo perfil do mentor e pela caixa de entrada
+- Backend reutiliza os handlers do site via ponte de identidade (zero drift de lógica de dinheiro); CORS pronto para o snack.expo.dev
+- PRÓXIMO PASSO DO USUÁRIO: PUBLICAR o site na plataforma (as rotas /api/v1 novas de checkout/mensagens precisam estar em produção) e depois abrir https://snack.expo.dev/Kaem6wqj7dUG6LZ72YoMc — login ana@demo.com/demo123
+
+---
+Task ID: S-44
+Agent: Z.ai Code (main)
+Task: App Snack v1.2 — consertos pós-feedback: mensagens sem "cara de erro", checkout com aviso claro de site desatualizado, curso CONTENT-FIRST (abre na aula, índice só via botão)
+
+Work Log:
+- DIAGNÓSTICO (curl em produção): /api/v1/checkout, /payments/config, /messages/threads, /coupons/validate → 404. O site publicado ainda é o build da era W-39/40 — as rotas novas do W-43 nunca foram publicadas. Por isso: compra → "Conteúdo não encontrado." (string do STATUS_MESSAGES[404] do api.ts) + aba Mensagens mostrava ErrorBox em vez do estado vazio amigável
+- APP TOLERANTE A SERVIDOR DESATUALIZADO: api.ts ganhou isMissingEndpoint() (404 sem payload JSON = rota inexistente) + SERVER_OUTDATED_MESSAGE; MensagensScreen usa listThreadsSafe() (404 → caixa vazia amigável, nunca erro); ChatScreen trata 404 como conversa vazia ("as mensagens serão ativadas quando o site for publicado") e erro de envio vira mensagem acionável; CheckoutScreen detecta config 404 → banner "Site precisa ser atualizado" no topo do formulário + erro de pagamento acionável (não mais "Conteúdo não encontrado") + cupom 404 com texto próprio
+- CURSO CONTENT-FIRST (o pedido central): CursoScreen reescrita — inscrito abre DIRETO na aula atual: faixa de progresso compacta (0% · N de M aulas, tap = índice), título da aula, conteúdo JÁ ABERTO (texto completo via RichText sem botão "ver conteúdo", vídeo em play card com capa + botão play, sala ao vivo), materiais, concluir (+XP) com toast, anterior/próxima com auto-scroll ao topo, "Sobre este curso" discreto no rodapé; ÍNDICE completo saiu do meio da tela e virou MODAL (botão "Índice" no header ou na faixa) com mentor tappable + aulas por tema + check/strikethrough; não-inscrito mantém a página de vendas (hero, preço, prévia bloqueada, CTA → Checkout); aula bloqueada tocada → Alert explicativo
+- POLYFILL Alert.alert no web (descoberto no E2E: logout/avisos eram no-op no react-native-web): App.js remapeia Alert.alert → window.confirm/alert só em Platform.OS === "web"; nativo intocado
+- E2E REAL (expo export web + serve :3021 + agent-browser, viewport 430): CONTRA PRODUÇÃO DESATUALIZADA: login OK → Mensagens mostra "Nenhuma conversa ainda" amigável (screenshot) → checkout pago exibe banner "Site precisa ser atualizado" e Pagar mostra "Este recurso ainda não está ativo no servidor — publique o site..." (NUNCA mais "Conteúdo não encontrado"). CONTRA LOCAL (3000, rotas completas): Mensagens lista thread real Ana↔Carlos e chat abre com histórico/lidas; curso gratuito abre 100% no modo content-first; índice abre modal e troca de aula volta ao topo; compra demo de Design Systems R$199 → "Pagamento confirmado!" → "Começar a estudar" → curso INSCRITO com faixa 0%, aula 1/4 em foco, marcar concluída → 25% e auto-avanço para aula de VÍDEO com play card renderizado
+- LIMPEZA DO TURSO (o dev local fala com o MESMO Turso de produção): scripts/cleanup-e2e-s44.ts removeu order+payment da compra de teste, enrollment de Design Systems e XpEvent LESSON (devolvendo 10 XP à Ana); verificado via API: Design Systems enrolled=false de novo; inscrições legítimas (Cyber×2 + PM) intactas
+- PUBLICAÇÃO: bun scripts/publish-snack.js → 54 arquivos CODE, 2.91MB → NOVO SNACK https://snack.expo.dev/Wtw5k6_8BZPA8p6G0XRkr (HTTP 200); public/app-mobile re-sincronizado com o export novo; mentorhub-mobile-snack-v6.zip (64 arquivos, 1.9MB, com bookPagesData); README atualizado (link novo + content-first + comportamento com servidor desatualizado)
+
+Stage Summary:
+- Os 3 incômodos do usuário resolvidos: mensagens nunca mais "parece erro" (vazio amigável ou conversa real), compra falha com instrução CLARA de publish (em vez de "conteúdo não encontrado"), e o curso abre com o CONTEÚDO em foco — índice vira modal atrás do botão
+- CHIP PARA O USUÁRIO: para a compra e o chat funcionarem 100% na produção, basta PUBLICAR o site na plataforma (as rotas /api/v1 do checkout/mensagens vão junto); enquanto isso o app segue utilizável e explicativo
+- Snack novo oficial: https://snack.expo.dev/Wtw5k6_8BZPA8p6G0XRkr · fallback https://mentorhub.space-z.ai/app-mobile/ (após o publish) · zip v6

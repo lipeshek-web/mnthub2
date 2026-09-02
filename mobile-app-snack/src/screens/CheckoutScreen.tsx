@@ -32,6 +32,8 @@ import {
   getCourse,
   getMe,
   getPaymentStatus,
+  isMissingEndpoint,
+  SERVER_OUTDATED_MESSAGE,
   type CheckoutBillingType,
   type CheckoutPaymentInfo,
   type CourseDetailResponse,
@@ -176,7 +178,9 @@ export default function CheckoutScreen() {
         void clearPendingCheckout();
       }
     } catch (err) {
-      setFormError(errMessage(err));
+      // Servidor sem as rotas novas (site desatualizado): instrução clara em
+      // vez de "Conteúdo não encontrado".
+      setFormError(isMissingEndpoint(err) ? SERVER_OUTDATED_MESSAGE : errMessage(err));
     } finally {
       setSubmitting(false);
     }

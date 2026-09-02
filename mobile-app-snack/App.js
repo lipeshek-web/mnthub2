@@ -40,6 +40,8 @@ import "react-native-gesture-handler";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -47,6 +49,28 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+
+/* ------------------- Polyfill de Alert.alert para a web -------------------- */
+/* No react-native-web Alert.alert é um no-op — avisos como "Inscrição        */
+/* confirmada!" e erros de envio simplesmente não aparecem no preview do      */
+/* Snack. No web mapeamos para alert()/confirm() do navegador (o app no Expo  */
+/* Go / aparelho continua usando o Alert nativo, sem mudança alguma).         */
+if (Platform.OS === "web") {
+  Alert.alert = (title, message, buttons) => {
+    const text = [title, message].filter(Boolean).join("\n\n");
+    if (!buttons || buttons.length === 0) {
+      window.alert(text);
+      return;
+    }
+    const confirmButton = buttons.find((b) => b && b.style !== "cancel");
+    const cancelButton = buttons.find((b) => b && b.style === "cancel");
+    if (window.confirm(text)) {
+      if (confirmButton && typeof confirmButton.onPress === "function") confirmButton.onPress();
+    } else if (cancelButton && typeof cancelButton.onPress === "function") {
+      cancelButton.onPress();
+    }
+  };
+}
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { DefaultTheme, NavigationContainer, useRoute } from "@react-navigation/native";

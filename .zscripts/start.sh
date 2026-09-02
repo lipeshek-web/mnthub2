@@ -70,12 +70,38 @@ fi
 if [ -f "./next-service-dist/server.js" ]; then
     echo "🚀 启动 Next.js 服务器..."
     cd next-service-dist/ || exit 1
-    
+
+    # Carrega o .env empacotado (build.sh copia .env do workspace para cá).
+    # É assim que a produção ganha o modo nuvem (TURSO_DATABASE_URL /
+    # TURSO_AUTH_TOKEN): o Next standalone NÃO embute .env no build.
+    if [ -f "./.env" ]; then
+        set -a
+        . ./.env
+        set +a
+        echo "📦 .env do pacote carregado (TURSO_DATABASE_URL: $([ -n "${TURSO_DATABASE_URL:-}" ] && echo 'definido — modo nuvem' || echo 'ausente'))"
+    else
+        echo "ℹ️  Sem .env no pacote — produção usa o banco SQLite empacotado"
+    fi
+
     # 设置环境变量
     export NODE_ENV=production
     export PORT="${PORT:-3000}"
     export HOSTNAME="${HOSTNAME:-0.0.0.0}"
     export DATABASE_URL="${DATABASE_URL:-$DEFAULT_PACKAGED_DATABASE_URL}"
+
+    # O .env do sandbox pode trazer DATABASE_URL=file:/home/z/my-project/db/...
+    # — caminho que NÃO existe no deployment (/app). Nesse caso, cai para o
+    # banco empacotado (se o .env trouxe TURSO_DATABASE_URL, o db.ts prioriza
+    # a nuvem e DATABASE_URL fica irrelevante — segurança dupla).
+    case "$DATABASE_URL" in
+        file:*)
+            __dbpath="${DATABASE_URL#file:}"
+            if [ ! -f "$__dbpath" ]; then
+                echo "⚠️  DATABASE_URL aponta para arquivo inexistente ($DATABASE_URL) — usando banco empacotado"
+                export DATABASE_URL="$DEFAULT_PACKAGED_DATABASE_URL"
+            fi
+            ;;
+    esac
 
     if [ "$DATABASE_URL" = "$DEFAULT_PACKAGED_DATABASE_URL" ]; then
         if [ ! -f "$DEFAULT_PACKAGED_DB_PATH" ]; then

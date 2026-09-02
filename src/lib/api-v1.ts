@@ -23,6 +23,19 @@ export function v1Preflight() {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS })
 }
 
+/**
+ * Repassa a resposta de um handler web interno para a API v1, trocando apenas
+ * os headers por CORS v1 (o corpo/status originais são preservados). Usado nos
+ * wrappers que reaproveitam handlers do site (checkout, mensagens, cupons).
+ */
+export async function v1Passthrough(res: Response): Promise<NextResponse> {
+  const text = await res.text()
+  return new NextResponse(text, {
+    status: res.status,
+    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+  })
+}
+
 /** Origin absoluta do request — respeita proxy (x-forwarded-*) para montar URLs */
 export function getOrigin(req: NextRequest): string {
   const host = req.headers.get('x-forwarded-host') || req.headers.get('host')

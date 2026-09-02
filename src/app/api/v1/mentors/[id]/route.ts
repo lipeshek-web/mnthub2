@@ -13,7 +13,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     const profile = await db.mentorProfile.findFirst({
       where: { id, isPublished: true },
       include: {
-        user: { select: { id: true, name: true, avatarUrl: true, bio: true } },
+        user: { select: { name: true, avatarUrl: true, bio: true } },
         reviews: { select: { rating: true } },
       },
     })
@@ -30,7 +30,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     return v1Json({
       mentor: {
         ...serializeMobileMentorCard(profile, origin),
-        userId: profile.user.id,
+        // userId do usuário dono do perfil — usado pelo app para abrir conversa
+        // (mensagens diretas são entre usuários, não entre perfis de mentor)
+        userId: profile.userId,
         description: profile.description,
         languages: profile.languages.split(',').map((s) => s.trim()).filter(Boolean),
         instagram: profile.instagram,
