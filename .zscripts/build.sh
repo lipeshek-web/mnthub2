@@ -135,14 +135,24 @@ if [ -d "public" ]; then
     cp -r public "$BUILD_DIR/next-service-dist/"
 fi
 
-# Copia .env (se existir) para dentro do standalone — variáveis de RUNTIME
-# (ex.: TURSO_DATABASE_URL / TURSO_AUTH_TOKEN do modo nuvem) não são embutidas
-# pelo Next no standalone; sem isso a produção sobe sem config e cai no
-# SQLite empacotado (dados congelados no publish). Mantém também a cópia do
-# banco empacotado como fallback (start.sh decide em runtime).
+# Copia as variáveis de RUNTIME para dentro do standalone — .env NÃO é embutido
+# pelo Next no standalone; sem isso a produção sobe sem config e cai no SQLite
+# empacotado (dados congelados no publish). Mantém também a cópia do banco
+# empacotado como fallback (start.sh decide em runtime).
+#
+# Ordem de resolução (persistência à prova de downgrade):
+#   1. .env do workspace (fonte primária, gitignored)
+#   2. .zscripts/cloud.env (fallback VERSIONADO no git — se o workspace sofrer
+#      downgrade e perder o .env, o publish ainda sai em modo nuvem e os dados
+#      do Turso permanecem visíveis; sem isso o usuário veria "tudo zerado")
 if [ -f ".env" ]; then
     cp .env "$BUILD_DIR/next-service-dist/.env"
     echo "  - Copiado .env para next-service-dist (config de runtime: modo nuvem)"
+elif [ -f "$SCRIPT_DIR/cloud.env" ]; then
+    cp "$SCRIPT_DIR/cloud.env" "$BUILD_DIR/next-service-dist/.env"
+    echo "  - ⚠️  .env ausente no workspace — usando fallback .zscripts/cloud.env (modo nuvem preservado)"
+else
+    echo "  - ❌ NEM .env NEM .zscripts/cloud.env encontrados — produção subirá no SQLite empacotado (dados congelados)!"
 fi
 
 # ─── FIX Bun ESM: shim para "@libsql/isomorphic-fetch" ───
