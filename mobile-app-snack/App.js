@@ -35,7 +35,7 @@
  * a interface recalcula as cores da paleta nova.
  */
 import "react-native-gesture-handler";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -54,16 +54,20 @@ import { Ionicons } from "@expo/vector-icons";
 import { AuthProvider, useAuth } from "./src/lib/auth";
 import { ThemeProvider, useThemeMode } from "./src/lib/theme";
 import { TabsContext, useTabs, isTabName } from "./src/lib/tabs";
+import { unreadStore } from "./src/lib/unread";
 import { theme } from "./src/theme";
 import LoginScreen from "./src/screens/LoginScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import LivrosScreen from "./src/screens/LivrosScreen";
 import CursosScreen from "./src/screens/CursosScreen";
 import MentoriasScreen from "./src/screens/MentoriasScreen";
+import MensagensScreen from "./src/screens/MensagensScreen";
 import PerfilScreen from "./src/screens/PerfilScreen";
 import LivroScreen from "./src/screens/LivroScreen";
 import CursoScreen from "./src/screens/CursoScreen";
 import MentorScreen from "./src/screens/MentorScreen";
+import CheckoutScreen from "./src/screens/CheckoutScreen";
+import ChatScreen from "./src/screens/ChatScreen";
 import BuscaScreen from "./src/screens/BuscaScreen";
 import SalvosScreen from "./src/screens/SalvosScreen";
 
@@ -102,12 +106,13 @@ function Splash() {
 
 /* ------------------------------ Abas (pager) -------------------------------- */
 
-/** Itens da tab bar — 4 abas; o Perfil fica no stack (ícone da conta na Home). */
+/** Itens da tab bar — 5 abas; o Perfil fica no stack (ícone da conta na Home). */
 const TABS = [
   { name: "Início", icon: "home-outline", Component: HomeScreen },
   { name: "Livros", icon: "book-outline", Component: LivrosScreen },
   { name: "Cursos", icon: "play-circle-outline", Component: CursosScreen },
   { name: "Mentorias", icon: "videocam-outline", Component: MentoriasScreen },
+  { name: "Mensagens", icon: "chatbubbles-outline", Component: MensagensScreen },
 ];
 
 function MainTabs() {
@@ -116,6 +121,7 @@ function MainTabs() {
   const { width, height: windowHeight } = useWindowDimensions();
   const route = useRoute();
   const { tab, setTab } = useTabs();
+  const unread = useSyncExternalStore(unreadStore.subscribe, unreadStore.get);
 
   const scrollRef = useRef(null);
   // Lazy: cada tela só monta na primeira visita (e depois fica montada).
@@ -199,11 +205,18 @@ function MainTabs() {
               accessibilityState={{ selected: active }}
               accessibilityLabel={name}
             >
-              <Ionicons
-                name={icon}
-                size={24}
-                color={active ? theme.colors.accent : theme.colors.textFaint}
-              />
+              <View>
+                <Ionicons
+                  name={icon}
+                  size={24}
+                  color={active ? theme.colors.accent : theme.colors.textFaint}
+                />
+                {name === "Mensagens" && unread > 0 ? (
+                  <View style={styles.tabBadge}>
+                    <Text style={styles.tabBadgeText}>{unread > 9 ? "9+" : unread}</Text>
+                  </View>
+                ) : null}
+              </View>
               <Text
                 style={[
                   styles.tabLabel,
@@ -237,6 +250,8 @@ function RootNavigator() {
       <Stack.Screen name="Livro" component={LivroScreen} />
       <Stack.Screen name="Curso" component={CursoScreen} />
       <Stack.Screen name="Mentor" component={MentorScreen} />
+      <Stack.Screen name="Checkout" component={CheckoutScreen} />
+      <Stack.Screen name="Chat" component={ChatScreen} />
       <Stack.Screen name="Perfil" component={PerfilScreen} />
       <Stack.Screen name="Busca" component={BuscaScreen} />
       <Stack.Screen name="Salvos" component={SalvosScreen} />
@@ -286,7 +301,7 @@ function ThemedStatusBar() {
 
 export default function App() {
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider style={{ height: "100%", width: "100%", overflow: "hidden" }}>
       <ThemeProvider>
         <AuthProvider>
           <ThemedStatusBar />
@@ -337,4 +352,19 @@ const makeStyles = () =>
       minHeight: 50,
     },
     tabLabel: { fontSize: 11, fontWeight: "600" },
+    tabBadge: {
+      position: "absolute",
+      top: -4,
+      right: -8,
+      minWidth: 16,
+      height: 16,
+      paddingHorizontal: 4,
+      borderRadius: 999,
+      backgroundColor: theme.colors.danger,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1.5,
+      borderColor: theme.colors.surface,
+    },
+    tabBadgeText: { color: theme.colors.white, fontSize: 9.5, fontWeight: "800" },
   });

@@ -2,14 +2,19 @@
 
 App do aluno do MentorHub, publicado e testado de ponta a ponta. Dois jeitos de abrir:
 
-1. **Expo Snack (link direto):** **https://snack.expo.dev/rFIS7l6RH6dq12wOssZyv**
+1. **Expo Snack (link direto):** **https://snack.expo.dev/Kaem6wqj7dUG6LZ72YoMc**
    - No preview **Web** (painel direito) ou no celular com o app **Expo Go** escaneando o QR Code ("My Device").
-   - Publicado via API oficial (`exp.host/--/api/v2/snack/save`) com código (50 arquivos) + 11 dependências — abrindo o link, já está tudo lá (nada de copiar/colar).
+   - Publicado via API oficial (`exp.host/--/api/v2/snack/save`) com código (54 arquivos) + 12 dependências — abrindo o link, já está tudo lá (nada de copiar/colar).
 2. **Web app no site:** **https://mentorhub.space-z.ai/app-mobile/** — o mesmo código exportado (`expo export --platform web`) e servido junto do site (atualizado a cada publish).
 
 Mesma API (`/api/v1`, JWT Bearer 30 dias), mesmo visual, mesmos dados do Turso em produção.
 
 > ⚠️ **Lição crítica (2026-09-02):** projetos salvos no Snack contendo arquivos do tipo **ASSET** deixam o preview Web eternamente em "Loading..." (provado por probes A/B: snack idêntico com assets trava; sem assets roda). Por isso as páginas dos livros são embutidas como **data URI base64 dentro do código** (`src/lib/bookPagesData/`) e o publish (`scripts/publish-snack.js`) envia SOMENTE arquivos CODE. O manifest do runtime via EAS Update também pode responder 429 (cota da conta anônima), mas isso NÃO impede o preview web de rodar.
+
+> ⚠️ **Importante:** compra e mensagens usam rotas `/api/v1` novas (checkout, cupons,
+pagamentos, mensagens) — **publique o site na plataforma** para que o app (que fala
+com a produção) as tenha; sem o publish, o app abre e navega, mas compra/mensagens
+responderão 404.
 
 ## 🔑 Login
 
@@ -24,8 +29,9 @@ Mesma API (`/api/v1`, JWT Bearer 30 dias), mesmo visual, mesmos dados do Turso e
 - **Login** — campo "Servidor da API" configurável (padrão: produção)
 - **Início** — XP, ofensiva, meta semanal, "Continuar estudando", novos livros, recomendados
 - **Livros** — biblioteca com busca/filtros e **LEITOR DE PDF NATIVO**: pager página a página (sem WebView e sem browser), zoom por dois toques, modo noturno, barra de progresso arrastável e retomada da leitura. As páginas dos 5 livros do catálogo vêm embutidas no app (abertura instantânea) e também são servidas por `GET /api/v1/library/:id/reader` (URLs absolutas de `/library-pages/<id>/p<N>.png`) — livros novos respondem 404 com mensagem amigável até terem páginas renderizadas
-- **Cursos** — catálogo com preços, inscrição em cursos gratuitos (pagos → orienta comprar pelo site), progresso e concluir aula
-- **Mentorias** — buscar mentores, ver horários livres, agendar, acompanhar e cancelar sessões
+- **Cursos** — catálogo com preços, inscrição em cursos gratuitos, **CHECKOUT COMPLETO NO APP** para cursos pagos (PIX com QR Code + copia-e-cola, cartão, boleto, cupom de desconto, polling automático de confirmação — sem sair do app), progresso e concluir aula
+- **Mentorias** — buscar mentores, ver horários livres, agendar, **pagar a sessão 1:1 no app** (botão "Pagar agora" nas pendentes), acompanhar e cancelar sessões
+- **Mensagens** — caixa de entrada com badge de não lidas na tab bar, conversa 1:1 com bolhas, envio com confirmação de leitura e polling automático; abrir conversa pelo perfil do mentor ("Enviar mensagem")
 - **Perfil** — dados da conta, notificações (marcar todas como lidas), sair
 - **Extras** — busca global, salvos (favoritos locais), tema claro/escuro persistido
 

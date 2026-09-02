@@ -12,7 +12,6 @@ import { savePendingCheckout } from "../lib/pendingCheckout";
 import {
   ActivityIndicator,
   Alert,
-  Linking,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -20,13 +19,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import * as WebBrowser from "expo-web-browser";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   ApiError,
-  siteUrl,
   enrollCourse,
   errMessage,
   getCourse,
@@ -102,6 +100,17 @@ export default function CourseDetailScreen() {
     void load("initial");
   }, [load]);
 
+  // Recarrega ao voltar do checkout — a compra feita no app libera o curso
+  // e o aluno já vê o conteúdo sem precisar reabrir a tela.
+  useFocusEffect(
+    useCallback(() => {
+      // pula o 1º focus (o load("initial") acima já cobre a abertura)
+      if (mountedRef.current) void load("refresh");
+      else mountedRef.current = true;
+    }, [load])
+  );
+  const mountedRef = useRef(false);
+
   // Limpa o timer do toast de XP ao desmontar.
   useEffect(() => {
     return () => {
@@ -123,14 +132,6 @@ export default function CourseDetailScreen() {
     }
   }
 
-  
-async function openExternal(url: string) {
-    try {
-      await Linking.openURL(url);
-    } catch {
-      Alert.alert("Não foi possível abrir o link", url);
-    }
-  }
 
   async function handleEnroll() {
     if (!detail || enrolling) return;
@@ -141,24 +142,20 @@ async function openExternal(url: string) {
       await load("refresh");
     } catch (err) {
       if (err instanceof ApiError && err.status === 402) {
-        // Curso pago: checkout no site seguro. Guarda a intenção de compra —
-        // se a sessão cair antes de concluir, o app retoma direto neste curso
-        // após o novo login.
+        // Curso pago: CHECKOUT COMPLETO DENTRO DO APP (PIX, cartão, boleto,
+        // cupom). Guarda a intenção de compra — se a sessão cair antes de
+        // concluir, o app retoma direto neste curso após o novo login.
         const price =
           typeof err.payload?.price === "number" ? err.payload.price : detail.course.price;
         await savePendingCheckout(detail.course.id);
-        Alert.alert(
-          "Finalizar compra do curso",
-          `${err.message}${price > 0 ? `\n\nValor do curso: ${formatPrice(price)}` : ""}\n\nO pagamento é processado no site seguro do MentorHub — você volta pro app depois de concluir.`,
-          [
-            { text: "Depois", style: "cancel" },
-            {
-              text: "Continuar para o pagamento",
-              onPress: () =>
-                void openExternal(`${siteUrl()}/cursos/${detail.course.id}?checkout=1&from=app`),
-            },
-          ]
-        );
+        navigation.push("Checkout", {
+          kind: "course",
+          itemId: detail.course.id,
+          title: detail.course.title,
+          price,
+          mentorName: detail.course.mentor?.name,
+          mentorAvatarUrl: detail.course.mentor?.avatarUrl ?? null,
+        });
       } else {
         Alert.alert("Não foi possível se inscrever", errMessage(err));
       }

@@ -163,7 +163,7 @@ const STATUS_MESSAGES: Record<number, string> = {
   0: "Não foi possível conectar ao servidor. Verifique sua internet e o endereço do servidor (campo “Servidor da API” no login).",
   400: "Requisição inválida. Verifique os dados e tente novamente.",
   401: "Sessão expirada. Faça login novamente.",
-  402: "Este curso é pago. A compra é feita pelo site do MentorHub.",
+  402: "Este item é pago. Finalize a compra aqui mesmo no app.",
   403: "Você não tem permissão para isso.",
   404: "Conteúdo não encontrado.",
   409: "Este horário ficou indisponível. Escolha outro, por favor.",
@@ -413,6 +413,8 @@ export interface MentorListItem {
 }
 
 export interface MentorDetail extends MentorListItem {
+  /** Id do USUÁRIO dono do perfil — destino das mensagens diretas. */
+  userId: string;
   description: string | null;
   languages: string[];
   instagram: string | null;
@@ -452,8 +454,10 @@ export interface Booking {
   meetingRoom: string | null;
   price: number;
   createdAt: string;
-  mentor: { id: string; name: string; headline: string | null; avatarUrl: string | null };
+  mentor: { id: string; userId?: string; name: string; headline: string | null; avatarUrl: string | null };
   reviewed: boolean;
+  /** true quando já existe pedido pago para esta sessão. */
+  paid?: boolean;
 }
 
 export interface BookingInput {
@@ -509,8 +513,111 @@ export interface NotificationsResponse {
   unread: number;
 }
 
+/* Checkout / pagamentos */
+
+export type PaymentMethod = "PIX" | "CREDIT_CARD" | "BOLETO";
+
+/** GET /payments/config — qual fluxo de checkout o servidor usa. */
+export interface PaymentsConfig {
+  gateway: "ASAAS" | "SIMULADO";
+  env: string | null;
+}
+
+/** POST /checkout — resposta do modo demonstração (pago na hora). */
+export interface CheckoutPaidResponse {
+  order: {
+    id: string;
+    itemKind: string;
+    itemTitle: string;
+    amount: number;
+    paymentMethod: PaymentMethod;
+    status: "PAID";
+    createdAt: string;
+  };
+  alreadyEnrolled: boolean;
+}
+
+/** POST /checkout — resposta do modo gateway (aguardando pagamento). */
+export interface CheckoutPendingResponse {
+  pending: true;
+  order: {
+    id: string;
+    itemKind: string;
+    itemTitle: string;
+    amount: number;
+    paymentMethod: PaymentMethod;
+    status: "PENDING";
+    createdAt: string;
+  };
+  payment: {
+    id: string;
+    gatewayPaymentId: string;
+    billingType: PaymentMethod;
+    status: "PENDING";
+    value: number;
+    invoiceUrl: string | null;
+    env: string | null;
+    pix?: { payload: string; encodedImage: string };
+  };
+}
+
+export type CheckoutResponse = CheckoutPaidResponse | CheckoutPendingResponse;
+
+/** GET /payments/status — estado da cobrança (sincroniza com o Asaas). */
+export interface PaymentStatusResponse {
+  status: string;
+  orderStatus: string;
+  billingType: PaymentMethod;
+  invoiceUrl: string | null;
+}
+
+/** POST /coupons/validate — cupom válido para o item. */
+export interface CouponValidation {
+  ok: true;
+  code: string;
+  label: string | null;
+  discount: number;
+  finalPrice: number;
+}
+
+/* Mensagens diretas */
+
+export interface MessagePeer {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  isMentor: boolean;
+  headline?: string | null;
+}
+
+export interface DirectMessage {
+  id: string;
+  body: string;
+  mine: boolean;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface MessagesResponse {
+  peer: MessagePeer;
+  items: DirectMessage[];
+}
+
+export interface Thread {
+  peer: MessagePeer;
+  lastBody: string;
+  lastAt: string;
+  lastMine: boolean;
+  unread: number;
+}
+
+export interface ThreadsResponse {
+  unreadTotal: number;
+  threads: Thread[];
+}
+
 /* ------------------------------------------------------------------ */
-/* Endpoints (17 rotas)                                                */
+/* Endpoints (25 rotas)                                                */
 /* ------------------------------------------------------------------ */
 
 /* 1) Auth */
@@ -679,4 +786,75 @@ export async function markAllNotificationsRead(): Promise<{ ok: boolean }> {
     method: "POST",
     body: { action: "read-all" },
   });
+}
+
+/* 18) Config de checkout (gateway real ou demonstração) — público */
+
+export async function getPaymentsConfig(): Promise<PaymentsConfig> {
+  return request<PaymentsConfig>("/payments/config", { auth: false });
+}
+
+/* 19) Validar cupom (antes do checkout) */
+
+export interface CouponInput {
+  code: string;
+  courseId?: string;
+  bookingId?: string;
+}
+
+export async function validateCoupon(input: CouponInput): Promise<CouponValidation> {
+  return request<CouponValidation>("/coupons/validate", {
+    method: "POST",
+    body: input,
+  });
+}
+
+/* 20) Checkout (curso pago ou sessão 1:1) */
+
+export interface CheckoutInput {
+  courseId?: string;
+  bookingId?: string;
+  paymentMethod: PaymentMethod;
+  couponCode?: string;
+  /** Exigido pelo gateway (Asaas) — ignorado no modo demonstração. */
+  cpfCnpj?: string;
+}
+
+export async function createCheckout(input: CheckoutInput): Promise<CheckoutResponse> {
+  return request<CheckoutResponse>("/checkout", { method: "POST", body: input });
+}
+
+/* 21) Status da cobrança (polling até PAID) */
+
+export async function getPaymentStatus(paymentId: string): Promise<PaymentStatusResponse> {
+  return request<PaymentStatusResponse>("/payments/status", {
+    query: { paymentId },
+  });
+}
+
+/* 22) Caixa de entrada (conversas) */
+
+export async function listThreads(): Promise<ThreadsResponse> {
+  return request<ThreadsResponse>("/messages/threads");
+}
+
+/* 23) Conversa com um par (GET marca como lidas as recebidas) */
+
+export async function listMessages(peerId: string): Promise<MessagesResponse> {
+  return request<MessagesResponse>("/messages", { query: { peerId } });
+}
+
+/* 24) Enviar mensagem direta */
+
+export async function sendMessage(peerId: string, body: string): Promise<DirectMessage> {
+  return request<DirectMessage>("/messages", {
+    method: "POST",
+    body: { peerId, body },
+  });
+}
+
+/* 25) Contagem de não lidas (badge da aba) */
+
+export async function getUnreadCount(): Promise<{ count: number }> {
+  return request<{ count: number }>("/messages/unread");
 }

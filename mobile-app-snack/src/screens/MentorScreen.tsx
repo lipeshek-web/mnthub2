@@ -96,6 +96,18 @@ export default function MentorDetailScreen() {
     setCreated(booking);
     setCreatedStartsAt(startsAt);
     setStage("success");
+    // Sessão paga: segue direto para o CHECKOUT no app (PIX/cartão/boleto).
+    // Ao concluir (ou voltar), o aluno cai na tela "Sessão solicitada".
+    if (booking.price > 0 && mentor) {
+      navigation.push("Checkout", {
+        kind: "booking",
+        itemId: booking.id,
+        title: `Sessão 1:1 com ${mentor.name}`,
+        price: booking.price,
+        mentorName: mentor.name,
+        mentorAvatarUrl: mentor.avatarUrl ?? null,
+      });
+    }
   }
 
   function resetToProfile() {
@@ -156,6 +168,7 @@ function MentorProfile({
   onSchedule: () => void;
 }) {
   const styles = makeStyles();
+  const navigation = useNavigation<any>();
   async function open(url: string) {
     try {
       await Linking.openURL(url);
@@ -307,7 +320,7 @@ function MentorProfile({
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* CTA de agendamento */}
+      {/* CTA de agendamento + mensagem direta */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={styles.cta}
@@ -318,6 +331,24 @@ function MentorProfile({
         >
           <Text style={styles.ctaText}>Agendar sessão</Text>
         </TouchableOpacity>
+        {mentor.userId ? (
+          <TouchableOpacity
+            style={styles.messageButton}
+            onPress={() =>
+              navigation.navigate("Chat", {
+                peerId: mentor.userId,
+                peerName: mentor.name,
+                peerAvatarUrl: mentor.avatarUrl ?? null,
+              })
+            }
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={`Enviar mensagem para ${mentor.name}`}
+          >
+            <Ionicons name="chatbubble-ellipses-outline" size={17} color={theme.colors.text} />
+            <Text style={styles.messageButtonText}>Enviar mensagem</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     </View>
   );
@@ -720,7 +751,19 @@ const makeStyles = () =>
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
     backgroundColor: theme.colors.bg,
+    gap: theme.spacing.sm,
   },
+  messageButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: theme.radius.md,
+    borderWidth: 1.5,
+    borderColor: theme.colors.borderStrong,
+  },
+  messageButtonText: { color: theme.colors.text, fontWeight: "700", fontSize: 14 },
   cta: {
     alignItems: "center",
     justifyContent: "center",

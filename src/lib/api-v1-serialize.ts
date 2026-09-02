@@ -231,8 +231,9 @@ export function serializeMobileBooking(booking: {
   meetingRoom: string
   price: number
   createdAt: Date
-  mentor: { id: string; user: { name: string; avatarUrl: string | null } }
+  mentor: { id: string; userId: string; user: { name: string; avatarUrl: string | null } }
   review: { id: string } | null
+  orders?: { status: string }[]
 }) {
   return {
     id: booking.id,
@@ -246,10 +247,14 @@ export function serializeMobileBooking(booking: {
     createdAt: booking.createdAt.toISOString(),
     mentor: {
       id: booking.mentor.id,
+      // userId p/ abrir conversa e pagar a sessão no app (checkout usa usuário)
+      userId: booking.mentor.userId,
       name: booking.mentor.user.name,
       avatarUrl: absolutize(booking.mentor.user.avatarUrl, ''),
     },
     reviewed: Boolean(booking.review),
+    // true quando existe pedido PAID para esta sessão (esconde "Pagar agora")
+    paid: (booking.orders ?? []).some((o) => o.status === 'PAID'),
   }
 }
 
@@ -267,8 +272,9 @@ export async function loadMobileBookings(studentId: string, opts?: { upcomingOnl
         : {}),
     },
     include: {
-      mentor: { select: { id: true, user: { select: { name: true, avatarUrl: true } } } },
+      mentor: { select: { id: true, userId: true, user: { select: { name: true, avatarUrl: true } } } },
       review: { select: { id: true } },
+      orders: { select: { status: true } },
     },
     orderBy: { startsAt: opts?.upcomingOnly ? 'asc' : 'desc' },
     take: opts?.take,
