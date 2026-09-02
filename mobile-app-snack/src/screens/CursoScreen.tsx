@@ -1,18 +1,22 @@
 /**
- * Detalhe do curso (tela mais rica do app):
- * - Não inscrito: hero com capa em gradiente, mentor, rating, preço e botão
- *   "Inscrever-se" (402 = curso pago → Alert com preço e opção de comprar no site).
- * - Inscrito: progresso destacado, card "Aula atual" (descrição, assistir/materiais,
- *   concluir +XP, navegação anterior/próxima) e lista compacta de aulas com
- *   círculo numerado/check — toque na linha seleciona a aula, círculo alterna
- *   a conclusão.
+ * Detalhe do curso — agora com FOCO NO CONTEÚDO.
+ *
+ * Inscrito → "sala de aula": abre DIRETO no conteúdo da aula atual (leitura,
+ * vídeo ou encontro ao vivo + materiais), com barra de ações FIXA no rodapé
+ * (Anterior · Concluir +XP · Próxima). O índice completo do curso (temas e
+ * aulas) fica escondido: só aparece quando o aluno toca no botão "Conteúdos".
+ *
+ * Não inscrito → página de venda compacta (capa, mentor, preço, descrição) com
+ * CTA: gratuito inscreve na hora; pago abre o CHECKOUT DENTRO DO APP (PIX,
+ * cartão ou boleto) — sem enviar o aluno para o site.
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { savePendingCheckout } from "../lib/pendingCheckout";
 import {
   ActivityIndicator,
   Alert,
   Linking,
+  Modal,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -26,7 +30,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   ApiError,
-  siteUrl,
   enrollCourse,
   errMessage,
   getCourse,
@@ -73,11 +76,12 @@ export default function CourseDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [enrolling, setEnrolling] = useState(false);
   const [togglingIds, setTogglingIds] = useState<string[]>([]);
-  const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
-  // Aula em destaque no card "Aula atual" (selecionada pelo usuário ou a próxima pendente).
+  // Índice do curso (temas + aulas) — SÓ abre pelo botão "Conteúdos".
+  const [showIndex, setShowIndex] = useState(false);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [xpToast, setXpToast] = useState<string | null>(null);
   const xpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const contentScrollRef = useRef<ScrollView | null>(null);
 
   const load = useCallback(
     async (mode: "initial" | "refresh") => {
@@ -102,7 +106,6 @@ export default function CourseDetailScreen() {
     void load("initial");
   }, [load]);
 
-  // Limpa o timer do toast de XP ao desmontar.
   useEffect(() => {
     return () => {
       if (xpTimerRef.current) clearTimeout(xpTimerRef.current);
@@ -123,45 +126,21 @@ export default function CourseDetailScreen() {
     }
   }
 
-  
-async function openExternal(url: string) {
-    try {
-      await Linking.openURL(url);
-    } catch {
-      Alert.alert("Não foi possível abrir o link", url);
-    }
-  }
-
   async function handleEnroll() {
     if (!detail || enrolling) return;
+    const course = detail.course;
+    if (course.price > 0) {
+      // Pago → checkout COMPLETO dentro do app (PIX/cartão/boleto via Asaas).
+      navigation.navigate("Checkout", { id: course.id });
+      return;
+    }
     setEnrolling(true);
     try {
-      await enrollCourse(detail.course.id);
+      await enrollCourse(course.id);
       Alert.alert("Inscrição confirmada!", "Agora você tem acesso a todas as aulas deste curso.");
       await load("refresh");
     } catch (err) {
-      if (err instanceof ApiError && err.status === 402) {
-        // Curso pago: checkout no site seguro. Guarda a intenção de compra —
-        // se a sessão cair antes de concluir, o app retoma direto neste curso
-        // após o novo login.
-        const price =
-          typeof err.payload?.price === "number" ? err.payload.price : detail.course.price;
-        await savePendingCheckout(detail.course.id);
-        Alert.alert(
-          "Finalizar compra do curso",
-          `${err.message}${price > 0 ? `\n\nValor do curso: ${formatPrice(price)}` : ""}\n\nO pagamento é processado no site seguro do MentorHub — você volta pro app depois de concluir.`,
-          [
-            { text: "Depois", style: "cancel" },
-            {
-              text: "Continuar para o pagamento",
-              onPress: () =>
-                void openExternal(`${siteUrl()}/cursos/${detail.course.id}?checkout=1&from=app`),
-            },
-          ]
-        );
-      } else {
-        Alert.alert("Não foi possível se inscrever", errMessage(err));
-      }
+      Alert.alert("Não foi possível se inscrever", errMessage(err));
     } finally {
       setEnrolling(false);
     }
@@ -230,6 +209,11 @@ async function openExternal(url: string) {
     if (next) setSelectedLessonId(next.id);
   }
 
+  function selectLesson(lesson: Lesson) {
+    setSelectedLessonId(lesson.id);
+    setShowIndex(false);
+  }
+
   const sections: Array<{ key: string; title: string; description: string | null; lessons: Lesson[] }> = [];
   if (detail) {
     if (detail.lessons.length > 0) {
@@ -254,6 +238,40 @@ async function openExternal(url: string) {
       });
   }
 
+  // Conteúdo da aula atual (inscrito) — o "foco" da tela.
+  const lessonContent =
+    currentLesson && !currentLesson.locked && currentLesson.content
+      ? currentLesson.content
+      : null;
+  const videoUrl =
+    currentLesson && !currentLesson.locked && currentLesson.kind === "RECORDED"
+      ? currentLesson.videoUrl
+      : null;
+  const meetingUrl =
+    currentLesson && !currentLesson.locked && currentLesson.kind === "LIVE"
+      ? currentLesson.meetingUrl
+      : null;
+  const liveWhen =
+    currentLesson && !currentLesson.locked && currentLesson.kind === "LIVE" && currentLesson.startsAt
+      ? formatNaiveLong(currentLesson.startsAt)
+      : null;
+  const attachments =
+    currentLesson && !currentLesson.locked ? currentLesson.attachments ?? [] : [];
+  const currentCompleted = currentLesson ? completedIds.includes(currentLesson.id) : false;
+
+  // Ao trocar de aula, volta ao topo do conteúdo.
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      try {
+        contentScrollRef.current?.scrollTo({ y: 0, animated: false });
+      } catch {
+        /* sem conteúdo */
+      }
+    });
+  }, [currentLesson?.id]);
+
+  /* ------------------------------- Render ------------------------------- */
+
   return (
     <Screen edges={["top", "left", "right", "bottom"]}>
       {loading ? (
@@ -263,169 +281,400 @@ async function openExternal(url: string) {
       ) : detail && course ? (
         <View style={styles.flex}>
           <ScreenHeader title="Curso" onBack={() => navigation.goBack()} />
-          <ScrollView
-            style={styles.flex}
-            contentContainerStyle={styles.content}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={() => void load("refresh")}
-                tintColor={theme.colors.accent}
-                colors={[theme.colors.accent]}
-                progressBackgroundColor={theme.colors.surface}
-              />
-            }
-          >
-            {/* Hero: capa com gradiente e título sobreposto */}
-            <View style={styles.hero}>
-              <RemoteImage
-                uri={course.coverUrl}
-                style={styles.heroCover}
-                recyclingKey={course.id}
-                fallbackIcon="play-circle-outline"
-                errorIcon="image-outline"
-                iconSize={38}
-              />
-              <LinearGradient
-                colors={["transparent", theme.colors.overlay]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                style={styles.heroGradient}
-              >
-                <Text style={styles.heroTitle} numberOfLines={3}>
-                  {course.title}
-                </Text>
-              </LinearGradient>
-            </View>
 
-            {/* Mentor + rating */}
-            <TouchableOpacity
-              style={styles.mentorRow}
-              onPress={() => navigation.navigate("Mentor", { id: course.mentor.id })}
-              activeOpacity={0.85}
-            >
-              <Avatar uri={course.mentor.avatarUrl} name={course.mentor.name} size={38} />
-              <View style={styles.mentorInfo}>
-                <Text style={styles.mentorName} numberOfLines={1}>
-                  Por {course.mentor.name}
-                </Text>
-                <View style={styles.ratingRow}>
-                  <Stars value={course.rating} size={12} />
-                  <Text style={styles.ratingText}>
-                    {(course.rating ?? 0).toFixed(1)} ({course.reviewCount})
+          {enrolled ? (
+            <>
+              {/* Barra FIXA do topo: título + progresso + botão de conteúdos */}
+              <View style={styles.classBar}>
+                <View style={styles.classBarInfo}>
+                  <Text style={styles.classBarTitle} numberOfLines={1}>
+                    {course.title}
+                  </Text>
+                  <Text style={styles.classBarMeta}>
+                    {completedIds.length} de {totalLessons} aulas · {pct}%
                   </Text>
                 </View>
+                <TouchableOpacity
+                  style={styles.indexButton}
+                  onPress={() => setShowIndex(true)}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ver conteúdos do curso"
+                >
+                  <Ionicons name="list-outline" size={15} color={theme.colors.accent} />
+                  <Text style={styles.indexButtonText}>Conteúdos</Text>
+                </TouchableOpacity>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={theme.colors.textFaint} />
-            </TouchableOpacity>
 
-            {/* Metadados */}
-            <View style={styles.chipsRow}>
-              <Chip label={course.category} tone="accent" />
-              {levelLabel(course.level) ? <Chip label={levelLabel(course.level)} tone="outline" /> : null}
-              {course.liveCount > 0 ? <Chip label={`${course.liveCount} ao vivo`} /> : null}
-            </View>
-            <Text style={styles.metaLine}>
-              {course.lessonCount} aulas
-              {course.totalDurationMin > 0 ? ` · ${formatDuration(course.totalDurationMin)}` : ""}
-              {course.studentCount > 0 ? ` · ${formatNumber(course.studentCount)} alunos` : ""}
-            </Text>
+              {/* CONTEÚDO da aula — a única área rolável */}
+              {currentLesson ? (
+                <ScrollView
+                  ref={contentScrollRef}
+                  style={styles.flex}
+                  contentContainerStyle={styles.classContent}
+                  showsVerticalScrollIndicator={false}
+                  refreshControl={
+                    <RefreshControl
+                      refreshing={refreshing}
+                      onRefresh={() => void load("refresh")}
+                      tintColor={theme.colors.accent}
+                      colors={[theme.colors.accent]}
+                      progressBackgroundColor={theme.colors.surface}
+                    />
+                  }
+                >
+                  {/* Cabeçalho da aula */}
+                  <View style={styles.lessonHead}>
+                    <View style={styles.lessonHeadRow}>
+                      <Text style={styles.lessonOverline}>
+                        Aula {currentIndex + 1} de {allLessons.length}
+                      </Text>
+                      <Chip label={KIND_META[currentLesson.kind].label} tone="accent" />
+                    </View>
+                    <Text style={styles.lessonTitle}>{currentLesson.title}</Text>
+                    {currentLesson.durationMin > 0 ? (
+                      <View style={styles.lessonMetaRow}>
+                        <Ionicons name="time-outline" size={12} color={theme.colors.textFaint} />
+                        <Text style={styles.lessonMeta}>{formatDuration(currentLesson.durationMin)}</Text>
+                      </View>
+                    ) : null}
+                    {liveWhen ? <Text style={styles.lessonLiveWhen}>Encontro: {liveWhen}</Text> : null}
+                    {currentLesson.description ? (
+                      <Text style={styles.lessonDescription}>{currentLesson.description}</Text>
+                    ) : null}
+                  </View>
 
-            {/* Preço */}
-            <View style={styles.priceRow}>
-              <Text style={[styles.price, course.price > 0 ? null : styles.priceFree]}>
-                {formatPrice(course.price)}
-              </Text>
-              {enrolled ? <Chip label="Inscrito" tone="accent" /> : null}
-            </View>
+                  {/* Ações de vídeo / sala ao vivo */}
+                  {videoUrl ? (
+                    <TouchableOpacity
+                      style={styles.playCard}
+                      onPress={() => void openInBrowser(videoUrl)}
+                      activeOpacity={0.85}
+                      accessibilityRole="button"
+                      accessibilityLabel="Assistir aula em vídeo"
+                    >
+                      <View style={styles.playIcon}>
+                        <Ionicons name="play" size={20} color={theme.colors.onAccent} />
+                      </View>
+                      <View style={styles.playInfo}>
+                        <Text style={styles.playTitle}>Assistir aula</Text>
+                        <Text style={styles.playHint}>Vídeo da aula {currentIndex + 1}</Text>
+                      </View>
+                      <Ionicons name="open-outline" size={15} color={theme.colors.textFaint} />
+                    </TouchableOpacity>
+                  ) : null}
+                  {meetingUrl ? (
+                    <TouchableOpacity
+                      style={styles.playCard}
+                      onPress={() => void openInBrowser(meetingUrl)}
+                      activeOpacity={0.85}
+                      accessibilityRole="button"
+                      accessibilityLabel="Abrir sala de transmissão ao vivo"
+                    >
+                      <View style={styles.playIcon}>
+                        <Ionicons name="videocam" size={20} color={theme.colors.onAccent} />
+                      </View>
+                      <View style={styles.playInfo}>
+                        <Text style={styles.playTitle}>Sala de transmissão</Text>
+                        <Text style={styles.playHint}>{liveWhen ?? "Encontro ao vivo"}</Text>
+                      </View>
+                      <Ionicons name="open-outline" size={15} color={theme.colors.textFaint} />
+                    </TouchableOpacity>
+                  ) : null}
 
-            {course.description ? <Text style={styles.description}>{course.description}</Text> : null}
+                  {/* CONTEÚDO principal (leitura) — direto na tela */}
+                  {lessonContent ? (
+                    <View style={styles.contentCard}>
+                      <RichText text={lessonContent} />
+                    </View>
+                  ) : !videoUrl && !meetingUrl ? (
+                    <View style={styles.contentEmpty}>
+                      <Ionicons
+                        name={KIND_META[currentLesson.kind].icon}
+                        size={22}
+                        color={theme.colors.textFaint}
+                      />
+                      <Text style={styles.contentEmptyText}>
+                        O material desta aula aparece aqui quando o mentor publicar.
+                      </Text>
+                    </View>
+                  ) : null}
 
-            {/* Progresso (inscrito) ou aviso de bloqueio */}
-            {enrolled ? (
-              <View style={styles.progressCard}>
-                <View style={styles.progressHeader}>
-                  <Text style={styles.progressTitle}>Seu progresso</Text>
-                  <View style={styles.progressPill}>
-                    <Text style={styles.progressPct}>{pct}%</Text>
+                  {/* Materiais / anexos */}
+                  {attachments.length > 0 ? (
+                    <View style={styles.attachBlock}>
+                      <Text style={styles.attachTitle}>Materiais da aula</Text>
+                      {attachments.map((attachment) => (
+                        <TouchableOpacity
+                          key={attachment.url}
+                          style={styles.attachmentRow}
+                          onPress={() => void openInBrowser(attachment.url)}
+                          activeOpacity={0.8}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Abrir material ${attachment.name}`}
+                        >
+                          <Ionicons name="attach" size={13} color={theme.colors.accent} />
+                          <Text style={styles.attachmentName} numberOfLines={1}>
+                            {attachment.name}
+                          </Text>
+                          <Ionicons name="open-outline" size={13} color={theme.colors.textFaint} />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  ) : null}
+
+                  <View style={styles.classFooterSpacer} />
+                </ScrollView>
+              ) : (
+                <EmptyState
+                  icon="library-outline"
+                  title="Nenhuma aula publicada"
+                  message="As aulas deste curso aparecerão aqui."
+                />
+              )}
+
+              {/* Barra de ações FIXA: Anterior · Concluir · Próxima */}
+              {currentLesson ? (
+                <View style={styles.actionBar}>
+                  <TouchableOpacity
+                    style={[styles.navSide, currentIndex <= 0 && styles.navSideDisabled]}
+                    onPress={() => goToLesson(-1)}
+                    disabled={currentIndex <= 0}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Aula anterior"
+                  >
+                    <Ionicons
+                      name="chevron-back"
+                      size={17}
+                      color={currentIndex > 0 ? theme.colors.textMuted : theme.colors.textFaint}
+                    />
+                    <Text style={styles.navSideText}>Anterior</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.completeCenter, currentCompleted && styles.completeCenterDone]}
+                    onPress={() => void handleToggleLesson(currentLesson)}
+                    disabled={togglingIds.includes(currentLesson.id) || currentLesson.locked}
+                    activeOpacity={0.85}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: currentCompleted }}
+                    accessibilityLabel={
+                      currentCompleted
+                        ? "Desmarcar aula como concluída"
+                        : "Marcar aula como concluída"
+                    }
+                  >
+                    {togglingIds.includes(currentLesson.id) ? (
+                      <ActivityIndicator size="small" color={currentCompleted ? theme.colors.accent : theme.colors.onAccent} />
+                    ) : (
+                      <>
+                        <Ionicons
+                          name={currentCompleted ? "checkmark" : "flash"}
+                          size={15}
+                          color={currentCompleted ? theme.colors.accent : theme.colors.onAccent}
+                        />
+                        <Text
+                          style={[
+                            styles.completeCenterText,
+                            currentCompleted && styles.completeCenterTextDone,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {currentCompleted ? "Concluída" : "Concluir aula"}
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.navSide,
+                      currentIndex >= allLessons.length - 1 && styles.navSideDisabled,
+                    ]}
+                    onPress={() => goToLesson(1)}
+                    disabled={currentIndex >= allLessons.length - 1}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Próxima aula"
+                  >
+                    <Text style={styles.navSideText}>Próxima</Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={17}
+                      color={
+                        currentIndex < allLessons.length - 1
+                          ? theme.colors.textMuted
+                          : theme.colors.textFaint
+                      }
+                    />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {/* ÍNDICE do curso — só abre pelo botão "Conteúdos" */}
+              <Modal
+                visible={showIndex}
+                animationType="slide"
+                transparent
+                onRequestClose={() => setShowIndex(false)}
+              >
+                <View style={styles.modalBackdrop}>
+                  <Pressable style={styles.modalBackdropTouch} onPress={() => setShowIndex(false)} />
+                  <View style={styles.modalSheet}>
+                    <View style={styles.modalHead}>
+                      <Text style={styles.modalTitle}>Conteúdos do curso</Text>
+                      <TouchableOpacity
+                        onPress={() => setShowIndex(false)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        accessibilityRole="button"
+                        accessibilityLabel="Fechar conteúdos"
+                      >
+                        <Ionicons name="close" size={22} color={theme.colors.textMuted} />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.modalProgress}>
+                      <View style={styles.modalProgressRow}>
+                        <Text style={styles.modalProgressMeta}>
+                          {completedIds.length} de {totalLessons} aulas concluídas
+                        </Text>
+                        <Text style={styles.modalProgressPct}>{pct}%</Text>
+                      </View>
+                      <ProgressBar pct={pct} height={8} />
+                    </View>
+                    <ScrollView
+                      style={styles.modalScroll}
+                      contentContainerStyle={styles.modalContent}
+                      showsVerticalScrollIndicator={false}
+                    >
+                      {sections.length === 0 ? (
+                        <EmptyState
+                          icon="library-outline"
+                          title="Nenhuma aula publicada"
+                          message="As aulas deste curso aparecerão aqui."
+                        />
+                      ) : (
+                        sections.map((section) => (
+                          <View key={section.key} style={styles.modalSection}>
+                            <Text style={styles.modalSectionTitle}>{section.title}</Text>
+                            {section.description ? (
+                              <Text style={styles.modalSectionDescription}>
+                                {section.description}
+                              </Text>
+                            ) : null}
+                            <View style={styles.modalLessons}>
+                              {section.lessons.map((lesson, index) => (
+                                <LessonRow
+                                  key={lesson.id}
+                                  lesson={lesson}
+                                  number={index + 1}
+                                  completed={completedIds.includes(lesson.id)}
+                                  locked={lesson.locked}
+                                  toggling={togglingIds.includes(lesson.id)}
+                                  active={currentLesson?.id === lesson.id}
+                                  onSelect={() => selectLesson(lesson)}
+                                  onToggleComplete={() => void handleToggleLesson(lesson)}
+                                />
+                              ))}
+                            </View>
+                          </View>
+                        ))
+                      )}
+                    </ScrollView>
                   </View>
                 </View>
-                <ProgressBar pct={pct} height={10} />
-                <Text style={styles.progressMeta}>
-                  {completedIds.length} de {totalLessons} aulas concluídas
-                </Text>
-                {pct >= 100 ? (
-                  <Text style={styles.progressDone}>Curso concluído — parabéns!</Text>
-                ) : null}
+              </Modal>
+            </>
+          ) : (
+            /* ---------------- Não inscrito: página de venda ---------------- */
+            <ScrollView
+              style={styles.flex}
+              contentContainerStyle={styles.salesContent}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={() => void load("refresh")}
+                  tintColor={theme.colors.accent}
+                  colors={[theme.colors.accent]}
+                  progressBackgroundColor={theme.colors.surface}
+                />
+              }
+            >
+              <View style={styles.hero}>
+                <RemoteImage
+                  uri={course.coverUrl}
+                  style={styles.heroCover}
+                  recyclingKey={course.id}
+                  fallbackIcon="play-circle-outline"
+                  errorIcon="image-outline"
+                  iconSize={38}
+                />
+                <LinearGradient
+                  colors={["transparent", theme.colors.overlay]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={styles.heroGradient}
+                >
+                  <Text style={styles.heroTitle} numberOfLines={3}>
+                    {course.title}
+                  </Text>
+                </LinearGradient>
               </View>
-            ) : (
+
+              <TouchableOpacity
+                style={styles.mentorRow}
+                onPress={() => navigation.navigate("Mentor", { id: course.mentor.id })}
+                activeOpacity={0.85}
+              >
+                <Avatar uri={course.mentor.avatarUrl} name={course.mentor.name} size={38} />
+                <View style={styles.mentorInfo}>
+                  <Text style={styles.mentorName} numberOfLines={1}>
+                    Por {course.mentor.name}
+                  </Text>
+                  <View style={styles.ratingRow}>
+                    <Stars value={course.rating} size={12} />
+                    <Text style={styles.ratingText}>
+                      {(course.rating ?? 0).toFixed(1)} ({course.reviewCount})
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.textFaint} />
+              </TouchableOpacity>
+
+              <View style={styles.chipsRow}>
+                <Chip label={course.category} tone="accent" />
+                {levelLabel(course.level) ? (
+                  <Chip label={levelLabel(course.level)} tone="outline" />
+                ) : null}
+                {course.liveCount > 0 ? <Chip label={`${course.liveCount} ao vivo`} /> : null}
+              </View>
+              <Text style={styles.metaLine}>
+                {course.lessonCount} aulas
+                {course.totalDurationMin > 0 ? ` · ${formatDuration(course.totalDurationMin)}` : ""}
+                {course.studentCount > 0 ? ` · ${formatNumber(course.studentCount)} alunos` : ""}
+              </Text>
+
+              <View style={styles.priceRow}>
+                <Text style={[styles.price, course.price > 0 ? null : styles.priceFree]}>
+                  {formatPrice(course.price)}
+                </Text>
+              </View>
+
+              {course.description ? <Text style={styles.description}>{course.description}</Text> : null}
+
               <View style={styles.lockedBanner}>
                 <Ionicons name="lock-closed" size={14} color={theme.colors.warning} />
                 <Text style={styles.lockedBannerText}>
-                  Inscreva-se para desbloquear todas as aulas deste curso.
+                  {course.price > 0
+                    ? "Compre este curso e estude direto por aqui — todas as aulas ficam no app."
+                    : "Inscreva-se gratuitamente para desbloquear todas as aulas."}
                 </Text>
               </View>
-            )}
 
-            {/* Card "Aula atual" em destaque (inscrito) */}
-            {enrolled && currentLesson ? (
-              <CurrentLessonCard
-                lesson={currentLesson}
-                position={currentIndex + 1}
-                total={allLessons.length}
-                completed={completedIds.includes(currentLesson.id)}
-                toggling={togglingIds.includes(currentLesson.id)}
-                expanded={expandedLessonId === currentLesson.id}
-                canPrev={currentIndex > 0}
-                canNext={currentIndex < allLessons.length - 1}
-                onPrev={() => goToLesson(-1)}
-                onNext={() => goToLesson(1)}
-                onToggleComplete={() => void handleToggleLesson(currentLesson)}
-                onToggleExpand={() =>
-                  setExpandedLessonId((prev) => (prev === currentLesson.id ? null : currentLesson.id))
-                }
-                onOpen={(url) => void openInBrowser(url)}
-              />
-            ) : null}
+              <View style={styles.salesFooterSpacer} />
+            </ScrollView>
+          )}
 
-            {/* Lista compacta de aulas por tema (aulas sem tema ficam no topo) */}
-            {sections.length === 0 && enrolled ? (
-              <EmptyState
-                icon="library-outline"
-                title="Nenhuma aula publicada"
-                message="As aulas deste curso aparecerão aqui."
-              />
-            ) : (
-              sections.map((section) => (
-                <View key={section.key} style={styles.section}>
-                  <Text style={styles.sectionTitle}>{section.title}</Text>
-                  {section.description ? (
-                    <Text style={styles.sectionDescription}>{section.description}</Text>
-                  ) : null}
-                  <View style={styles.lessonsList}>
-                    {section.lessons.map((lesson, index) => (
-                      <LessonRow
-                        key={lesson.id}
-                        lesson={lesson}
-                        number={index + 1}
-                        completed={completedIds.includes(lesson.id)}
-                        locked={lesson.locked}
-                        toggling={togglingIds.includes(lesson.id)}
-                        active={currentLesson?.id === lesson.id}
-                        onSelect={() => setSelectedLessonId(lesson.id)}
-                        onToggleComplete={() => void handleToggleLesson(lesson)}
-                      />
-                    ))}
-                  </View>
-                </View>
-              ))
-            )}
-
-            <View style={styles.bottomSpacer} />
-          </ScrollView>
-
-          {/* CTA de inscrição */}
+          {/* CTA de inscrição (não inscrito) */}
           {!enrolled ? (
             <View style={styles.footer}>
               <TouchableOpacity
@@ -434,16 +683,25 @@ async function openExternal(url: string) {
                 disabled={enrolling}
                 activeOpacity={0.85}
                 accessibilityRole="button"
-                accessibilityLabel="Inscrever-se no curso"
+                accessibilityLabel={
+                  course.price > 0 ? "Comprar curso" : "Inscrever-se gratuitamente"
+                }
               >
                 {enrolling ? (
                   <ActivityIndicator size="small" color={theme.colors.onAccent} />
                 ) : (
-                  <Text style={styles.ctaText}>
-                    {course.price > 0
-                      ? `Inscrever-se · ${formatPrice(course.price)}`
-                      : "Inscrever-se gratuitamente"}
-                  </Text>
+                  <>
+                    <Ionicons
+                      name={course.price > 0 ? "cart-outline" : "add-circle-outline"}
+                      size={17}
+                      color={theme.colors.onAccent}
+                    />
+                    <Text style={styles.ctaText}>
+                      {course.price > 0
+                        ? `Comprar · ${formatPrice(course.price)}`
+                        : "Inscrever-se gratuitamente"}
+                    </Text>
+                  </>
                 )}
               </TouchableOpacity>
             </View>
@@ -464,187 +722,7 @@ async function openExternal(url: string) {
 
 /* --------------------------- Subcomponentes ---------------------------- */
 
-/** Card "Aula atual": descrição, ações, concluir (+XP) e navegação anterior/próxima. */
-function CurrentLessonCard({
-  lesson,
-  position,
-  total,
-  completed,
-  toggling,
-  expanded,
-  canPrev,
-  canNext,
-  onPrev,
-  onNext,
-  onToggleComplete,
-  onToggleExpand,
-  onOpen,
-}: {
-  lesson: Lesson;
-  position: number;
-  total: number;
-  completed: boolean;
-  toggling: boolean;
-  expanded: boolean;
-  canPrev: boolean;
-  canNext: boolean;
-  onPrev: () => void;
-  onNext: () => void;
-  onToggleComplete: () => void;
-  onToggleExpand: () => void;
-  onOpen: (url: string) => void;
-}) {
-  const styles = makeStyles();
-  const kindMeta = KIND_META[lesson.kind];
-  const videoUrl = !lesson.locked && lesson.kind === "RECORDED" ? lesson.videoUrl : null;
-  const meetingUrl = !lesson.locked && lesson.kind === "LIVE" ? lesson.meetingUrl : null;
-  const textContent = !lesson.locked && lesson.kind === "TEXT" ? lesson.content : null;
-  const liveWhen =
-    !lesson.locked && lesson.kind === "LIVE" && lesson.startsAt ? formatNaiveLong(lesson.startsAt) : null;
-  const attachments = lesson.locked ? [] : lesson.attachments ?? [];
-
-  return (
-    <View style={styles.currentCard}>
-      <View style={styles.currentHeader}>
-        <Text style={styles.currentOverline}>
-          Aula atual · {position} de {total}
-        </Text>
-        <Chip label={kindMeta.label} tone="accent" />
-      </View>
-      <Text style={styles.currentTitle}>{lesson.title}</Text>
-      {lesson.description ? (
-        <Text style={styles.currentDescription} numberOfLines={4}>
-          {lesson.description}
-        </Text>
-      ) : null}
-      <View style={styles.currentMetaRow}>
-        {lesson.durationMin > 0 ? (
-          <>
-            <Ionicons name="time-outline" size={12} color={theme.colors.textFaint} />
-            <Text style={styles.currentMeta}>{formatDuration(lesson.durationMin)}</Text>
-          </>
-        ) : null}
-        {liveWhen ? <Text style={styles.currentLiveWhen}>Encontro: {liveWhen}</Text> : null}
-      </View>
-
-      {/* Ações da aula: assistir / sala / conteúdo / materiais */}
-      {!lesson.locked ? (
-        <View style={styles.lessonActions}>
-          {videoUrl ? (
-            <ActionButton icon="play" label="Assistir aula" onPress={() => onOpen(videoUrl)} />
-          ) : null}
-          {meetingUrl ? (
-            <ActionButton
-              icon="videocam"
-              label="Abrir sala de transmissão"
-              onPress={() => onOpen(meetingUrl)}
-            />
-          ) : null}
-          {textContent ? (
-            <>
-              <ActionButton
-                icon={expanded ? "eye-off-outline" : "eye-outline"}
-                label={expanded ? "Ocultar conteúdo" : "Ver conteúdo da aula"}
-                onPress={onToggleExpand}
-              />
-              {expanded ? (
-                <View style={styles.lessonContent}>
-                  <RichText text={textContent} />
-                </View>
-              ) : null}
-            </>
-          ) : null}
-          {attachments.length > 0 ? (
-            <View style={styles.attachments}>
-              {attachments.map((attachment) => (
-                <TouchableOpacity
-                  key={attachment.url}
-                  style={styles.attachmentRow}
-                  onPress={() => onOpen(attachment.url)}
-                  activeOpacity={0.8}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Abrir material ${attachment.name}`}
-                >
-                  <Ionicons name="attach" size={13} color={theme.colors.accent} />
-                  <Text style={styles.attachmentName} numberOfLines={1}>
-                    {attachment.name}
-                  </Text>
-                  <Ionicons name="open-outline" size={13} color={theme.colors.textFaint} />
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : null}
-        </View>
-      ) : null}
-
-      {/* Concluir aula (+XP) — toque novamente para desmarcar */}
-      <TouchableOpacity
-        style={[styles.completeButton, completed ? styles.completeButtonDone : null]}
-        onPress={onToggleComplete}
-        disabled={toggling || lesson.locked}
-        activeOpacity={0.85}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: completed }}
-        accessibilityLabel={
-          completed
-            ? `Desmarcar aula ${lesson.title} como concluída`
-            : `Marcar aula ${lesson.title} como concluída`
-        }
-      >
-        {toggling ? (
-          <ActivityIndicator size="small" color={completed ? theme.colors.accent : theme.colors.onAccent} />
-        ) : (
-          <>
-            <Ionicons
-              name={completed ? "checkmark" : "flash"}
-              size={completed ? 16 : 15}
-              color={completed ? theme.colors.accent : theme.colors.onAccent}
-            />
-            <Text style={[styles.completeButtonText, completed ? styles.completeButtonTextDone : null]}>
-              {completed ? "Aula concluída" : "Marcar como concluída (+XP)"}
-            </Text>
-          </>
-        )}
-      </TouchableOpacity>
-
-      {/* Aula anterior / próxima */}
-      <View style={styles.currentNav}>
-        <TouchableOpacity
-          style={[styles.navButton, !canPrev ? styles.navButtonDisabled : null]}
-          onPress={onPrev}
-          disabled={!canPrev}
-          activeOpacity={0.8}
-          accessibilityRole="button"
-          accessibilityLabel="Aula anterior"
-        >
-          <Ionicons
-            name="chevron-back"
-            size={15}
-            color={canPrev ? theme.colors.textMuted : theme.colors.textFaint}
-          />
-          <Text style={styles.navButtonText}>Anterior</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.navButton, !canNext ? styles.navButtonDisabled : null]}
-          onPress={onNext}
-          disabled={!canNext}
-          activeOpacity={0.8}
-          accessibilityRole="button"
-          accessibilityLabel="Próxima aula"
-        >
-          <Text style={styles.navButtonText}>Próxima</Text>
-          <Ionicons
-            name="chevron-forward"
-            size={15}
-            color={canNext ? theme.colors.textMuted : theme.colors.textFaint}
-          />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
-
-/** Linha compacta de aula: número/check, título e duração. Toque seleciona a aula atual. */
+/** Linha do índice (modal de conteúdos): número/check, título e duração. */
 function LessonRow({
   lesson,
   number,
@@ -674,7 +752,7 @@ function LessonRow({
       onPress={onSelect}
       activeOpacity={0.8}
       accessibilityRole="button"
-      accessibilityLabel={`Selecionar aula ${lesson.title}`}
+      accessibilityLabel={`Abrir aula ${lesson.title}`}
       accessibilityState={{ selected: active }}
     >
       {locked ? (
@@ -683,11 +761,7 @@ function LessonRow({
         </View>
       ) : (
         <TouchableOpacity
-          style={[
-            styles.stepCircle,
-            completed ? styles.stepCircleDone : null,
-            active && !completed ? styles.stepCircleActive : null,
-          ]}
+          style={[styles.stepCircle, completed ? styles.stepCircleDone : null]}
           onPress={onToggleComplete}
           disabled={toggling}
           activeOpacity={0.8}
@@ -713,7 +787,6 @@ function LessonRow({
           styles.lessonRowTitle,
           completed ? styles.lessonRowTitleDone : null,
           locked ? styles.lessonRowTitleLocked : null,
-          active ? styles.lessonRowTitleActive : null,
         ]}
         numberOfLines={2}
       >
@@ -724,132 +797,316 @@ function LessonRow({
   );
 }
 
-function ActionButton({
-  icon,
-  label,
-  onPress,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  onPress: () => void;
-}) {
-  const styles = makeStyles();
-  return (
-    <TouchableOpacity
-      style={styles.actionButton}
-      onPress={onPress}
-      activeOpacity={0.85}
-      accessibilityRole="button"
-    >
-      <Ionicons name={icon} size={14} color={theme.colors.accent} />
-      <Text style={styles.actionButtonText}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
 /* ------------------------------- Estilos ------------------------------- */
 
 const makeStyles = () =>
   StyleSheet.create({
     flex: { flex: 1 },
-    content: {
-      paddingHorizontal: theme.spacing.lg,
-      paddingBottom: theme.spacing.xxl,
-    },
 
-    /* Hero */
-    hero: {
-      height: 190,
-      borderRadius: theme.radius.lg,
-      overflow: "hidden",
-      backgroundColor: theme.colors.surfaceAlt,
-    },
-    heroCover: {
-      width: "100%",
-      height: "100%",
-      backgroundColor: theme.colors.surfaceAlt,
-    },
-    heroGradient: {
-      ...StyleSheet.absoluteFillObject,
-      justifyContent: "flex-end",
-      padding: theme.spacing.md,
-    },
-    heroTitle: {
-      color: theme.colors.white,
-      fontSize: 20,
-      fontWeight: "700",
-      lineHeight: 26,
-      letterSpacing: -0.3,
-      textShadowColor: "rgba(0, 0, 0, 0.35)",
-      textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 4,
-    },
-
-    /* Mentor */
-    mentorRow: {
+    /* ------------------------- Sala de aula ------------------------- */
+    classBar: {
       flexDirection: "row",
       alignItems: "center",
       gap: theme.spacing.md,
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.sm,
+      backgroundColor: theme.colors.surface,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.border,
+    },
+    classBarInfo: { flex: 1, gap: 1 },
+    classBarTitle: { color: theme.colors.text, fontSize: 14, fontWeight: "700" },
+    classBarMeta: { color: theme.colors.textFaint, fontSize: 11 },
+    indexButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: theme.colors.accentSoft,
+      borderWidth: 1,
+      borderColor: theme.colors.accentBorder,
+      borderRadius: theme.radius.full,
+      paddingHorizontal: theme.spacing.md,
+      minHeight: 38,
+    },
+    indexButtonText: { color: theme.colors.accent, fontSize: 12, fontWeight: "700" },
+
+    classContent: {
+      paddingHorizontal: theme.spacing.lg,
+      paddingTop: theme.spacing.md,
+      paddingBottom: theme.spacing.xl,
+    },
+    lessonHead: { gap: theme.spacing.xs, marginBottom: theme.spacing.md },
+    lessonHeadRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    lessonOverline: {
+      color: theme.colors.textFaint,
+      fontSize: 11,
+      fontWeight: "700",
+      textTransform: "uppercase",
+      letterSpacing: 0.6,
+    },
+    lessonTitle: { color: theme.colors.text, fontSize: 20, fontWeight: "800", lineHeight: 26 },
+    lessonMetaRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 },
+    lessonMeta: { color: theme.colors.textMuted, fontSize: 12 },
+    lessonLiveWhen: { color: theme.colors.info, fontSize: 12, fontWeight: "600", marginTop: 2 },
+    lessonDescription: {
+      color: theme.colors.textMuted,
+      fontSize: 13,
+      lineHeight: 19,
+      marginTop: 4,
+    },
+
+    /* Cartão de vídeo / sala */
+    playCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.md,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.accentBorder,
+      borderRadius: theme.radius.lg,
       padding: theme.spacing.md,
+      marginBottom: theme.spacing.md,
+    },
+    playIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    playInfo: { flex: 1, gap: 1 },
+    playTitle: { color: theme.colors.text, fontSize: 14, fontWeight: "700" },
+    playHint: { color: theme.colors.textMuted, fontSize: 12 },
+
+    /* Conteúdo (leitura) */
+    contentCard: {
       backgroundColor: theme.colors.surface,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.colors.border,
       borderRadius: theme.radius.lg,
-      marginTop: theme.spacing.md,
+      padding: theme.spacing.lg,
     },
-    mentorInfo: { flex: 1, gap: 3 },
-    mentorName: { color: theme.colors.text, fontSize: 14, fontWeight: "600" },
-    ratingRow: { flexDirection: "row", alignItems: "center", gap: 5 },
-    ratingText: { color: theme.colors.textMuted, fontSize: 12, fontWeight: "600" },
-
-    /* Metadados */
-    chipsRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
+    contentEmpty: {
+      alignItems: "center",
       gap: theme.spacing.sm,
-      marginTop: theme.spacing.md,
+      backgroundColor: theme.colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing.xl,
     },
-    metaLine: { color: theme.colors.textFaint, fontSize: 12, fontWeight: "600", marginTop: 8 },
-    priceRow: {
+    contentEmptyText: {
+      color: theme.colors.textMuted,
+      fontSize: 13,
+      textAlign: "center",
+      lineHeight: 19,
+      maxWidth: 260,
+    },
+
+    /* Anexos */
+    attachBlock: { marginTop: theme.spacing.md, gap: theme.spacing.xs },
+    attachTitle: { color: theme.colors.text, fontSize: 13, fontWeight: "700" },
+    attachmentRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.sm,
+      backgroundColor: theme.colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.md,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: 12,
+      minHeight: 44,
+    },
+    attachmentName: { color: theme.colors.text, fontSize: 13, flex: 1 },
+
+    classFooterSpacer: { height: theme.spacing.lg },
+
+    /* Barra de ações fixa */
+    actionBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      backgroundColor: theme.colors.surface,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.colors.border,
+    },
+    navSide: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 2,
+      paddingHorizontal: theme.spacing.xs,
+      minHeight: 44,
+      borderRadius: theme.radius.md,
+    },
+    navSideDisabled: { opacity: 0.4 },
+    navSideText: { color: theme.colors.textMuted, fontSize: 13, fontWeight: "600" },
+    completeCenter: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 7,
+      backgroundColor: theme.colors.accent,
+      borderRadius: theme.radius.md,
+      minHeight: 46,
+      paddingHorizontal: theme.spacing.sm,
+    },
+    completeCenterDone: {
+      backgroundColor: theme.colors.accentSoft,
+      borderWidth: 1,
+      borderColor: theme.colors.accentBorder,
+    },
+    completeCenterText: { color: theme.colors.onAccent, fontSize: 14, fontWeight: "700" },
+    completeCenterTextDone: { color: theme.colors.accent },
+
+    /* Modal do índice */
+    modalBackdrop: { flex: 1, backgroundColor: theme.colors.overlay },
+    modalBackdropTouch: { flex: 1 },
+    modalSheet: {
+      backgroundColor: theme.colors.bg,
+      borderTopLeftRadius: theme.radius.xl,
+      borderTopRightRadius: theme.radius.xl,
+      maxHeight: "85%",
+      minHeight: "55%",
+      paddingBottom: theme.spacing.xl,
+    },
+    modalHead: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: theme.spacing.lg,
+      paddingTop: theme.spacing.lg,
+      paddingBottom: theme.spacing.sm,
+    },
+    modalTitle: { color: theme.colors.text, fontSize: 17, fontWeight: "800" },
+    modalProgress: {
+      paddingHorizontal: theme.spacing.lg,
+      paddingBottom: theme.spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.border,
+      gap: theme.spacing.xs,
+    },
+    modalProgressRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    modalProgressMeta: { color: theme.colors.textMuted, fontSize: 12 },
+    modalProgressPct: { color: theme.colors.accent, fontSize: 13, fontWeight: "800" },
+    modalScroll: { flex: 1 },
+    modalContent: { paddingBottom: theme.spacing.xl },
+    modalSection: { marginTop: theme.spacing.md },
+    modalSectionTitle: {
+      color: theme.colors.text,
+      fontSize: 14,
+      fontWeight: "700",
+      paddingHorizontal: theme.spacing.lg,
+    },
+    modalSectionDescription: {
+      color: theme.colors.textMuted,
+      fontSize: 12,
+      lineHeight: 17,
+      paddingHorizontal: theme.spacing.lg,
+      marginTop: 2,
+    },
+    modalLessons: { marginTop: theme.spacing.xs },
+
+    lessonRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: theme.spacing.md,
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.sm,
+      borderLeftWidth: 3,
+      borderLeftColor: "transparent",
+    },
+    lessonRowActive: {
+      backgroundColor: theme.colors.accentSoft,
+      borderLeftColor: theme.colors.accent,
+    },
+    lockBox: {
+      width: 30,
+      height: 30,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.surfaceAlt,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    stepCircle: {
+      width: 30,
+      height: 30,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.surfaceAlt,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.borderStrong,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    stepCircleDone: { backgroundColor: theme.colors.accent, borderColor: theme.colors.accent },
+    stepNumber: { color: theme.colors.textMuted, fontSize: 12, fontWeight: "700" },
+    lessonRowTitle: { color: theme.colors.text, fontSize: 13, flex: 1, lineHeight: 18 },
+    lessonRowTitleDone: { color: theme.colors.textFaint },
+    lessonRowTitleLocked: { color: theme.colors.textFaint },
+    lessonRowEnd: { color: theme.colors.textFaint, fontSize: 11 },
+
+    /* ------------------------- Página de venda ------------------------- */
+    salesContent: { paddingBottom: theme.spacing.xl },
+    hero: { height: 200, backgroundColor: theme.colors.surfaceAlt },
+    heroCover: { ...StyleSheet.absoluteFillObject },
+    heroGradient: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: "flex-end",
+      padding: theme.spacing.lg,
+    },
+    heroTitle: { color: theme.colors.white, fontSize: 22, fontWeight: "800", lineHeight: 28 },
+    mentorRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.md,
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.md,
+    },
+    mentorInfo: { flex: 1, gap: 2 },
+    mentorName: { color: theme.colors.text, fontSize: 14, fontWeight: "700" },
+    ratingRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+    ratingText: { color: theme.colors.textMuted, fontSize: 12 },
+    chipsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.lg,
+      marginTop: theme.spacing.xs,
+    },
+    metaLine: {
+      color: theme.colors.textMuted,
+      fontSize: 12,
+      paddingHorizontal: theme.spacing.lg,
+      marginTop: theme.spacing.sm,
+    },
+    priceRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.lg,
       marginTop: theme.spacing.md,
     },
-    price: { color: theme.colors.text, fontSize: 20, fontWeight: "700" },
+    price: { color: theme.colors.text, fontSize: 24, fontWeight: "800" },
     priceFree: { color: theme.colors.accent },
     description: {
       color: theme.colors.textMuted,
       fontSize: 14,
       lineHeight: 21,
+      paddingHorizontal: theme.spacing.lg,
       marginTop: theme.spacing.md,
     },
-
-    /* Progresso */
-    progressCard: {
-      backgroundColor: theme.colors.surface,
-      borderWidth: 1,
-      borderColor: theme.colors.accentBorder,
-      borderRadius: theme.radius.lg,
-      padding: theme.spacing.md,
-      marginTop: theme.spacing.lg,
-      gap: theme.spacing.sm,
-    },
-    progressHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-    progressTitle: { color: theme.colors.text, fontSize: 14, fontWeight: "700" },
-    progressPill: {
-      paddingHorizontal: 10,
-      paddingVertical: 3,
-      borderRadius: theme.radius.full,
-      backgroundColor: theme.colors.accentSoft,
-      borderWidth: 1,
-      borderColor: theme.colors.accentBorder,
-    },
-    progressPct: { color: theme.colors.accent, fontSize: 13, fontWeight: "700" },
-    progressMeta: { color: theme.colors.textMuted, fontSize: 12, fontWeight: "600" },
-    progressDone: { color: theme.colors.accent, fontSize: 13, fontWeight: "700" },
-
-    /* Bloqueio */
     lockedBanner: {
       flexDirection: "row",
       alignItems: "center",
@@ -859,211 +1116,49 @@ const makeStyles = () =>
       borderColor: theme.colors.warningBorder,
       borderRadius: theme.radius.md,
       padding: theme.spacing.md,
+      marginHorizontal: theme.spacing.lg,
       marginTop: theme.spacing.lg,
     },
-    lockedBannerText: { flex: 1, color: theme.colors.warning, fontSize: 12, lineHeight: 17 },
+    lockedBannerText: { color: theme.colors.textMuted, fontSize: 12, flex: 1, lineHeight: 17 },
+    salesFooterSpacer: { height: theme.spacing.md },
 
-    /* Seções de aulas */
-    section: { marginTop: theme.spacing.xl },
-    sectionTitle: { color: theme.colors.text, fontSize: 17, fontWeight: "700" },
-    sectionDescription: {
-      color: theme.colors.textMuted,
-      fontSize: 13,
-      lineHeight: 18,
-      marginTop: 4,
-    },
-    lessonsList: { gap: theme.spacing.md, marginTop: theme.spacing.md },
-    /* Card "Aula atual" em destaque */
-    currentCard: {
-      backgroundColor: theme.colors.surface,
-      borderWidth: 1,
-      borderColor: theme.colors.accentBorder,
-      borderRadius: theme.radius.lg,
-      padding: theme.spacing.lg,
-      marginTop: theme.spacing.lg,
-      gap: theme.spacing.md,
-    },
-    currentHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: theme.spacing.sm,
-    },
-    currentOverline: {
-      flex: 1,
-      color: theme.colors.accent,
-      fontSize: 11,
-      fontWeight: "700",
-      letterSpacing: 0.8,
-      textTransform: "uppercase",
-    },
-    currentTitle: {
-      color: theme.colors.text,
-      fontSize: 18,
-      fontWeight: "700",
-      lineHeight: 24,
-      letterSpacing: -0.2,
-    },
-    currentDescription: { color: theme.colors.textMuted, fontSize: 14, lineHeight: 20 },
-    currentMetaRow: { flexDirection: "row", alignItems: "center", gap: 5, flexWrap: "wrap" },
-    currentMeta: { color: theme.colors.textFaint, fontSize: 12, fontWeight: "600" },
-    currentLiveWhen: { color: theme.colors.info, fontSize: 12, fontWeight: "600" },
-
-    /* Botão concluir aula (+XP) */
-    completeButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 6,
-      paddingVertical: 13,
-      borderRadius: theme.radius.md,
-      backgroundColor: theme.colors.accent,
-      minHeight: 48,
-    },
-    completeButtonDone: {
-      backgroundColor: theme.colors.accentSoft,
-      borderWidth: 1,
-      borderColor: theme.colors.accentBorder,
-    },
-    completeButtonText: { color: theme.colors.onAccent, fontSize: 14, fontWeight: "700" },
-    completeButtonTextDone: { color: theme.colors.accent },
-
-    /* Navegação anterior/próxima */
-    currentNav: { flexDirection: "row", gap: theme.spacing.sm },
-    navButton: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 4,
-      paddingVertical: 11,
-      borderRadius: theme.radius.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.surfaceAlt,
-      minHeight: 44,
-    },
-    navButtonDisabled: { opacity: 0.4 },
-    navButtonText: { color: theme.colors.textMuted, fontSize: 13, fontWeight: "600" },
-
-    /* Lista compacta de aulas */
-    lessonRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: theme.spacing.md,
-      padding: theme.spacing.md,
-      backgroundColor: theme.colors.surface,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.colors.border,
-      borderRadius: theme.radius.md,
-    },
-    lessonRowActive: {
-      backgroundColor: theme.colors.accentSoft,
-      borderWidth: 1,
-      borderColor: theme.colors.accentBorder,
-    },
-    lessonRowTitle: { flex: 1, color: theme.colors.text, fontSize: 14, fontWeight: "600", lineHeight: 19 },
-    lessonRowTitleDone: { textDecorationLine: "line-through", color: theme.colors.textMuted },
-    lessonRowTitleLocked: { color: theme.colors.textMuted },
-    lessonRowTitleActive: { color: theme.colors.accent },
-    lessonRowEnd: { color: theme.colors.textFaint, fontSize: 12, fontWeight: "600" },
-
-    /* Círculo numerado / check de conclusão */
-    stepCircle: {
-      width: 26,
-      height: 26,
-      borderRadius: theme.radius.full,
-      borderWidth: 2,
-      borderColor: theme.colors.borderStrong,
-      backgroundColor: theme.colors.surfaceAlt,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    stepCircleDone: {
-      backgroundColor: theme.colors.accent,
-      borderColor: theme.colors.accent,
-    },
-    stepCircleActive: { borderColor: theme.colors.accent },
-    stepNumber: { color: theme.colors.textMuted, fontSize: 12, fontWeight: "700" },
-    lockBox: {
-      width: 26,
-      height: 26,
-      borderRadius: theme.radius.full,
-      backgroundColor: theme.colors.surfaceAlt,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-
-    /* Ações da aula (card "Aula atual") */
-    lessonActions: { gap: theme.spacing.sm },
-    actionButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 6,
-      paddingVertical: 10,
-      borderRadius: theme.radius.md,
-      backgroundColor: theme.colors.accentSoft,
-      borderWidth: 1,
-      borderColor: theme.colors.accentBorder,
-    },
-    actionButtonText: { color: theme.colors.accent, fontSize: 13, fontWeight: "700" },
-    lessonContent: {
-      backgroundColor: theme.colors.bg,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.colors.border,
-      borderRadius: theme.radius.md,
-      padding: theme.spacing.md,
-    },
-    attachments: { gap: 6 },
-    attachmentRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      paddingVertical: 7,
-      paddingHorizontal: 10,
-      borderRadius: theme.radius.sm,
-      backgroundColor: theme.colors.surfaceAlt,
-    },
-    attachmentName: { flex: 1, color: theme.colors.textMuted, fontSize: 12, fontWeight: "600" },
-
-    /* CTA de inscrição */
+    /* CTA rodapé */
     footer: {
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.colors.border,
       paddingHorizontal: theme.spacing.lg,
       paddingVertical: theme.spacing.md,
-      backgroundColor: theme.colors.bg,
+      backgroundColor: theme.colors.surface,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.colors.border,
     },
     cta: {
+      flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      paddingVertical: 14,
-      borderRadius: theme.radius.md,
+      gap: 8,
       backgroundColor: theme.colors.accent,
+      borderRadius: theme.radius.md,
       minHeight: 50,
     },
-    ctaDisabled: { opacity: 0.55 },
+    ctaDisabled: { opacity: 0.6 },
     ctaText: { color: theme.colors.onAccent, fontSize: 15, fontWeight: "700" },
 
-    /* Toast de XP */
+    /* Toast XP */
     xpToast: {
       position: "absolute",
-      top: theme.spacing.sm,
+      bottom: 84,
       alignSelf: "center",
       flexDirection: "row",
       alignItems: "center",
-      gap: 5,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: theme.radius.full,
+      gap: 6,
       backgroundColor: theme.colors.accent,
+      borderRadius: theme.radius.full,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: 8,
       shadowColor: "#000",
-      shadowOpacity: 0.3,
+      shadowOpacity: 0.25,
       shadowRadius: 8,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: 6,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 4,
     },
-    xpToastText: { color: theme.colors.onAccent, fontSize: 13, fontWeight: "700" },
-    bottomSpacer: { height: theme.spacing.lg },
+    xpToastText: { color: theme.colors.onAccent, fontSize: 12, fontWeight: "700" },
   });

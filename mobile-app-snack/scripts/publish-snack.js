@@ -29,6 +29,7 @@ const deps = {
   "expo-image":                    "~3.0.11",
   "expo-web-browser":              "~15.0.11",
   "expo-secure-store":             "~15.0.8",
+  "expo-clipboard":                "~8.0.8",
   "expo-linear-gradient":          "~15.0.8",
   "expo-status-bar":               "~3.0.9",
   "@expo/vector-icons":            "^15.0.3",
@@ -38,7 +39,7 @@ const payload = {
   manifest: {
     sdkVersion: "54.0.0",
     name: "MentorHub Mobile",
-    description: "App do aluno — leitor de PDF nativo instantaneo, busca global, salvos, cursos e mentorias (API https://mentorhub.space-z.ai). Login: ana@demo.com / demo123",
+    description: "App do aluno — leitor de PDF nativo, busca global, cursos e mentorias, checkout PIX/cartão no app e mensagens com mentores (API https://mentorhub.space-z.ai). Login: ana@demo.com / demo123",
     dependencies: deps,
   },
   code,

@@ -208,6 +208,24 @@ export default function ProfileScreen() {
               </View>
             </View>
 
+            {/* Mensagens (conversas com mentores) */}
+            <TouchableOpacity
+              style={styles.settingRow}
+              onPress={() => navigation.navigate("Mensagens")}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Abrir mensagens"
+            >
+              <View style={styles.settingIcon}>
+                <Ionicons name="chatbubbles-outline" size={17} color={theme.colors.accent} />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={styles.settingLabel}>Mensagens</Text>
+                <Text style={styles.settingHint}>Conversas com seus mentores</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={theme.colors.textFaint} />
+            </TouchableOpacity>
+
             {/* Salvos (favoritos locais do aparelho) */}
             <TouchableOpacity
               style={styles.settingRow}

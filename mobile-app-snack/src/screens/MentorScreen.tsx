@@ -133,6 +133,10 @@ export default function MentorDetailScreen() {
             refreshing={refreshing}
             onRefresh={() => void load("refresh")}
             onSchedule={() => setStage("booking")}
+            onMessage={() =>
+              mentor.userId &&
+              navigation.navigate("Mensagens", { peerId: mentor.userId, peerName: mentor.name })
+            }
           />
         )
       ) : null}
@@ -148,12 +152,14 @@ function MentorProfile({
   refreshing,
   onRefresh,
   onSchedule,
+  onMessage,
 }: {
   mentor: MentorDetail;
   reviews: MentorReview[];
   refreshing: boolean;
   onRefresh: () => void;
   onSchedule: () => void;
+  onMessage: () => void;
 }) {
   const styles = makeStyles();
   async function open(url: string) {
@@ -307,17 +313,31 @@ function MentorProfile({
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* CTA de agendamento */}
+      {/* CTA: mensagem + agendamento */}
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.cta}
-          onPress={onSchedule}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel={`Agendar sessão com ${mentor.name}`}
-        >
-          <Text style={styles.ctaText}>Agendar sessão</Text>
-        </TouchableOpacity>
+        <View style={styles.ctaRow}>
+          {mentor.userId ? (
+            <TouchableOpacity
+              style={styles.ctaGhost}
+              onPress={onMessage}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={`Enviar mensagem para ${mentor.name}`}
+            >
+              <Ionicons name="chatbubble-outline" size={16} color={theme.colors.accent} />
+              <Text style={styles.ctaGhostText}>Mensagem</Text>
+            </TouchableOpacity>
+          ) : null}
+          <TouchableOpacity
+            style={[styles.cta, mentor.userId && styles.ctaFlex]}
+            onPress={onSchedule}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={`Agendar sessão com ${mentor.name}`}
+          >
+            <Text style={styles.ctaText}>Agendar sessão</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -732,6 +752,26 @@ const makeStyles = () =>
   },
   ctaDisabled: { opacity: 0.55 },
   ctaText: { color: theme.colors.onAccent, fontSize: 15, fontWeight: "700" },
+  ctaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.sm,
+  },
+  ctaFlex: { flex: 1, marginTop: theme.spacing.lg },
+  ctaGhost: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    borderWidth: 1,
+    borderColor: theme.colors.accentBorder,
+    backgroundColor: theme.colors.accentSoft,
+    borderRadius: theme.radius.md,
+    minHeight: 50,
+    marginTop: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  ctaGhostText: { color: theme.colors.accent, fontSize: 14, fontWeight: "700" },
   ghostButton: {
     alignItems: "center",
     paddingVertical: 12,

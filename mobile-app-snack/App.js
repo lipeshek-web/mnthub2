@@ -24,8 +24,10 @@
  *                       ├─ Main (pager horizontal + tab bar custom): Início ·
  *                       │   Livros · Cursos · Mentorias
  *                       ├─ Livro  (params: { id })
- *                       ├─ Curso  (params: { id })
+ *                       ├─ Curso  (params: { id }) — conteúdo em foco
+ *                       ├─ Checkout (params: { id }) — compra PIX/cartão no app
  *                       ├─ Mentor (params: { id })
+ *                       ├─ Mensagens (conversas com mentores)
  *                       ├─ Perfil (aberto pelo ícone da conta na Home)
  *                       ├─ Busca  (busca global: cursos + livros + mentores)
  *                       └─ Salvos (favoritos locais do aparelho)
@@ -66,6 +68,8 @@ import CursoScreen from "./src/screens/CursoScreen";
 import MentorScreen from "./src/screens/MentorScreen";
 import BuscaScreen from "./src/screens/BuscaScreen";
 import SalvosScreen from "./src/screens/SalvosScreen";
+import CheckoutScreen from "./src/screens/CheckoutScreen";
+import MensagensScreen from "./src/screens/MensagensScreen";
 
 /* ----------------------------- Tema de navegação ---------------------------- */
 
@@ -236,7 +240,9 @@ function RootNavigator() {
       <Stack.Screen name="Main" component={MainTabs} />
       <Stack.Screen name="Livro" component={LivroScreen} />
       <Stack.Screen name="Curso" component={CursoScreen} />
+      <Stack.Screen name="Checkout" component={CheckoutScreen} />
       <Stack.Screen name="Mentor" component={MentorScreen} />
+      <Stack.Screen name="Mensagens" component={MensagensScreen} />
       <Stack.Screen name="Perfil" component={PerfilScreen} />
       <Stack.Screen name="Busca" component={BuscaScreen} />
       <Stack.Screen name="Salvos" component={SalvosScreen} />

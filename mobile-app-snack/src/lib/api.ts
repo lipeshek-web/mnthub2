@@ -413,6 +413,8 @@ export interface MentorListItem {
 }
 
 export interface MentorDetail extends MentorListItem {
+  /** Id do USUÁRIO do mentor (para abrir conversa em /messages). */
+  userId?: string;
   description: string | null;
   languages: string[];
   instagram: string | null;
@@ -679,4 +681,110 @@ export async function markAllNotificationsRead(): Promise<{ ok: boolean }> {
     method: "POST",
     body: { action: "read-all" },
   });
+}
+
+/* 18) Checkout no app (curso pago via gateway/demonstração) */
+
+export type CheckoutBillingType = "PIX" | "CREDIT_CARD" | "BOLETO";
+
+export interface CheckoutOrderInfo {
+  id: string;
+  itemKind: string;
+  itemTitle: string;
+  amount: number;
+  paymentMethod: CheckoutBillingType;
+  status: "PENDING" | "PAID" | "CANCELED";
+  createdAt: string;
+}
+
+export interface CheckoutPaymentInfo {
+  id: string;
+  gatewayPaymentId: string | null;
+  billingType: CheckoutBillingType;
+  status: string;
+  value: number;
+  invoiceUrl: string | null;
+  env?: string;
+  /** Presente quando billingType = PIX (QR + copia e cola). */
+  pix?: { payload: string; encodedImage: string };
+}
+
+export interface CheckoutInput {
+  courseId: string;
+  paymentMethod: CheckoutBillingType;
+  /** Obrigatório quando o gateway está ativo (exigido pelo Asaas). */
+  cpfCnpj?: string;
+  couponCode?: string;
+  useCredits?: boolean;
+}
+
+export type CheckoutResponse =
+  | { order: CheckoutOrderInfo }
+  | { pending: true; order: CheckoutOrderInfo; payment: CheckoutPaymentInfo };
+
+export async function checkoutCourse(input: CheckoutInput): Promise<CheckoutResponse> {
+  return request<CheckoutResponse>("/checkout", { method: "POST", body: input });
+}
+
+/* 19) Status de pagamento (polling do checkout) */
+
+export interface PaymentStatusResponse {
+  status: string;
+  orderStatus: string;
+  billingType: CheckoutBillingType;
+  invoiceUrl: string | null;
+}
+
+export async function getPaymentStatus(paymentId: string): Promise<PaymentStatusResponse> {
+  return request<PaymentStatusResponse>("/payments/status", { query: { paymentId } });
+}
+
+/* 20) Mensagens — caixa de entrada (threads) */
+
+export interface MessagePeer {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  isMentor: boolean;
+  headline?: string | null;
+}
+
+export interface ThreadItem {
+  peer: MessagePeer;
+  lastBody: string;
+  lastAt: string;
+  lastMine: boolean;
+  unread: number;
+}
+
+export interface ThreadsResponse {
+  unreadTotal: number;
+  threads: ThreadItem[];
+}
+
+export async function listThreads(): Promise<ThreadsResponse> {
+  return request<ThreadsResponse>("/messages/threads");
+}
+
+/* 21) Mensagens — conversa com um par */
+
+export interface ChatMessage {
+  id: string;
+  body: string;
+  mine: boolean;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface ChatResponse {
+  peer: MessagePeer;
+  items: ChatMessage[];
+}
+
+export async function getConversation(peerId: string): Promise<ChatResponse> {
+  return request<ChatResponse>(`/messages`, { query: { peerId } });
+}
+
+export async function sendMessage(peerId: string, body: string): Promise<ChatMessage> {
+  return request<ChatMessage>("/messages", { method: "POST", body: { peerId, body } });
 }
