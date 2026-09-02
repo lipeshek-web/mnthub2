@@ -2262,3 +2262,20 @@ Work Log:
 Stage Summary:
 - Checkout (e qualquer escrita) agora sobrevive à substituição do arquivo do banco sob o servidor vivo: o Prisma detecta o SQLITE_READONLY_DBMOVED, reabre a conexão e refaz a operação — fim dos 500 misteriosos pós git checkout/pull do db ou restore de snapshot; falha real de disco/permissão continua propagando com a mensagem original
 - Fluxo de checkout revalidado ponta a ponta no browser com cupom + créditos + pedido + matrícula + saldo + usos, tudo consistente no banco
+
+---
+Task ID: W-37
+Agent: Z.ai Code (main) + agent-browser (E2E)
+Task: Downgrade do ambiente novamente — recuperação do workspace a partir do origin/main
+
+Work Log:
+- DIAGNÓSTICO: workspace restaurado a um snapshot ANTIGO (era W-31) — git log terminava em fbf7ec8 (W-31), remote origin NÃO existia mais, node_modules sem socket.io-client/@prisma/adapter-libsql; os commits W-32..W-36 (incluindo barras fixas da sala 1a3f751/e4ff613 e o fix de checkout 87f3f47/56b7191) sumiram LOCALMENTE, mas estavam intactos no GitHub
+- RECUPERAÇÃO: git remote add origin (mesma URL com token) + git fetch → origin/main em 56b7191 (W-36) → backup do db local em /tmp → git reset --hard origin/main; código, db e worklog restaurados aos últimos valores publicados
+- DEPENDÊNCIAS: bun install recolocou socket.io-client 4.8.3 e @prisma/adapter-libsql 6.11.1 (o downgrade também reverteu node_modules) — / volta a 200
+- SERVER: dev server reiniciado limpo (o db trocou de inode sob o processo antigo = cenário exato do bug readonly; o restart evita, e o self-heal do W-36 cobre casos futuros)
+- VALIDAÇÃO E2E (agent-browser, login ana@demo.com): sala de aula com tablist Material/Resumo IA/Perguntas/Quiz/Anotações no topo do corpo + barra Anterior/Concluir/Próxima no rodapé; desktop 1366 — tablistTop=69, btnBottomGap=10; mobile 390 — rótulo central "Concluir" (abreviação mobile ativa), conteúdo longo (sh=1385 vs ch=665) rola scrollTop 0→306 com as barras IMÓVEIS (tlTop 65→65, btnGap 10→10) e sem sobreposição (scroll container entre as duas barras); troca de aula reseta aba p/ Material e scrollTop=0; "Concluir" → toast "🎉 Aula concluída! +10 XP" (escrita no db OK, sem readonly); page errors vazio
+- Dados: apenas progresso de teste da ana (+10 XP) — db restaurado ao estado do HEAD antes do commit
+
+Stage Summary:
+- Ambiente de aprendizado de volta ao estado W-35/W-36: barras fixas (abas no topo do corpo, Anterior/Concluir/Próxima no rodapé), modo mobile compacto e fix de checkout readonly — nada foi reescrito, tudo veio do origin/main (prova de que o GitHub é o backup confiável)
+- Causa raiz dos "downgrades" é o restore de snapshot do ambiente (substitui código, remote, node_modules e db de uma vez); recuperação padrão documentada: re-adicionar remote → fetch → reset --hard origin/main → bun install → restart do server
