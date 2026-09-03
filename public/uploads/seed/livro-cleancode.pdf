@@ -1,0 +1,266 @@
+%PDF-1.4
+%âãÏÓ
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R 11 0 R 13 0 R] /Count 5 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 497 >>
+stream
+0.059 0.42 0.478 rg
+0 792 595 50 re f
+0 0 595 12 re f
+BT
+/F2 26 Tf 1 1 1 rg
+64 760 Td (MentorHub · Biblioteca) Tj
+ET
+BT
+/F2 30 Tf 0.12 0.12 0.12 rg
+64 560 Td 34 TL (Clean Code na Prática  apostila) Tj T*
+ET
+BT
+/F1 14 Tf 0.35 0.35 0.35 rg
+64 500 Td (Nomes, funções e refatoração para quem escreve código todos os dias) Tj
+ET
+BT
+/F1 12 Tf 0.4 0.4 0.4 rg
+64 90 Td (por Carlos Ferreira) Tj
+ET
+BT
+/F1 10 Tf 0.55 0.55 0.55 rg
+64 70 Td (Material de estudo da plataforma MentorHub  mentorhub.demo) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 8 0 R >>
+endobj
+8 0 obj
+<< /Length 1153 >>
+stream
+BT
+/F2 18 Tf 0.059 0.35 0.31 rg
+64 780 Td (1. Nomes que explicam) Tj
+ET
+0.898 0.898 0.898 RG 1 w 64 764 m 531 764 l S
+BT
+/F1 11 Tf 0.22 0.22 0.22 rg
+64 740 Td 15.5 TL
+(O nome é a documentação mais lida do código. Variáveis e funções devem responder três) Tj T*
+(perguntas: o que existe, por que existe e como é usado.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(Antes e depois) Tj T*
+0.22 0.22 0.22 rg
+T*
+(Ruim: const d = 30 // dias?) Tj T*
+(Bom: const diasParaEntrega = 30) Tj T*
+T*
+(Ruim: function calc\(a, b\)) Tj T*
+(Bom: function calcularDesconto\(valorOriginal, percentualDesconto\)) Tj T*
+T*
+0.059 0.35 0.31 rg
+(Regras práticas) Tj T*
+0.22 0.22 0.22 rg
+T*
+(Evite abreviações criativas: usr, mgr, tmp. Se precisa de um comentário para explicar) Tj T*
+(o nome, o nome está errado.) Tj T*
+T*
+(Use o vocabulário do domínio: em e-commerce, "carrinho" e "pedido" têm significado) Tj T*
+(exato  invente termos e o time inteiro paga a confusão.) Tj T*
+T*
+(Booleanos merecem prefixos: isAtivo, temDesconto, podeEditar. Uma leitura e o) Tj T*
+(significado é claro.) Tj
+ET
+BT
+/F1 9 Tf 0.55 0.55 0.55 rg
+64 40 Td (Clean Code na Prática  apostila · Carlos Ferreira) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 10 0 R >>
+endobj
+10 0 obj
+<< /Length 1471 >>
+stream
+BT
+/F2 18 Tf 0.059 0.35 0.31 rg
+64 780 Td (2. Funções: uma coisa por vez) Tj
+ET
+0.898 0.898 0.898 RG 1 w 64 764 m 531 764 l S
+BT
+/F1 11 Tf 0.22 0.22 0.22 rg
+64 740 Td 15.5 TL
+(Uma função faz UMA coisa. Se você precisa de "e" para descrever o que ela faz \("valida) Tj T*
+(e salva e envia e-mail"\), ela precisa virar três.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(O teste do nível de abstração) Tj T*
+0.22 0.22 0.22 rg
+(Todas as linhas de uma função devem viver no mesmo nível de detalhe. Misturar) Tj T*
+("calcularJuros\(\)" com "req.headers.authorization.split\(\)" na mesma função é o cheiro) Tj T*
+(de refatoração.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(Tamanho) Tj T*
+0.22 0.22 0.22 rg
+T*
+(Regra de bolso: se a função não cabe em uma tela sem rolar, considere quebrá-la.) Tj T*
+(Funções curtas têm nomes claros, são testáveis isoladamente e reduzem bugs em metade.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(Argumentos) Tj T*
+0.22 0.22 0.22 rg
+T*
+(Zero ou um argumento é o ideal. Três já é sinal de alerta; quatro ou mais, crie um) Tj T*
+(objeto:) Tj T*
+T*
+(Ruim: criarPedido\(nome, email, produto, qtd, preco, cupom\)) Tj T*
+(Bom: criarPedido\({ cliente, itens, cupom }\)) Tj T*
+T*
+0.059 0.35 0.31 rg
+(Efeitos colaterais) Tj T*
+0.22 0.22 0.22 rg
+(Uma função chamada "validarCPF" que também salva no banco quebra a confiança de quem) Tj T*
+(lê. Efeitos precisam estar no nome ou fora da função.) Tj
+ET
+BT
+/F1 9 Tf 0.55 0.55 0.55 rg
+64 40 Td (Clean Code na Prática  apostila · Carlos Ferreira) Tj
+ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 12 0 R >>
+endobj
+12 0 obj
+<< /Length 1454 >>
+stream
+BT
+/F2 18 Tf 0.059 0.35 0.31 rg
+64 780 Td (3. Comentários honestos \(e quando deletá-los\)) Tj
+ET
+0.898 0.898 0.898 RG 1 w 64 764 m 531 764 l S
+BT
+/F1 11 Tf 0.22 0.22 0.22 rg
+64 740 Td 15.5 TL
+(O comentário ideal é o que você não precisou escrever porque o código se explicou. Na) Tj T*
+(prática, comentários honestos caem em três casos:) Tj T*
+T*
+(1. Consequência intencional não óbvia: "// forçado a rodar antes do middleware de) Tj T*
+(sessão".) Tj T*
+(2. Esclarecimento de regra de negócio estranha: "// auditoria exige 2 anos, não 1".) Tj T*
+(3. Aviso de dívida consciente: "// TODO: substituir quando a API v2 sair  ticket) Tj T*
+(#482".) Tj T*
+T*
+0.059 0.35 0.31 rg
+(Comentários que devem ser DELETADOS) Tj T*
+0.22 0.22 0.22 rg
+T*
+(Ruído: "// incrementa i" \(o i++ já disse isso\).) Tj T*
+T*
+(Lixo comentado: blocos de código antigos comentados  para isso existe o git. O) Tj T*
+(histórico guarda tudo; o arquivo não precisa.) Tj T*
+T*
+(Comentário-mentira: o código mudou e o comentário ficou no tempo passado. Comentário) Tj T*
+(errado é pior que nenhum: ele engana quem confia.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(A regra de ouro) Tj T*
+0.22 0.22 0.22 rg
+(Antes de comentar, pergunte: dá para renomear, extrair função ou reestruturar para o) Tj T*
+(código se explicar? Se sim, faça isso. O comentário é o último recurso, não o) Tj T*
+(primeiro.) Tj
+ET
+BT
+/F1 9 Tf 0.55 0.55 0.55 rg
+64 40 Td (Clean Code na Prática  apostila · Carlos Ferreira) Tj
+ET
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 14 0 R >>
+endobj
+14 0 obj
+<< /Length 1511 >>
+stream
+BT
+/F2 18 Tf 0.059 0.35 0.31 rg
+64 780 Td (4. Refatoração sem medo) Tj
+ET
+0.898 0.898 0.898 RG 1 w 64 764 m 531 764 l S
+BT
+/F1 11 Tf 0.22 0.22 0.22 rg
+64 740 Td 15.5 TL
+(Refatorar é mudar a ESTRUTURA sem mudar o COMPORTAMENTO. A condição que torna isso) Tj T*
+(seguro tem nome: testes. Sem testes, refatorar é operar no escuro.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(O ciclo do refactoring) Tj T*
+0.22 0.22 0.22 rg
+T*
+(1. Escreva um teste que captura o comportamento atual.) Tj T*
+(2. Faça a mudança pequena \(renomear, extrair função, mover método\).) Tj T*
+(3. Rode os testes. Verde? Próxima mudança. Vermelho? Desfaça ou corrija.) Tj T*
+T*
+(Mudanças PEQUENAS e VERIFICADAS batem a grande reescrita "do zero" em 9 de cada 10) Tj T*
+(casos.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(Os três refactorings mais rentáveis) Tj T*
+0.22 0.22 0.22 rg
+T*
+(Extrair função: bloco confuso vira função com nome que explica a intenção.) Tj T*
+T*
+(Renomear: nomes antigos que enganam viram nomes que contam a verdade.) Tj T*
+T*
+(Mover: código no lugar errado \(regra de negócio no controller, SQL no componente\) vai) Tj T*
+(para a camada certa.) Tj T*
+T*
+0.059 0.35 0.31 rg
+(O hábito da regra do escoteiro) Tj T*
+0.22 0.22 0.22 rg
+(Deixe o código um pouco melhor do que encontrou: a cada visita a um arquivo, uma) Tj T*
+(pequena melhoria. Seis meses disso transformam a base de código inteira  sem sprint) Tj T*
+(de refatoração, sem medo.) Tj
+ET
+BT
+/F1 9 Tf 0.55 0.55 0.55 rg
+64 40 Td (Clean Code na Prática  apostila · Carlos Ferreira) Tj
+ET
+endstream
+endobj
+xref
+0 15
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000147 00000 n 
+0000000244 00000 n 
+0000000346 00000 n 
+0000000482 00000 n 
+0000001030 00000 n 
+0000001166 00000 n 
+0000002371 00000 n 
+0000002508 00000 n 
+0000004032 00000 n 
+0000004170 00000 n 
+0000005677 00000 n 
+0000005815 00000 n 
+trailer
+<< /Size 15 /Root 1 0 R >>
+startxref
+7379
+%%EOF

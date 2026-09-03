@@ -9,6 +9,9 @@ export const CATEGORIES = [
   'Finanças',
   'Idiomas',
   'Saúde & Bem-estar',
+  'Fotografia',
+  'Culinária',
+  'Música',
 ] as const
 
 export const WEEKDAYS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']

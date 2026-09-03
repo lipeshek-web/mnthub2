@@ -17,4 +17,11 @@ export const LIBRARY_PAGES_MANIFEST: Record<string, { totalPages: number }> = {
   cmtfmogmg0001ir8y63zf8gw7: { totalPages: 1 }, // Inovação
   cmtd0bemq007anl0685281t80: { totalPages: 6 }, // Fundamentos de Dados — apostila da trilha
   cmtd0bemo0076nl069u2qxudx: { totalPages: 7 }, // Arquitetura que Escala — capítulo de amostra
+  cmtm035hr00dlmdarpan6799o: { totalPages: 5 }, // Clean Code na Prática — apostila
+  cmtm035zy00dnmdard2df5k1z: { totalPages: 5 }, // Marketing Digital para Pequenos Negócios
+  cmtm0366500dpmdarlz7l2gn3: { totalPages: 5 }, // Primeiros Passos na Bolsa de Valores
+  cmtm036c900drmdar3fvf9wz6: { totalPages: 5 }, // Receitas que Vendem: bolos e brigadeiros
+  cmtm036il00dtmdarmgq6pesk: { totalPages: 5 }, // Guia de Fotografia de Produto
+  cmtm036ol00dvmdarvtjik0bv: { totalPages: 5 }, // Rotina de Alta Performance
+  cmtm036up00dxmdar29zcsdpj: { totalPages: 5 }, // Métodos de Estudo Científicos
 }
