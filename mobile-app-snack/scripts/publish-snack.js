@@ -1,7 +1,9 @@
 // Publica o MentorHub Mobile no Snack — versão SEM ASSETS (data URIs no código).
 // ASSET files travam o runtime do Snack em "Loading..." (provado por probes).
-// Envia apenas App.js + src/** como CODE, manifest SDK 54 + 12 dependências
-// (expo-clipboard = copiar código PIX no checkout).
+// Envia apenas App.js + src/** como CODE, manifest SDK 54 + 11 dependências.
+// SEM expo-clipboard: no Snack web a dependência não resolve
+// ("Unable to resolve module 'module://expo-clipboard.js'") e derruba o app
+// inteiro — o copy do PIX usa navigator.clipboard (web) + texto selecionável.
 const fs = require("fs");
 const path = require("path");
 
@@ -15,7 +17,6 @@ const deps = {
   "expo-image":                    "~3.0.11",
   "expo-web-browser":              "~15.0.11",
   "expo-secure-store":             "~15.0.8",
-  "expo-clipboard":                "~8.0.8",
   "expo-linear-gradient":          "~15.0.8",
   "expo-status-bar":               "~3.0.9",
   "@expo/vector-icons":            "^15.0.3",

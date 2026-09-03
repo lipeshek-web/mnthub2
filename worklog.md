@@ -2465,3 +2465,26 @@ Work Log:
 Stage Summary:
 - Os 4 pontos do usuário fechados: (1) expo-clipboard declarado nas dependências — fim do "Unable to resolve module"; (2) compra 100% dentro do app falando com rotas que EXISTEM (basta publicar o site) e, se o servidor estiver velho, aviso claro em vez de "conteúdo não encontrado"; (3) mensagens com empty state amigável e conversa real funcionando; (4) curso abre com o CONTEÚDO em foco e o índice só aparece pelo botão "Conteúdos"
 - SNACK OFICIAL: https://snack.expo.dev/vrzHMlyNYIXNSpvwDX1oV · fallback web: https://mentorhub.space-z.ai/app-mobile/ · CHIP: PUBLICAR O SITE na plataforma para ligar compra+mensagens em produção (rotas vão no push 27cba32)
+
+---
+Task ID: S-46
+Agent: main (Z.ai Code)
+Task: Investigar rollback reportado ("veja se aconteçeu algum rool back e corrija") — produção com APIs 500 + Snack com erro expo-clipboard
+
+Work Log:
+- DIAGNÓSTICO: produção mentorhub.space-z.ai servia home 200 mas TODAS as APIs (/api/courses, /api/v1/courses, /api/v1/auth/login) com 500; credenciais Turso válidas (query direta no Turso retornou 10 cursos) → problema era o ARTEFATO publicado
+- Reprodução local: build + run do artefato reproduziu o 500 exatamente
+- CAUSA RAIZ 1 (pipeline): .env do workspace restaurado de snapshot antigo só tinha DATABASE_URL local (sem TURSO_*) — e o build.sh só usava o fallback cloud.env quando .env NÃO existia (env incompleto vencia o fallback)
+- CAUSA RAIZ 2 (a grave): bug no shim @libsql/isomorphic-fetch do build.sh — a passada RECURSIVA de lib-esm reescrevia os .js de lib-esm/http/ com "./fetch-shim.mjs", mas a iteração seguinte (que criaria o shim no subdir) não achava mais nada e pulava; hrana-client ganhou estrutura lib-esm/http/ e http/stream.js passou a importar shim INEXISTENTE → carregamento do Prisma morria → TODAS as APIs 500 com páginas estáticas 200
+- FIX build.sh: (a) merge de variáveis de nuvem ausentes do cloud.env no .env incompleto; (b) shim v2 por diretório (lib-esm, lib-esm/http, lib-cjs, lib-cjs/http) com find -maxdepth 1; (c) guardas de sanidade que FALHAM o build se sobrar import do pacote ou shim órfão
+- .env do workspace restaurado com TURSO_DATABASE_URL/TURSO_AUTH_TOKEN (a partir de cloud.env)
+- Snack: removido expo-clipboard completamente (não resolve no runtime web do Snack — "Unable to resolve module 'module://expo-clipboard.js'" derrubava o app); copyPixPayload agora usa navigator.clipboard (web) + código PIX em Text selectable (cópia manual nativa); deps 12→11; package.json/bun.lock/publish-snack.js/README atualizados
+- AUDITORIA de imports: todos os imports externos do app mapeados e cobertos pelas deps declaradas
+- Publicado NOVO SNACK: https://snack.expo.dev/WQNMgm4hkeKGZGUMX--I5 (HTTP 200) — verificado via browser: "No errors, 505 warnings" + tela de login renderizando
+- E2E do artefato fresco (porta 3011): home 200, login OK (ana@demo.com), 10 cursos Turso, dashboard (5 cursos inscritos, xp 135), threads de mensagens com dados reais, checkout PIX respondeu PAID (modo demonstração, sem gateway ativo) e enroll ok
+- Regenerado export web (public/app-mobile, bundle 4.4M) + mentorhub-mobile-snack-v7.zip (54 arquivos, 1.87MB; v6 removido)
+
+Stage Summary:
+- Rollback corrigido na RAIZ: qualquer publish futuro sai funcional (shim v2 + merge de env + guardas que quebram o build em vez de publicar artefato quebrado)
+- APP USUÁRIO: precisa APENAS republicar o site na plataforma — o publish vai sair com o modo nuvem garantido e APIs funcionando; a compra no app volta a funcionar (o erro "conteúdo não encontrado" era o servidor 500)
+- Snack oficial novo: https://snack.expo.dev/WQNMgm4hkeKGZGUMX--I5

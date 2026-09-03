@@ -23,7 +23,6 @@ import {
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import * as WebBrowser from "expo-web-browser";
-import * as Clipboard from "expo-clipboard";
 import { Ionicons } from "@expo/vector-icons";
 import {
   ApiError,
@@ -186,14 +185,30 @@ export default function CheckoutScreen() {
     }
   }
 
+  /**
+   * Copia o código PIX — SEM expo-clipboard (a dependência derrubava o app no
+   * Snack com "Unable to resolve module 'expo-clipboard.js'").
+   *
+   * - Web (preview do Snack): usa o clipboard do navegador (navigator.clipboard).
+   * - Nativo/sem clipboard: o código fica num texto SELECIONÁVEL logo abaixo,
+   *   então o usuário copia manualmente com o toque longo do sistema.
+   */
   async function copyPixPayload() {
-    if (!payment?.pix?.payload) return;
+    const payload = payment?.pix?.payload;
+    if (!payload) return;
     try {
-      await Clipboard.setStringAsync(payment.pix.payload);
+      const nav = (globalThis as unknown as {
+        navigator?: { clipboard?: { writeText?: (text: string) => Promise<void> } };
+      }).navigator;
+      if (typeof nav?.clipboard?.writeText !== "function") throw new Error("clipboard-indisponivel");
+      await nav.clipboard.writeText(payload);
       setCopied(true);
       setTimeout(() => setCopied(false), 2200);
     } catch {
-      Alert.alert("Não foi possível copiar", "Selecione e copie o código manualmente.");
+      Alert.alert(
+        "Copie manualmente",
+        "Toque no código PIX abaixo, segure e use \u201cCopiar\u201d (ou selecione tudo e copie)."
+      );
     }
   }
 
@@ -290,8 +305,10 @@ export default function CheckoutScreen() {
               </View>
 
               <Text style={styles.pixLabel}>PIX copia e cola</Text>
+              {/* selectable: copia manual funciona em web (seleção com mouse) e
+                  nativo (toque longo), sem nenhuma dependência extra. */}
               <View style={styles.pixBox}>
-                <Text style={styles.pixPayload} numberOfLines={4} ellipsizeMode="middle">
+                <Text selectable style={styles.pixPayload} numberOfLines={4} ellipsizeMode="middle">
                   {payment.pix.payload}
                 </Text>
               </View>

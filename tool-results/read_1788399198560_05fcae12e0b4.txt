@@ -1,0 +1,757 @@
+     1→/**
+     2→ * Checkout DENTRO do app — compra completa sem sair do MentorHub.
+     3→ *
+     4→ * Fluxo: resumo do curso → forma de pagamento (PIX recomendado, cartão ou
+     5→ * boleto) → CPF/CNPJ (exigido pelo gateway) → cupom e créditos opcionais →
+     6→ * criar cobrança na API (/api/v1/checkout) →
+     7→ *   - PAID imediato (cupom 100%, créditos ou modo demonstração) → sucesso;
+     8→ *   - PENDING + PIX → QR Code + copia e cola + verificação automática
+     9→ *     (GET /api/v1/payments/status a cada 4s) até cair → matrícula liberada;
+    10→ *   - PENDING cartão/boleto → fatura no navegador + mesma verificação.
+    11→ */
+    12→import React, { useCallback, useEffect, useRef, useState } from "react";
+    13→import {
+    14→  ActivityIndicator,
+    15→  Alert,
+    16→  Image,
+    17→  ScrollView,
+    18→  StyleSheet,
+    19→  Text,
+    20→  TextInput,
+    21→  TouchableOpacity,
+    22→  View,
+    23→} from "react-native";
+    24→import { useNavigation, useRoute } from "@react-navigation/native";
+    25→import * as WebBrowser from "expo-web-browser";
+    26→import * as Clipboard from "expo-clipboard";
+    27→import { Ionicons } from "@expo/vector-icons";
+    28→import {
+    29→  ApiError,
+    30→  checkoutCourse,
+    31→  errMessage,
+    32→  getCourse,
+    33→  getMe,
+    34→  getPaymentStatus,
+    35→  isMissingEndpoint,
+    36→  SERVER_OUTDATED_MESSAGE,
+    37→  type CheckoutBillingType,
+    38→  type CheckoutPaymentInfo,
+    39→  type CourseDetailResponse,
+    40→} from "../lib/api";
+    41→import { clearPendingCheckout } from "../lib/pendingCheckout";
+    42→import { formatPrice } from "../lib/format";
+    43→import { theme } from "../theme";
+    44→import { Avatar } from "../components/Avatar";
+    45→import { ErrorBox } from "../components/ErrorBox";
+    46→import { LoadingList } from "../components/LoadingList";
+    47→import { RemoteImage } from "../components/RemoteImage";
+    48→import { Screen } from "../components/Screen";
+    49→import { ScreenHeader } from "../components/ScreenHeader";
+    50→
+    51→const METHODS: Array<{ id: CheckoutBillingType; label: string; icon: keyof typeof Ionicons.glyphMap; hint: string }> = [
+    52→  { id: "PIX", label: "PIX", icon: "flash-outline", hint: "Cai na hora · recomendado" },
+    53→  { id: "CREDIT_CARD", label: "Cartão", icon: "card-outline", hint: "Fatura do gateway" },
+    54→  { id: "BOLETO", label: "Boleto", icon: "receipt-outline", hint: "Até 3 dias úteis" },
+    55→];
+    56→
+    57→/** Máscara leve: 000.000.000-00 ou 00.000.000/0000-00 conforme digita. */
+    58→function maskCpfCnpj(raw: string): string {
+    59→  const d = raw.replace(/\D/g, "").slice(0, 14);
+    60→  if (d.length <= 11) {
+    61→    return d
+    62→      .replace(/(\d{3})(\d)/, "$1.$2")
+    63→      .replace(/(\d{3})(\d)/, "$1.$2")
+    64→      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+    65→  }
+    66→  return d
+    67→    .replace(/(\d{2})(\d)/, "$1.$2")
+    68→    .replace(/(\d{3})(\d)/, "$1.$2")
+    69→    .replace(/(\d{3})(\d)/, "$1/$2")
+    70→    .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+    71→}
+    72→
+    73→export default function CheckoutScreen() {
+    74→  const styles = makeStyles();
+    75→  const navigation = useNavigation<any>();
+    76→  const params = (useRoute<any>().params ?? {}) as { id: string };
+    77→  const courseId = Array.isArray(params.id) ? params.id[0] : params.id;
+    78→
+    79→  const [detail, setDetail] = useState<CourseDetailResponse | null>(null);
+    80→  const [credits, setCredits] = useState(0);
+    81→  const [loading, setLoading] = useState(true);
+    82→  const [error, setError] = useState<string | null>(null);
+    83→
+    84→  const [method, setMethod] = useState<CheckoutBillingType>("PIX");
+    85→  const [cpf, setCpf] = useState("");
+    86→  const [coupon, setCoupon] = useState("");
+    87→  const [useCredits, setUseCredits] = useState(false);
+    88→
+    89→  const [submitting, setSubmitting] = useState(false);
+    90→  const [formError, setFormError] = useState<string | null>(null);
+    91→
+    92→  const [payment, setPayment] = useState<CheckoutPaymentInfo | null>(null);
+    93→  const [paid, setPaid] = useState(false);
+    94→  const [checking, setChecking] = useState(false);
+    95→  const [copied, setCopied] = useState(false);
+    96→  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    97→
+    98→  const load = useCallback(async () => {
+    99→    if (!courseId) return;
+   100→    setLoading(true);
+   101→    setError(null);
+   102→    try {
+   103→      const [res, me] = await Promise.all([getCourse(courseId), getMe().catch(() => null)]);
+   104→      setDetail(res);
+   105→      setCredits(me?.user?.creditCents ?? 0);
+   106→    } catch (err) {
+   107→      setError(errMessage(err));
+   108→    } finally {
+   109→      setLoading(false);
+   110→    }
+   111→  }, [courseId]);
+   112→
+   113→  useEffect(() => {
+   114→    void load();
+   115→    return () => {
+   116→      if (pollRef.current) clearInterval(pollRef.current);
+   117→    };
+   118→  }, [load]);
+   119→
+   120→  const course = detail?.course ?? null;
+   121→  const total = Math.max(0, course ? course.price : 0);
+   122→
+   123→  /** Verifica o status da cobrança; libera a matrícula quando PAID. */
+   124→  const checkStatus = useCallback(
+   125→    async (paymentId: string, silent = false) => {
+   126→      if (!silent) setChecking(true);
+   127→      try {
+   128→        const res = await getPaymentStatus(paymentId);
+   129→        if (res.status === "PAID" || res.orderStatus === "PAID") {
+   130→          setPaid(true);
+   131→          if (pollRef.current) clearInterval(pollRef.current);
+   132→          void clearPendingCheckout();
+   133→        } else if (res.orderStatus === "CANCELED") {
+   134→          if (pollRef.current) clearInterval(pollRef.current);
+   135→          Alert.alert("Cobrança cancelada", "A cobrança não foi concluída. Tente novamente.");
+   136→          setPayment(null);
+   137→        }
+   138→      } catch {
+   139→        // Falha pontual de rede: mantém pendente e tenta de novo no próximo ciclo
+   140→      } finally {
+   141→        if (!silent) setChecking(false);
+   142→      }
+   143→    },
+   144→    []
+   145→  );
+   146→
+   147→  // Polling automático a cada 4s enquanto houver cobrança pendente.
+   148→  useEffect(() => {
+   149→    if (!payment || paid) return;
+   150→    void checkStatus(payment.id, true);
+   151→    pollRef.current = setInterval(() => void checkStatus(payment.id, true), 4000);
+   152→    return () => {
+   153→      if (pollRef.current) clearInterval(pollRef.current);
+   154→    };
+   155→  }, [payment, paid, checkStatus]);
+   156→
+   157→  async function handleSubmit() {
+   158→    if (!course || submitting || paid) return;
+   159→    setSubmitting(true);
+   160→    setFormError(null);
+   161→    try {
+   162→      const digits = cpf.replace(/\D/g, "");
+   163→      const res = await checkoutCourse({
+   164→        courseId: course.id,
+   165→        paymentMethod: method,
+   166→        cpfCnpj: digits || undefined,
+   167→        couponCode: coupon.trim() || undefined,
+   168→        useCredits: useCredits && credits > 0,
+   169→      });
+   170→      if ("pending" in res && res.pending) {
+   171→        setPayment(res.payment);
+   172→        if (res.order.status === "PAID") {
+   173→          setPaid(true);
+   174→          void clearPendingCheckout();
+   175→        }
+   176→      } else if (res.order.status === "PAID") {
+   177→        setPaid(true);
+   178→        void clearPendingCheckout();
+   179→      }
+   180→    } catch (err) {
+   181→      // Servidor sem as rotas novas (site desatualizado): instrução clara em
+   182→      // vez de "Conteúdo não encontrado".
+   183→      setFormError(isMissingEndpoint(err) ? SERVER_OUTDATED_MESSAGE : errMessage(err));
+   184→    } finally {
+   185→      setSubmitting(false);
+   186→    }
+   187→  }
+   188→
+   189→  async function copyPixPayload() {
+   190→    if (!payment?.pix?.payload) return;
+   191→    try {
+   192→      await Clipboard.setStringAsync(payment.pix.payload);
+   193→      setCopied(true);
+   194→      setTimeout(() => setCopied(false), 2200);
+   195→    } catch {
+   196→      Alert.alert("Não foi possível copiar", "Selecione e copie o código manualmente.");
+   197→    }
+   198→  }
+   199→
+   200→  async function openInvoice(url: string) {
+   201→    try {
+   202→      await WebBrowser.openBrowserAsync(url);
+   203→    } catch {
+   204→      Alert.alert("Não foi possível abrir a fatura", "Tente novamente em instantes.");
+   205→    }
+   206→  }
+   207→
+   208→  /* ------------------------------- Render ------------------------------- */
+   209→
+   210→  if (loading) {
+   211→    return (
+   212→      <Screen edges={["top", "left", "right", "bottom"]}>
+   213→        <ScreenHeader title="Checkout" onBack={() => navigation.goBack()} />
+   214→        <LoadingList label="Preparando o pagamento..." />
+   215→      </Screen>
+   216→    );
+   217→  }
+   218→  if (error || !course) {
+   219→    return (
+   220→      <Screen edges={["top", "left", "right", "bottom"]}>
+   221→        <ScreenHeader title="Checkout" onBack={() => navigation.goBack()} />
+   222→        <ErrorBox message={error ?? "Curso não encontrado."} onRetry={() => void load()} />
+   223→      </Screen>
+   224→    );
+   225→  }
+   226→
+   227→  /* ---------------------------- Sucesso (PAID) ---------------------------- */
+   228→  if (paid) {
+   229→    return (
+   230→      <Screen edges={["top", "left", "right", "bottom"]}>
+   231→        <View style={styles.successWrap}>
+   232→          <View style={styles.successCircle}>
+   233→            <Ionicons name="checkmark" size={44} color={theme.colors.onAccent} />
+   234→          </View>
+   235→          <Text style={styles.successTitle}>Pagamento confirmado!</Text>
+   236→          <Text style={styles.successText}>
+   237→            Sua inscrição em{"\n"}
+   238→            <Text style={styles.successCourse}>{course.title}</Text>
+   239→            {"\n"}está liberada. Bons estudos!
+   240→          </Text>
+   241→          <TouchableOpacity
+   242→            style={styles.cta}
+   243→            onPress={() => {
+   244→              // Pilha final [Main, Curso]: voltar da aula não reabre a página
+   245→              // de venda nem o checkout concluído. (reset() quebra no stack JS
+   246→              // do react-navigation — popToTop + navigate é o caminho seguro.)
+   247→              navigation.popToTop();
+   248→              navigation.navigate("Curso", { id: course.id });
+   249→            }}
+   250→            activeOpacity={0.85}
+   251→            accessibilityRole="button"
+   252→            accessibilityLabel="Começar a estudar agora"
+   253→          >
+   254→            <Text style={styles.ctaText}>Começar a estudar</Text>
+   255→          </TouchableOpacity>
+   256→        </View>
+   257→      </Screen>
+   258→    );
+   259→  }
+   260→
+   261→  /* ------------------- Cobrança pendente (PIX/fatura) ------------------- */
+   262→  if (payment) {
+   263→    const sandbox = (payment.env ?? "").toUpperCase().includes("SANDBOX");
+   264→    return (
+   265→      <Screen edges={["top", "left", "right", "bottom"]}>
+   266→        <ScreenHeader
+   267→          title={payment.billingType === "PIX" ? "Pagar com PIX" : "Fatura"}
+   268→          onBack={() => {
+   269→            setPayment(null);
+   270→          }}
+   271→        />
+   272→        <ScrollView style={styles.flex} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+   273→          {sandbox ? (
+   274→            <View style={styles.sandboxBadge}>
+   275→              <Ionicons name="beaker-outline" size={13} color={theme.colors.info} />
+   276→              <Text style={styles.sandboxText}>Ambiente de teste (sandbox)</Text>
+   277→            </View>
+   278→          ) : null}
+   279→
+   280→          {payment.pix ? (
+   281→            <>
+   282→              <View style={styles.qrCard}>
+   283→                <Image
+   284→                  source={{ uri: `data:image/png;base64,${payment.pix.encodedImage}` }}
+   285→                  style={styles.qrImage}
+   286→                  resizeMode="contain"
+   287→                  accessibilityLabel="QR Code PIX"
+   288→                />
+   289→                <Text style={styles.qrHint}>Abra o app do seu banco e escaneie o QR Code</Text>
+   290→              </View>
+   291→
+   292→              <Text style={styles.pixLabel}>PIX copia e cola</Text>
+   293→              <View style={styles.pixBox}>
+   294→                <Text style={styles.pixPayload} numberOfLines={4} ellipsizeMode="middle">
+   295→                  {payment.pix.payload}
+   296→                </Text>
+   297→              </View>
+   298→              <TouchableOpacity
+   299→                style={[styles.copyButton, copied && styles.copyButtonDone]}
+   300→                onPress={() => void copyPixPayload()}
+   301→                activeOpacity={0.85}
+   302→                accessibilityRole="button"
+   303→                accessibilityLabel="Copiar código PIX"
+   304→              >
+   305→                <Ionicons
+   306→                  name={copied ? "checkmark" : "copy-outline"}
+   307→                  size={16}
+   308→                  color={copied ? theme.colors.onAccent : theme.colors.accent}
+   309→                />
+   310→                <Text style={[styles.copyText, copied && styles.copyTextDone]}>
+   311→                  {copied ? "Código copiado!" : "Copiar código PIX"}
+   312→                </Text>
+   313→              </TouchableOpacity>
+   314→            </>
+   315→          ) : (
+   316→            <>
+   317→              <View style={styles.invoiceCard}>
+   318→                <Ionicons name="receipt-outline" size={26} color={theme.colors.accent} />
+   319→                <Text style={styles.invoiceTitle}>
+   320→                  {payment.billingType === "BOLETO" ? "Boleto gerado" : "Fatura do cartão gerada"}
+   321→                </Text>
+   322→                <Text style={styles.invoiceText}>
+   323→                  {payment.billingType === "BOLETO"
+   324→                    ? "Pague o boleto no seu banco — o acesso é liberado após a compensação."
+   325→                    : "Conclua o pagamento na fatura — o acesso é liberado após a confirmação."}
+   326→                </Text>
+   327→                {payment.invoiceUrl ? (
+   328→                  <TouchableOpacity
+   329→                    style={styles.copyButton}
+   330→                    onPress={() => void openInvoice(payment.invoiceUrl!)}
+   331→                    activeOpacity={0.85}
+   332→                    accessibilityRole="button"
+   333→                    accessibilityLabel="Abrir fatura"
+   334→                  >
+   335→                    <Ionicons name="open-outline" size={16} color={theme.colors.accent} />
+   336→                    <Text style={styles.copyText}>Abrir fatura</Text>
+   337→                  </TouchableOpacity>
+   338→                ) : null}
+   339→              </View>
+   340→            </>
+   341→          )}
+   342→
+   343→          <View style={styles.waitCard}>
+   344→            <ActivityIndicator size="small" color={theme.colors.accent} />
+   345→            <View style={styles.waitInfo}>
+   346→              <Text style={styles.waitTitle}>Aguardando pagamento…</Text>
+   347→              <Text style={styles.waitText}>
+   348→                Verificamos automaticamente a cada poucos segundos. Assim que cair, sua
+   349→                inscrição é liberada aqui mesmo.
+   350→              </Text>
+   351→            </View>
+   352→          </View>
+   353→
+   354→          <TouchableOpacity
+   355→            style={styles.refreshButton}
+   356→            onPress={() => void checkStatus(payment.id)}
+   357→            disabled={checking}
+   358→            activeOpacity={0.85}
+   359→            accessibilityRole="button"
+   360→            accessibilityLabel="Verificar pagamento agora"
+   361→          >
+   362→            {checking ? (
+   363→              <ActivityIndicator size="small" color={theme.colors.accent} />
+   364→            ) : (
+   365→              <Ionicons name="refresh" size={16} color={theme.colors.accent} />
+   366→            )}
+   367→            <Text style={styles.refreshText}>Verificar agora</Text>
+   368→          </TouchableOpacity>
+   369→        </ScrollView>
+   370→      </Screen>
+   371→    );
+   372→  }
+   373→
+   374→  /* ------------------------------ Formulário ------------------------------ */
+   375→  return (
+   376→    <Screen edges={["top", "left", "right", "bottom"]}>
+   377→      <ScreenHeader title="Checkout" onBack={() => navigation.goBack()} />
+   378→      <ScrollView style={styles.flex} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+   379→        {/* Resumo do curso */}
+   380→        <View style={styles.summaryCard}>
+   381→          <RemoteImage
+   382→            uri={course.coverUrl}
+   383→            style={summaryThumb}
+   384→            recyclingKey={course.id}
+   385→            fallbackIcon="play-circle-outline"
+   386→            errorIcon="image-outline"
+   387→            iconSize={20}
+   388→          />
+   389→          <View style={styles.summaryInfo}>
+   390→            <Text style={styles.summaryTitle} numberOfLines={2}>
+   391→              {course.title}
+   392→            </Text>
+   393→            <View style={styles.summaryMentor}>
+   394→              <Avatar uri={course.mentor.avatarUrl} name={course.mentor.name} size={18} />
+   395→              <Text style={styles.summaryMentorName} numberOfLines={1}>
+   396→                {course.mentor.name}
+   397→              </Text>
+   398→            </View>
+   399→          </View>
+   400→          <Text style={styles.summaryPrice}>{formatPrice(course.price)}</Text>
+   401→        </View>
+   402→
+   403→        {formError ? <ErrorBox message={formError} /> : null}
+   404→
+   405→        {/* Forma de pagamento */}
+   406→        <Text style={styles.sectionTitle}>Forma de pagamento</Text>
+   407→        <View style={styles.methods}>
+   408→          {METHODS.map((m) => {
+   409→            const active = method === m.id;
+   410→            return (
+   411→              <TouchableOpacity
+   412→                key={m.id}
+   413→                style={[styles.methodCard, active && styles.methodCardActive]}
+   414→                onPress={() => setMethod(m.id)}
+   415→                activeOpacity={0.8}
+   416→                accessibilityRole="button"
+   417→                accessibilityState={{ selected: active }}
+   418→                accessibilityLabel={`Pagar com ${m.label}`}
+   419→              >
+   420→                <View style={styles.methodTop}>
+   421→                  <Ionicons
+   422→                    name={m.icon}
+   423→                    size={18}
+   424→                    color={active ? theme.colors.accent : theme.colors.textMuted}
+   425→                  />
+   426→                  <Text style={[styles.methodLabel, active && styles.methodLabelActive]}>
+   427→                    {m.label}
+   428→                  </Text>
+   429→                </View>
+   430→                <Text style={styles.methodHint}>{m.hint}</Text>
+   431→              </TouchableOpacity>
+   432→            );
+   433→          })}
+   434→        </View>
+   435→
+   436→        {/* CPF/CNPJ */}
+   437→        <Text style={styles.sectionTitle}>CPF ou CNPJ do pagador</Text>
+   438→        <TextInput
+   439→          style={styles.input}
+   440→          value={cpf}
+   441→          onChangeText={(t) => setCpf(maskCpfCnpj(t))}
+   442→          placeholder="000.000.000-00"
+   443→          placeholderTextColor={theme.colors.textFaint}
+   444→          keyboardType="number-pad"
+   445→          maxLength={18}
+   446→          accessibilityLabel="CPF ou CNPJ do pagador"
+   447→        />
+   448→        <Text style={styles.inputHint}>
+   449→          Necessário para o gateway processar o pagamento com segurança.
+   450→        </Text>
+   451→
+   452→        {/* Cupom */}
+   453→        <Text style={styles.sectionTitle}>Cupom de desconto (opcional)</Text>
+   454→        <TextInput
+   455→          style={styles.input}
+   456→          value={coupon}
+   457→          onChangeText={(t) => setCoupon(t.toUpperCase())}
+   458→          placeholder="Ex.: BEMVINDO10"
+   459→          placeholderTextColor={theme.colors.textFaint}
+   460→          autoCapitalize="characters"
+   461→          autoCorrect={false}
+   462→          maxLength={40}
+   463→          accessibilityLabel="Código do cupom"
+   464→        />
+   465→
+   466→        {/* Créditos */}
+   467→        {credits > 0 ? (
+   468→          <>
+   469→            <TouchableOpacity
+   470→              style={styles.creditRow}
+   471→              onPress={() => setUseCredits((v) => !v)}
+   472→              activeOpacity={0.8}
+   473→              accessibilityRole="checkbox"
+   474→              accessibilityState={{ checked: useCredits }}
+   475→              accessibilityLabel="Usar créditos de indicação"
+   476→            >
+   477→              <Ionicons
+   478→                name={useCredits ? "checkbox" : "square-outline"}
+   479→                size={20}
+   480→                color={useCredits ? theme.colors.accent : theme.colors.textFaint}
+   481→              />
+   482→              <Text style={styles.creditText}>
+   483→                Usar meus créditos de indicação ({formatPrice(credits / 100)})
+   484→              </Text>
+   485→            </TouchableOpacity>
+   486→          </>
+   487→        ) : null}
+   488→
+   489→        {/* Total */}
+   490→        <View style={styles.totalRow}>
+   491→          <Text style={styles.totalLabel}>Total</Text>
+   492→          <Text style={styles.totalValue}>{formatPrice(total)}</Text>
+   493→        </View>
+   494→
+   495→        {/* CTA */}
+   496→        <TouchableOpacity
+   497→          style={[styles.cta, submitting && styles.ctaDisabled]}
+   498→          onPress={() => void handleSubmit()}
+   499→          disabled={submitting}
+   500→          activeOpacity={0.85}
+   501→          accessibilityRole="button"
+   502→          accessibilityLabel="Confirmar pagamento"
+   503→        >
+   504→          {submitting ? (
+   505→            <ActivityIndicator size="small" color={theme.colors.onAccent} />
+   506→          ) : (
+   507→            <>
+   508→              <Ionicons name="lock-closed" size={15} color={theme.colors.onAccent} />
+   509→              <Text style={styles.ctaText}>
+   510→                {total > 0 ? `Pagar ${formatPrice(total)}` : "Confirmar inscrição"}
+   511→              </Text>
+   512→            </>
+   513→          )}
+   514→        </TouchableOpacity>
+   515→        <Text style={styles.secureText}>
+   516→          Pagamento processado pelo gateway seguro do MentorHub (Asaas).
+   517→        </Text>
+   518→      </ScrollView>
+   519→    </Screen>
+   520→  );
+   521→}
+   522→
+   523→/* -------------------------------- Estilos -------------------------------- */
+   524→
+   525→const summaryThumb = { width: 56, height: 56, borderRadius: theme.radius.md };
+   526→
+   527→const makeStyles = () =>
+   528→  StyleSheet.create({
+   529→    flex: { flex: 1 },
+   530→    content: {
+   531→      padding: theme.spacing.lg,
+   532→      paddingBottom: theme.spacing.xxl,
+   533→      gap: theme.spacing.xs,
+   534→    },
+   535→
+   536→    /* Resumo */
+   537→    summaryCard: {
+   538→      flexDirection: "row",
+   539→      alignItems: "center",
+   540→      gap: theme.spacing.md,
+   541→      backgroundColor: theme.colors.surface,
+   542→      borderWidth: StyleSheet.hairlineWidth,
+   543→      borderColor: theme.colors.border,
+   544→      borderRadius: theme.radius.lg,
+   545→      padding: theme.spacing.md,
+   546→    },
+   547→    summaryInfo: { flex: 1, gap: 3 },
+   548→    summaryTitle: { color: theme.colors.text, fontSize: 14, fontWeight: "700", lineHeight: 18 },
+   549→    summaryMentor: { flexDirection: "row", alignItems: "center", gap: 6 },
+   550→    summaryMentorName: { color: theme.colors.textMuted, fontSize: 12, flexShrink: 1 },
+   551→    summaryPrice: { color: theme.colors.accent, fontSize: 15, fontWeight: "800" },
+   552→
+   553→    /* Seções */
+   554→    sectionTitle: {
+   555→      color: theme.colors.text,
+   556→      fontSize: 13,
+   557→      fontWeight: "700",
+   558→      marginTop: theme.spacing.md,
+   559→      marginBottom: theme.spacing.xs,
+   560→    },
+   561→
+   562→    /* Métodos */
+   563→    methods: { flexDirection: "row", gap: theme.spacing.sm },
+   564→    methodCard: {
+   565→      flex: 1,
+   566→      backgroundColor: theme.colors.surface,
+   567→      borderWidth: 1,
+   568→      borderColor: theme.colors.border,
+   569→      borderRadius: theme.radius.md,
+   570→      padding: theme.spacing.sm,
+   571→      gap: 4,
+   572→    },
+   573→    methodCardActive: { borderColor: theme.colors.accent, backgroundColor: theme.colors.accentSoft },
+   574→    methodTop: { flexDirection: "row", alignItems: "center", gap: 6 },
+   575→    methodLabel: { color: theme.colors.textMuted, fontSize: 13, fontWeight: "700" },
+   576→    methodLabelActive: { color: theme.colors.accent },
+   577→    methodHint: { color: theme.colors.textFaint, fontSize: 10, lineHeight: 13 },
+   578→
+   579→    /* Inputs */
+   580→    input: {
+   581→      backgroundColor: theme.colors.surfaceAlt,
+   582→      borderWidth: StyleSheet.hairlineWidth,
+   583→      borderColor: theme.colors.border,
+   584→      borderRadius: theme.radius.md,
+   585→      paddingHorizontal: theme.spacing.md,
+   586→      paddingVertical: 12,
+   587→      color: theme.colors.text,
+   588→      fontSize: 15,
+   589→      minHeight: 46,
+   590→    },
+   591→    inputHint: { color: theme.colors.textFaint, fontSize: 11, marginTop: 4, lineHeight: 15 },
+   592→
+   593→    /* Créditos */
+   594→    creditRow: {
+   595→      flexDirection: "row",
+   596→      alignItems: "center",
+   597→      gap: theme.spacing.sm,
+   598→      marginTop: theme.spacing.md,
+   599→      paddingVertical: theme.spacing.xs,
+   600→    },
+   601→    creditText: { color: theme.colors.text, fontSize: 13, flex: 1 },
+   602→
+   603→    /* Total + CTA */
+   604→    totalRow: {
+   605→      flexDirection: "row",
+   606→      alignItems: "center",
+   607→      justifyContent: "space-between",
+   608→      marginTop: theme.spacing.md,
+   609→      paddingTop: theme.spacing.md,
+   610→      borderTopWidth: StyleSheet.hairlineWidth,
+   611→      borderTopColor: theme.colors.border,
+   612→    },
+   613→    totalLabel: { color: theme.colors.textMuted, fontSize: 14, fontWeight: "600" },
+   614→    totalValue: { color: theme.colors.text, fontSize: 20, fontWeight: "800" },
+   615→    cta: {
+   616→      marginTop: theme.spacing.lg,
+   617→      backgroundColor: theme.colors.accent,
+   618→      borderRadius: theme.radius.md,
+   619→      minHeight: 50,
+   620→      alignItems: "center",
+   621→      justifyContent: "center",
+   622→      flexDirection: "row",
+   623→      gap: 8,
+   624→    },
+   625→    ctaDisabled: { opacity: 0.6 },
+   626→    ctaText: { color: theme.colors.onAccent, fontSize: 15, fontWeight: "700" },
+   627→    secureText: {
+   628→      color: theme.colors.textFaint,
+   629→      fontSize: 11,
+   630→      textAlign: "center",
+   631→      marginTop: theme.spacing.sm,
+   632→    },
+   633→
+   634→    /* PIX pendente */
+   635→    sandboxBadge: {
+   636→      flexDirection: "row",
+   637→      alignItems: "center",
+   638→      alignSelf: "center",
+   639→      gap: 6,
+   640→      backgroundColor: theme.colors.infoSoft,
+   641→      borderWidth: 1,
+   642→      borderColor: theme.colors.infoBorder,
+   643→      borderRadius: theme.radius.full,
+   644→      paddingHorizontal: theme.spacing.md,
+   645→      paddingVertical: 5,
+   646→    },
+   647→    sandboxText: { color: theme.colors.info, fontSize: 11, fontWeight: "600" },
+   648→    qrCard: {
+   649→      alignItems: "center",
+   650→      backgroundColor: theme.colors.surface,
+   651→      borderWidth: StyleSheet.hairlineWidth,
+   652→      borderColor: theme.colors.border,
+   653→      borderRadius: theme.radius.lg,
+   654→      padding: theme.spacing.lg,
+   655→      gap: theme.spacing.sm,
+   656→      marginTop: theme.spacing.md,
+   657→    },
+   658→    qrImage: { width: 210, height: 210 },
+   659→    qrHint: { color: theme.colors.textMuted, fontSize: 12, textAlign: "center", lineHeight: 17 },
+   660→    pixLabel: {
+   661→      color: theme.colors.text,
+   662→      fontSize: 13,
+   663→      fontWeight: "700",
+   664→      marginTop: theme.spacing.sm,
+   665→    },
+   666→    pixBox: {
+   667→      backgroundColor: theme.colors.surfaceAlt,
+   668→      borderWidth: StyleSheet.hairlineWidth,
+   669→      borderColor: theme.colors.border,
+   670→      borderRadius: theme.radius.md,
+   671→      padding: theme.spacing.md,
+   672→    },
+   673→    pixPayload: { color: theme.colors.textMuted, fontSize: 12, lineHeight: 17 },
+   674→    copyButton: {
+   675→      flexDirection: "row",
+   676→      alignItems: "center",
+   677→      justifyContent: "center",
+   678→      gap: 8,
+   679→      backgroundColor: theme.colors.accentSoft,
+   680→      borderWidth: 1,
+   681→      borderColor: theme.colors.accentBorder,
+   682→      borderRadius: theme.radius.md,
+   683→      minHeight: 46,
+   684→      marginTop: theme.spacing.sm,
+   685→    },
+   686→    copyButtonDone: { backgroundColor: theme.colors.accent, borderColor: theme.colors.accent },
+   687→    copyText: { color: theme.colors.accent, fontSize: 14, fontWeight: "700" },
+   688→    copyTextDone: { color: theme.colors.onAccent },
+   689→
+   690→    /* Espera */
+   691→    waitCard: {
+   692→      flexDirection: "row",
+   693→      alignItems: "center",
+   694→      gap: theme.spacing.md,
+   695→      backgroundColor: theme.colors.surface,
+   696→      borderWidth: StyleSheet.hairlineWidth,
+   697→      borderColor: theme.colors.border,
+   698→      borderRadius: theme.radius.lg,
+   699→      padding: theme.spacing.md,
+   700→      marginTop: theme.spacing.lg,
+   701→    },
+   702→    waitInfo: { flex: 1, gap: 3 },
+   703→    waitTitle: { color: theme.colors.text, fontSize: 13, fontWeight: "700" },
+   704→    waitText: { color: theme.colors.textMuted, fontSize: 12, lineHeight: 17 },
+   705→    refreshButton: {
+   706→      flexDirection: "row",
+   707→      alignItems: "center",
+   708→      justifyContent: "center",
+   709→      gap: 8,
+   710→      borderWidth: 1,
+   711→      borderColor: theme.colors.accentBorder,
+   712→      borderRadius: theme.radius.md,
+   713→      minHeight: 46,
+   714→    },
+   715→    refreshText: { color: theme.colors.accent, fontSize: 14, fontWeight: "700" },
+   716→
+   717→    /* Fatura */
+   718→    invoiceCard: {
+   719→      alignItems: "center",
+   720→      gap: theme.spacing.sm,
+   721→      backgroundColor: theme.colors.surface,
+   722→      borderWidth: StyleSheet.hairlineWidth,
+   723→      borderColor: theme.colors.border,
+   724→      borderRadius: theme.radius.lg,
+   725→      padding: theme.spacing.xl,
+   726→      marginTop: theme.spacing.md,
+   727→      width: "100%",
+   728→    },
+   729→    invoiceTitle: { color: theme.colors.text, fontSize: 15, fontWeight: "700" },
+   730→    invoiceText: { color: theme.colors.textMuted, fontSize: 12, textAlign: "center", lineHeight: 17 },
+   731→
+   732→    /* Sucesso */
+   733→    successWrap: {
+   734→      flex: 1,
+   735→      alignItems: "center",
+   736→      justifyContent: "center",
+   737→      padding: theme.spacing.xl,
+   738→      gap: theme.spacing.md,
+   739→    },
+   740→    successCircle: {
+   741→      width: 84,
+   742→      height: 84,
+   743→      borderRadius: theme.radius.full,
+   744→      backgroundColor: theme.colors.accent,
+   745→      alignItems: "center",
+   746→      justifyContent: "center",
+   747→    },
+   748→    successTitle: { color: theme.colors.text, fontSize: 22, fontWeight: "800" },
+   749→    successText: {
+   750→      color: theme.colors.textMuted,
+   751→      fontSize: 14,
+   752→      textAlign: "center",
+   753→      lineHeight: 21,
+   754→    },
+   755→    successCourse: { color: theme.colors.text, fontWeight: "700" },
+   756→  });
+   757→

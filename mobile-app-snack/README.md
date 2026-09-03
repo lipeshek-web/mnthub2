@@ -2,9 +2,9 @@
 
 App do aluno do MentorHub, publicado e testado de ponta a ponta. Dois jeitos de abrir:
 
-1. **Expo Snack (link direto):** **https://snack.expo.dev/vrzHMlyNYIXNSpvwDX1oV**
+1. **Expo Snack (link direto):** **https://snack.expo.dev/WQNMgm4hkeKGZGUMX--I5**
    - No preview **Web** (painel direito) ou no celular com o app **Expo Go** escaneando o QR Code ("My Device").
-   - Publicado via API oficial (`exp.host/--/api/v2/snack/save`) com código (53 arquivos) + 12 dependências — abrindo o link, já está tudo lá (nada de copiar/colar).
+   - Publicado via API oficial (`exp.host/--/api/v2/snack/save`) com código (53 arquivos) + 11 dependências — abrindo o link, já está tudo lá (nada de copiar/colar). SEM expo-clipboard (não resolve no Snack web): copiar PIX usa o clipboard do navegador + código selecionável.
    - **Novidades desta versão:** COMPRA completa dentro do app (PIX com QR + copia-e-cola, cartão e boleto via Asaas — sem sair do app), mensagens com mentores (Perfil → Mensagens e "Mensagem" no perfil do mentor) e curso que abre DIRETO no conteúdo da aula (índice só pelo botão "Conteúdos").
 2. **Web app no site:** **https://mentorhub.space-z.ai/app-mobile/** — o mesmo código exportado (`expo export --platform web`) e servido junto do site (atualizado a cada publish).
 
@@ -71,7 +71,7 @@ bunx expo export --platform web   # gera dist/ (vai para public/app-mobile no pu
 
 ## 📦 ZIP (backup)
 
-`https://mentorhub.space-z.ai/mentorhub-mobile-snack-v6.zip` — código com páginas embutidas como data URI (as versões antigas v5/v4/v3 estão obsoletas).
+`https://mentorhub.space-z.ai/mentorhub-mobile-snack-v7.zip` — código com páginas embutidas como data URI (as versões antigas v5/v4/v3 estão obsoletas).
 
 ## 🛠 Regenerar páginas / publicar
 

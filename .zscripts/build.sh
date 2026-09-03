@@ -145,9 +145,33 @@ fi
 #   2. .zscripts/cloud.env (fallback VERSIONADO no git — se o workspace sofrer
 #      downgrade e perder o .env, o publish ainda sai em modo nuvem e os dados
 #      do Turso permanecem visíveis; sem isso o usuário veria "tudo zerado")
+# FALHA REAL W-47: um snapshot restaurado pode trazer um .env ANTIGO/incompleto
+# (ex.: só DATABASE_URL local, sem TURSO_*). Como o teste original era apenas de
+# existência, esse .env incompleto Vencia o fallback versionado e o publish saía
+# sem modo nuvem → APIs 500 / dados "sumidos". Agora: .env é sempre a base, mas
+# qualquer variável de nuvem ausente é completada a partir do cloud.env versionado.
+CLOUD_ENV_VARS="TURSO_DATABASE_URL TURSO_AUTH_TOKEN LIBSQL_URL LIBSQL_AUTH_TOKEN"
+
 if [ -f ".env" ]; then
     cp .env "$BUILD_DIR/next-service-dist/.env"
-    echo "  - Copiado .env para next-service-dist (config de runtime: modo nuvem)"
+    echo "  - Copiado .env para next-service-dist (base de config de runtime)"
+    if [ -f "$SCRIPT_DIR/cloud.env" ]; then
+        MERGED=0
+        for __v in $CLOUD_ENV_VARS; do
+            if ! grep -qE "^${__v}=" "$BUILD_DIR/next-service-dist/.env" && grep -qE "^${__v}=" "$SCRIPT_DIR/cloud.env"; then
+                grep -E "^${__v}=" "$SCRIPT_DIR/cloud.env" >> "$BUILD_DIR/next-service-dist/.env"
+                MERGED=1
+            fi
+        done
+        if [ "$MERGED" = "1" ]; then
+            echo "  - 🔧 .env incompleto detectado (rollback de snapshot?) — variáveis de nuvem ausentes foram completadas a partir de .zscripts/cloud.env (modo nuvem preservado)"
+        fi
+        if grep -qE "^TURSO_DATABASE_URL=" "$BUILD_DIR/next-service-dist/.env"; then
+            echo "  - ✅ Modo nuvem garantido no artefato (TURSO_DATABASE_URL presente)"
+        else
+            echo "  - ❌ Nem .env nem cloud.env trouxeram TURSO_DATABASE_URL — produção subirá no SQLite empacotado (dados congelados)!"
+        fi
+    fi
 elif [ -f "$SCRIPT_DIR/cloud.env" ]; then
     cp "$SCRIPT_DIR/cloud.env" "$BUILD_DIR/next-service-dist/.env"
     echo "  - ⚠️  .env ausente no workspace — usando fallback .zscripts/cloud.env (modo nuvem preservado)"
@@ -155,27 +179,62 @@ else
     echo "  - ❌ NEM .env NEM .zscripts/cloud.env encontrados — produção subirá no SQLite empacotado (dados congelados)!"
 fi
 
-# ─── FIX Bun ESM: shim para "@libsql/isomorphic-fetch" ───
-# O @prisma/adapter-libsql aninha @libsql/client@0.8.x → hrana-client, que faz
+# ─── FIX Bun ESM: shim para "@libsql/isomorphic-fetch" (v2, à prova de subdirs) ───
+# O @prisma/adapter-libsql aninha @libsql/client → hrana-client, que faz
 # `export { fetch, Request, Headers } from "@libsql/isomorphic-fetch"`. Dentro
-# do standalone, o Bun FALHA a resolução desse pacote (mesmo presente no
-# node_modules — inclusive com paths explícitos). O pacote é apenas um shim de
-# globalThis (fetch/Request/Headers — Node 18+/Bun já têm). Substituímos o
-# import estático por um shim local relativo: zero resolução, determinístico.
+# do standalone, o Bun FALHA a resolução desse pacote. O pacote é apenas um
+# shim de globalThis — substituímos por um shim local, zero resolução.
+#
+# BUG CORRIGIDO (causou APIs 500 em produção): a v1 tratava "lib-esm" e
+# "lib-esm/http" numa mesma passada RECURSIVA — a 1ª iteração reescrevia os
+# .js dos SUBDIRETÓRIOS com "./fetch-shim.mjs", e a 2ª iteração (que criaria
+# o shim dentro do subdir) não achava mais nada a reescrever e pulava. Tempos
+# depois, o hrana-client ganhou a estrutura lib-esm/http/ e o import relativo
+# de http/stream.js passou a apontar para um shim inexistente → o carregamento
+# do Prisma morria → TODAS as rotas de API retornavam 500 (páginas estáticas
+# continuavam 200 — o sintoma visto em produção).
+#
+# v2: cada diretório (lib-esm, lib-esm/http, lib-cjs, lib-cjs/http) é processado
+# isoladamente com find -maxdepth 1: cria o shim lá e reescreve apenas os .js
+# DAQUELE diretório. Sem efeito colateral entre diretórios, idempotente.
 find "$BUILD_DIR/next-service-dist/node_modules" -type d -name hrana-client -path "*@libsql*" 2>/dev/null | while read -r HC; do
-    for d in "$HC/lib-esm" "$HC/lib-esm/http"; do
-        [ -d "$d" ] && grep -rq '"@libsql/isomorphic-fetch"' "$d" 2>/dev/null || continue
-        printf 'const _fetch = globalThis.fetch;\nconst _Request = globalThis.Request;\nconst _Headers = globalThis.Headers;\nexport { _fetch as fetch, _Request as Request, _Headers as Headers };\n' > "$d/fetch-shim.mjs"
-        grep -rl '"@libsql/isomorphic-fetch"' "$d" --include='*.js' 2>/dev/null | xargs -r sed -i 's|"@libsql/isomorphic-fetch"|"./fetch-shim.mjs"|g'
-        echo "  - shim ESM isomorphic-fetch aplicado: $d"
-    done
-    for d in "$HC/lib-cjs" "$HC/lib-cjs/http"; do
-        [ -d "$d" ] && grep -rq '"@libsql/isomorphic-fetch"' "$d" 2>/dev/null || continue
-        printf 'module.exports = { fetch: globalThis.fetch, Request: globalThis.Request, Headers: globalThis.Headers };\n' > "$d/fetch-shim.cjs"
-        grep -rl '"@libsql/isomorphic-fetch"' "$d" --include='*.js' 2>/dev/null | xargs -r sed -i 's|"@libsql/isomorphic-fetch"|"./fetch-shim.cjs"|g'
-        echo "  - shim CJS isomorphic-fetch aplicado: $d"
+    for sub in "lib-esm" "lib-esm/http" "lib-cjs" "lib-cjs/http"; do
+        d="$HC/$sub"
+        [ -d "$d" ] || continue
+        # Só arquivos .js DIRETAMENTE em $d que ainda importam o pacote.
+        files="$(find "$d" -maxdepth 1 -type f -name '*.js' -exec grep -l '"@libsql/isomorphic-fetch"' {} + 2>/dev/null || true)"
+        [ -n "$files" ] || continue
+        case "$sub" in
+            lib-esm*)
+                printf 'const _fetch = globalThis.fetch;\nconst _Request = globalThis.Request;\nconst _Headers = globalThis.Headers;\nexport { _fetch as fetch, _Request as Request, _Headers as Headers };\n' > "$d/fetch-shim.mjs"
+                echo "$files" | xargs sed -i 's|"@libsql/isomorphic-fetch"|"./fetch-shim.mjs"|g'
+                ;;
+            lib-cjs*)
+                printf 'module.exports = { fetch: globalThis.fetch, Request: globalThis.Request, Headers: globalThis.Headers };\n' > "$d/fetch-shim.cjs"
+                echo "$files" | xargs sed -i 's|"@libsql/isomorphic-fetch"|"./fetch-shim.cjs"|g'
+                ;;
+        esac
+        echo "  - shim isomorphic-fetch aplicado: $d ($(echo "$files" | wc -l) arquivos)"
     done
 done
+
+# Guarda de sanidade: nenhum .js pode ter ficado apontando para o pacote
+# original (se ficou, o Prisma não carrega em runtime). Falha o build aqui —
+# melhor que publicar um artefato quebrado.
+LEFTOVER="$(grep -rl '"@libsql/isomorphic-fetch"' "$BUILD_DIR/next-service-dist/node_modules" --include='*.js' 2>/dev/null | head -3 || true)"
+if [ -n "$LEFTOVER" ]; then
+    echo "❌ Ainda existem imports de @libsql/isomorphic-fetch após o shim:"
+    echo "$LEFTOVER"
+    exit 1
+fi
+# Todo './fetch-shim.*' precisa existir ao lado do arquivo que o importa.
+BROKEN="$(grep -rl '"\./fetch-shim' "$BUILD_DIR/next-service-dist/node_modules" --include='*.js' 2>/dev/null | while read -r f; do d="$(dirname "$f")"; [ -f "$d/fetch-shim.mjs" ] || [ -f "$d/fetch-shim.cjs" ] || echo "$f"; done | head -3 || true)"
+if [ -n "$BROKEN" ]; then
+    echo "❌ Arquivos importam ./fetch-shim sem o shim presente:"
+    echo "$BROKEN"
+    exit 1
+fi
+echo "  - ✅ shim isomorphic-fetch verificado (sem imports órfãos)"
 
 # Python 不继承 workspace-agent 的 /home/z/.venv。若项目包含 Python 源码或
 # 依赖清单，在构建期将生产依赖固化到产物，并保持 Python 源码的项目相对路径。
