@@ -27,6 +27,7 @@ import {
 } from "../lib/api";
 import { formatNaiveLong, formatPrice } from "../lib/format";
 import { usePagedList } from "../lib/usePagedList";
+import { consumeSessionsSegmentHint } from "../lib/uiHints";
 import { theme } from "../theme";
 import { Avatar } from "../components/Avatar";
 import { EmptyState } from "../components/EmptyState";
@@ -99,8 +100,10 @@ export default function MentorshipsScreen() {
   }, [segment, loadBookings]);
 
   // Volta do checkout → revalida as sessões (botão "Pagar agora" some ao pagar).
+  // Se a origem pediu "Minhas sessões" (pós-pagamento), abre direto no segmento.
   useFocusEffect(
     useCallback(() => {
+      if (consumeSessionsSegmentHint()) setSegment("sessoes");
       if (bookingsLoadedRef.current) void loadBookings("refresh");
     }, [loadBookings])
   );

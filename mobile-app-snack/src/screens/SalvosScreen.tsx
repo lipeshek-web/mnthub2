@@ -7,6 +7,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { useSafeBack } from "../lib/navigation";
 import { Ionicons } from "@expo/vector-icons";
 import { getCourse, getLibraryItem, type CourseItem, type LibraryItemDetail } from "../lib/api";
 import { listFavorites, toggleFavorite, subscribeFavorites, type FavRef } from "../lib/favorites";
@@ -30,6 +31,7 @@ interface SavedRow {
 export default function SalvosScreen() {
   const styles = makeStyles();
   const navigation = useNavigation<any>();
+  const goBack = useSafeBack(navigation);
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<SavedRow[]>([]);
 
@@ -91,7 +93,7 @@ export default function SalvosScreen() {
 
   return (
     <Screen edges={["top", "left", "right", "bottom"]}>
-      <ScreenHeader title="Salvos" onBack={() => navigation.goBack()} />
+      <ScreenHeader title="Salvos" onBack={goBack} />
 
       {loading ? (
         <LoadingList label="Carregando salvos..." />

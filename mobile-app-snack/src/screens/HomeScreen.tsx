@@ -284,6 +284,7 @@ export default function HomeScreen() {
               />
               <FlatList
                 horizontal
+                nestedScrollEnabled
                 data={newBooks}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
@@ -309,6 +310,7 @@ export default function HomeScreen() {
               />
               <FlatList
                 horizontal
+                nestedScrollEnabled
                 data={recommended}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (

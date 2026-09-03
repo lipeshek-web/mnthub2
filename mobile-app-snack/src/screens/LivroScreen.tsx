@@ -15,6 +15,7 @@ import {
   View,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useSafeBack } from "../lib/navigation";
 import { Ionicons } from "@expo/vector-icons";
 import { assetUrl, errMessage, getLibraryItem, type LibraryItemDetail } from "../lib/api";
 import { BOOK_PAGES } from "../lib/bookPages";
@@ -33,6 +34,7 @@ import { ScreenHeader } from "../components/ScreenHeader";
 export default function BookDetailScreen() {
   const styles = makeStyles();
   const navigation = useNavigation<any>();
+  const goBack = useSafeBack(navigation);
   const params = (useRoute<any>().params ?? {}) as { id: string };
   const itemId = Array.isArray(params.id) ? params.id[0] : params.id;
 
@@ -73,7 +75,7 @@ export default function BookDetailScreen() {
         <ErrorBox message={error} onRetry={() => void load()} />
       ) : item ? (
         <>
-          <ScreenHeader title={isBook ? "Livro" : "Artigo"} onBack={() => navigation.goBack()} />
+          <ScreenHeader title={isBook ? "Livro" : "Artigo"} onBack={goBack} />
           <ScrollView
             style={styles.flex}
             contentContainerStyle={styles.content}

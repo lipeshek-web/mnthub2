@@ -1,8 +1,10 @@
 /**
- * Card de livro/artigo da biblioteca.
- * - variant "row": lista da aba Biblioteca (capa lateral + infos).
- * - variant "mini": carrossel horizontal do início (compacto/decorativo — sem
- *   coração de favorito, mesmo com showFavorite=true).
+ * Card de livro/artigo com cara de LIVRO: capa em retrato com lombra à
+ * esquerda (faixa escura + brilho), beirada de páginas à direita, borda fina
+ * e elevação — do carrossel à lista, o card lê como um livro de verdade.
+ * - variant "row": lista da aba Biblioteca (capa-livro à esquerda + infos).
+ * - variant "mini": carrossel horizontal do início (capa maior + legenda,
+ *   sem coração de favorito).
  */
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -21,23 +23,59 @@ interface BookCardProps {
   showFavorite?: boolean;
 }
 
+/** Capa com tratamento de livro (usada nas duas variantes). */
+function BookCover({
+  item,
+  width,
+  height,
+  radius,
+  iconSize,
+  showKindBadge,
+}: {
+  item: LibraryItemSummary;
+  width: number;
+  height: number;
+  radius: number;
+  iconSize: number;
+  showKindBadge?: boolean;
+}) {
+  const styles = makeStyles();
+  const isBook = item.kind === "BOOK";
+  const fallbackIcon: keyof typeof Ionicons.glyphMap = isBook
+    ? "book-outline"
+    : "document-text-outline";
+  return (
+    <View style={[styles.coverBox, { width, height, borderRadius: radius }]}>
+      <RemoteImage
+        uri={item.coverUrl}
+        style={[styles.coverFill, { borderRadius: radius }]}
+        recyclingKey={item.id}
+        fallbackIcon={fallbackIcon}
+        iconSize={iconSize}
+      />
+      {/* Lombra: faixa escura + linha de brilho, como a dobra da capa */}
+      <View style={[styles.spine, { borderBottomLeftRadius: radius, borderTopLeftRadius: radius }]} />
+      <View style={styles.spineHighlight} />
+      {/* Beirada de páginas à direita */}
+      <View style={styles.pagesEdge} />
+      {showKindBadge ? (
+        <View style={styles.kindBadge}>
+          <Text style={styles.kindBadgeText}>{isBook ? "Livro" : "Artigo"}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 export function BookCard({ item, onPress, variant = "row", showFavorite = true }: BookCardProps) {
   const styles = makeStyles();
   const { isFavorite, toggle } = useFavorites();
   const favorite = isFavorite("book", item.id);
-  const isBook = item.kind === "BOOK";
-  const fallbackIcon: keyof typeof Ionicons.glyphMap = isBook ? "book-outline" : "document-text-outline";
 
   if (variant === "mini") {
     return (
       <TouchableOpacity style={styles.miniCard} onPress={onPress} activeOpacity={0.85}>
-        <RemoteImage
-          uri={item.coverUrl}
-          style={styles.miniCover}
-          recyclingKey={item.id}
-          fallbackIcon={fallbackIcon}
-          iconSize={24}
-        />
+        <BookCover item={item} width={116} height={164} radius={7} iconSize={26} showKindBadge />
         <Text style={styles.miniTitle} numberOfLines={2}>
           {item.title}
         </Text>
@@ -51,13 +89,7 @@ export function BookCard({ item, onPress, variant = "row", showFavorite = true }
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
       <View style={styles.coverWrap}>
-        <RemoteImage
-          uri={item.coverUrl}
-          style={styles.cover}
-          recyclingKey={item.id}
-          fallbackIcon={fallbackIcon}
-          iconSize={22}
-        />
+        <BookCover item={item} width={62} height={88} radius={5} iconSize={20} />
         {showFavorite ? (
           <TouchableOpacity
             style={styles.favButton}
@@ -71,7 +103,7 @@ export function BookCard({ item, onPress, variant = "row", showFavorite = true }
           >
             <Ionicons
               name={favorite ? "heart" : "heart-outline"}
-              size={17}
+              size={16}
               color={favorite ? theme.colors.danger : theme.colors.white}
             />
           </TouchableOpacity>
@@ -79,7 +111,7 @@ export function BookCard({ item, onPress, variant = "row", showFavorite = true }
       </View>
       <View style={styles.info}>
         <View style={styles.chipsRow}>
-          <Chip label={isBook ? "Livro" : "Artigo"} tone={isBook ? "accent" : "outline"} />
+          <Chip label={item.kind === "BOOK" ? "Livro" : "Artigo"} tone={item.kind === "BOOK" ? "accent" : "outline"} />
           {item.readingMin ? <Text style={styles.reading}>~{item.readingMin} min</Text> : null}
         </View>
         <Text style={styles.title} numberOfLines={2}>
@@ -107,22 +139,73 @@ const makeStyles = () =>
       borderRadius: theme.radius.lg,
       marginBottom: theme.spacing.md,
     },
-    coverWrap: { width: 58, height: 78 },
-    cover: {
-      width: 58,
-      height: 78,
-      borderRadius: theme.radius.sm,
+    coverWrap: { width: 62, height: 88 },
+    /* Capa-livro: borda fina + sombra leve para "levantar" da tela */
+    coverBox: {
+      overflow: "visible",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      shadowColor: "#000",
+      shadowOpacity: 0.18,
+      shadowRadius: 5,
+      shadowOffset: { width: 2, height: 3 },
+      elevation: 3,
       backgroundColor: theme.colors.surfaceAlt,
     },
+    coverFill: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: theme.colors.surfaceAlt,
+    },
+    spine: {
+      position: "absolute",
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: 7,
+      backgroundColor: "rgba(0, 0, 0, 0.24)",
+    },
+    spineHighlight: {
+      position: "absolute",
+      left: 8,
+      top: 0,
+      bottom: 0,
+      width: 1.5,
+      backgroundColor: "rgba(255, 255, 255, 0.30)",
+    },
+    pagesEdge: {
+      position: "absolute",
+      right: 1.5,
+      top: 3,
+      bottom: 3,
+      width: 2,
+      borderRadius: 2,
+      backgroundColor: "rgba(255, 255, 255, 0.75)",
+    },
+    kindBadge: {
+      position: "absolute",
+      left: 10,
+      bottom: 6,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 999,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+    },
+    kindBadgeText: { color: theme.colors.white, fontSize: 9, fontWeight: "700" },
     /* Coração de favorito sobreposto ao canto superior direito da capa. */
     favButton: {
       position: "absolute",
-      top: 2,
-      right: 2,
-      width: 36,
-      height: 36,
+      top: -6,
+      right: -6,
+      width: 34,
+      height: 34,
       borderRadius: theme.radius.full,
-      backgroundColor: "rgba(0, 0, 0, 0.35)",
+      backgroundColor: "rgba(0, 0, 0, 0.45)",
+      borderWidth: 1,
+      borderColor: "rgba(255, 255, 255, 0.25)",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -132,13 +215,7 @@ const makeStyles = () =>
     title: { color: theme.colors.text, fontSize: 14, fontWeight: "600", lineHeight: 19 },
     mentor: { color: theme.colors.textMuted, fontSize: 12 },
 
-    miniCard: { width: 148, gap: 6 },
-    miniCover: {
-      width: 148,
-      height: 96,
-      borderRadius: theme.radius.md,
-      backgroundColor: theme.colors.surfaceAlt,
-    },
+    miniCard: { width: 116, gap: 8 },
     miniTitle: { color: theme.colors.text, fontSize: 13, fontWeight: "600", lineHeight: 17 },
     miniMentor: { color: theme.colors.textFaint, fontSize: 11 },
   });

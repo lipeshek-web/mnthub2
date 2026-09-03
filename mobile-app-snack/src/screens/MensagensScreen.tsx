@@ -28,6 +28,7 @@ import {
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useBackStage, useSafeBack } from "../lib/navigation";
 import {
   errMessage,
   getConversation,
@@ -67,6 +68,7 @@ function timeLabel(raw: string): string {
 
 export default function MessagesScreen() {
   const navigation = useNavigation<any>();
+  const goBack = useSafeBack(navigation);
   const params = (useRoute<any>().params ?? {}) as { peerId?: string; peerName?: string };
 
   // Conversa aberta via params (deep entry do mentor) ou escolhida na lista.
@@ -76,13 +78,24 @@ export default function MessagesScreen() {
       : null
   );
 
+  /* Botão nativo do Android: com conversa aberta (escolhida na lista), volta
+     para a LISTA de conversas em vez de desempilhar a tela inteira. Na entrada
+     direta pelo mentor (params.peerId), desempilha mesmo — era de lá que veio. */
+  useBackStage(
+    !!peer && !params.peerId,
+    useCallback(() => {
+      setPeer(null);
+      return true;
+    }, [])
+  );
+
   return (
     <Screen edges={["top", "left", "right", "bottom"]}>
       {peer ? (
         <ConversationView
           peer={peer}
           onBackToList={() => {
-            if (params.peerId) navigation.goBack();
+            if (params.peerId) goBack();
             else setPeer(null);
           }}
         />
@@ -98,6 +111,7 @@ export default function MessagesScreen() {
 function ThreadsListView({ onOpenThread }: { onOpenThread: (peer: MessagePeer) => void }) {
   const styles = makeStyles();
   const navigation = useNavigation<any>();
+  const goBack = useSafeBack(navigation);
   const [data, setData] = useState<ThreadsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -139,7 +153,7 @@ function ThreadsListView({ onOpenThread }: { onOpenThread: (peer: MessagePeer) =
     <View style={styles.flex}>
       <ScreenHeader
         title="Mensagens"
-        onBack={() => navigation.goBack()}
+        onBack={goBack}
         right={
           unreadTotal > 0 ? (
             <View style={styles.unreadBadge}>

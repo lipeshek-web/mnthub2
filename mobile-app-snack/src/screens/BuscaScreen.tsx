@@ -15,6 +15,7 @@ import {
   View,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { useSafeBack } from "../lib/navigation";
 import { Ionicons } from "@expo/vector-icons";
 import {
   listCourses,
@@ -61,6 +62,7 @@ interface SearchResults {
 export default function BuscaScreen() {
   const styles = makeStyles();
   const navigation = useNavigation<any>();
+  const goBack = useSafeBack(navigation);
   const [q, setQ] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<SearchResults | null>(null);
@@ -165,7 +167,7 @@ export default function BuscaScreen() {
       <View style={styles.topRow}>
         <TouchableOpacity
           style={styles.back}
-          onPress={() => navigation.goBack()}
+          onPress={goBack}
           hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
           accessibilityLabel="Voltar"
           accessibilityRole="button"

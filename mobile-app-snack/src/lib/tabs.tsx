@@ -15,8 +15,8 @@
  */
 import { createContext, useContext } from "react";
 
-/** Abas válidas, na ordem de exibição. */
-export const TAB_NAMES = ["Início", "Livros", "Cursos", "Mentorias", "Mensagens"] as const;
+/** Abas válidas, na ordem de exibição do pager (Mensagens é tela do stack). */
+export const TAB_NAMES = ["Início", "Livros", "Cursos", "Mentorias"] as const;
 
 export type TabName = (typeof TAB_NAMES)[number];
 

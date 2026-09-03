@@ -23,6 +23,7 @@ import {
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useBackStage, useSafeBack } from "../lib/navigation";
 import {
   createBooking,
   errMessage,
@@ -42,6 +43,7 @@ import {
 } from "../lib/format";
 import { theme } from "../theme";
 import { useTabs } from "../lib/tabs";
+import { requestSessionsSegment } from "../lib/uiHints";
 import { Avatar } from "../components/Avatar";
 import { Chip } from "../components/Chip";
 import { ErrorBox } from "../components/ErrorBox";
@@ -68,6 +70,7 @@ export default function MentorDetailScreen() {
   const [stage, setStage] = useState<Stage>("profile");
   const [created, setCreated] = useState<BookingCreated | null>(null);
   const [createdStartsAt, setCreatedStartsAt] = useState("");
+  const [createdTopic, setCreatedTopic] = useState("");
 
   const load = useCallback(
     async (mode: "initial" | "refresh") => {
@@ -92,15 +95,27 @@ export default function MentorDetailScreen() {
     void load("initial");
   }, [load]);
 
-  function handleCreated(booking: BookingCreated, startsAt: string) {
+  /* Botão nativo do Android dentro dos estágios internos: voltar do
+     agendamento/sucesso retorna ao PERFIL (em vez de desempilhar a tela). */
+  useBackStage(
+    stage !== "profile",
+    useCallback(() => {
+      setStage("profile");
+      return true;
+    }, [])
+  );
+
+  function handleCreated(booking: BookingCreated, startsAt: string, topic: string) {
     setCreated(booking);
     setCreatedStartsAt(startsAt);
+    setCreatedTopic(topic);
     setStage("success");
   }
 
   function resetToProfile() {
     setCreated(null);
     setCreatedStartsAt("");
+    setCreatedTopic("");
     setStage("profile");
   }
 
@@ -122,8 +137,10 @@ export default function MentorDetailScreen() {
         ) : stage === "success" ? (
           <BookingSuccess
             mentorName={mentor.name}
+            mentorAvatarUrl={mentor.avatarUrl}
             created={created}
             startsAt={createdStartsAt}
+            topic={createdTopic}
             onBack={resetToProfile}
           />
         ) : (
@@ -162,6 +179,8 @@ function MentorProfile({
   onMessage: () => void;
 }) {
   const styles = makeStyles();
+  const navigation = useNavigation<any>();
+  const goBack = useSafeBack(navigation);
   async function open(url: string) {
     try {
       await Linking.openURL(url);
@@ -198,7 +217,7 @@ function MentorProfile({
 
   return (
     <View style={styles.flex}>
-      <ScreenHeader title="Mentor" onBack={() => navigation.goBack()} />
+      <ScreenHeader title="Mentor" onBack={goBack} />
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}
@@ -352,7 +371,7 @@ function BookingScheduler({
 }: {
   mentor: MentorDetail;
   onCancel: () => void;
-  onCreated: (created: BookingCreated, startsAt: string) => void;
+  onCreated: (created: BookingCreated, startsAt: string, topic: string) => void;
 }) {
   const days = upcomingDays(14);
   const [day, setDay] = useState<DayChip>(days[0]);
@@ -405,7 +424,7 @@ function BookingScheduler({
         durationMin: 60,
         topic: topic.trim(),
       });
-      onCreated(booking, startsAt);
+      onCreated(booking, startsAt, topic.trim());
     } catch (err) {
       // 409 → horário ficou indisponível: mostra a mensagem da API e
       // recarrega os horários do dia para remover o slot ocupado.
@@ -429,6 +448,7 @@ function BookingScheduler({
         <Text style={styles.stepTitle}>1. Escolha o dia</Text>
         <ScrollView
           horizontal
+          nestedScrollEnabled
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.daysRow}
         >
@@ -547,18 +567,45 @@ function DayChipButton({
 
 function BookingSuccess({
   mentorName,
+  mentorAvatarUrl,
   created,
   startsAt,
+  topic,
   onBack,
 }: {
   mentorName: string;
+  mentorAvatarUrl: string | null;
   created: BookingCreated | null;
   startsAt: string;
+  topic: string;
   onBack: () => void;
 }) {
   const styles = makeStyles();
   const navigation = useNavigation<any>();
   const { setTab } = useTabs();
+  const needsPayment = !!created && created.price > 0;
+
+  /** Pagamento INTEGRADO: escolheu dia/horário e já paga aqui mesmo. */
+  function goPay() {
+    if (!created) return;
+    navigation.push("Checkout", {
+      kind: "booking",
+      itemId: created.id,
+      title: `Sessão 1:1 — ${topic || "Mentoria"}`,
+      price: created.price,
+      mentorName,
+      mentorAvatarUrl: mentorAvatarUrl ?? null,
+    });
+  }
+
+  function goSessions() {
+    // Aba Mentorias no pager principal (TabsContext) + desempilha o
+    // Mentor para revelar o pager já em "Minhas sessões".
+    requestSessionsSegment();
+    setTab("Mentorias");
+    navigation.goBack();
+  }
+
   return (
     <View style={styles.flex}>
       <ScreenHeader title="Sessão solicitada" onBack={onBack} />
@@ -571,33 +618,54 @@ function BookingSuccess({
           <View style={styles.successIcon}>
             <Ionicons name="checkmark" size={30} color={theme.colors.accent} />
           </View>
-          <Text style={styles.successTitle}>Agendamento enviado!</Text>
+          <Text style={styles.successTitle}>
+            {needsPayment ? "Quase lá!" : "Agendamento enviado!"}
+          </Text>
           <Text style={styles.successText}>
             Sua sessão com {mentorName} foi solicitada para{"\n"}
             <Text style={styles.successWhen}>{formatNaiveLong(startsAt)}</Text>.
           </Text>
           {created ? <StatusPill status={created.status} /> : null}
-          <Text style={styles.successPending}>
-            Aguardando o mentor confirmar o pedido. Você será notificado assim que ele responder.
-          </Text>
-          {created && created.price > 0 ? (
-            <Text style={styles.successPrice}>Valor da sessão: {formatPrice(created.price)}</Text>
-          ) : null}
-
-          <TouchableOpacity
-            style={styles.cta}
-            onPress={() => {
-              // Aba Mentorias no pager principal (TabsContext) + desempilha o
-              // Mentor para revelar o pager já na aba correta.
-              setTab("Mentorias");
-              navigation.goBack();
-            }}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel="Ir para Minhas sessões"
-          >
-            <Text style={styles.ctaText}>Ver minhas sessões</Text>
-          </TouchableOpacity>
+          {needsPayment ? (
+            <>
+              <Text style={styles.successPrice}>
+                Valor da sessão: {formatPrice(created!.price)}
+              </Text>
+              <Text style={styles.successPending}>
+                Finalize o pagamento para confirmar o horário — PIX cai na hora, direto aqui no app.
+              </Text>
+              <TouchableOpacity
+                style={styles.cta}
+                onPress={goPay}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={`Pagar agora ${formatPrice(created!.price)} da sessão com ${mentorName}`}
+              >
+                <Ionicons name="card-outline" size={16} color={theme.colors.onAccent} />
+                <Text style={styles.ctaText}>
+                  Pagar agora · {formatPrice(created!.price)}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.ghostButton} onPress={goSessions} activeOpacity={0.85}>
+                <Text style={styles.ghostButtonText}>Pagar depois — ver minhas sessões</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={styles.successPending}>
+                Aguardando o mentor confirmar o pedido. Você será notificado assim que ele responder.
+              </Text>
+              <TouchableOpacity
+                style={styles.cta}
+                onPress={goSessions}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Ir para Minhas sessões"
+              >
+                <Text style={styles.ctaText}>Ver minhas sessões</Text>
+              </TouchableOpacity>
+            </>
+          )}
           <TouchableOpacity style={styles.ghostButton} onPress={onBack} activeOpacity={0.85}>
             <Text style={styles.ghostButtonText}>Voltar ao perfil do mentor</Text>
           </TouchableOpacity>

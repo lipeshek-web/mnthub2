@@ -727,9 +727,19 @@ export interface CheckoutPaymentInfo {
 }
 
 export interface CheckoutInput {
+  /** Compra de curso. */
   courseId: string;
   paymentMethod: CheckoutBillingType;
   /** Obrigatório quando o gateway está ativo (exigido pelo Asaas). */
+  cpfCnpj?: string;
+  couponCode?: string;
+  useCredits?: boolean;
+}
+
+export interface BookingCheckoutInput {
+  /** Pagamento de sessão 1:1 agendada (mesma rota, mesmo gateway). */
+  bookingId: string;
+  paymentMethod: CheckoutBillingType;
   cpfCnpj?: string;
   couponCode?: string;
   useCredits?: boolean;
@@ -740,6 +750,10 @@ export type CheckoutResponse =
   | { pending: true; order: CheckoutOrderInfo; payment: CheckoutPaymentInfo };
 
 export async function checkoutCourse(input: CheckoutInput): Promise<CheckoutResponse> {
+  return request<CheckoutResponse>("/checkout", { method: "POST", body: input });
+}
+
+export async function checkoutBooking(input: BookingCheckoutInput): Promise<CheckoutResponse> {
   return request<CheckoutResponse>("/checkout", { method: "POST", body: input });
 }
 

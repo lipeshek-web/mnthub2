@@ -105,6 +105,9 @@ export async function POST(req: NextRequest) {
     if (!userId || kindCount !== 1) {
       return NextResponse.json({ error: 'Dados incompletos para o checkout.' }, { status: 400 })
     }
+    // bookingId é ÚNICO em Order (1 pedido por sessão): quando existe um pedido
+    // antigo não-pago, ele é REUTILIZADO no lugar de criar um novo.
+    let reuseOrderId: string | null = null
 
     const attr = (body?.attribution ?? {}) as Record<string, unknown>
     const s = (v: unknown, max = 190) => {
@@ -172,21 +175,75 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         )
       }
-      const existingOrder = await db.order.findUnique({ where: { bookingId } , select: { status: true } })
+      if (booking.price <= 0) {
+        return NextResponse.json({ error: 'Esta sessão não tem valor a pagar.' }, { status: 409 })
+      }
+
+      const existingOrder = await db.order.findUnique({
+        where: { bookingId },
+        select: { id: true, status: true, amount: true, paymentMethod: true, createdAt: true },
+      })
+      if (existingOrder && existingOrder.status === 'PAID') {
+        return NextResponse.json({ error: 'Esta sessão já está paga.' }, { status: 409 })
+      }
+      if (existingOrder) {
+        const pendingPayment = await db.payment.findFirst({
+          where: { orderId: existingOrder.id, status: 'PENDING' },
+          orderBy: { createdAt: 'desc' },
+        })
+        if (pendingPayment && pendingPayment.gateway === 'ASAAS' && pendingPayment.gatewayPaymentId) {
+          // RETOMADA: devolve a MESMA cobrança aberta (PIX segue válido) em vez
+          // de travar com 409 — "Pagar agora" de novo reabre o QR/a fatura.
+          let pix: { payload: string; encodedImage: string } | undefined
+          if (pendingPayment.billingType === 'PIX') {
+            try {
+              const qr = await getPixQrCode(asaas, pendingPayment.gatewayPaymentId)
+              pix = { payload: qr.payload, encodedImage: qr.encodedImage }
+            } catch {
+              // QR indisponível agora: a fatura continua utilizável
+            }
+          }
+          return NextResponse.json({
+            pending: true,
+            order: {
+              id: existingOrder.id,
+              itemKind: 'BOOKING',
+              itemTitle: `Sessão 1:1 — ${booking.topic}`,
+              amount: pendingPayment.value,
+              paymentMethod: pendingPayment.billingType,
+              status: 'PENDING',
+              createdAt: existingOrder.createdAt.toISOString(),
+            },
+            payment: {
+              id: pendingPayment.id,
+              gatewayPaymentId: pendingPayment.gatewayPaymentId,
+              billingType: pendingPayment.billingType,
+              status: pendingPayment.status,
+              value: pendingPayment.value,
+              invoiceUrl: pendingPayment.invoiceUrl,
+              env: asaas.env,
+              pix,
+            },
+          })
+        }
+        // Pedido antigo sem cobrança viva (simulada/cancelada): REUTILIZA o
+        // registro (bookingId é único) e mata qualquer cobrança velha aberta.
+        reuseOrderId = existingOrder.id
+        await db.payment
+          .updateMany({
+            where: { orderId: existingOrder.id, status: 'PENDING' },
+            data: { status: 'CANCELED', lastEvent: 'substituida_novo_checkout', lastEventAt: new Date() },
+          })
+          .catch(() => {})
+      }
+
       item = {
         kind: 'BOOKING',
         id: booking.id,
         title: `Sessão 1:1 — ${booking.topic}`,
         price: booking.price,
         mentorId: booking.mentorId,
-        alreadyOwned:
-          booking.price <= 0
-            ? 'Esta sessão não tem valor a pagar.'
-            : existingOrder && ['PAID', 'PENDING'].includes(existingOrder.status)
-              ? existingOrder.status === 'PAID'
-                ? 'Esta sessão já está paga.'
-                : 'Já existe uma cobrança em andamento para esta sessão.'
-              : null,
+        alreadyOwned: null,
       }
     } else if (membershipId) {
       const membership = await db.mentorMembership.findUnique({ where: { id: membershipId } })
@@ -277,40 +334,71 @@ export async function POST(req: NextRequest) {
     const finalAmount = credits.amount
 
     // ---------- Cria o pedido (PENDING; liberação via fulfillOrder) ----------
-    const order = await db.order.create({
-      data: {
-        courseId: item.kind === 'COURSE' ? item.id : null,
-        trackId: item.kind === 'TRACK' ? item.id : null,
-        bundleId: item.kind === 'BUNDLE' ? item.id : null,
-        membershipId: item.kind === 'MEMBERSHIP' ? item.id : null,
-        bookingId: item.kind === 'BOOKING' ? item.id : null,
-        studentId: userId,
-        mentorId: item.mentorId,
-        amount: finalAmount,
-        paymentMethod: billingType,
-        status: 'PENDING',
-        couponCode: coupon ? coupon.code : null,
-        discount,
-        creditsUsed: credits.creditsUsed,
-        ...attributionFields,
-      },
-    })
+    // bookingId único: pedido antigo não-pago da mesma sessão é ATUALIZADO aqui.
+    const order = reuseOrderId
+      ? await db.order.update({
+          where: { id: reuseOrderId },
+          data: {
+            amount: finalAmount,
+            paymentMethod: billingType,
+            status: 'PENDING',
+            couponCode: coupon ? coupon.code : null,
+            discount,
+            creditsUsed: credits.creditsUsed,
+          },
+        })
+      : await db.order.create({
+          data: {
+            courseId: item.kind === 'COURSE' ? item.id : null,
+            trackId: item.kind === 'TRACK' ? item.id : null,
+            bundleId: item.kind === 'BUNDLE' ? item.id : null,
+            membershipId: item.kind === 'MEMBERSHIP' ? item.id : null,
+            bookingId: item.kind === 'BOOKING' ? item.id : null,
+            studentId: userId,
+            mentorId: item.mentorId,
+            amount: finalAmount,
+            paymentMethod: billingType,
+            status: 'PENDING',
+            couponCode: coupon ? coupon.code : null,
+            discount,
+            creditsUsed: credits.creditsUsed,
+            ...attributionFields,
+          },
+        })
+
+    /**
+     * Payment.orderId é ÚNICO (1 pagamento por pedido): quando o pedido foi
+     * reaproveitado (bookingId único), a linha antiga é ATUALIZADA em vez de
+     * criar outra — evita P2002 no checkout de retomada.
+     */
+    async function savePayment(data: {
+      gateway: string
+      billingType: AsaasBillingType
+      status: string
+      value: number
+      gatewayPaymentId?: string | null
+      invoiceUrl?: string | null
+      externalReference: string
+      lastEvent: string
+    }) {
+      const payload = { ...data, lastEventAt: new Date() }
+      const rows = await db.payment.count({ where: { orderId: order.id } })
+      if (rows > 0) {
+        return db.payment.update({ where: { orderId: order.id }, data: payload })
+      }
+      return db.payment.create({ data: { orderId: order.id, userId, ...payload } })
+    }
 
     // ---------- Sem gateway: modo demonstração (paga na hora) ----------
     // Valor zerado (cupom 100% + créditos): não cobra gateway — libera direto
     if (gatewayActive && finalAmount <= 0) {
-      await db.payment.create({
-        data: {
-          orderId: order.id,
-          userId,
-          gateway: 'SIMULATED',
-          billingType,
-          status: 'PENDING',
-          value: 0,
-          externalReference: order.id,
-          lastEvent: 'valor_zerado',
-          lastEventAt: new Date(),
-        },
+      await savePayment({
+        gateway: 'SIMULATED',
+        billingType,
+        status: 'PENDING',
+        value: 0,
+        externalReference: order.id,
+        lastEvent: 'valor_zerado',
       })
       const result = await fulfillOrder(order.id)
       if (!result.ok) {
@@ -331,18 +419,13 @@ export async function POST(req: NextRequest) {
     }
 
     if (!gatewayActive) {
-      await db.payment.create({
-        data: {
-          orderId: order.id,
-          userId,
-          gateway: 'SIMULATED',
-          billingType,
-          status: 'PENDING',
-          value: finalAmount,
-          externalReference: order.id,
-          lastEvent: 'checkout_simulado',
-          lastEventAt: new Date(),
-        },
+      await savePayment({
+        gateway: 'SIMULATED',
+        billingType,
+        status: 'PENDING',
+        value: finalAmount,
+        externalReference: order.id,
+        lastEvent: 'checkout_simulado',
       })
       const result = await fulfillOrder(order.id)
       if (!result.ok) {
@@ -385,20 +468,15 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const payment = await db.payment.create({
-        data: {
-          orderId: order.id,
-          userId,
-          gateway: 'ASAAS',
-          gatewayPaymentId: asaasPayment.id,
-          billingType,
-          status: 'PENDING',
-          value: finalAmount,
-          invoiceUrl: asaasPayment.invoiceUrl,
-          externalReference: order.id,
-          lastEvent: 'cobranca_criada',
-          lastEventAt: new Date(),
-        },
+      const payment = await savePayment({
+        gateway: 'ASAAS',
+        billingType,
+        status: 'PENDING',
+        value: finalAmount,
+        gatewayPaymentId: asaasPayment.id,
+        invoiceUrl: asaasPayment.invoiceUrl,
+        externalReference: order.id,
+        lastEvent: 'cobranca_criada',
       })
 
       return NextResponse.json({

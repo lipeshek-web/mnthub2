@@ -1,13 +1,17 @@
 /**
  * Checkout DENTRO do app — compra completa sem sair do MentorHub.
  *
- * Fluxo: resumo do curso → forma de pagamento (PIX recomendado, cartão ou
- * boleto) → CPF/CNPJ (exigido pelo gateway) → cupom e créditos opcionais →
- * criar cobrança na API (/api/v1/checkout) →
- *   - PAID imediato (cupom 100%, créditos ou modo demonstração) → sucesso;
- *   - PENDING + PIX → QR Code + copia e cola + verificação automática
- *     (GET /api/v1/payments/status a cada 4s) até cair → matrícula liberada;
- *   - PENDING cartão/boleto → fatura no navegador + mesma verificação.
+ * Dois modos (params):
+ *  - curso (padrão): { id } → resumo do curso → forma de pagamento (PIX
+ *    recomendado, cartão ou boleto) → CPF/CNPJ (exigido pelo gateway) → cupom
+ *    e créditos opcionais → criar cobrança na API (/api/v1/checkout) →
+ *      - PAID imediato (cupom 100%, créditos ou modo demonstração) → sucesso;
+ *      - PENDING + PIX → QR Code + copia e cola + verificação automática
+ *        (GET /api/v1/payments/status a cada 4s) até cair → matrícula liberada;
+ *      - PENDING cartão/boleto → fatura no navegador + mesma verificação.
+ *  - sessão 1:1: { kind: "booking", itemId, title, price, mentorName,
+ *    mentorAvatarUrl } → mesmo fluxo de cobrança com bookingId — chamado do
+ *    sucesso do agendamento (Mentor) ou do botão "Pagar agora" (Mentorias).
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -26,6 +30,7 @@ import * as WebBrowser from "expo-web-browser";
 import { Ionicons } from "@expo/vector-icons";
 import {
   ApiError,
+  checkoutBooking,
   checkoutCourse,
   errMessage,
   getCourse,
@@ -37,6 +42,9 @@ import {
   type CheckoutPaymentInfo,
   type CourseDetailResponse,
 } from "../lib/api";
+import { useBackStage, useSafeBack } from "../lib/navigation";
+import { useTabs } from "../lib/tabs";
+import { requestSessionsSegment } from "../lib/uiHints";
 import { clearPendingCheckout } from "../lib/pendingCheckout";
 import { formatPrice } from "../lib/format";
 import { theme } from "../theme";
@@ -72,8 +80,21 @@ function maskCpfCnpj(raw: string): string {
 export default function CheckoutScreen() {
   const styles = makeStyles();
   const navigation = useNavigation<any>();
-  const params = (useRoute<any>().params ?? {}) as { id: string };
+  const goBack = useSafeBack(navigation);
+  const { setTab } = useTabs();
+  const params = (useRoute<any>().params ?? {}) as {
+    id?: string;
+    kind?: string;
+    itemId?: string;
+    title?: string;
+    price?: number;
+    mentorName?: string;
+    mentorAvatarUrl?: string | null;
+  };
+  // kind "booking" = pagamento de sessão 1:1; sem kind = compra de curso.
+  const isBooking = params.kind === "booking";
   const courseId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const bookingId = Array.isArray(params.itemId) ? params.itemId[0] : params.itemId;
 
   const [detail, setDetail] = useState<CourseDetailResponse | null>(null);
   const [credits, setCredits] = useState(0);
@@ -95,19 +116,26 @@ export default function CheckoutScreen() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
-    if (!courseId) return;
     setLoading(true);
     setError(null);
     try {
-      const [res, me] = await Promise.all([getCourse(courseId), getMe().catch(() => null)]);
-      setDetail(res);
-      setCredits(me?.user?.creditCents ?? 0);
+      if (isBooking) {
+        // Sessão 1:1 — o resumo inteiro vem nos params; só buscamos créditos.
+        if (!bookingId) throw new Error("Sessão não encontrada.");
+        const me = await getMe().catch(() => null);
+        setCredits(me?.user?.creditCents ?? 0);
+      } else {
+        if (!courseId) return;
+        const [res, me] = await Promise.all([getCourse(courseId), getMe().catch(() => null)]);
+        setDetail(res);
+        setCredits(me?.user?.creditCents ?? 0);
+      }
     } catch (err) {
       setError(errMessage(err));
     } finally {
       setLoading(false);
     }
-  }, [courseId]);
+  }, [courseId, bookingId, isBooking]);
 
   useEffect(() => {
     void load();
@@ -117,7 +145,20 @@ export default function CheckoutScreen() {
   }, [load]);
 
   const course = detail?.course ?? null;
-  const total = Math.max(0, course ? course.price : 0);
+  // Resumo unificado curso/sessão — o formulário é o mesmo.
+  const itemTitle = isBooking ? params.title ?? "Sessão 1:1" : course?.title ?? "";
+  const itemPrice = isBooking ? Math.max(0, params.price ?? 0) : course ? course.price : 0;
+  const total = itemPrice;
+
+  /* Botão nativo do Android: na tela do PIX/fatura volta ao FORMULÁRIO
+     (em vez de desempilhar o checkout inteiro); no formulário, pop normal. */
+  useBackStage(true, useCallback(() => {
+    if (payment) {
+      setPayment(null);
+      return true;
+    }
+    return false;
+  }, [payment]));
 
   /** Verifica o status da cobrança; libera a matrícula quando PAID. */
   const checkStatus = useCallback(
@@ -154,18 +195,21 @@ export default function CheckoutScreen() {
   }, [payment, paid, checkStatus]);
 
   async function handleSubmit() {
-    if (!course || submitting || paid) return;
+    if (submitting || paid) return;
+    if (isBooking ? !bookingId : !course) return;
     setSubmitting(true);
     setFormError(null);
     try {
       const digits = cpf.replace(/\D/g, "");
-      const res = await checkoutCourse({
-        courseId: course.id,
+      const common = {
         paymentMethod: method,
         cpfCnpj: digits || undefined,
         couponCode: coupon.trim() || undefined,
         useCredits: useCredits && credits > 0,
-      });
+      };
+      const res = isBooking
+        ? await checkoutBooking({ bookingId: bookingId!, ...common })
+        : await checkoutCourse({ courseId: course!.id, ...common });
       if ("pending" in res && res.pending) {
         setPayment(res.payment);
         if (res.order.status === "PAID") {
@@ -225,16 +269,19 @@ export default function CheckoutScreen() {
   if (loading) {
     return (
       <Screen edges={["top", "left", "right", "bottom"]}>
-        <ScreenHeader title="Checkout" onBack={() => navigation.goBack()} />
+        <ScreenHeader title="Checkout" onBack={goBack} />
         <LoadingList label="Preparando o pagamento..." />
       </Screen>
     );
   }
-  if (error || !course) {
+  if (error || (!isBooking && !course)) {
     return (
       <Screen edges={["top", "left", "right", "bottom"]}>
-        <ScreenHeader title="Checkout" onBack={() => navigation.goBack()} />
-        <ErrorBox message={error ?? "Curso não encontrado."} onRetry={() => void load()} />
+        <ScreenHeader title="Checkout" onBack={goBack} />
+        <ErrorBox
+          message={error ?? "Curso não encontrado."}
+          onRetry={() => void load()}
+        />
       </Screen>
     );
   }
@@ -247,26 +294,46 @@ export default function CheckoutScreen() {
           <View style={styles.successCircle}>
             <Ionicons name="checkmark" size={44} color={theme.colors.onAccent} />
           </View>
-          <Text style={styles.successTitle}>Pagamento confirmado!</Text>
-          <Text style={styles.successText}>
-            Sua inscrição em{"\n"}
-            <Text style={styles.successCourse}>{course.title}</Text>
-            {"\n"}está liberada. Bons estudos!
+          <Text style={styles.successTitle}>
+            {isBooking ? "Sessão confirmada!" : "Pagamento confirmado!"}
           </Text>
+          {isBooking ? (
+            <Text style={styles.successText}>
+              O pagamento da sua sessão com{"\n"}
+              <Text style={styles.successCourse}>{params.mentorName ?? "o mentor"}</Text>{"\n"}
+              caiu certinho. Até lá!
+            </Text>
+          ) : (
+            <Text style={styles.successText}>
+              Sua inscrição em{"\n"}
+              <Text style={styles.successCourse}>{course?.title}</Text>{"\n"}
+              está liberada. Bons estudos!
+            </Text>
+          )}
           <TouchableOpacity
             style={styles.cta}
             onPress={() => {
-              // Pilha final [Main, Curso]: voltar da aula não reabre a página
-              // de venda nem o checkout concluído. (reset() quebra no stack JS
-              // do react-navigation — popToTop + navigate é o caminho seguro.)
-              navigation.popToTop();
-              navigation.navigate("Curso", { id: course.id });
+              if (isBooking) {
+                // Aba Mentorias ativa + desempilha tudo para revelar o pager
+                // direto no segmento "Minhas sessões" (agora com a sessão paga).
+                requestSessionsSegment();
+                setTab("Mentorias");
+                navigation.popToTop();
+              } else {
+                // Pilha final [Main, Curso]: voltar da aula não reabre a página
+                // de venda nem o checkout concluído. (reset() quebra no stack JS
+                // do react-navigation — popToTop + navigate é o caminho seguro.)
+                navigation.popToTop();
+                navigation.navigate("Curso", { id: course!.id });
+              }
             }}
             activeOpacity={0.85}
             accessibilityRole="button"
-            accessibilityLabel="Começar a estudar agora"
+            accessibilityLabel={isBooking ? "Ver minhas sessões" : "Começar a estudar agora"}
           >
-            <Text style={styles.ctaText}>Começar a estudar</Text>
+            <Text style={styles.ctaText}>
+              {isBooking ? "Ver minhas sessões" : "Começar a estudar"}
+            </Text>
           </TouchableOpacity>
         </View>
       </Screen>
@@ -391,30 +458,49 @@ export default function CheckoutScreen() {
   /* ------------------------------ Formulário ------------------------------ */
   return (
     <Screen edges={["top", "left", "right", "bottom"]}>
-      <ScreenHeader title="Checkout" onBack={() => navigation.goBack()} />
+      <ScreenHeader title="Checkout" onBack={goBack} />
       <ScrollView style={styles.flex} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Resumo do curso */}
+        {/* Resumo do item (curso ou sessão 1:1) */}
         <View style={styles.summaryCard}>
-          <RemoteImage
-            uri={course.coverUrl}
-            style={summaryThumb}
-            recyclingKey={course.id}
-            fallbackIcon="play-circle-outline"
-            errorIcon="image-outline"
-            iconSize={20}
-          />
-          <View style={styles.summaryInfo}>
-            <Text style={styles.summaryTitle} numberOfLines={2}>
-              {course.title}
-            </Text>
-            <View style={styles.summaryMentor}>
-              <Avatar uri={course.mentor.avatarUrl} name={course.mentor.name} size={18} />
-              <Text style={styles.summaryMentorName} numberOfLines={1}>
-                {course.mentor.name}
-              </Text>
-            </View>
-          </View>
-          <Text style={styles.summaryPrice}>{formatPrice(course.price)}</Text>
+          {isBooking ? (
+            <>
+              <Avatar uri={params.mentorAvatarUrl ?? null} name={params.mentorName ?? "?"} size={56} />
+              <View style={styles.summaryInfo}>
+                <Text style={styles.summaryKind}>Sessão 1:1 · 60 min</Text>
+                <Text style={styles.summaryTitle} numberOfLines={2}>
+                  {itemTitle}
+                </Text>
+                {params.mentorName ? (
+                  <Text style={styles.summaryMentorName} numberOfLines={1}>
+                    com {params.mentorName}
+                  </Text>
+                ) : null}
+              </View>
+            </>
+          ) : (
+            <>
+              <RemoteImage
+                uri={course!.coverUrl}
+                style={summaryThumb}
+                recyclingKey={course!.id}
+                fallbackIcon="play-circle-outline"
+                errorIcon="image-outline"
+                iconSize={20}
+              />
+              <View style={styles.summaryInfo}>
+                <Text style={styles.summaryTitle} numberOfLines={2}>
+                  {course!.title}
+                </Text>
+                <View style={styles.summaryMentor}>
+                  <Avatar uri={course!.mentor.avatarUrl} name={course!.mentor.name} size={18} />
+                  <Text style={styles.summaryMentorName} numberOfLines={1}>
+                    {course!.mentor.name}
+                  </Text>
+                </View>
+              </View>
+            </>
+          )}
+          <Text style={styles.summaryPrice}>{formatPrice(total)}</Text>
         </View>
 
         {formError ? <ErrorBox message={formError} /> : null}
@@ -562,6 +648,7 @@ const makeStyles = () =>
       padding: theme.spacing.md,
     },
     summaryInfo: { flex: 1, gap: 3 },
+    summaryKind: { color: theme.colors.accent, fontSize: 11, fontWeight: "700", letterSpacing: 0.3 },
     summaryTitle: { color: theme.colors.text, fontSize: 14, fontWeight: "700", lineHeight: 18 },
     summaryMentor: { flexDirection: "row", alignItems: "center", gap: 6 },
     summaryMentorName: { color: theme.colors.textMuted, fontSize: 12, flexShrink: 1 },

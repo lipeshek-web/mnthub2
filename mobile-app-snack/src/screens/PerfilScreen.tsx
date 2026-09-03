@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useSafeBack } from "../lib/navigation";
 import { errMessage, getMe, type MeUser } from "../lib/api";
 import { listFavorites } from "../lib/favorites";
 import { useAuth } from "../lib/auth";
@@ -37,6 +38,7 @@ export default function ProfileScreen() {
   const styles = makeStyles();
   const auth = useAuth();
   const navigation = useNavigation<any>();
+  const goBack = useSafeBack(navigation);
   const { mode, setMode } = useThemeMode();
   const [me, setMe] = useState<MeUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -95,7 +97,7 @@ export default function ProfileScreen() {
 
   return (
     <Screen>
-      <ScreenHeader title="Perfil" onBack={() => navigation.goBack()} />
+      <ScreenHeader title="Perfil" onBack={goBack} />
       {loading ? (
         <LoadingList label="Carregando seu perfil..." />
       ) : error && !me ? (

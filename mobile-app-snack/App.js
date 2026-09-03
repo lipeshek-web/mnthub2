@@ -73,7 +73,7 @@ if (Platform.OS === "web") {
 }
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
-import { DefaultTheme, NavigationContainer, useRoute } from "@react-navigation/native";
+import { DefaultTheme, NavigationContainer, useIsFocused, useRoute } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -144,6 +144,10 @@ function MainTabs() {
   const { width, height: windowHeight } = useWindowDimensions();
   const route = useRoute();
   const { tab, setTab } = useTabs();
+  // Foco do "Main" no stack: ao abrir uma tela por cima (Perfil, Curso,
+  // Mentor...), o pager PERDE foco — travamos a rolagem para que gestos de
+  // transição nunca deixem o pager meio deslizado ao voltar (bug do voltar).
+  const isFocused = useIsFocused();
 
   const scrollRef = useRef(null);
   // Lazy: cada tela só monta na primeira visita (e depois fica montada).
@@ -169,6 +173,16 @@ function MainTabs() {
       scrollRef.current.scrollTo({ x: index * width, animated: true });
     }
   }, [tab, width]);
+
+  // De volta do stack → encaixa o pager EXATAMENTE na aba ativa (sem
+  // animação), garantindo que nenhum deslize pela metade sobreviva ao voltar.
+  useEffect(() => {
+    if (!isFocused) return;
+    const index = TABS.findIndex((item) => item.name === tab);
+    if (index >= 0 && scrollRef.current) {
+      scrollRef.current.scrollTo({ x: index * width, animated: false });
+    }
+  }, [isFocused, tab, width]);
 
   // Durante o deslizamento, já marca a página visível como visitada (lazy mount).
   const handleScroll = useCallback(
@@ -198,7 +212,8 @@ function MainTabs() {
         ref={scrollRef}
         horizontal
         pagingEnabled
-        scrollEnabled
+        scrollEnabled={isFocused}
+        nestedScrollEnabled
         showsHorizontalScrollIndicator={false}
         onLayout={(event) => setPagerHeight(event.nativeEvent.layout.height)}
         onScroll={handleScroll}

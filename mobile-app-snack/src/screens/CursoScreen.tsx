@@ -25,6 +25,7 @@ import {
   View,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useSafeBack } from "../lib/navigation";
 import * as WebBrowser from "expo-web-browser";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -67,6 +68,7 @@ const KIND_META: Record<LessonKind, { label: string; icon: keyof typeof Ionicons
 export default function CourseDetailScreen() {
   const styles = makeStyles();
   const navigation = useNavigation<any>();
+  const goBack = useSafeBack(navigation);
   const params = (useRoute<any>().params ?? {}) as { id: string };
   const courseId = Array.isArray(params.id) ? params.id[0] : params.id;
 
@@ -280,7 +282,7 @@ export default function CourseDetailScreen() {
         <ErrorBox message={error} onRetry={() => void load("initial")} />
       ) : detail && course ? (
         <View style={styles.flex}>
-          <ScreenHeader title="Curso" onBack={() => navigation.goBack()} />
+          <ScreenHeader title="Curso" onBack={goBack} />
 
           {enrolled ? (
             <>

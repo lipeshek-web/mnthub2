@@ -2,10 +2,10 @@
 
 App do aluno do MentorHub, publicado e testado de ponta a ponta. Dois jeitos de abrir:
 
-1. **Expo Snack (link direto):** **https://snack.expo.dev/WQNMgm4hkeKGZGUMX--I5**
+1. **Expo Snack (link direto):** **https://snack.expo.dev/OxJH7RFoDFtGzvwZG76bM**
    - No preview **Web** (painel direito) ou no celular com o app **Expo Go** escaneando o QR Code ("My Device").
-   - Publicado via API oficial (`exp.host/--/api/v2/snack/save`) com código (53 arquivos) + 11 dependências — abrindo o link, já está tudo lá (nada de copiar/colar). SEM expo-clipboard (não resolve no Snack web): copiar PIX usa o clipboard do navegador + código selecionável.
-   - **Novidades desta versão:** COMPRA completa dentro do app (PIX com QR + copia-e-cola, cartão e boleto via Asaas — sem sair do app), mensagens com mentores (Perfil → Mensagens e "Mensagem" no perfil do mentor) e curso que abre DIRETO no conteúdo da aula (índice só pelo botão "Conteúdos").
+   - Publicado via API oficial (`exp.host/--/api/v2/snack/save`) com código (55 arquivos) + 11 dependências — abrindo o link, já está tudo lá (nada de copiar/colar). SEM expo-clipboard (não resolve no Snack web): copiar PIX usa o clipboard do navegador + código selecionável.
+   - **Novidades desta versão (S-48):** carrosséis horizontais que ROLAM (nested scroll consertado no Android/web), cards de livro com cara de LIVRO (capa em retrato, lombra, beirada de páginas), VOLTAR consertado em todas as telas (botão da tela + botão nativo do Android, inclusive dentro do agendamento/PIX/conversa) e PAGAMENTO DE SESSÃO 1:1 INTEGRADO — escolheu dia/horário, confirmou e já paga por PIX/cartão/boleto na hora, sem sair do app ("Pagar agora" na confirmação e em Minhas sessões).
 2. **Web app no site:** **https://mentorhub.space-z.ai/app-mobile/** — o mesmo código exportado (`expo export --platform web`) e servido junto do site (atualizado a cada publish).
 
 Mesma API (`/api/v1`, JWT Bearer 30 dias), mesmo visual, mesmos dados do Turso em produção.
@@ -71,7 +71,7 @@ bunx expo export --platform web   # gera dist/ (vai para public/app-mobile no pu
 
 ## 📦 ZIP (backup)
 
-`https://mentorhub.space-z.ai/mentorhub-mobile-snack-v7.zip` — código com páginas embutidas como data URI (as versões antigas v5/v4/v3 estão obsoletas).
+`https://mentorhub.space-z.ai/mentorhub-mobile-snack-v8.zip` — código com páginas embutidas como data URI (as versões antigas v7/v6/v5 estão obsoletas).
 
 ## 🛠 Regenerar páginas / publicar
 
