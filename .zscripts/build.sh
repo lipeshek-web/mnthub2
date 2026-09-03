@@ -236,6 +236,50 @@ if [ -n "$BROKEN" ]; then
 fi
 echo "  - ✅ shim isomorphic-fetch verificado (sem imports órfãos)"
 
+# ─── FIX deploy: derreferencia TODOS os symlinks do artefato ───
+# O Next 16 (Turbopack) cria SYMLINKS em .next/standalone/.next/node_modules
+# (stubs de módulos externalizados, ex.: @prisma/adapter-libsql-<hash> →
+# ../../../node_modules/@prisma/adapter-libsql). Empacotados como symlink
+# entries no tar, eles colidem com o conteúdo já existente no destino durante
+# a extração da plataforma → "tar: ... Directory renamed before its status
+# could be extracted" → extração aborta ANTES de extrair docker-entrypoint.sh
+# → container morre com CAExited "no such file or directory".
+#
+# Os stubs são LOAD-BEARING em runtime (o chunk externo do Prisma é importado
+# pelo nome com hash), então NÃO podemos removê-los — convertemos cada symlink
+# em conteúdo REAL (cópia). Extração de dirs/files sobre dirs/files é
+# idempotente: nunca mais colisão, em extração limpa OU sobre deploy anterior.
+find "$BUILD_DIR" -type l | while read -r L; do
+    T="$(readlink "$L")"
+    case "$T" in
+        /*) TARGET="$T" ;;
+        *) TARGET="$(cd "$(dirname "$L")" && cd "$(dirname "$T")" 2>/dev/null && pwd)/$(basename "$T")" ;;
+    esac
+    IN_BUILD=false
+    case "$TARGET" in "$BUILD_DIR"/*) IN_BUILD=true ;; esac
+    rm -f "$L"
+    if [ "$IN_BUILD" = true ] && [ -n "$TARGET" ] && [ -e "$TARGET" ]; then
+        if [ -d "$TARGET" ]; then
+            cp -rL "$TARGET" "$L"
+        else
+            cp -L "$TARGET" "$L"
+        fi
+        echo "  - 🔗 symlink derreferenciado (conteúdo real): ${L#"$BUILD_DIR"/} → $T"
+    else
+        echo "  - ⚠️  symlink removido (quebrado ou aponta para fora do artefato): ${L#"$BUILD_DIR"/} → $T"
+    fi
+done
+
+# Guarda final: o artefato NÃO PODE conter nenhum symlink (o tar precisaria de
+# entradas symlink, que são a causa da falha de extração em produção).
+REMAINING_LINKS="$(find "$BUILD_DIR" -type l 2>/dev/null | head -5)"
+if [ -n "$REMAINING_LINKS" ]; then
+    echo "❌ Ainda existem symlinks no artefato após a derreferenciação:"
+    echo "$REMAINING_LINKS"
+    exit 1
+fi
+echo "  - ✅ artefato sem symlinks (extração do tar à prova de colisão)"
+
 # Python 不继承 workspace-agent 的 /home/z/.venv。若项目包含 Python 源码或
 # 依赖清单，在构建期将生产依赖固化到产物，并保持 Python 源码的项目相对路径。
 PROJECT_DIR="$NEXTJS_PROJECT_DIR" BUILD_DIR="$BUILD_DIR" \
@@ -266,6 +310,19 @@ echo "📦 打包构建产物到 $PACKAGE_FILE..."
 cd "$BUILD_DIR" || exit 1
 tar -czf "$PACKAGE_FILE" .
 cd - > /dev/null || exit 1
+
+# Guarda FINAL do tarball: nenhuma entrada pode aparecer duplicada no arquivo.
+# Entradas duplicadas (ou symlink + dir para o mesmo caminho) são exatamente o
+# que derrubou a extração em produção ("Directory renamed before its status
+# could be extracted"). Se aparecer qualquer duplicata, falha o build aqui.
+echo "🔎 Verificando entradas duplicadas no tarball (guarda anti-CAExited)..."
+DUPES="$(tar -tzf "$PACKAGE_FILE" | sort | uniq -d | head -3 || true)"
+if [ -n "$DUPES" ]; then
+    echo "❌ Tarball contém entradas duplicadas (quebraria a extração na plataforma):"
+    echo "$DUPES"
+    exit 1
+fi
+echo "  - ✅ tarball sem entradas duplicadas"
 
 # # 清理临时目录
 # rm -rf "$BUILD_DIR"

@@ -2488,3 +2488,21 @@ Stage Summary:
 - Rollback corrigido na RAIZ: qualquer publish futuro sai funcional (shim v2 + merge de env + guardas que quebram o build em vez de publicar artefato quebrado)
 - APP USUÁRIO: precisa APENAS republicar o site na plataforma — o publish vai sair com o modo nuvem garantido e APIs funcionando; a compra no app volta a funcionar (o erro "conteúdo não encontrado" era o servidor 500)
 - Snack oficial novo: https://snack.expo.dev/WQNMgm4hkeKGZGUMX--I5
+
+---
+Task ID: S-47
+Agent: main (Z.ai Code)
+Task: Deploy quebrado na plataforma — CAExited "no such file or directory", tar "Directory renamed before its status could be extracted" em next-service-dist/.next/node_modules/@prisma; app Expo sem conexão
+
+Work Log:
+- DIAGNÓSTICO: a extração do tarball na plataforma abortava (tar exit 2) ANTES de extrair docker-entrypoint.sh/start.sh → container morria com CAExited → produção FORA DO AR → app Expo mostrava "Não foi possível conectar ao servidor" (correto, servidor down)
+- CAUSA RAIZ: Next 16 (Turbopack) emite SYMLINKS em .next/standalone/.next/node_modules/@prisma/ (stubs de módulos externalizados: adapter-libsql-54387eee42c9c9c0 e client-2c3a283f134fdcb6 → ../../../node_modules/@prisma/...). Empacotados como symlink entries, colidiam com o conteúdo pré-existente no destino da extração → "Directory renamed before its status could be extracted" → tar abortava
+- Os stubs são LOAD-BEARING (o chunk do Prisma importa pelo nome com hash) — não podem ser removidos
+- FIX build.sh: novo passo que DERREFERENCIA todos os symlinks do artefato para conteúdo REAL (cp -rL), com resolução de alvo relativo; symlinks quebrados/externos são removidos; guarda final falha o build se sobrar QUALQUER symlink
+- FIX build.sh: guarda FINAL no tarball — lista entradas e falha se houver duplicatas (anti-CAExited)
+- VALIDAÇÃO: build EXIT=0; 2 symlinks derreferenciados; artefato com 0 symlinks; tarball sem duplicatas; EXTRAÇÃO TRIPLA sobre o mesmo destino exit=0 (redeploy idempotente — cenário que quebrava); runtime do artefato extraído: home 200, login OK (Prisma via stub real + Turso), 10 cursos, dashboard 5 inscritos/xp 135, log sem erros; tarball 197M (antes 170M — custo aceitável da cópia real dos pacotes @prisma)
+
+Stage Summary:
+- Deploy à prova de colisão de extração: qualquer redeploy (limpo ou sobre o anterior) extrai sem erro
+- USUÁRIO: basta REPUBLICAR na plataforma — o artefato novo não contém symlinks e extrai limpo
+- Erro do app Expo era consequência (servidor fora do ar); nada a mudar no Snack
