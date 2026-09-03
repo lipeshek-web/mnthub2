@@ -1,0 +1,839 @@
+     1→/**
+     2→ * Detalhe do mentor + agendamento de sessão 1:1:
+     3→ * - Perfil: avatar, headline, stats (avaliação/preço/experiência), categorias,
+     4→ *   idiomas, redes sociais (Linking) e avaliações (Stars + comentário).
+     5→ * - Agendamento: chips de dia (próximos 14 dias) → horários livres do dia
+     6→ *   (listMentorSlots) → tema obrigatório → createBooking (sessão de 60 min).
+     7→ *   409 mostra a mensagem da API e recarrega os horários. Sucesso mostra a
+     8→ *   confirmação (status PENDING — aguardando o mentor) com atalho para as
+     9→ *   Minhas sessões.
+    10→ */
+    11→import React, { useCallback, useEffect, useState } from "react";
+    12→import {
+    13→  ActivityIndicator,
+    14→  Alert,
+    15→  Linking,
+    16→  RefreshControl,
+    17→  ScrollView,
+    18→  StyleSheet,
+    19→  Text,
+    20→  TextInput,
+    21→  TouchableOpacity,
+    22→  View,
+    23→} from "react-native";
+    24→import { useNavigation, useRoute } from "@react-navigation/native";
+    25→import { Ionicons } from "@expo/vector-icons";
+    26→import {
+    27→  createBooking,
+    28→  errMessage,
+    29→  getMentor,
+    30→  listMentorSlots,
+    31→  type BookingCreated,
+    32→  type MentorDetail,
+    33→  type MentorDetailResponse,
+    34→  type MentorReview,
+    35→} from "../lib/api";
+    36→import {
+    37→  formatIsoDateTime,
+    38→  formatNaiveLong,
+    39→  formatPrice,
+    40→  upcomingDays,
+    41→  type DayChip,
+    42→} from "../lib/format";
+    43→import { theme } from "../theme";
+    44→import { useTabs } from "../lib/tabs";
+    45→import { Avatar } from "../components/Avatar";
+    46→import { Chip } from "../components/Chip";
+    47→import { ErrorBox } from "../components/ErrorBox";
+    48→import { FilterChip } from "../components/FilterChip";
+    49→import { LoadingList } from "../components/LoadingList";
+    50→import { Screen } from "../components/Screen";
+    51→import { ScreenHeader } from "../components/ScreenHeader";
+    52→import { StatusPill } from "../components/StatusPill";
+    53→import { Stars } from "../components/Stars";
+    54→
+    55→type Stage = "profile" | "booking" | "success";
+    56→
+    57→export default function MentorDetailScreen() {
+    58→  const params = (useRoute<any>().params ?? {}) as { id: string };
+    59→  const mentorId = Array.isArray(params.id) ? params.id[0] : params.id;
+    60→
+    61→  const navigation = useNavigation<any>();
+    62→
+    63→  const [data, setData] = useState<MentorDetailResponse | null>(null);
+    64→  const [loading, setLoading] = useState(true);
+    65→  const [refreshing, setRefreshing] = useState(false);
+    66→  const [error, setError] = useState<string | null>(null);
+    67→
+    68→  const [stage, setStage] = useState<Stage>("profile");
+    69→  const [created, setCreated] = useState<BookingCreated | null>(null);
+    70→  const [createdStartsAt, setCreatedStartsAt] = useState("");
+    71→
+    72→  const load = useCallback(
+    73→    async (mode: "initial" | "refresh") => {
+    74→      if (!mentorId) return;
+    75→      if (mode === "initial") setLoading(true);
+    76→      else setRefreshing(true);
+    77→      setError(null);
+    78→      try {
+    79→        const res = await getMentor(mentorId);
+    80→        setData(res);
+    81→      } catch (err) {
+    82→        setError(errMessage(err));
+    83→      } finally {
+    84→        setLoading(false);
+    85→        setRefreshing(false);
+    86→      }
+    87→    },
+    88→    [mentorId]
+    89→  );
+    90→
+    91→  useEffect(() => {
+    92→    void load("initial");
+    93→  }, [load]);
+    94→
+    95→  function handleCreated(booking: BookingCreated, startsAt: string) {
+    96→    setCreated(booking);
+    97→    setCreatedStartsAt(startsAt);
+    98→    setStage("success");
+    99→  }
+   100→
+   101→  function resetToProfile() {
+   102→    setCreated(null);
+   103→    setCreatedStartsAt("");
+   104→    setStage("profile");
+   105→  }
+   106→
+   107→  const mentor = data?.mentor ?? null;
+   108→
+   109→  return (
+   110→    <Screen edges={["top", "left", "right", "bottom"]}>
+   111→      {loading ? (
+   112→        <LoadingList label="Carregando perfil..." />
+   113→      ) : error && !data ? (
+   114→        <ErrorBox message={error} onRetry={() => void load("initial")} />
+   115→      ) : data && mentor ? (
+   116→        stage === "booking" ? (
+   117→          <BookingScheduler
+   118→            mentor={mentor}
+   119→            onCancel={() => setStage("profile")}
+   120→            onCreated={handleCreated}
+   121→          />
+   122→        ) : stage === "success" ? (
+   123→          <BookingSuccess
+   124→            mentorName={mentor.name}
+   125→            created={created}
+   126→            startsAt={createdStartsAt}
+   127→            onBack={resetToProfile}
+   128→          />
+   129→        ) : (
+   130→          <MentorProfile
+   131→            mentor={mentor}
+   132→            reviews={data.reviews}
+   133→            refreshing={refreshing}
+   134→            onRefresh={() => void load("refresh")}
+   135→            onSchedule={() => setStage("booking")}
+   136→            onMessage={() =>
+   137→              mentor.userId &&
+   138→              navigation.navigate("Mensagens", { peerId: mentor.userId, peerName: mentor.name })
+   139→            }
+   140→          />
+   141→        )
+   142→      ) : null}
+   143→    </Screen>
+   144→  );
+   145→}
+   146→
+   147→/* ------------------------------ Perfil ---------------------------------- */
+   148→
+   149→function MentorProfile({
+   150→  mentor,
+   151→  reviews,
+   152→  refreshing,
+   153→  onRefresh,
+   154→  onSchedule,
+   155→  onMessage,
+   156→}: {
+   157→  mentor: MentorDetail;
+   158→  reviews: MentorReview[];
+   159→  refreshing: boolean;
+   160→  onRefresh: () => void;
+   161→  onSchedule: () => void;
+   162→  onMessage: () => void;
+   163→}) {
+   164→  const styles = makeStyles();
+   165→  async function open(url: string) {
+   166→    try {
+   167→      await Linking.openURL(url);
+   168→    } catch {
+   169→      Alert.alert("Não foi possível abrir o link", url);
+   170→    }
+   171→  }
+   172→
+   173→  const socials: Array<{ key: string; icon: keyof typeof Ionicons.glyphMap; url: string; label: string }> = [];
+   174→  if (mentor.instagram) {
+   175→    socials.push({
+   176→      key: "instagram",
+   177→      icon: "logo-instagram",
+   178→      url: socialUrl("instagram", mentor.instagram),
+   179→      label: `Instagram de ${mentor.name}`,
+   180→    });
+   181→  }
+   182→  if (mentor.linkedin) {
+   183→    socials.push({
+   184→      key: "linkedin",
+   185→      icon: "logo-linkedin",
+   186→      url: socialUrl("linkedin", mentor.linkedin),
+   187→      label: `LinkedIn de ${mentor.name}`,
+   188→    });
+   189→  }
+   190→  if (mentor.website) {
+   191→    socials.push({
+   192→      key: "website",
+   193→      icon: "globe-outline",
+   194→      url: socialUrl("website", mentor.website),
+   195→      label: `Site de ${mentor.name}`,
+   196→    });
+   197→  }
+   198→
+   199→  return (
+   200→    <View style={styles.flex}>
+   201→      <ScreenHeader title="Mentor" onBack={() => navigation.goBack()} />
+   202→      <ScrollView
+   203→        style={styles.flex}
+   204→        contentContainerStyle={styles.content}
+   205→        showsVerticalScrollIndicator={false}
+   206→        refreshControl={
+   207→          <RefreshControl
+   208→            refreshing={refreshing}
+   209→            onRefresh={onRefresh}
+   210→            tintColor={theme.colors.accent}
+   211→            colors={[theme.colors.accent]}
+   212→            progressBackgroundColor={theme.colors.surface}
+   213→          />
+   214→        }
+   215→      >
+   216→        {/* Cabeçalho */}
+   217→        <View style={styles.profileHead}>
+   218→          <Avatar uri={mentor.avatarUrl} name={mentor.name} size={76} />
+   219→          <View style={styles.profileHeadInfo}>
+   220→            <Text style={styles.profileName}>{mentor.name}</Text>
+   221→            {mentor.headline ? (
+   222→              <Text style={styles.profileHeadline}>{mentor.headline}</Text>
+   223→            ) : null}
+   224→          </View>
+   225→        </View>
+   226→
+   227→        {/* Stats */}
+   228→        <View style={styles.statsRow}>
+   229→          <View style={styles.statCard}>
+   230→            <Stars value={mentor.rating} size={12} />
+   231→            <Text style={styles.statValue}>{(mentor.rating ?? 0).toFixed(1).replace(".", ",")}</Text>
+   232→            <Text style={styles.statLabel}>
+   233→              {mentor.reviewCount} {mentor.reviewCount === 1 ? "avaliação" : "avaliações"}
+   234→            </Text>
+   235→          </View>
+   236→          <View style={styles.statCard}>
+   237→            <Text style={styles.statValue}>{formatPrice(mentor.hourlyRate)}</Text>
+   238→            <Text style={styles.statLabel}>por hora</Text>
+   239→          </View>
+   240→          <View style={styles.statCard}>
+   241→            <Text style={styles.statValue}>{mentor.experienceYears} anos</Text>
+   242→            <Text style={styles.statLabel}>de experiência</Text>
+   243→          </View>
+   244→        </View>
+   245→
+   246→        {/* Categorias + idiomas */}
+   247→        {(mentor.categories ?? []).length > 0 ? (
+   248→          <View style={styles.chipsRow}>
+   249→            {mentor.categories.map((category) => (
+   250→              <Chip key={category} label={category} tone="accent" />
+   251→            ))}
+   252→          </View>
+   253→        ) : null}
+   254→        {(mentor.languages ?? []).length > 0 ? (
+   255→          <View style={styles.languagesRow}>
+   256→            <Ionicons name="language" size={14} color={theme.colors.textFaint} />
+   257→            <Text style={styles.languagesText}>{mentor.languages.join(", ")}</Text>
+   258→          </View>
+   259→        ) : null}
+   260→
+   261→        {/* Sobre */}
+   262→        {mentor.description ? (
+   263→          <View style={styles.section}>
+   264→            <Text style={styles.sectionTitle}>Sobre</Text>
+   265→            <Text style={styles.aboutText}>{mentor.description}</Text>
+   266→          </View>
+   267→        ) : null}
+   268→
+   269→        {/* Redes sociais */}
+   270→        {socials.length > 0 ? (
+   271→          <View style={styles.section}>
+   272→            <Text style={styles.sectionTitle}>Redes sociais</Text>
+   273→            <View style={styles.socialsRow}>
+   274→              {socials.map((social) => (
+   275→                <TouchableOpacity
+   276→                  key={social.key}
+   277→                  style={styles.socialButton}
+   278→                  onPress={() => void open(social.url)}
+   279→                  activeOpacity={0.85}
+   280→                  accessibilityRole="button"
+   281→                  accessibilityLabel={`${social.label} (abre no navegador)`}
+   282→                >
+   283→                  <Ionicons name={social.icon} size={20} color={theme.colors.accent} />
+   284→                </TouchableOpacity>
+   285→              ))}
+   286→            </View>
+   287→          </View>
+   288→        ) : null}
+   289→
+   290→        {/* Avaliações */}
+   291→        <View style={styles.section}>
+   292→          <Text style={styles.sectionTitle}>Avaliações</Text>
+   293→          {reviews.length === 0 ? (
+   294→            <Text style={styles.noReviews}>Este mentor ainda não recebeu avaliações.</Text>
+   295→          ) : (
+   296→            <View style={styles.reviewsList}>
+   297→              {reviews.map((review) => (
+   298→                <View key={review.id} style={styles.reviewCard}>
+   299→                  <View style={styles.reviewTop}>
+   300→                    <Stars value={review.rating} size={12} />
+   301→                    <Text style={styles.reviewDate}>{formatIsoDateTime(review.createdAt)}</Text>
+   302→                  </View>
+   303→                  {review.comment ? (
+   304→                    <Text style={styles.reviewComment}>{review.comment}</Text>
+   305→                  ) : null}
+   306→                  <Text style={styles.reviewAuthor}>por {review.author}</Text>
+   307→                </View>
+   308→              ))}
+   309→            </View>
+   310→          )}
+   311→        </View>
+   312→
+   313→        <View style={styles.bottomSpacer} />
+   314→      </ScrollView>
+   315→
+   316→      {/* CTA: mensagem + agendamento */}
+   317→      <View style={styles.footer}>
+   318→        <View style={styles.ctaRow}>
+   319→          {mentor.userId ? (
+   320→            <TouchableOpacity
+   321→              style={styles.ctaGhost}
+   322→              onPress={onMessage}
+   323→              activeOpacity={0.85}
+   324→              accessibilityRole="button"
+   325→              accessibilityLabel={`Enviar mensagem para ${mentor.name}`}
+   326→            >
+   327→              <Ionicons name="chatbubble-outline" size={16} color={theme.colors.accent} />
+   328→              <Text style={styles.ctaGhostText}>Mensagem</Text>
+   329→            </TouchableOpacity>
+   330→          ) : null}
+   331→          <TouchableOpacity
+   332→            style={[styles.cta, mentor.userId && styles.ctaFlex]}
+   333→            onPress={onSchedule}
+   334→            activeOpacity={0.85}
+   335→            accessibilityRole="button"
+   336→            accessibilityLabel={`Agendar sessão com ${mentor.name}`}
+   337→          >
+   338→            <Text style={styles.ctaText}>Agendar sessão</Text>
+   339→          </TouchableOpacity>
+   340→        </View>
+   341→      </View>
+   342→    </View>
+   343→  );
+   344→}
+   345→
+   346→/* --------------------------- Agendamento -------------------------------- */
+   347→
+   348→function BookingScheduler({
+   349→  mentor,
+   350→  onCancel,
+   351→  onCreated,
+   352→}: {
+   353→  mentor: MentorDetail;
+   354→  onCancel: () => void;
+   355→  onCreated: (created: BookingCreated, startsAt: string) => void;
+   356→}) {
+   357→  const days = upcomingDays(14);
+   358→  const [day, setDay] = useState<DayChip>(days[0]);
+   359→  const [slots, setSlots] = useState<string[]>([]);
+   360→  const [slotsLoading, setSlotsLoading] = useState(true);
+   361→  const [slotsError, setSlotsError] = useState<string | null>(null);
+   362→  const [slot, setSlot] = useState<string | null>(null);
+   363→  const [topic, setTopic] = useState("");
+   364→  const [submitting, setSubmitting] = useState(false);
+   365→  const [flowError, setFlowError] = useState<string | null>(null);
+   366→  const styles = makeStyles();
+   367→
+   368→  const loadSlots = useCallback(
+   369→    async (iso: string) => {
+   370→      setSlotsLoading(true);
+   371→      setSlotsError(null);
+   372→      try {
+   373→        const res = await listMentorSlots(mentor.id, iso);
+   374→        setSlots(res.slots);
+   375→      } catch (err) {
+   376→        setSlots([]);
+   377→        setSlotsError(errMessage(err));
+   378→      } finally {
+   379→        setSlotsLoading(false);
+   380→      }
+   381→    },
+   382→    [mentor.id]
+   383→  );
+   384→
+   385→  useEffect(() => {
+   386→    void loadSlots(day.iso);
+   387→  }, [day.iso, loadSlots]);
+   388→
+   389→  function selectDay(next: DayChip) {
+   390→    if (next.iso === day.iso) return;
+   391→    setDay(next);
+   392→    setSlot(null);
+   393→    setFlowError(null);
+   394→  }
+   395→
+   396→  async function handleConfirm() {
+   397→    if (!slot || topic.trim().length === 0 || submitting) return;
+   398→    setSubmitting(true);
+   399→    setFlowError(null);
+   400→    const startsAt = `${day.iso}T${slot}`;
+   401→    try {
+   402→      const booking = await createBooking({
+   403→        mentorId: mentor.id,
+   404→        startsAt,
+   405→        durationMin: 60,
+   406→        topic: topic.trim(),
+   407→      });
+   408→      onCreated(booking, startsAt);
+   409→    } catch (err) {
+   410→      // 409 → horário ficou indisponível: mostra a mensagem da API e
+   411→      // recarrega os horários do dia para remover o slot ocupado.
+   412→      setFlowError(errMessage(err));
+   413→      setSlot(null);
+   414→      void loadSlots(day.iso);
+   415→    } finally {
+   416→      setSubmitting(false);
+   417→    }
+   418→  }
+   419→
+   420→  return (
+   421→    <View style={styles.flex}>
+   422→      <ScreenHeader title={`Agendar com ${mentor.name.split(" ")[0] ?? ""}`} onBack={onCancel} />
+   423→      <ScrollView
+   424→        style={styles.flex}
+   425→        contentContainerStyle={styles.content}
+   426→        showsVerticalScrollIndicator={false}
+   427→        keyboardShouldPersistTaps="handled"
+   428→      >
+   429→        <Text style={styles.stepTitle}>1. Escolha o dia</Text>
+   430→        <ScrollView
+   431→          horizontal
+   432→          showsHorizontalScrollIndicator={false}
+   433→          contentContainerStyle={styles.daysRow}
+   434→        >
+   435→          {days.map((dayChip) => (
+   436→            <DayChipButton
+   437→              key={dayChip.iso}
+   438→              day={dayChip}
+   439→              selected={dayChip.iso === day.iso}
+   440→              onPress={() => selectDay(dayChip)}
+   441→            />
+   442→          ))}
+   443→        </ScrollView>
+   444→
+   445→        <Text style={styles.stepTitle}>2. Escolha o horário</Text>
+   446→        {slotsLoading ? (
+   447→          <LoadingList compact />
+   448→        ) : slotsError ? (
+   449→          <ErrorBox compact message={slotsError} onRetry={() => void loadSlots(day.iso)} />
+   450→        ) : slots.length === 0 ? (
+   451→          <Text style={styles.emptySlots}>
+   452→            Nenhum horário livre neste dia. Tente outro dia, por favor.
+   453→          </Text>
+   454→        ) : (
+   455→          <View style={styles.slotsWrap}>
+   456→            {slots.map((time) => (
+   457→              <FilterChip
+   458→                key={time}
+   459→                label={time}
+   460→                selected={slot === time}
+   461→                onPress={() => {
+   462→                  setSlot(time);
+   463→                  setFlowError(null);
+   464→                }}
+   465→              />
+   466→            ))}
+   467→          </View>
+   468→        )}
+   469→
+   470→        <Text style={styles.stepTitle}>3. Sobre o que você quer conversar?</Text>
+   471→        <TextInput
+   472→          style={styles.topicInput}
+   473→          value={topic}
+   474→          onChangeText={setTopic}
+   475→          placeholder="Ex.: Revisar meu portfólio e planejar os próximos passos da carreira."
+   476→          placeholderTextColor={theme.colors.textFaint}
+   477→          multiline
+   478→          maxLength={200}
+   479→          textAlignVertical="top"
+   480→        />
+   481→
+   482→        <View style={styles.summaryRow}>
+   483→          <Ionicons name="time-outline" size={14} color={theme.colors.textFaint} />
+   484→          <Text style={styles.summaryText}>Sessão de 60 minutos</Text>
+   485→          {mentor.hourlyRate > 0 ? (
+   486→            <Text style={styles.summaryPrice}>{formatPrice(mentor.hourlyRate)}</Text>
+   487→          ) : null}
+   488→        </View>
+   489→
+   490→        {flowError ? (
+   491→          <View style={styles.flowError}>
+   492→            <ErrorBox compact message={flowError} />
+   493→          </View>
+   494→        ) : null}
+   495→
+   496→        <TouchableOpacity
+   497→          style={[
+   498→            styles.cta,
+   499→            (!slot || topic.trim().length === 0 || submitting) && styles.ctaDisabled,
+   500→          ]}
+   501→          onPress={() => void handleConfirm()}
+   502→          disabled={!slot || topic.trim().length === 0 || submitting}
+   503→          activeOpacity={0.85}
+   504→          accessibilityRole="button"
+   505→          accessibilityLabel="Confirmar agendamento"
+   506→        >
+   507→          {submitting ? (
+   508→            <ActivityIndicator size="small" color={theme.colors.onAccent} />
+   509→          ) : (
+   510→            <Text style={styles.ctaText}>Confirmar agendamento</Text>
+   511→          )}
+   512→        </TouchableOpacity>
+   513→
+   514→        <View style={styles.bottomSpacer} />
+   515→      </ScrollView>
+   516→    </View>
+   517→  );
+   518→}
+   519→
+   520→function DayChipButton({
+   521→  day,
+   522→  selected,
+   523→  onPress,
+   524→}: {
+   525→  day: DayChip;
+   526→  selected: boolean;
+   527→  onPress: () => void;
+   528→}) {
+   529→  const dayStyles = makeDayStyles();
+   530→  return (
+   531→    <TouchableOpacity
+   532→      style={[dayStyles.pill, selected ? dayStyles.selected : dayStyles.unselected]}
+   533→      onPress={onPress}
+   534→      activeOpacity={0.8}
+   535→      accessibilityRole="button"
+   536→      accessibilityState={{ selected }}
+   537→    >
+   538→      <Text style={[dayStyles.weekday, selected ? dayStyles.weekdaySelected : null]}>
+   539→        {day.weekday}
+   540→      </Text>
+   541→      <Text style={[dayStyles.label, selected ? dayStyles.labelSelected : null]}>{day.label}</Text>
+   542→    </TouchableOpacity>
+   543→  );
+   544→}
+   545→
+   546→/* ----------------------------- Sucesso ---------------------------------- */
+   547→
+   548→function BookingSuccess({
+   549→  mentorName,
+   550→  created,
+   551→  startsAt,
+   552→  onBack,
+   553→}: {
+   554→  mentorName: string;
+   555→  created: BookingCreated | null;
+   556→  startsAt: string;
+   557→  onBack: () => void;
+   558→}) {
+   559→  const styles = makeStyles();
+   560→  const navigation = useNavigation<any>();
+   561→  const { setTab } = useTabs();
+   562→  return (
+   563→    <View style={styles.flex}>
+   564→      <ScreenHeader title="Sessão solicitada" onBack={onBack} />
+   565→      <ScrollView
+   566→        style={styles.flex}
+   567→        contentContainerStyle={styles.successContent}
+   568→        showsVerticalScrollIndicator={false}
+   569→      >
+   570→        <View style={styles.successCard}>
+   571→          <View style={styles.successIcon}>
+   572→            <Ionicons name="checkmark" size={30} color={theme.colors.accent} />
+   573→          </View>
+   574→          <Text style={styles.successTitle}>Agendamento enviado!</Text>
+   575→          <Text style={styles.successText}>
+   576→            Sua sessão com {mentorName} foi solicitada para{"\n"}
+   577→            <Text style={styles.successWhen}>{formatNaiveLong(startsAt)}</Text>.
+   578→          </Text>
+   579→          {created ? <StatusPill status={created.status} /> : null}
+   580→          <Text style={styles.successPending}>
+   581→            Aguardando o mentor confirmar o pedido. Você será notificado assim que ele responder.
+   582→          </Text>
+   583→          {created && created.price > 0 ? (
+   584→            <Text style={styles.successPrice}>Valor da sessão: {formatPrice(created.price)}</Text>
+   585→          ) : null}
+   586→
+   587→          <TouchableOpacity
+   588→            style={styles.cta}
+   589→            onPress={() => {
+   590→              // Aba Mentorias no pager principal (TabsContext) + desempilha o
+   591→              // Mentor para revelar o pager já na aba correta.
+   592→              setTab("Mentorias");
+   593→              navigation.goBack();
+   594→            }}
+   595→            activeOpacity={0.85}
+   596→            accessibilityRole="button"
+   597→            accessibilityLabel="Ir para Minhas sessões"
+   598→          >
+   599→            <Text style={styles.ctaText}>Ver minhas sessões</Text>
+   600→          </TouchableOpacity>
+   601→          <TouchableOpacity style={styles.ghostButton} onPress={onBack} activeOpacity={0.85}>
+   602→            <Text style={styles.ghostButtonText}>Voltar ao perfil do mentor</Text>
+   603→          </TouchableOpacity>
+   604→        </View>
+   605→      </ScrollView>
+   606→    </View>
+   607→  );
+   608→}
+   609→
+   610→/* ------------------------------- Helpers -------------------------------- */
+   611→
+   612→/** Normaliza handles/URLs das redes sociais para URLs absolutas. */
+   613→function socialUrl(network: "instagram" | "linkedin" | "website", value: string): string {
+   614→  const raw = value.trim();
+   615→  if (!raw) return "";
+   616→  if (/^https?:\/\//i.test(raw)) return raw;
+   617→  if (network === "instagram") return `https://instagram.com/${raw.replace(/^@/, "")}`;
+   618→  if (network === "linkedin") return `https://linkedin.com/in/${raw.replace(/^\/+/, "")}`;
+   619→  return `https://${raw}`;
+   620→}
+   621→
+   622→/* ------------------------------- Estilos -------------------------------- */
+   623→
+   624→const makeStyles = () =>
+   625→  StyleSheet.create({
+   626→    flex: { flex: 1 },
+   627→    content: {
+   628→      paddingHorizontal: theme.spacing.lg,
+   629→      paddingBottom: theme.spacing.xxl,
+   630→    },
+   631→    profileHead: {
+   632→    flexDirection: "row",
+   633→    alignItems: "center",
+   634→    gap: theme.spacing.lg,
+   635→    paddingVertical: theme.spacing.sm,
+   636→  },
+   637→  profileHeadInfo: { flex: 1, gap: 4 },
+   638→  profileName: { color: theme.colors.text, fontSize: 21, fontWeight: "700", letterSpacing: -0.3 },
+   639→  profileHeadline: { color: theme.colors.textMuted, fontSize: 13, lineHeight: 18 },
+   640→  statsRow: {
+   641→    flexDirection: "row",
+   642→    gap: theme.spacing.sm,
+   643→    marginTop: theme.spacing.md,
+   644→  },
+   645→  statCard: {
+   646→    flex: 1,
+   647→    backgroundColor: theme.colors.surface,
+   648→    borderWidth: StyleSheet.hairlineWidth,
+   649→    borderColor: theme.colors.border,
+   650→    borderRadius: theme.radius.md,
+   651→    padding: theme.spacing.md,
+   652→    alignItems: "center",
+   653→    gap: 4,
+   654→  },
+   655→  statValue: { color: theme.colors.text, fontSize: 14, fontWeight: "700" },
+   656→  statLabel: { color: theme.colors.textFaint, fontSize: 11, textAlign: "center" },
+   657→  chipsRow: {
+   658→    flexDirection: "row",
+   659→    flexWrap: "wrap",
+   660→    gap: theme.spacing.sm,
+   661→    marginTop: theme.spacing.lg,
+   662→  },
+   663→  languagesRow: {
+   664→    flexDirection: "row",
+   665→    alignItems: "center",
+   666→    gap: 6,
+   667→    marginTop: theme.spacing.sm,
+   668→  },
+   669→  languagesText: { color: theme.colors.textMuted, fontSize: 12, fontWeight: "600" },
+   670→  section: { marginTop: theme.spacing.xl },
+   671→  sectionTitle: { color: theme.colors.text, fontSize: 17, fontWeight: "700", marginBottom: theme.spacing.sm },
+   672→  aboutText: { color: theme.colors.textMuted, fontSize: 14, lineHeight: 22 },
+   673→  socialsRow: { flexDirection: "row", gap: theme.spacing.md },
+   674→  socialButton: {
+   675→    width: 46,
+   676→    height: 46,
+   677→    borderRadius: theme.radius.full,
+   678→    backgroundColor: theme.colors.surface,
+   679→    borderWidth: StyleSheet.hairlineWidth,
+   680→    borderColor: theme.colors.border,
+   681→    alignItems: "center",
+   682→    justifyContent: "center",
+   683→  },
+   684→  noReviews: { color: theme.colors.textFaint, fontSize: 13 },
+   685→  reviewsList: { gap: theme.spacing.md },
+   686→  reviewCard: {
+   687→    backgroundColor: theme.colors.surface,
+   688→    borderWidth: StyleSheet.hairlineWidth,
+   689→    borderColor: theme.colors.border,
+   690→    borderRadius: theme.radius.md,
+   691→    padding: theme.spacing.md,
+   692→    gap: 6,
+   693→  },
+   694→  reviewTop: {
+   695→    flexDirection: "row",
+   696→    alignItems: "center",
+   697→    justifyContent: "space-between",
+   698→    gap: theme.spacing.sm,
+   699→  },
+   700→  reviewDate: { color: theme.colors.textFaint, fontSize: 11 },
+   701→  reviewComment: { color: theme.colors.textMuted, fontSize: 13, lineHeight: 19 },
+   702→  reviewAuthor: { color: theme.colors.textFaint, fontSize: 11, fontWeight: "600" },
+   703→  stepTitle: {
+   704→    color: theme.colors.text,
+   705→    fontSize: 15,
+   706→    fontWeight: "700",
+   707→    marginTop: theme.spacing.lg,
+   708→    marginBottom: theme.spacing.md,
+   709→  },
+   710→  daysRow: { gap: theme.spacing.sm, paddingRight: theme.spacing.lg },
+   711→  slotsWrap: {
+   712→    flexDirection: "row",
+   713→    flexWrap: "wrap",
+   714→    gap: theme.spacing.sm,
+   715→  },
+   716→  emptySlots: { color: theme.colors.textMuted, fontSize: 13, lineHeight: 19 },
+   717→  topicInput: {
+   718→    backgroundColor: theme.colors.surfaceAlt,
+   719→    borderWidth: 1,
+   720→    borderColor: theme.colors.border,
+   721→    borderRadius: theme.radius.md,
+   722→    paddingHorizontal: theme.spacing.md,
+   723→    paddingVertical: theme.spacing.md,
+   724→    color: theme.colors.text,
+   725→    fontSize: 15,
+   726→    minHeight: 92,
+   727→  },
+   728→  summaryRow: {
+   729→    flexDirection: "row",
+   730→    alignItems: "center",
+   731→    gap: 6,
+   732→    marginTop: theme.spacing.md,
+   733→  },
+   734→  summaryText: { color: theme.colors.textMuted, fontSize: 12, fontWeight: "600", flex: 1 },
+   735→  summaryPrice: { color: theme.colors.text, fontSize: 13, fontWeight: "700" },
+   736→  flowError: { marginTop: theme.spacing.md },
+   737→  footer: {
+   738→    borderTopWidth: StyleSheet.hairlineWidth,
+   739→    borderTopColor: theme.colors.border,
+   740→    paddingHorizontal: theme.spacing.lg,
+   741→    paddingVertical: theme.spacing.md,
+   742→    backgroundColor: theme.colors.bg,
+   743→  },
+   744→  cta: {
+   745→    alignItems: "center",
+   746→    justifyContent: "center",
+   747→    paddingVertical: 14,
+   748→    borderRadius: theme.radius.md,
+   749→    backgroundColor: theme.colors.accent,
+   750→    minHeight: 50,
+   751→    marginTop: theme.spacing.lg,
+   752→  },
+   753→  ctaDisabled: { opacity: 0.55 },
+   754→  ctaText: { color: theme.colors.onAccent, fontSize: 15, fontWeight: "700" },
+   755→  ctaRow: {
+   756→    flexDirection: "row",
+   757→    alignItems: "center",
+   758→    gap: theme.spacing.sm,
+   759→  },
+   760→  ctaFlex: { flex: 1, marginTop: theme.spacing.lg },
+   761→  ctaGhost: {
+   762→    flexDirection: "row",
+   763→    alignItems: "center",
+   764→    justifyContent: "center",
+   765→    gap: 7,
+   766→    borderWidth: 1,
+   767→    borderColor: theme.colors.accentBorder,
+   768→    backgroundColor: theme.colors.accentSoft,
+   769→    borderRadius: theme.radius.md,
+   770→    minHeight: 50,
+   771→    marginTop: theme.spacing.lg,
+   772→    paddingHorizontal: theme.spacing.lg,
+   773→  },
+   774→  ctaGhostText: { color: theme.colors.accent, fontSize: 14, fontWeight: "700" },
+   775→  ghostButton: {
+   776→    alignItems: "center",
+   777→    paddingVertical: 12,
+   778→    marginTop: theme.spacing.sm,
+   779→  },
+   780→  ghostButtonText: { color: theme.colors.textMuted, fontSize: 13, fontWeight: "600" },
+   781→  successContent: {
+   782→    padding: theme.spacing.lg,
+   783→  },
+   784→  successCard: {
+   785→    backgroundColor: theme.colors.surface,
+   786→    borderWidth: StyleSheet.hairlineWidth,
+   787→    borderColor: theme.colors.border,
+   788→    borderRadius: theme.radius.lg,
+   789→    padding: theme.spacing.xl,
+   790→    alignItems: "center",
+   791→    gap: theme.spacing.md,
+   792→  },
+   793→  successIcon: {
+   794→    width: 60,
+   795→    height: 60,
+   796→    borderRadius: theme.radius.full,
+   797→    backgroundColor: theme.colors.accentSoft,
+   798→    borderWidth: 1,
+   799→    borderColor: theme.colors.accentBorder,
+   800→    alignItems: "center",
+   801→    justifyContent: "center",
+   802→  },
+   803→  successTitle: { color: theme.colors.text, fontSize: 18, fontWeight: "700" },
+   804→  successText: { color: theme.colors.textMuted, fontSize: 14, lineHeight: 21, textAlign: "center" },
+   805→  successWhen: { color: theme.colors.text, fontWeight: "700" },
+   806→  successPending: {
+   807→    color: theme.colors.textFaint,
+   808→    fontSize: 12,
+   809→    lineHeight: 18,
+   810→    textAlign: "center",
+   811→  },
+   812→  successPrice: { color: theme.colors.text, fontSize: 13, fontWeight: "700" },
+   813→  bottomSpacer: { height: theme.spacing.lg },
+   814→});
+   815→
+   816→const makeDayStyles = () =>
+   817→  StyleSheet.create({
+   818→    pill: {
+   819→    width: 64,
+   820→    paddingVertical: 9,
+   821→    borderRadius: theme.radius.md,
+   822→    borderWidth: 1,
+   823→    alignItems: "center",
+   824→    gap: 2,
+   825→  },
+   826→  selected: {
+   827→    backgroundColor: theme.colors.accentSoft,
+   828→    borderColor: theme.colors.accentBorder,
+   829→  },
+   830→  unselected: {
+   831→    backgroundColor: theme.colors.surface,
+   832→    borderColor: theme.colors.border,
+   833→  },
+   834→  weekday: { color: theme.colors.textFaint, fontSize: 11, fontWeight: "600" },
+   835→  weekdaySelected: { color: theme.colors.accent },
+   836→  label: { color: theme.colors.text, fontSize: 14, fontWeight: "700" },
+   837→  labelSelected: { color: theme.colors.accent },
+   838→});
+   839→

@@ -2506,3 +2506,28 @@ Stage Summary:
 - Deploy à prova de colisão de extração: qualquer redeploy (limpo ou sobre o anterior) extrai sem erro
 - USUÁRIO: basta REPUBLICAR na plataforma — o artefato novo não contém symlinks e extrai limpo
 - Erro do app Expo era consequência (servidor fora do ar); nada a mudar no Snack
+
+---
+Task ID: S-48
+Agent: main (Z.ai Code)
+Task: Polimento do app Expo após o deploy voltar a funcionar — rolagem horizontal dos carrosséis, cards de livro com cara de livro, voltar (nativo + da tela) bugado após entrar em perfil, pagamento de reunião/sessão travado em "carregando" + pagamento integrado (escolheu horário → já paga)
+
+Work Log:
+- DIAGNÓSTICO dos 4 pontos: (1) carrosséis horizontais dentro do pager horizontal não recebiam o gesto no Android (faltava nestedScrollEnabled); (2) BookCard era um card genérico com capa retangular; (3) CRASH REAL: MentorProfile usava `navigation.goBack()` SEM definir navigation (ReferenceError no toque do voltar) + estágios internos (agendamento/sucesso/conversa/PIX) desempilhavam a tela no botão nativo; (4) CheckoutScreen só suportava curso — "Pagar agora" da sessão passava kind:"booking" que era ignorado → getCourse(bookingId) → travava
+- APP — SCROLL: nestedScrollEnabled nos 2 carrosséis do Home, nos chips de dia do agendamento e no pager; pager agora usa useIsFocused → scrollEnabled=false quando uma tela está por cima + snap sem animação na aba ativa ao voltar (nunca fica meio deslizado)
+- APP — LIVROS: BookCard redesenhado com capa em retrato (116×164 mini / 62×88 row), lombra (faixa escura + brilho), beirada de páginas, borda, sombra/elevação e badge Livro/Artigo; verificado em screenshot (Home + Biblioteca)
+- APP — VOLTAR: novo src/lib/navigation.ts com useSafeBack (guarda anti-duplo-toque 600ms, canGoBack→goBack senão navigate Main) aplicado em Perfil/Salvos/Curso/Livro/Busca/Mensagens/Checkout/Mentor; useBackStage liga o BackHandler nativo aos estágios: Mentor (booking/sucesso → volta ao perfil), Checkout (PIX → volta ao formulário), Mensagens (conversa → volta à lista); TAB_NAMES perdeu "Mensagens" (era tela inexistente no pager)
+- APP — SESSÃO NO CHECKOUT: CheckoutScreen aceita params { kind:"booking", itemId, title, price, mentorName, mentorAvatarUrl } — resumo "Sessão 1:1 · 60 min" com avatar do mentor, cobrança via checkoutBooking({bookingId}), sucesso "Sessão confirmada!" com CTA "Ver minhas sessões" (setTab Mentorias + popToTop); api.ts ganhou BookingCheckoutInput/checkoutBooking
+- APP — INTEGRAÇÃO: tela de sucesso do agendamento ganhou "Pagar agora · R$150,00" (push Checkout booking) e "Pagar depois — ver minhas sessões"; novo src/lib/uiHints.ts (requestSessionsSegment/consume) faz Mentorias abrir DIRETO no segmento "Minhas sessões" após pagar
+- API (src/app/api/checkout): booking com pedido PENDING + cobrança ASAAS viva → RETOMADA devolve a mesma cobrança (QR PIX regenerado) em vez de 409; pedido antigo sem cobrança viva é REUTILIZADO (bookingId e payment.orderId são UNIQUE) — order.update + savePayment() order-aware; descoberto no E2E (P2002 nas duas constraints)
+- E2E API (scripts/e2e-s48-booking.mts): login ana → slots Marina → booking → checkout PAID (demo) → sessão paga na lista → retry com pedido preso → PAID ✅
+- E2E BROWSER (expo export web + serve :3021 + agent-browser 430px, logado como ana): login com servidor local, Home com carrosséis roláveis (scrollWidth>clientWidth, overflow-x auto), livros com cara de livro, Perfil→voltar OK, Mentor→voltar OK (antes crashava), fluxo COMPLETO Mentorias→Agendar→dia/horário/tema→Confirmar→"Pagar agora R$150,00"→checkout da sessão→PIX pago→"Ver minhas sessões"→ Minhas sessões com "pago ✓" e landing direto no segmento; console sem erros
+- LIMPEZA DO TURSO: scripts/e2e-s48-cleanup.mts removeu 10 bookings E2E S-48 + orders/payments/notifications (o artefato antigo W-30 foi mantido)
+- PUBLICAÇÃO: bun scripts/publish-snack.js → 55 arquivos CODE 2.92MB → NOVO SNACK https://snack.expo.dev/OxJH7RFoDFtGzvwZG76bM (HTTP 200); public/app-mobile reexportado (bundle novo) + mentorhub-mobile-snack-v8.zip (64 arquivos, 1.93MB, v7 removido); README atualizado
+- Push: 6de0747..c366df3 main; db/custom.db revertido
+
+Stage Summary:
+- Os 5 pedidos do usuário fechados: carrosséis rolam na horizontal; livros parecem livros; voltar funciona (botão da tela E nativo, com crash do perfil do mentor corrigido na raiz); pagamento de sessão sai do "carregando" e vira checkout completo no app; agendamento → pagamento agora é um fluxo único (escolheu horário, confirmou, apareceu "Pagar agora")
+- Servidor: retomada de cobrança de sessão nunca mais trava com 409 (PIX antigo é reaberto; pedido órfão é reaproveitado)
+- Snack oficial novo: https://snack.expo.dev/OxJH7RFoDFtGzvwZG76bM · fallback web: https://mentorhub.space-z.ai/app-mobile/ (após o publish do site) · zip v8
+- CHIP para o usuário: republicar o site na plataforma para levar a melhoria do checkout (retomada de cobrança) à produção; no app basta abrir o Snack novo
