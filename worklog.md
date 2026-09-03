@@ -2557,3 +2557,24 @@ Stage Summary:
 - Infra de servidor necessária: live.html + rota v1 meeting-token + socket.io vendor — TUDO JÁ NO PUSH 35f7640; usuário precisa REPUBLICAR O SITE na plataforma para a sala funcionar contra a produção (no app basta abrir o Snack novo)
 - Snack oficial novo: https://snack.expo.dev/E3K45Kbp1_zjj9LU20EXm · fallback web: https://mentorhub.space-z.ai/app-mobile/ · zip v9
 - Recomendados para você: card vertical dedicado (visual arrumado)
+
+---
+Task ID: P
+Agent: main (Z.ai Code)
+Task: Povoar a plataforma — cursos de TI e de outras áreas, sempre com imagens de capa para cursos, livros e artigos
+
+Work Log:
+- IMAGENS: 35 capas geradas por IA (SDK z-ai, estilo isométrico verde-esmeralda consistente com o existente) em public/uploads/seed/ — 19 de cursos (1344x768: python, react, sql, devops, ia, testes(fix), uiux, canva, socialmedia, seo, financas, investimentos, espanhol, linkedin, habitos, meditacao, confeitaria, fotografia, violao), 9 de livros (768x1344) e 7 de artigos (incl. 4 fixes de itens antigos sem capa); rate-limit 429 resolvido com retry serial
+- MENTORES: 4 novos criados a partir de usuários demo existentes (avatares já no repo): Camila Rocha (Saúde & Bem-estar/Carreira), Fernanda Dias (Culinária/Negócios), Lucas Prado (Fotografia), Thiago Nunes (Música) — com headline, descrição completa, categorias, rate, disponibilidades semanais e SLUG público (/?mentor=camila-rocha etc.)
+- CURSOS: 18 cursos novos criados com themes + lessons + quizzes (99 aulas no total, conteúdo real em pt-BR com seções ## e exercícios) distribuídos entre 11 mentores; Python, React/Next.js, SQL, DevOps (Carlos/Marina); IA Generativa (Gustavo); UI/UX (Beatriz), Canva (Ana); Social Media + SEO (Rafael); Finanças + Investimentos (David); Espanhol + LinkedIn (Sofia); Produtividade, Meditação (Camila), Confeitaria (Fernanda), Fotografia (Lucas), Violão (Thiago)
+- RECAPE: curso antigo "Testes e Qualidade de Código" (0 aulas, sem capa) ganhou capa + 3 aulas + quiz
+- BIBLIOTECA: 7 livros novos (Clean Code, Marketing Digital, Bolsa de Valores, Receitas que Vendem, Fotografia de Produto, Rotina de Alta Performance, Métodos de Estudo) com PDF A4 gerado pelo makePdf extraído (scripts/tmp/pdf-gen.ts), capa retrato e PÁGINAS PRÉ-RENDERIZADAS para o leitor nativo do app (pdftoppm 60dpi → public/library-pages/<id>/p1..5.png) + entradas no LIBRARY_PAGES_MANIFEST; 7 artigos novos com capa + conteúdo completo; 4 capas faltantes corrigidas (Discovery, Fundamentos de Dados, 30 Expressões, Playbook) — 0 itens sem capa
+- CATEGORIAS: CATEGORIES em src/lib/helpers.ts ganhou Fotografia, Culinária e Música (pickers e filtros refletem automaticamente)
+- VERIFICAÇÃO E2E: DB final = 12 mentores · 28 cursos (0 sem capa, 0 sem aulas) · 21 itens de biblioteca; APIs /api/courses e /api/v1/library + reader v1 OK (Clean Code com 5 páginas); browser: marketplace "28 cursos publicados" com chips das áreas novas (Fotografia 1, Culinária 1, Música 1), grid com capas, página do curso de Violão com currículo por temas, leitor PDF do Clean Code, perfil público da Camila Rocha; console sem erros
+- FIXES no meio do caminho: string com aspas simples aninhadas (yaml 'refs/heads/main') e literal com newline no seed-data; regex $ do manifest não casava com \n final (substituído por lastIndexOf)
+- Push: 6fa71fd..d560f51 main; scripts de seed versionados em scripts/tmp/ (idempotentes: pulam o que já existe)
+
+Stage Summary:
+- PLATAFORMA POVADA: 28 cursos em 10 categorias (11 Tecnologia + 17 de outras áreas), 21 itens de biblioteca (12 livros, 9 artigos) — todos com capa, aula/conteúdo real e PDF/páginas de leitor quando livro
+- Os dados já estão VIVOS no Turso (produção lê imediatamente); as IMAGENS/PDFs/páginas vão ao ar com o próximo publish do site na plataforma
+- Nada mudou no app Snack (ele lê a API) — novos cursos e biblioteca aparecem automaticamente no app
