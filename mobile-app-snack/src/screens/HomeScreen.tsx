@@ -300,7 +300,7 @@ export default function HomeScreen() {
             </>
           ) : null}
 
-          {/* Recomendados para você — carrossel horizontal de cursos */}
+          {/* Recomendados para você — carrossel horizontal (card vertical dedicado) */}
           {recommended.length > 0 ? (
             <>
               <SectionTitle
@@ -317,6 +317,7 @@ export default function HomeScreen() {
                   <View style={styles.recoItem}>
                     <CourseCard
                       course={item}
+                      variant="reco"
                       onPress={() => navigation.navigate("Curso", { id: item.id })}
                     />
                   </View>
@@ -469,7 +470,7 @@ const makeStyles = () =>
       gap: theme.spacing.md,
       paddingBottom: 4,
     },
-    recoItem: { width: 264 },
+    recoItem: { width: 218 },
 
     /* Continuar estudando (gradiente) */
     continueCard: {

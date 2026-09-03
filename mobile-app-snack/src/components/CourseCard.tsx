@@ -14,19 +14,26 @@ interface CourseCardProps {
   onPress: () => void;
   /** false oculta o coração de favorito (usos compactos/decorativos). */
   showFavorite?: boolean;
+  /** "row" (padrão, listas verticais) | "reco" (vertical, p/ carrossel do início). */
+  variant?: "row" | "reco";
 }
 
-export function CourseCard({ course, onPress, showFavorite = true }: CourseCardProps) {
+export function CourseCard({ course, onPress, showFavorite = true, variant = "row" }: CourseCardProps) {
   const styles = makeStyles();
   const { isFavorite, toggle } = useFavorites();
   const favorite = isFavorite("course", course.id);
   const level = levelLabel(course.level);
+  const reco = variant === "reco";
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
-      <View style={styles.coverWrap}>
+    <TouchableOpacity
+      style={reco ? styles.cardReco : styles.card}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
+      <View style={reco ? styles.coverWrapReco : styles.coverWrap}>
         <RemoteImage
           uri={course.coverUrl}
-          style={styles.cover}
+          style={reco ? styles.coverReco : styles.cover}
           recyclingKey={course.id}
           fallbackIcon="play-circle-outline"
           iconSize={26}
@@ -34,7 +41,9 @@ export function CourseCard({ course, onPress, showFavorite = true }: CourseCardP
         {showFavorite ? (
           <TouchableOpacity
             style={styles.favButton}
-            onPress={() => toggle({ type: "course", id: course.id, title: course.title })}
+            onPress={() =>
+              toggle({ type: "course", id: course.id, title: course.title, savedAt: Date.now() })
+            }
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             activeOpacity={0.7}
             accessibilityRole="button"
@@ -50,42 +59,85 @@ export function CourseCard({ course, onPress, showFavorite = true }: CourseCardP
           </TouchableOpacity>
         ) : null}
       </View>
-      <View style={styles.info}>
-        <Text style={styles.title} numberOfLines={2}>
-          {course.title}
-        </Text>
-        <Text style={styles.mentor} numberOfLines={1}>
-          por {course.mentor?.name ?? "Mentor"}
-        </Text>
-        <View style={styles.metaRow}>
-          <Ionicons name="star" size={12} color={theme.colors.warning} />
-          <Text style={styles.meta}>{(course.rating ?? 0).toFixed(1)}</Text>
-          <Text style={styles.metaFaint}>({formatNumber(course.reviewCount ?? 0)})</Text>
-          <Text style={styles.dot}>·</Text>
-          <Text style={styles.meta}>{course.lessonCount} aulas</Text>
-          {course.totalDurationMin > 0 ? (
-            <>
-              <Text style={styles.dot}>·</Text>
-              <Text style={styles.meta}>{formatDuration(course.totalDurationMin)}</Text>
-            </>
-          ) : null}
-        </View>
-        <View style={styles.bottomRow}>
-          <Chip label={course.category} />
-          {level ? <Chip label={level} tone="outline" /> : null}
-          <View style={styles.spacer} />
-          {course.enrolled ? (
-            <View style={styles.enrolledPill}>
-              <Ionicons name="checkmark-circle" size={12} color={theme.colors.accent} />
-              <Text style={styles.enrolledText}>Inscrito</Text>
+      {reco ? (
+        /* ----- variante vertical (carrossel "Recomendados para você") ----- */
+        <View style={styles.infoReco}>
+          <Text style={styles.titleReco} numberOfLines={2}>
+            {course.title}
+          </Text>
+          <Text style={styles.mentorReco} numberOfLines={1}>
+            por {course.mentor?.name ?? "Mentor"}
+          </Text>
+          <View style={styles.metaRowReco}>
+            <Ionicons name="star" size={11} color={theme.colors.warning} />
+            <Text style={styles.metaReco}>{(course.rating ?? 0).toFixed(1)}</Text>
+            <Text style={styles.dotReco}>·</Text>
+            <Text style={styles.metaReco}>{course.lessonCount} aulas</Text>
+            {course.totalDurationMin > 0 ? (
+              <>
+                <Text style={styles.dotReco}>·</Text>
+                <Text style={styles.metaReco}>{formatDuration(course.totalDurationMin)}</Text>
+              </>
+            ) : null}
+          </View>
+          <View style={styles.bottomRowReco}>
+            <View style={styles.categoryReco}>
+              <Text style={styles.categoryRecoText} numberOfLines={1}>
+                {course.category}
+              </Text>
             </View>
-          ) : (
-            <Text style={(course.price ?? 0) > 0 ? styles.price : styles.free}>
-              {formatPrice(course.price ?? 0)}
-            </Text>
-          )}
+            <View style={styles.spacer} />
+            {course.enrolled ? (
+              <View style={styles.enrolledPill}>
+                <Ionicons name="checkmark-circle" size={11} color={theme.colors.accent} />
+                <Text style={styles.enrolledText}>Inscrito</Text>
+              </View>
+            ) : (
+              <Text style={(course.price ?? 0) > 0 ? styles.priceReco : styles.freeReco}>
+                {formatPrice(course.price ?? 0)}
+              </Text>
+            )}
+          </View>
         </View>
-      </View>
+      ) : (
+        /* ----- variante horizontal (listas da aba Cursos, busca etc.) ----- */
+        <View style={styles.info}>
+          <Text style={styles.title} numberOfLines={2}>
+            {course.title}
+          </Text>
+          <Text style={styles.mentor} numberOfLines={1}>
+            por {course.mentor?.name ?? "Mentor"}
+          </Text>
+          <View style={styles.metaRow}>
+            <Ionicons name="star" size={12} color={theme.colors.warning} />
+            <Text style={styles.meta}>{(course.rating ?? 0).toFixed(1)}</Text>
+            <Text style={styles.metaFaint}>({formatNumber(course.reviewCount ?? 0)})</Text>
+            <Text style={styles.dot}>·</Text>
+            <Text style={styles.meta}>{course.lessonCount} aulas</Text>
+            {course.totalDurationMin > 0 ? (
+              <>
+                <Text style={styles.dot}>·</Text>
+                <Text style={styles.meta}>{formatDuration(course.totalDurationMin)}</Text>
+              </>
+            ) : null}
+          </View>
+          <View style={styles.bottomRow}>
+            <Chip label={course.category} />
+            {level ? <Chip label={level} tone="outline" /> : null}
+            <View style={styles.spacer} />
+            {course.enrolled ? (
+              <View style={styles.enrolledPill}>
+                <Ionicons name="checkmark-circle" size={12} color={theme.colors.accent} />
+                <Text style={styles.enrolledText}>Inscrito</Text>
+              </View>
+            ) : (
+              <Text style={(course.price ?? 0) > 0 ? styles.price : styles.free}>
+                {formatPrice(course.price ?? 0)}
+              </Text>
+            )}
+          </View>
+        </View>
+      )}
     </TouchableOpacity>
   );
 }
@@ -143,4 +195,47 @@ const makeStyles = () =>
     enrolledText: { color: theme.colors.accent, fontSize: 11, fontWeight: "700" },
     price: { color: theme.colors.text, fontSize: 14, fontWeight: "700" },
     free: { color: theme.colors.accent, fontSize: 14, fontWeight: "700" },
+
+    /* ---- variante vertical (carrossel "Recomendados para você") ---- */
+    cardReco: {
+      backgroundColor: theme.colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.lg,
+      overflow: "hidden",
+    },
+    coverWrapReco: {
+      height: 108,
+      backgroundColor: theme.colors.surfaceAlt,
+    },
+    coverReco: { width: "100%", height: 108, backgroundColor: theme.colors.surfaceAlt },
+    infoReco: { flex: 1, gap: 4, padding: 12, paddingTop: 10 },
+    titleReco: { color: theme.colors.text, fontSize: 13.5, fontWeight: "700", lineHeight: 18 },
+    mentorReco: { color: theme.colors.textMuted, fontSize: 11.5 },
+    metaRowReco: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      marginTop: 2,
+    },
+    metaReco: { color: theme.colors.textMuted, fontSize: 11.5, fontWeight: "600" },
+    dotReco: { color: theme.colors.textFaint, fontSize: 11 },
+    bottomRowReco: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginTop: 6,
+    },
+    categoryReco: {
+      maxWidth: 110,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.surfaceAlt,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+    },
+    categoryRecoText: { color: theme.colors.textMuted, fontSize: 10.5, fontWeight: "600" },
+    priceReco: { color: theme.colors.text, fontSize: 13.5, fontWeight: "800" },
+    freeReco: { color: theme.colors.accent, fontSize: 13.5, fontWeight: "800" },
   });

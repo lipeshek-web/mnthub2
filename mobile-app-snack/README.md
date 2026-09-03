@@ -2,10 +2,10 @@
 
 App do aluno do MentorHub, publicado e testado de ponta a ponta. Dois jeitos de abrir:
 
-1. **Expo Snack (link direto):** **https://snack.expo.dev/OxJH7RFoDFtGzvwZG76bM**
+1. **Expo Snack (link direto):** **https://snack.expo.dev/E3K45Kbp1_zjj9LU20EXm**
    - No preview **Web** (painel direito) ou no celular com o app **Expo Go** escaneando o QR Code ("My Device").
-   - Publicado via API oficial (`exp.host/--/api/v2/snack/save`) com código (55 arquivos) + 11 dependências — abrindo o link, já está tudo lá (nada de copiar/colar). SEM expo-clipboard (não resolve no Snack web): copiar PIX usa o clipboard do navegador + código selecionável.
-   - **Novidades desta versão (S-48):** carrosséis horizontais que ROLAM (nested scroll consertado no Android/web), cards de livro com cara de LIVRO (capa em retrato, lombra, beirada de páginas), VOLTAR consertado em todas as telas (botão da tela + botão nativo do Android, inclusive dentro do agendamento/PIX/conversa) e PAGAMENTO DE SESSÃO 1:1 INTEGRADO — escolheu dia/horário, confirmou e já paga por PIX/cartão/boleto na hora, sem sair do app ("Pagar agora" na confirmação e em Minhas sessões).
+   - Publicado via API oficial (`exp.host/--/api/v2/snack/save`) com código (56 arquivos) + 12 dependências — abrindo o link, já está tudo lá (nada de copiar/colar). SEM expo-clipboard (não resolve no Snack web): copiar PIX usa o clipboard do navegador + código selecionável.
+   - **Novidades desta versão (M — reunião nativa):** a SESSÃO 1:1 AO VIVO agora acontece DENTRO do app — botão "Entrar na sala de reunião" em todas as sessões (PENDING/CONFIRMED), badge "AO VIVO AGORA" quando é a hora, tela de sala com resumo/dicas/papel (anfitrião ou convidado decidido no servidor) e a reunião por vídeo/áudio rodando num WebView na página `/live.html` do servidor (WebRTC + sinalização socket.io — a MESMA sala do site, sem login externo). Sair pelo botão nativo, pelo botão vermelho da sala ou pelo voltar do Android (com confirmação). No navegador (web preview), a sala abre numa aba nova. Também: card vertical dedicado em "Recomendados para você" (não fica mais "quebrado").
 2. **Web app no site:** **https://mentorhub.space-z.ai/app-mobile/** — o mesmo código exportado (`expo export --platform web`) e servido junto do site (atualizado a cada publish).
 
 Mesma API (`/api/v1`, JWT Bearer 30 dias), mesmo visual, mesmos dados do Turso em produção.
@@ -29,10 +29,11 @@ navegando e aprendendo normalmente, e compra/mensagens mostram um aviso claro
 ## 📱 O que tem no app (tudo verificado em E2E com browser real)
 
 - **Login** — campo "Servidor da API" configurável (padrão: produção)
-- **Início** — XP, ofensiva, meta semanal, "Continuar estudando", novos livros, recomendados
+- **Início** — XP, ofensiva, meta semanal, "Continuar estudando", novos livros, recomendados (card vertical dedicado no carrossel)
 - **Livros** — biblioteca com busca/filtros e **LEITOR DE PDF NATIVO**: pager página a página (sem WebView e sem browser), zoom por dois toques, modo noturno, barra de progresso arrastável e retomada da leitura. As páginas dos 5 livros do catálogo vêm embutidas no app (abertura instantânea) e também são servidas por `GET /api/v1/library/:id/reader` (URLs absolutas de `/library-pages/<id>/p<N>.png`) — livros novos respondem 404 com mensagem amigável até terem páginas renderizadas
 - **Cursos — CONTENT-FIRST:** curso inscrito abre DIRETO na aula atual com o conteúdo em foco (vídeo em destaque com capa + play, texto completo já renderizado, materiais, concluir +XP, anterior/próxima). O índice completo do curso fica atrás do botão **"Índice"** (header ou faixa de progresso) que abre um modal com todas as aulas por tema. Catálogo com preços e **CHECKOUT COMPLETO NO APP** para cursos pagos (PIX com QR Code + copia-e-cola, cartão, boleto, cupom de desconto, polling automático de confirmação — sem sair do app)
 - **Mentorias** — buscar mentores, ver horários livres, agendar, **pagar a sessão 1:1 no app** (botão "Pagar agora" nas pendentes), acompanhar e cancelar sessões
+- **REUNIÃO AO VIVO DENTRO DO APP (MentorHub Live)** — "Entrar na sala de reunião" em Minhas sessões (com badge "AO VIVO AGORA" no horário), tela pré-entrada com resumo/dicas/papel, vídeo+áudio por WebRTC num WebView (`/live.html` do servidor, token HMAC curto assinado pela API — papel anfitrião/convidado decidido no servidor), sala idêntica à do site: espera do par, timer, badges de mic/câmera do par, controles mic/câmera/encerrar, reconexão automática e TURN de fallback. Sair: botão nativo no topo, botão vermelho da sala ou voltar do Android (confirma). E2E real com 2 navegadores: presença, conexão P2P e saída do par verificados
 - **Mensagens** — caixa de entrada com badge de não lidas na tab bar, conversa 1:1 com bolhas, envio com confirmação de leitura e polling automático; estado vazio amigável (nunca parece erro); abrir conversa pelo perfil do mentor ("Enviar mensagem")
 - **À prova de servidor desatualizado** — se o site publicado ainda não tiver as rotas novas, o app avisa com clareza ("publique o site...") em vez de "Conteúdo não encontrado", e `Alert.alert` funciona no preview web (polyfill)
 - **Perfil** — dados da conta, notificações (marcar todas como lidas), sair
@@ -51,7 +52,7 @@ mobile-app-snack/
     ├── lib/          # api.ts (cliente v1), auth.tsx, theme.tsx, tabs.tsx, bookPages.ts, format.ts, hooks
     │   └── bookPagesData/  # páginas PNG dos livros como data URI base64 (gerado; não editar à mão)
     ├── components/   # 20 componentes (PdfReader é o leitor nativo)
-    └── screens/      # 11 telas
+    └── screens/      # 12 telas (inclui SalaScreen — reunião ao vivo)
 ```
 
 ## 🛠 Rodar localmente (fora do Snack)
@@ -63,15 +64,17 @@ bunx expo start          # Expo Go / simulador
 bunx expo export --platform web   # gera dist/ (vai para public/app-mobile no publish)
 ```
 
-## 📦 Dependências (as 11 do painel do Snack — versões exatas do SDK 54)
+## 📦 Dependências (as 12 do painel do Snack — versões exatas do SDK 54)
 
-`@react-navigation/native` * · `@react-navigation/stack` * · `react-native-gesture-handler` ~2.28.0 · `react-native-safe-area-context` ~5.6.0 · `react-native-screens` ~4.16.0 · `expo-image` ~3.0.11 · `expo-web-browser` ~15.0.11 · `expo-secure-store` ~15.0.8 · `expo-linear-gradient` ~15.0.8 · `expo-status-bar` ~3.0.9 · `@expo/vector-icons` ^15.0.3
+`@react-navigation/native` * · `@react-navigation/stack` * · `react-native-gesture-handler` ~2.28.0 · `react-native-safe-area-context` ~5.6.0 · `react-native-screens` ~4.16.0 · `react-native-webview` 13.15.0 · `expo-image` ~3.0.11 · `expo-web-browser` ~15.0.11 · `expo-secure-store` ~15.0.8 · `expo-linear-gradient` ~15.0.8 · `expo-status-bar` ~3.0.9 · `@expo/vector-icons` ^15.0.3
 
 **Nunca** adicionar: `@react-navigation/native-stack`, `react-native-paper`, `expo-router`, `react-native-pager-view`, `@react-navigation/material-top-tabs`, `react-native-reanimated`, `react-native-pdf` (módulo nativo — não existe no Snack).
 
 ## 📦 ZIP (backup)
 
-`https://mentorhub.space-z.ai/mentorhub-mobile-snack-v8.zip` — código com páginas embutidas como data URI (as versões antigas v7/v6/v5 estão obsoletas).
+`https://mentorhub.space-z.ai/mentorhub-mobile-snack-v9.zip` — código com páginas embutidas como data URI (as versões antigas v8/v7 estão obsoletas).
+
+> 🎥 **Sala de reunião (infra do lado do servidor):** a página `public/live.html` (estática, servida pelo site) + `public/vendor/socket.io.min.js` + rotas `GET /api/bookings/[id]/meeting-token` (web) e `GET /api/v1/bookings/[id]/meeting-token` (app) + mini-serviço `mini-services/meeting-service` (:3004, sinalização). **Publique o site na plataforma** para a sala no app funcionar contra a produção.
 
 ## 🛠 Regenerar páginas / publicar
 

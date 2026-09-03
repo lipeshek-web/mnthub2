@@ -28,6 +28,8 @@
  *                       ├─ Checkout (params: { id }) — compra PIX/cartão no app
  *                       ├─ Mentor (params: { id })
  *                       ├─ Mensagens (conversas com mentores)
+ *                       ├─ Sala   (params: { bookingId, ... }) — reunião ao
+ *                       │   vivo DENTRO do app (WebView → /live.html)
  *                       ├─ Perfil (aberto pelo ícone da conta na Home)
  *                       ├─ Busca  (busca global: cursos + livros + mentores)
  *                       └─ Salvos (favoritos locais do aparelho)
@@ -94,6 +96,7 @@ import BuscaScreen from "./src/screens/BuscaScreen";
 import SalvosScreen from "./src/screens/SalvosScreen";
 import CheckoutScreen from "./src/screens/CheckoutScreen";
 import MensagensScreen from "./src/screens/MensagensScreen";
+import SalaScreen from "./src/screens/SalaScreen";
 
 /* ----------------------------- Tema de navegação ---------------------------- */
 
@@ -282,6 +285,7 @@ function RootNavigator() {
       <Stack.Screen name="Checkout" component={CheckoutScreen} />
       <Stack.Screen name="Mentor" component={MentorScreen} />
       <Stack.Screen name="Mensagens" component={MensagensScreen} />
+      <Stack.Screen name="Sala" component={SalaScreen} />
       <Stack.Screen name="Perfil" component={PerfilScreen} />
       <Stack.Screen name="Busca" component={BuscaScreen} />
       <Stack.Screen name="Salvos" component={SalvosScreen} />

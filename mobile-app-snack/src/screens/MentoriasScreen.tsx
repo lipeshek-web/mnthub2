@@ -25,7 +25,7 @@ import {
   listMentors,
   type Booking,
 } from "../lib/api";
-import { formatNaiveLong, formatPrice } from "../lib/format";
+import { formatNaiveLong, formatPrice, parseNaive } from "../lib/format";
 import { usePagedList } from "../lib/usePagedList";
 import { consumeSessionsSegmentHint } from "../lib/uiHints";
 import { theme } from "../theme";
@@ -151,6 +151,19 @@ export default function MentorshipsScreen() {
     });
   }
 
+  /** Reunião DENTRO do app: sala MentorHub Live (WebView + token da API). */
+  function handleJoinRoom(booking: Booking) {
+    navigation.push("Sala", {
+      bookingId: booking.id,
+      topic: booking.topic,
+      mentorName: booking.mentor.name,
+      mentorAvatarUrl: booking.mentor.avatarUrl ?? null,
+      startsAt: booking.startsAt,
+      durationMin: booking.durationMin,
+      status: booking.status,
+    });
+  }
+
   /* ------------------------------- Render ------------------------------- */
 
   return (
@@ -234,6 +247,7 @@ export default function MentorshipsScreen() {
               cancellingId={cancellingId}
               onCancel={confirmCancel}
               onPay={handlePayBooking}
+              onJoin={handleJoinRoom}
             />
           )}
           contentContainerStyle={styles.listContent}
@@ -313,23 +327,41 @@ function SegmentButton({
   );
 }
 
+/**
+ * true quando a sessão está EM ANDAMENTO agora (startsAt até +durationMin).
+ * Datas naive local — new Date("YYYY-MM-DDTHH:mm") cai no fuso local do aparelho.
+ */
+function isLiveNow(booking: Booking): boolean {
+  if (booking.status !== "PENDING" && booking.status !== "CONFIRMED") return false;
+  const p = parseNaive(booking.startsAt);
+  if (!p) return false;
+  const start = new Date(p.y, p.m - 1, p.d, p.hh, p.mm);
+  const end = new Date(start.getTime() + booking.durationMin * 60000);
+  const now = new Date();
+  return now >= start && now <= end;
+}
+
 function BookingRow({
   item,
   cancellingId,
   onCancel,
   onPay,
+  onJoin,
 }: {
   item: Booking;
   cancellingId: string | null;
   onCancel: (booking: Booking) => void;
   onPay: (booking: Booking) => void;
+  onJoin: (booking: Booking) => void;
 }) {
   const styles = makeStyles();
   const cancellable = item.status === "PENDING" || item.status === "CONFIRMED";
   const payPending = cancellable && item.price > 0 && !item.paid;
   const cancelling = cancellingId === item.id;
+  const live = isLiveNow(item);
+  const joinable = cancellable;
   return (
-    <View style={styles.bookingCard}>
+    <View style={[styles.bookingCard, live ? styles.bookingCardLive : null]}>
       <Avatar uri={item.mentor.avatarUrl} name={item.mentor.name} size={46} />
       <View style={styles.bookingInfo}>
         <View style={styles.bookingTopRow}>
@@ -350,6 +382,24 @@ function BookingRow({
             {item.paid ? " · pago ✓" : ""}
           </Text>
         ) : null}
+        {live ? (
+          <View style={styles.liveRow}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveText}>AO VIVO AGORA</Text>
+          </View>
+        ) : null}
+        {live ? (
+          <TouchableOpacity
+            style={styles.joinLiveButton}
+            onPress={() => onJoin(item)}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={`Entrar na reunião com ${item.mentor.name}`}
+          >
+            <Ionicons name="videocam" size={16} color={theme.colors.onAccent} />
+            <Text style={styles.joinLiveButtonText}>Entrar na reunião</Text>
+          </TouchableOpacity>
+        ) : null}
         {payPending ? (
           <TouchableOpacity
             style={styles.payButton}
@@ -360,6 +410,18 @@ function BookingRow({
           >
             <Ionicons name="card-outline" size={15} color={theme.colors.onAccent} />
             <Text style={styles.payButtonText}>Pagar agora</Text>
+          </TouchableOpacity>
+        ) : null}
+        {joinable && !live ? (
+          <TouchableOpacity
+            style={styles.joinButton}
+            onPress={() => onJoin(item)}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={`Abrir a sala de reunião com ${item.mentor.name}`}
+          >
+            <Ionicons name="videocam-outline" size={15} color={theme.colors.accent} />
+            <Text style={styles.joinButtonText}>Entrar na sala de reunião</Text>
           </TouchableOpacity>
         ) : null}
         {cancellable ? (
@@ -440,6 +502,54 @@ const makeStyles = () =>
     borderRadius: theme.radius.lg,
     marginBottom: theme.spacing.md,
   },
+  bookingCardLive: {
+    borderColor: theme.colors.accentBorder,
+    borderWidth: 1.5,
+  },
+  liveRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 2,
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.accentSoft,
+    borderWidth: 1,
+    borderColor: theme.colors.accentBorder,
+  },
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.accent,
+  },
+  liveText: { color: theme.colors.accent, fontSize: 10.5, fontWeight: "800", letterSpacing: 0.6 },
+  joinLiveButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    backgroundColor: theme.colors.accent,
+    borderRadius: theme.radius.sm,
+    paddingVertical: 12,
+    marginTop: 6,
+  },
+  joinLiveButtonText: { color: theme.colors.onAccent, fontSize: 14, fontWeight: "800" },
+  joinButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: theme.colors.accentSoft,
+    borderWidth: 1,
+    borderColor: theme.colors.accentBorder,
+    borderRadius: theme.radius.sm,
+    paddingVertical: 10,
+    marginTop: 2,
+  },
+  joinButtonText: { color: theme.colors.accent, fontSize: 13, fontWeight: "700" },
   bookingInfo: { flex: 1, gap: 4, marginTop: theme.spacing.sm },
   bookingTopRow: {
     flexDirection: "row",

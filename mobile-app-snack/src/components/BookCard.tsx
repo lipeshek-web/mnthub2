@@ -93,7 +93,9 @@ export function BookCard({ item, onPress, variant = "row", showFavorite = true }
         {showFavorite ? (
           <TouchableOpacity
             style={styles.favButton}
-            onPress={() => toggle({ type: "book", id: item.id, title: item.title })}
+            onPress={() =>
+              toggle({ type: "book", id: item.id, title: item.title, savedAt: Date.now() })
+            }
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             activeOpacity={0.7}
             accessibilityRole="button"

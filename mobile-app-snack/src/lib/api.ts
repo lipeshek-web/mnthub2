@@ -819,3 +819,26 @@ export async function getConversation(peerId: string): Promise<ChatResponse> {
 export async function sendMessage(peerId: string, body: string): Promise<ChatMessage> {
   return request<ChatMessage>("/messages", { method: "POST", body: { peerId, body } });
 }
+
+/* 22) Sala de reunião — credencial da sala de vídeo (MentorHub Live) */
+
+export interface MeetingTokenResponse {
+  /** Token HMAC assinado pela API (sala, usuário, nome e papel dentro). */
+  token: string;
+  /** Id da sala (= id da sessão). */
+  room: string;
+  /** Papel decidido no servidor: mentor = anfitrião. */
+  role: "HOST" | "GUEST";
+  wsPort: number;
+  expiresAt: string;
+}
+
+/**
+ * Credencial da sala de vídeo da sessão. O token é curto (12h) e basta para
+ * entrar — a página /live.html do servidor não pede login web.
+ */
+export async function getMeetingToken(bookingId: string): Promise<MeetingTokenResponse> {
+  return request<MeetingTokenResponse>(
+    `/bookings/${encodeURIComponent(bookingId)}/meeting-token`
+  );
+}

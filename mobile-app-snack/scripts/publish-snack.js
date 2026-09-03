@@ -14,6 +14,7 @@ const deps = {
   "react-native-gesture-handler":  "~2.28.0",
   "react-native-safe-area-context":"~5.6.0",
   "react-native-screens":          "~4.16.0",
+  "react-native-webview":          "13.15.0",
   "expo-image":                    "~3.0.11",
   "expo-web-browser":              "~15.0.11",
   "expo-secure-store":             "~15.0.8",
@@ -30,7 +31,8 @@ function walk(dir) {
     const rel = path.relative(root, full).split(path.sep).join("/");
     if (entry.isDirectory()) {
       // pula nada além do que não é código-fonte do app
-      if (rel === "node_modules" || rel === "dist" || rel === "scripts" || rel === ".tmp") continue;
+      if (rel === "node_modules" || rel === "dist" || rel === "scripts" || rel === ".tmp" ||
+          rel === ".tmp-export" || rel.startsWith(".tmp")) continue;
       walk(full);
       continue;
     }
