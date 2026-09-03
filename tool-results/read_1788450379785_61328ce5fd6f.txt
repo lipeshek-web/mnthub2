@@ -1,0 +1,687 @@
+     1→'use client'
+     2→
+     3→/**
+     4→ * MentorHub Live — sala de vídeo 1:1 própria (WebRTC P2P + sinalização socket.io).
+     5→ *
+     6→ * Por que não Jitsi: o meet.jit.si público prende todo mundo num lobby que pede
+     7→ * para "logar como moderador" — a mesma tela de anfitrião aparecia para mentor
+     8→ * E aluno. Aqui o papel (HOST = mentor) vem assinado do backend no token e a
+     9→ * sala simplesmente funciona: sem login externo, sem "quem é o anfitrião?".
+    10→ *
+    11→ * Negociação perfeita (perfect negotiation): HOST impolite, GUEST polite.
+    12→ * Ofertas só voam quando o par está na sala — sem offer perdida no vazio.
+    13→ */
+    14→
+    15→import { useCallback, useEffect, useRef, useState } from 'react'
+    16→import { io, type Socket } from 'socket.io-client'
+    17→import {
+    18→  Camera,
+    19→  CameraOff,
+    20→  CircleDot,
+    21→  Loader2,
+    22→  MessageSquareWarning,
+    23→  Mic,
+    24→  MicOff,
+    25→  MonitorUp,
+    26→  MonitorX,
+    27→  PhoneOff,
+    28→  RefreshCw,
+    29→  ShieldCheck,
+    30→} from 'lucide-react'
+    31→import { Badge } from '@/components/ui/badge'
+    32→import { Button } from '@/components/ui/button'
+    33→import { Avatar } from '@/components/platform/avatar'
+    34→import { api } from '@/lib/api'
+    35→import { toast } from 'sonner'
+    36→
+    37→type MeetingRole = 'HOST' | 'GUEST'
+    38→type ConnState = 'preparing' | 'waiting' | 'connecting' | 'connected' | 'reconnecting' | 'failed'
+    39→
+    40→interface RemoteMediaState {
+    41→  audio: boolean
+    42→  video: boolean
+    43→  screen: boolean
+    44→}
+    45→
+    46→const ICE_CONFIG: RTCConfiguration = {
+    47→  iceServers: [
+    48→    { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+    49→    { urls: ['stun:stun2.l.google.com:19302', 'stun:stun3.l.google.com:19302'] },
+    50→    {
+    51→      // TURN público de fallback (Open Relay Project) para NAT simétrico
+    52→      urls: [
+    53→        'turn:openrelay.metered.ca:80',
+    54→        'turn:openrelay.metered.ca:443',
+    55→        'turn:openrelay.metered.ca:443?transport=tcp',
+    56→      ],
+    57→      username: 'openrelayproject',
+    58→      credential: 'openrelayproject',
+    59→    },
+    60→  ],
+    61→  iceCandidatePoolSize: 4,
+    62→}
+    63→
+    64→export function MeetingStage({
+    65→  bookingId,
+    66→  role,
+    67→  selfName,
+    68→  peerName,
+    69→  peerIsMentor,
+    70→}: {
+    71→  bookingId: string
+    72→  role: MeetingRole
+    73→  selfName: string
+    74→  peerName: string
+    75→  peerIsMentor: boolean
+    76→}) {
+    77→  const polite = role === 'GUEST'
+    78→
+    79→  // ---------- estado de UI ----------
+    80→  const [state, setState] = useState<ConnState>('preparing')
+    81→  const [statusMsg, setStatusMsg] = useState('Preparando a sala…')
+    82→  const [mediaError, setMediaError] = useState<'none' | 'denied' | 'unsupported'>('none')
+    83→  const [audioOn, setAudioOn] = useState(false)
+    84→  const [videoOn, setVideoOn] = useState(false)
+    85→  const [screenOn, setScreenOn] = useState(false)
+    86→  const [remoteMedia, setRemoteMedia] = useState<RemoteMediaState>({ audio: true, video: true, screen: false })
+    87→  const [peerOnline, setPeerOnline] = useState(false)
+    88→  const [elapsed, setElapsed] = useState(0)
+    89→
+    90→  // ---------- refs de infra ----------
+    91→  const socketRef = useRef<Socket | null>(null)
+    92→  const pcRef = useRef<RTCPeerConnection | null>(null)
+    93→  const localStreamRef = useRef<MediaStream | null>(null)
+    94→  const cameraTrackRef = useRef<MediaStreamTrack | null>(null)
+    95→  const screenTrackRef = useRef<MediaStreamTrack | null>(null)
+    96→  const localVideoRef = useRef<HTMLVideoElement | null>(null)
+    97→  const remoteVideoRef = useRef<HTMLVideoElement | null>(null)
+    98→  const tokenRef = useRef<string | null>(null)
+    99→  const joinedRef = useRef(false)
+   100→
+   101→  // refs da negociação perfeita
+   102→  const makingOfferRef = useRef(false)
+   103→  const ignoreOfferRef = useRef(false)
+   104→  const settingRemoteAnswerRef = useRef(false)
+   105→
+   106→  const connectedAtRef = useRef<number | null>(null)
+   107→
+   108→  // ---------- helpers de mídia ----------
+   109→  const attachLocalPreview = useCallback(() => {
+   110→    const el = localVideoRef.current
+   111→    if (el && localStreamRef.current && el.srcObject !== localStreamRef.current) {
+   112→      el.srcObject = localStreamRef.current
+   113→      el.play().catch(() => {})
+   114→    }
+   115→  }, [])
+   116→
+   117→  const acquireMedia = useCallback(async () => {
+   118→    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+   119→      setMediaError('unsupported')
+   120→      return
+   121→    }
+   122→    if (localStreamRef.current) return
+   123→    try {
+   124→      const stream = await navigator.mediaDevices.getUserMedia({
+   125→        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+   126→        audio: { echoCancellation: true, noiseSuppression: true },
+   127→      })
+   128→      localStreamRef.current = stream
+   129→    } catch {
+   130→      // cai para só-áudio antes de desistir
+   131→      try {
+   132→        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+   133→        localStreamRef.current = stream
+   134→        toast.info('Câmera indisponível — entrando só com áudio.')
+   135→      } catch {
+   136→        setMediaError('denied')
+   137→        return
+   138→      }
+   139→    }
+   140→    const stream = localStreamRef.current
+   141→    const audio = stream?.getAudioTracks()[0] ?? null
+   142→    const video = stream?.getVideoTracks()[0] ?? null
+   143→    cameraTrackRef.current = video
+   144→    if (audio) {
+   145→      audio.enabled = true
+   146→      setAudioOn(true)
+   147→    }
+   148→    if (video) {
+   149→      video.enabled = true
+   150→      setVideoOn(true)
+   151→    }
+   152→    attachLocalPreview()
+   153→  }, [attachLocalPreview])
+   154→
+   155→  // ---------- peer connection (perfect negotiation) ----------
+   156→  const ensurePeerConnection = useCallback(() => {
+   157→    if (pcRef.current) return pcRef.current
+   158→    const pc = new RTCPeerConnection(ICE_CONFIG)
+   159→    pcRef.current = pc
+   160→
+   161→    // garante negociação mesmo sem nenhuma faixa de mídia (ex.: permissão negada)
+   162→    pc.createDataChannel('mh-control')
+   163→
+   164→    // faixas locais existentes
+   165→    const stream = localStreamRef.current
+   166→    if (stream) {
+   167→      for (const track of stream.getTracks()) {
+   168→        pc.addTrack(track, stream)
+   169→      }
+   170→    }
+   171→
+   172→    pc.onnegotiationneeded = async () => {
+   173→      try {
+   174→        makingOfferRef.current = true
+   175→        await pc.setLocalDescription()
+   176→        if (pc.localDescription && socketRef.current?.connected) {
+   177→          socketRef.current.emit('signal', { kind: 'desc', data: pc.localDescription })
+   178→        }
+   179→      } catch {
+   180→        /* colisão tratada no handler de desc */
+   181→      } finally {
+   182→        makingOfferRef.current = false
+   183→      }
+   184→    }
+   185→
+   186→    pc.onicecandidate = ({ candidate }) => {
+   187→      if (candidate && socketRef.current?.connected) {
+   188→        socketRef.current.emit('signal', { kind: 'cand', data: candidate })
+   189→      }
+   190→    }
+   191→
+   192→    pc.ontrack = ({ track, streams }) => {
+   193→      const el = remoteVideoRef.current
+   194→      const remoteStream = streams[0]
+   195→      if (el && remoteStream && el.srcObject !== remoteStream) {
+   196→        el.srcObject = remoteStream
+   197→        el.play().catch(() => {})
+   198→      }
+   199→      track.onended = () => {
+   200→        // fim de compartilhamento de tela do par: volta ao estado normal
+   201→        setRemoteMedia((s) => ({ ...s, screen: false }))
+   202→      }
+   203→    }
+   204→
+   205→    pc.oniceconnectionstatechange = () => {
+   206→      const st = pc.iceConnectionState
+   207→      if (st === 'connected' || st === 'completed') {
+   208→        if (connectedAtRef.current == null) connectedAtRef.current = Date.now()
+   209→        setState((s) => (s === 'reconnecting' ? 'connected' : s))
+   210→        setState('connected')
+   211→        setStatusMsg('Conectado')
+   212→      } else if (st === 'disconnected') {
+   213→        setState((s) => (s === 'connected' ? 'reconnecting' : s))
+   214→        setStatusMsg('Conexão instável — tentando recuperar…')
+   215→      } else if (st === 'failed') {
+   216→        setState('failed')
+   217→        setStatusMsg('Não foi possível estabelecer a conexão de vídeo.')
+   218→      } else if (st === 'checking') {
+   219→        setState((s) => (s === 'waiting' || s === 'preparing' ? 'connecting' : s))
+   220→        setStatusMsg('Conectando…')
+   221→      }
+   222→    }
+   223→
+   224→    return pc
+   225→  }, [])
+   226→
+   227→  // ---------- ciclo de vida da sala ----------
+   228→  const teardownCall = useCallback(() => {
+   229→    pcRef.current?.close()
+   230→    pcRef.current = null
+   231→    connectedAtRef.current = null
+   232→    setElapsed(0)
+   233→    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null
+   234→    makingOfferRef.current = false
+   235→    ignoreOfferRef.current = false
+   236→    settingRemoteAnswerRef.current = false
+   237→  }, [])
+   238→
+   239→  const connectToRoom = useCallback(async () => {
+   240→    setState('preparing')
+   241→    setStatusMsg('Preparando a sala…')
+   242→    setPeerOnline(false)
+   243→    teardownCall()
+   244→    // retry: encerra sinalização anterior antes de recomeçar limpo
+   245→    socketRef.current?.disconnect()
+   246→    socketRef.current = null
+   247→
+   248→    // token assinado pelo backend (papel HOST/GUEST validado no servidor)
+   249→    let token: string
+   250→    try {
+   251→      const cred = await api.getMeetingToken(bookingId)
+   252→      token = cred.token
+   253→      tokenRef.current = cred.token
+   254→    } catch (e) {
+   255→      setState('failed')
+   256→      setStatusMsg(e instanceof Error ? e.message : 'Não foi possível abrir a sala.')
+   257→      return
+   258→    }
+   259→
+   260→    await acquireMedia()
+   261→
+   262→    // conecta na sinalização (gateway: XTransformPort, path '/')
+   263→    const socket = io('/?XTransformPort=3004', {
+   264→      path: '/',
+   265→      transports: ['websocket', 'polling'],
+   266→      forceNew: true,
+   267→      reconnection: true,
+   268→      reconnectionAttempts: 8,
+   269→      reconnectionDelay: 1200,
+   270→      timeout: 10000,
+   271→    })
+   272→    socketRef.current = socket
+   273→
+   274→    socket.on('connect', () => {
+   275→      socket.emit('join', { token })
+   276→    })
+   277→
+   278→    socket.on('disconnect', () => {
+   279→      joinedRef.current = false
+   280→      // ICE P2P pode continuar de pé mesmo sem sinalização — só avisa se já estava em chamada
+   281→      setState((s) => (s === 'connected' ? 'reconnecting' : s))
+   282→    })
+   283→
+   284→    socket.on('meeting-error', (err: { message?: string }) => {
+   285→      setState('failed')
+   286→      setStatusMsg(err?.message || 'Erro na sala de reunião.')
+   287→    })
+   288→
+   289→    socket.on('joined', () => {
+   290→      joinedRef.current = true
+   291→      setState((s) => (s === 'connected' ? s : 'waiting'))
+   292→      setStatusMsg((m) => (m === 'Conectado' ? m : `Sala pronta — aguardando ${peerName}…`))
+   293→    })
+   294→
+   295→    socket.on('peer-joined', () => {
+   296→      setPeerOnline(true)
+   297→      // HOST inicia a oferta quando o par chega; GUEST prepara e espera
+   298→      ensurePeerConnection()
+   299→      setState((s) => (s === 'connected' ? s : 'connecting'))
+   300→      setStatusMsg('Conectando…')
+   301→    })
+   302→
+   303→    socket.on('peer-left', () => {
+   304→      setPeerOnline(false)
+   305→      teardownCall()
+   306→      setState('waiting')
+   307→      setStatusMsg(`${peerName} saiu — aguardando retorno…`)
+   308→    })
+   309→
+   310→    // negociação perfeita (padrão do spec WebRTC)
+   311→    socket.on('signal', async ({ kind, data }: { kind: string; data: unknown }) => {
+   312→      const pc = ensurePeerConnection()
+   313→      try {
+   314→        if (kind === 'desc') {
+   315→          const description = data as RTCSessionDescriptionInit
+   316→          const readyForOffer =
+   317→            !makingOfferRef.current &&
+   318→            (pc.signalingState === 'stable' || settingRemoteAnswerRef.current)
+   319→          const offerCollision = description.type === 'offer' && !readyForOffer
+   320→          ignoreOfferRef.current = offerCollision && !polite
+   321→          if (ignoreOfferRef.current) return
+   322→
+   323→          settingRemoteAnswerRef.current = description.type === 'answer'
+   324→          await pc.setRemoteDescription(description)
+   325→          settingRemoteAnswerRef.current = false
+   326→
+   327→          if (description.type === 'offer') {
+   328→            await pc.setLocalDescription()
+   329→            if (pc.localDescription && socketRef.current?.connected) {
+   330→              socketRef.current.emit('signal', { kind: 'desc', data: pc.localDescription })
+   331→            }
+   332→          }
+   333→        } else if (kind === 'cand') {
+   334→          try {
+   335→            await pc.addIceCandidate(data as RTCIceCandidateInit)
+   336→          } catch (err) {
+   337→            if (!ignoreOfferRef.current) {
+   338→              // candidato pode ter chegado antes do remote description — ignora sem quebrar
+   339→              console.warn('[meeting] addIceCandidate', err)
+   340→            }
+   341→          }
+   342→        }
+   343→      } catch (err) {
+   344→        console.warn('[meeting] signal', err)
+   345→      }
+   346→    })
+   347→
+   348→    socket.on('media-state', (st: RemoteMediaState) => {
+   349→      setRemoteMedia({ audio: Boolean(st?.audio), video: Boolean(st?.video), screen: Boolean(st?.screen) })
+   350→    })
+   351→
+   352→    socket.io.on('reconnect', () => {
+   353→      // volta a sinalização: re-entra na sala e refaz o par
+   354→      if (tokenRef.current) socket.emit('join', { token: tokenRef.current })
+   355→    })
+   356→  }, [acquireMedia, bookingId, ensurePeerConnection, peerName, polite, teardownCall])
+   357→
+   358→  // ---------- controles ----------
+   359→  const toggleAudio = useCallback(async () => {
+   360→    const track = localStreamRef.current?.getAudioTracks()[0]
+   361→    if (!track) {
+   362→      toast.error('Microfone não disponível neste dispositivo.')
+   363→      return
+   364→    }
+   365→    track.enabled = !track.enabled
+   366→    setAudioOn(track.enabled)
+   367→    socketRef.current?.emit('media-state', {
+   368→      audio: track.enabled,
+   369→      video: videoOn,
+   370→      screen: screenOn,
+   371→    })
+   372→  }, [screenOn, videoOn])
+   373→
+   374→  const toggleVideo = useCallback(async () => {
+   375→    const track = localStreamRef.current?.getVideoTracks()[0]
+   376→    if (!track) {
+   377→      // sem câmera ainda: tenta adquirir agora (ex.: permissão dada depois)
+   378→      try {
+   379→        const stream = await navigator.mediaDevices.getUserMedia({
+   380→          video: { width: { ideal: 1280 }, facingMode: 'user' },
+   381→        })
+   382→        const video = stream.getVideoTracks()[0]
+   383→        localStreamRef.current?.addTrack(video)
+   384→        cameraTrackRef.current = video
+   385→        const pc = ensurePeerConnection()
+   386→        pc.addTrack(video, stream)
+   387→        attachLocalPreview()
+   388→        setVideoOn(true)
+   389→        setMediaError('none')
+   390→        socketRef.current?.emit('media-state', { audio: audioOn, video: true, screen: screenOn })
+   391→        return
+   392→      } catch {
+   393→        toast.error('Não foi possível acessar a câmera.')
+   394→        return
+   395→      }
+   396→    }
+   397→    track.enabled = !track.enabled
+   398→    setVideoOn(track.enabled)
+   399→    socketRef.current?.emit('media-state', {
+   400→      audio: audioOn,
+   401→      video: track.enabled,
+   402→      screen: screenOn,
+   403→    })
+   404→  }, [attachLocalPreview, audioOn, ensurePeerConnection, screenOn])
+   405→
+   406→  const stopScreenShare = useCallback(() => {
+   407→    const pc = pcRef.current
+   408→    const screen = screenTrackRef.current
+   409→    const camera = cameraTrackRef.current
+   410→    if (screen) {
+   411→      screen.stop()
+   412→      screenTrackRef.current = null
+   413→    }
+   414→    if (pc) {
+   415→      const sender = pc.getSenders().find((s) => s.track?.kind === 'video')
+   416→      if (sender) {
+   417→        if (camera) void sender.replaceTrack(camera)
+   418→        else void sender.replaceTrack(null)
+   419→      }
+   420→    }
+   421→    setScreenOn(false)
+   422→    socketRef.current?.emit('media-state', { audio: audioOn, video: videoOn, screen: false })
+   423→  }, [audioOn, videoOn])
+   424→
+   425→  const toggleScreen = useCallback(async () => {
+   426→    if (screenOn) {
+   427→      stopScreenShare()
+   428→      return
+   429→    }
+   430→    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getDisplayMedia) {
+   431→      toast.error('Compartilhar tela não é suportado neste dispositivo.')
+   432→      return
+   433→    }
+   434→    try {
+   435→      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true })
+   436→      const screen = stream.getVideoTracks()[0]
+   437→      screenTrackRef.current = screen
+   438→      screen.onended = () => stopScreenShare()
+   439→
+   440→      const pc = ensurePeerConnection()
+   441→      const sender = pc.getSenders().find((s) => s.track?.kind === 'video')
+   442→      if (sender) {
+   443→        await sender.replaceTrack(screen)
+   444→      } else {
+   445→        pc.addTrack(screen, stream)
+   446→      }
+   447→      setScreenOn(true)
+   448→      socketRef.current?.emit('media-state', { audio: audioOn, video: videoOn, screen: true })
+   449→    } catch {
+   450→      /* usuário cancelou o seletor */
+   451→    }
+   452→  }, [audioOn, screenOn, stopScreenShare, videoOn])
+   453→
+   454→  const leaveRoom = useCallback(() => {
+   455→    socketRef.current?.emit('leave')
+   456→    teardownCall()
+   457→    socketRef.current?.disconnect()
+   458→    socketRef.current = null
+   459→    localStreamRef.current?.getTracks().forEach((t) => t.stop())
+   460→    localStreamRef.current = null
+   461→    setState('preparing')
+   462→  }, [teardownCall])
+   463→
+   464→  // ---------- efeitos ----------
+   465→  useEffect(() => {
+   466→    void connectToRoom()
+   467→    return () => {
+   468→      leaveRoom()
+   469→    }
+   470→  }, [bookingId])
+   471→
+   472→  // cronômetro da chamada
+   473→  useEffect(() => {
+   474→    if (state !== 'connected') return
+   475→    const iv = window.setInterval(() => {
+   476→      if (connectedAtRef.current) setElapsed(Math.floor((Date.now() - connectedAtRef.current) / 1000))
+   477→    }, 1000)
+   478→    return () => window.clearInterval(iv)
+   479→  }, [state])
+   480→
+   481→  // preview local (ref pode montar depois do stream chegar)
+   482→  useEffect(() => {
+   483→    attachLocalPreview()
+   484→  }, [attachLocalPreview])
+   485→
+   486→  const mm = String(Math.floor(elapsed / 60)).padStart(2, '0')
+   487→  const ss = String(elapsed % 60).padStart(2, '0')
+   488→
+   489→  const statePill =
+   490→    state === 'preparing' ? (
+   491→      <Badge className="gap-1 border-transparent bg-stone-700 text-white">
+   492→        <Loader2 className="h-3 w-3 animate-spin" /> preparando…
+   493→      </Badge>
+   494→    ) : state === 'waiting' ? (
+   495→      <Badge className="gap-1 border-transparent bg-amber-600 text-white">
+   496→        <CircleDot className="h-3 w-3 animate-pulse" /> aguardando {peerName.split(' ')[0]}…
+   497→      </Badge>
+   498→    ) : state === 'connecting' || state === 'reconnecting' ? (
+   499→      <Badge className="gap-1 border-transparent bg-amber-600 text-white">
+   500→        <Loader2 className="h-3 w-3 animate-spin" /> conectando…
+   501→      </Badge>
+   502→    ) : state === 'connected' ? (
+   503→      <Badge className="gap-1 border-transparent bg-emerald-600 text-white">
+   504→        <CircleDot className="h-3 w-3" /> ao vivo · {mm}:{ss}
+   505→      </Badge>
+   506→    ) : (
+   507→      <Badge className="gap-1 border-transparent bg-rose-700 text-white">
+   508→        <MessageSquareWarning className="h-3 w-3" /> falhou
+   509→      </Badge>
+   510→    )
+   511→
+   512→  return (
+   513→    <div className="space-y-3">
+   514→      {/* ---------- PALCO DE VÍDEO ---------- */}
+   515→      <div className="relative overflow-hidden rounded-2xl border border-stone-800 bg-stone-950 shadow-xl">
+   516→        {/* vídeo remoto (ou local enquanto o par não chega) */}
+   517→        <video
+   518→          ref={remoteVideoRef}
+   519→          autoPlay
+   520→          playsInline
+   521→          className={
+   522→            'h-[46vh] min-h-[300px] w-full bg-stone-950 object-cover sm:h-[56vh] ' +
+   523→            (state === 'connected' && peerOnline ? '' : 'opacity-0')
+   524→          }
+   525→          aria-label={`Vídeo de ${peerName}`}
+   526→        />
+   527→
+   528→        {/* fallback visual enquanto não há vídeo remoto */}
+   529→        {!(state === 'connected' && peerOnline) && (
+   530→          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center">
+   531→            {state === 'failed' ? (
+   532→              <>
+   533→                <MessageSquareWarning className="h-10 w-10 text-rose-400" />
+   534→                <p className="max-w-sm text-sm text-stone-200">{statusMsg}</p>
+   535→                <Button
+   536→                  variant="outline"
+   537→                  className="border-stone-600 bg-transparent text-stone-100 hover:bg-stone-800 hover:text-white"
+   538→                  onClick={() => void connectToRoom()}
+   539→                >
+   540→                  <RefreshCw className="h-4 w-4" /> Tentar novamente
+   541→                </Button>
+   542→              </>
+   543→            ) : (
+   544→              <>
+   545→                <span className="flex h-20 w-20 items-center justify-center rounded-full bg-stone-800 text-2xl font-extrabold text-stone-300">
+   546→                  {peerName
+   547→                    .split(' ')
+   548→                    .slice(0, 2)
+   549→                    .map((p) => p[0])
+   550→                    .join('')}
+   551→                </span>
+   552→                <div className="space-y-1">
+   553→                  <p className="font-bold text-stone-100">{peerName}</p>
+   554→                  <p className="text-sm text-stone-400">{statusMsg}</p>
+   555→                </div>
+   556→              </>
+   557→            )}
+   558→          </div>
+   559→        )}
+   560→
+   561→        {/* barra superior: status + segurança */}
+   562→        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 bg-gradient-to-b from-black/70 to-transparent p-3">
+   563→          <div className="flex flex-wrap items-center gap-2">{statePill}</div>
+   564→          <span className="hidden items-center gap-1 rounded-full bg-black/40 px-2.5 py-1 text-[11px] font-medium text-stone-200 sm:inline-flex">
+   565→            <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> P2P criptografado
+   566→          </span>
+   567→        </div>
+   568→
+   569→        {/* nome + papel do par (badge de anfitrião vem do servidor) */}
+   570→        {state === 'connected' && peerOnline && (
+   571→          <div className="absolute bottom-3 left-3 flex items-center gap-2">
+   572→            <span className="flex items-center gap-2 rounded-full bg-black/55 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur">
+   573→              {peerName}
+   574→              {peerIsMentor && (
+   575→                <span className="rounded-full bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+   576→                  Anfitrião · Mentor
+   577→                </span>
+   578→              )}
+   579→              {!remoteMedia.audio && <MicOff className="h-3.5 w-3.5 text-rose-400" />}
+   580→              {!remoteMedia.video && <CameraOff className="h-3.5 w-3.5 text-rose-400" />}
+   581→              {remoteMedia.screen && <MonitorUp className="h-3.5 w-3.5 text-amber-300" />}
+   582→            </span>
+   583→          </div>
+   584→        )}
+   585→
+   586→        {/* PiP local */}
+   587→        <div className="absolute bottom-3 right-3 h-[72px] w-[110px] overflow-hidden rounded-xl border border-stone-700 bg-stone-900 shadow-lg sm:h-[96px] sm:w-[150px]">
+   588→          <video
+   589→            ref={localVideoRef}
+   590→            autoPlay
+   591→            muted
+   592→            playsInline
+   593→            className={'h-full w-full scale-x-[-1] object-cover ' + (videoOn ? '' : 'opacity-0')}
+   594→            aria-label="Seu vídeo"
+   595→          />
+   596→          {!videoOn && (
+   597→            <div className="absolute inset-0 flex items-center justify-center">
+   598→              <CameraOff className="h-5 w-5 text-stone-500" />
+   599→            </div>
+   600→          )}
+   601→          <span className="absolute bottom-1 left-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+   602→            Você {role === 'HOST' && '· Anfitrião'}
+   603→          </span>
+   604→        </div>
+   605→      </div>
+   606→
+   607→      {/* aviso de permissão de mídia */}
+   608→      {mediaError !== 'none' && (
+   609→        <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
+   610→          <MessageSquareWarning className="mt-0.5 h-4.5 w-4.5 shrink-0" />
+   611→          <p>
+   612→            {mediaError === 'denied'
+   613→              ? 'Câmera/microfone não autorizados. Você ainda entra na sala e pode ativar no botão de câmera quando quiser.'
+   614→              : 'Este navegador não oferece câmera/microfone. Você participa só com o restante da sala.'}
+   615→          </p>
+   616→        </div>
+   617→      )}
+   618→
+   619→      {/* ---------- BARRA DE CONTROLES FIXA (sticky acima da tab bar no mobile) ---------- */}
+   620→      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 -mx-4 rounded-t-2xl border border-stone-200 bg-white/95 px-3 py-2.5 shadow-[0_-6px_24px_rgba(0,0,0,0.08)] backdrop-blur sm:-mx-6 sm:rounded-2xl dark:border-stone-800 dark:bg-stone-900/95 md:bottom-0 md:mx-0">
+   621→        <div className="flex items-center justify-center gap-2 sm:gap-3">
+   622→          <button
+   623→            type="button"
+   624→            onClick={() => void toggleAudio()}
+   625→            aria-pressed={audioOn}
+   626→            aria-label={audioOn ? 'Desativar microfone' : 'Ativar microfone'}
+   627→            className={
+   628→              'flex h-11 min-w-11 items-center justify-center rounded-full border transition-colors ' +
+   629→              (audioOn
+   630→                ? 'border-stone-300 bg-stone-100 text-stone-800 hover:bg-stone-200 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:hover:bg-stone-700'
+   631→                : 'border-rose-300 bg-rose-600 text-white hover:bg-rose-700 dark:border-rose-800')
+   632→            }
+   633→          >
+   634→            {audioOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+   635→          </button>
+   636→
+   637→          <button
+   638→            type="button"
+   639→            onClick={() => void toggleVideo()}
+   640→            aria-pressed={videoOn}
+   641→            aria-label={videoOn ? 'Desativar câmera' : 'Ativar câmera'}
+   642→            className={
+   643→              'flex h-11 min-w-11 items-center justify-center rounded-full border transition-colors ' +
+   644→              (videoOn
+   645→                ? 'border-stone-300 bg-stone-100 text-stone-800 hover:bg-stone-200 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:hover:bg-stone-700'
+   646→                : 'border-rose-300 bg-rose-600 text-white hover:bg-rose-700 dark:border-rose-800')
+   647→            }
+   648→          >
+   649→            {videoOn ? <Camera className="h-5 w-5" /> : <CameraOff className="h-5 w-5" />}
+   650→          </button>
+   651→
+   652→          <button
+   653→            type="button"
+   654→            onClick={() => void toggleScreen()}
+   655→            aria-pressed={screenOn}
+   656→            aria-label={screenOn ? 'Parar de compartilhar tela' : 'Compartilhar tela'}
+   657→            className={
+   658→              'flex h-11 min-w-11 items-center justify-center rounded-full border transition-colors ' +
+   659→              (screenOn
+   660→                ? 'border-amber-300 bg-amber-500 text-stone-900 hover:bg-amber-600 dark:border-amber-700'
+   661→                : 'border-stone-300 bg-stone-100 text-stone-800 hover:bg-stone-200 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:hover:bg-stone-700')
+   662→            }
+   663→          >
+   664→            {screenOn ? <MonitorX className="h-5 w-5" /> : <MonitorUp className="h-5 w-5" />}
+   665→          </button>
+   666→
+   667→          <div className="mx-1 hidden h-8 w-px bg-stone-200 sm:block dark:bg-stone-700" aria-hidden />
+   668→
+   669→          <Button
+   670→            variant="destructive"
+   671→            className="h-11 rounded-full px-5 font-bold"
+   672→            onClick={() => {
+   673→              leaveRoom()
+   674→              toast.success('Você saiu da sala de vídeo.')
+   675→            }}
+   676→          >
+   677→            <PhoneOff className="h-4 w-4" /> Sair
+   678→          </Button>
+   679→        </div>
+   680→        <p className="mt-1.5 text-center text-[11px] text-muted-foreground" aria-live="polite">
+   681→          {state === 'connected' ? `Conectado · ${mm}:${ss} de sessão` : statusMsg}
+   682→        </p>
+   683→      </div>
+   684→    </div>
+   685→  )
+   686→}
+   687→

@@ -2531,3 +2531,29 @@ Stage Summary:
 - Servidor: retomada de cobrança de sessão nunca mais trava com 409 (PIX antigo é reaberto; pedido órfão é reaproveitado)
 - Snack oficial novo: https://snack.expo.dev/OxJH7RFoDFtGzvwZG76bM · fallback web: https://mentorhub.space-z.ai/app-mobile/ (após o publish do site) · zip v8
 - CHIP para o usuário: republicar o site na plataforma para levar a melhoria do checkout (retomada de cobrança) à produção; no app basta abrir o Snack novo
+
+---
+Task ID: M
+Agent: main (Z.ai Code)
+Task: Reunião DENTRO do app (nativa, "bem top") + ajuste visual de "Recomendados para você" — confirmações prévias do usuário: compra de reuniões OK, scroll horizontal OK
+
+Work Log:
+- PROBE CRÍTICO: react-native-webview resolve no Snack — bundledNativeModules do SDK 54 diz 13.15.0; probe snack (id Yw8dgMfMUJbZ6lxc3Er6L) aberto no editor: "No errors", app renderiza (web preview mostra "React Native WebView does not support this platform" apenas dentro do box do WebView — em device/Expo Go é suportado). Estratégia: WebView no device; no navegador, fallback abre a sala em aba nova
+- BACKEND: nova rota GET /api/v1/bookings/[id]/meeting-token (JWT do app → token HMAC 12h com sala/usuário/nome/PAPEL; papel HOST=mentor decidido no servidor; CANCELLED/COMPLETED bloqueados) — mesmo contrato da rota web; public/live.html (sala standalone sem login web, ~28KB) + public/vendor/socket.io.min.js 4.8.1 (mesma origem, sem CDN); meeting-service (:3004) já é empacotado pelo build (mini-services-dist) e sobe no start.sh da plataforma
+- LIVE.HTML: full-screen dark stone/esmeralda pt-BR; decodifica o payload do token p/ nome/papel; perfect negotiation (HOST impolite, GUEST polite) portada do meeting-stage; estados espera/conectando/AO VIVO(timer)/reconectando/falha; PiP próprio espelhado; badges mic/câmera do par; controles mic/câmera/encerrar (vermelho); sem permissão de mídia entra mesmo assim (data channel garante negociação); wake lock; socket.io em /?XTransformPort=3004 (mesmo gateway da plataforma)
+- APP: SalaScreen nova (12ª tela): pré-entrada com hero gradiente (tópico, data/duração, "É agora!"), papel ANFITRIÃO/CONVIDADO (do servidor), dicas, CTA grande; sala = WebView (mediaPlaybackRequiresUserAction=false, allowsInlineMediaPlayback, grantIfSameHostElsePrompt; Android grant de câmera/mic é automático no RNW 13.15 quando o host tem as permissões — Expo Go tem) com barra nativa "Sair" + onMessage('mentorhub:leave') + useBackStage (voltar do Android confirma antes de sair) + renderError com retry; web → fallback "Abrir sala no navegador" (Linking)
+- APP: MentoriasScreen — botão "Entrar na sala de reunião" (outline) em PENDING/CONFIRMED; no horário: badge "AO VIVO AGORA" + card com borda esmeralda + botão cheio "Entrar na reunião"; isLiveNow() usa startsAt naive + durationMin
+- APP: "Recomendados para você" — CourseCard ganhou variant="reco" (vertical: capa 16:9 no topo, título/mentor/nota·aulas, chip de categoria + preço) com largura 218 no carrossel do Home; card horizontal (row) preservado nas listas
+- E2E API (curl via :81): login ana → meeting-token (GUEST) e carlos (HOST) na mesma sala; live.html e vendor 200
+- E2E BROWSER (2 abas headless, token REAL): guest "Sala pronta/Aguardando" → host entra → peer-joined nos dois → ICE 'connected' = "Ao vivo" + timer 00:23 rodando → hangup do host → overlay "Você saiu da reunião" + guest volta a "A outra pessoa saiu/Aguardando o retorno" ✅ fluxo completo de presença+negociação+saída
+- E2E APP (expo export web :3023, 430px, logado ana via servidor local :81): Recomendados com cards verticais limpos (screenshot); Minhas sessões com "Entrar na sala de reunião" em 3 sessões; booking criado via API "ao vivo agora" → badge AO VIVO AGORA + botão cheio (screenshot); SalaScreen pré-entrada com CONVIDADO (do servidor); entrar → fallback web "Abrir sala no navegador" abre live.html com token e a sala conecta ("Aguardando a outra pessoa…"); "Sair" volta às sessões; console sem erros; booking E2E removido do Turso (scripts/e2e-m-cleanup.mts)
+- TSC: arquivos tocados 0 erros (erros restantes são pré-existentes em ../mobile-app e examples); LINT 0/0 (public/vendor ignorado no eslint.config.mjs)
+- PUBLICAÇÃO: 1º publish vazou .tmp-export (7.28MB, 57 arq) → walk() agora pula .tmp-export; republish limpo: 56 arquivos CODE 2.95MB → SNACK OFICIAL https://snack.expo.dev/E3K45Kbp1_zjj9LU20EXm — verificado no editor: "No errors, 581 warnings" + login renderizando + estrutura comentada com a tela Sala
+- ARTIFACTS: public/app-mobile reexportado (8.4MB); mentorhub-mobile-snack-v9.zip (65 arq) — v2..v5/v8/zip antigo removidos; README atualizado (novo link, reunião nativa, dependências 12, infra da sala, aviso de publicar o site)
+- Push: c366df3..35f7640 main; db/custom.db revertido
+
+Stage Summary:
+- REUNIÃO NATIVA ENTREGUE: escolheu a sessão → "Entrar na sala de reunião" → sala 1:1 por vídeo/áudio DENTRO do app (mesma sala do site, token HMAC, papel pelo servidor) — no horário aparece "AO VIVO AGORA"; sair por 3 caminhos (top bar nativa, hangup da sala, voltar do Android com confirmação)
+- Infra de servidor necessária: live.html + rota v1 meeting-token + socket.io vendor — TUDO JÁ NO PUSH 35f7640; usuário precisa REPUBLICAR O SITE na plataforma para a sala funcionar contra a produção (no app basta abrir o Snack novo)
+- Snack oficial novo: https://snack.expo.dev/E3K45Kbp1_zjj9LU20EXm · fallback web: https://mentorhub.space-z.ai/app-mobile/ · zip v9
+- Recomendados para você: card vertical dedicado (visual arrumado)
