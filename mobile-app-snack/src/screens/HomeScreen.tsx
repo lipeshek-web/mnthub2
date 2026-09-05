@@ -31,6 +31,8 @@ import {
   type CourseItem,
   type DashboardEnrolledCourse,
   type DashboardResponse,
+  listEvents,
+  type EventItem,
 } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useThemeMode } from "../lib/theme";
@@ -77,6 +79,7 @@ export default function HomeScreen() {
   const { user, updateUser } = useAuth();
   const { mode, toggle } = useThemeMode();
   const [data, setData] = useState<DashboardResponse | null>(null);
+  const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,6 +90,13 @@ export default function HomeScreen() {
       if (loadMode === "initial") setLoading(true);
       else setRefreshing(true);
       setError(null);
+      // Eventos (diferencial: reunião multi-participante) — falha silenciosa.
+      try {
+        const res = await listEvents("upcoming");
+        setEvents(res.items);
+      } catch {
+        setEvents([]);
+      }
       try {
         // Bootstrap: usuário + badges + dashboard em UMA chamada (servidor novo).
         // Em servidor antigo (rota /home inexistente) cai para o dashboard normal.
@@ -332,6 +342,59 @@ export default function HomeScreen() {
             ))}
           </View>
 
+          {/* Eventos — reuniões multi-participante da plataforma (ao vivo primeiro) */}
+          {events.length > 0 ? (
+            <>
+              <SectionTitle title="Eventos ao vivo & reuniões" />
+              <FlatList
+                horizontal
+                nestedScrollEnabled
+                data={events}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.eventCard}
+                    onPress={() => navigation.navigate("Evento", { id: item.id })}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Evento ${item.title}`}
+                  >
+                    <View style={styles.eventCoverWrap}>
+                      <RemoteImage
+                        uri={item.coverUrl}
+                        style={styles.eventCover}
+                        recyclingKey={`home-ev-${item.id}`}
+                        fallbackIcon="people-circle-outline"
+                        iconSize={30}
+                      />
+                      {item.live ? (
+                        <View style={styles.eventLivePill}>
+                          <View style={styles.eventLiveDot} />
+                          <Text style={styles.eventLiveText}>AO VIVO</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <View style={styles.eventBody}>
+                      <Text style={styles.eventTitle} numberOfLines={2}>
+                        {item.title}
+                      </Text>
+                      <Text style={styles.eventMeta} numberOfLines={1}>
+                        {item.live
+                          ? `agora · ${item.joinedCount}/${item.capacity} na sala`
+                          : `${formatNaiveDateTime(item.startsAt)} · ${item.joinedCount}/${item.capacity}`}
+                      </Text>
+                      <Text style={styles.eventHost} numberOfLines={1}>
+                        por {item.host.name}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.carousel}
+              />
+            </>
+          ) : null}
+
           {/* Em alta agora — carrossel horizontal de recomendados */}
           {recommended.length > 0 ? (
             <>
@@ -576,4 +639,34 @@ const makeStyles = () =>
     bookingWhen: { color: theme.colors.textFaint, fontSize: 11, fontWeight: "600" },
     /* folga para o conteúdo nunca nascer sob o dock flutuante */
     bottomSpacer: { height: DOCK_CLEARANCE },
+
+    /* Eventos */
+    eventCard: {
+      width: 226,
+      backgroundColor: theme.colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.lg,
+      overflow: "hidden",
+    },
+    eventCoverWrap: { position: "relative" },
+    eventCover: { width: "100%", height: 92, backgroundColor: theme.colors.surfaceAlt },
+    eventLivePill: {
+      position: "absolute",
+      top: 8,
+      left: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.danger,
+    },
+    eventLiveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.colors.white },
+    eventLiveText: { color: theme.colors.white, fontSize: 9, fontWeight: "800", letterSpacing: 0.4 },
+    eventBody: { padding: 11, gap: 3 },
+    eventTitle: { color: theme.colors.text, fontSize: 13.5, fontWeight: "800", letterSpacing: -0.2 },
+    eventMeta: { color: theme.colors.textFaint, fontSize: 11, fontWeight: "600" },
+    eventHost: { color: theme.colors.textFaint, fontSize: 10.5, fontWeight: "500" },
   });

@@ -1,8 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import {
-  Bell,
+import {Bell,
   BellOff,
   CalendarCheck,
   CalendarClock,
@@ -28,6 +27,7 @@ import {
   UserPlus,
   UserRoundPlus,
   X,
+  Radio,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
@@ -590,6 +590,7 @@ export function Navbar() {
 
         <nav aria-label="Navegação principal" className="ml-4 hidden items-center gap-1 sm:flex">
           {navItem({ name: 'marketplace' }, 'Explorar', <Compass className="h-4 w-4" />)}
+          {user && navItem({ name: 'events' }, 'Eventos', <Radio className="h-4 w-4" />)}
           {/* "Minhas mentorias" só faz sentido para quem está logado — some para visitantes */}
           {user && navItem({ name: 'dashboard' }, 'Minhas mentorias', <CalendarDays className="h-4 w-4" />)}
         </nav>

@@ -31,6 +31,8 @@
  *                       ├─ Conversa (params: { peerId, peerName }) — chat 1:1
  *                       ├─ Sala   (params: { bookingId, ... }) — reunião ao
  *                       │   vivo DENTRO do app (WebView → /live.html)
+ *                       ├─ Evento (params: { id }) — reunião MULTI-participante
+ *                       │   (WebView → /room.html, malha WebRTC)
  *                       ├─ Perfil (aberto pelo ícone da conta na Home)
  *                       ├─ Busca  (busca global: cursos + livros + mentores)
  *                       └─ Salvos (favoritos locais do aparelho)
@@ -105,6 +107,7 @@ import SalvosScreen from "./src/screens/SalvosScreen";
 import CheckoutScreen from "./src/screens/CheckoutScreen";
 import MensagensScreen, { MessagesTabPage } from "./src/screens/MensagensScreen";
 import SalaScreen from "./src/screens/SalaScreen";
+import EventoScreen from "./src/screens/EventoScreen";
 import { unreadStore } from "./src/lib/unread";
 
 /* ----------------------------- Tema de navegação ---------------------------- */
@@ -318,6 +321,7 @@ function RootNavigator() {
       <Stack.Screen name="Mentor" component={MentorScreen} />
       <Stack.Screen name="Conversa" component={MensagensScreen} />
       <Stack.Screen name="Sala" component={SalaScreen} />
+      <Stack.Screen name="Evento" component={EventoScreen} />
       <Stack.Screen name="Perfil" component={PerfilScreen} />
       <Stack.Screen name="Busca" component={BuscaScreen} />
       <Stack.Screen name="Salvos" component={SalvosScreen} />

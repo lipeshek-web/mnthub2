@@ -31,4 +31,5 @@ export const LIBRARY_PAGES_MANIFEST: Record<string, { totalPages: number }> = {
   'cmtnqykyf00dtpj45xyh63kaz': { totalPages: 5 }, // Guia de Fotografia de Produto
   'cmtnqyl7z00dvpj45sutkr000': { totalPages: 5 }, // Rotina de Alta Performance
   'cmtnqylic00dxpj45sowc5k59': { totalPages: 5 }, // Métodos de Estudo Científicos
+  'cmto12u14005zpj46mluh4clw': { totalPages: 7 }, // Guia Prático do TCC
 }

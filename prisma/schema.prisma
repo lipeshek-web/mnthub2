@@ -62,6 +62,8 @@ model User {
   payments       Payment[]
   passwordResetTokens PasswordResetToken[]
   meetingNotes   MeetingNote[]
+  eventsHosted         Event[]            @relation("EventHosts")
+  eventParticipations  EventParticipant[] @relation("EventParticipants")
 }
 
 model MentorProfile {
@@ -771,6 +773,46 @@ model MeetingNote {
   updatedAt DateTime @updatedAt
 
   @@unique([bookingId, authorId])
+}
+
+// ==================== EVENTOS & REUNIÕES (diferencial da plataforma) ====================
+// Reuniões multi-participante DENTRO da plataforma (WebRTC em malha pelo
+// meeting-service), sem YouTube/Meet externo. Qualquer membro pode criar um
+// evento (ex.: círculo de estudos, defesa simulada de TCC, plantão de dúvidas).
+
+/// Evento/reunião com sala de vídeo multi-participante
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @default("")
+  coverUrl    String?
+  category    String   @default("Geral") // Acadêmico · Tecnologia · Carreira · Negócios · Geral…
+  hostId      String
+  host        User     @relation("EventHosts", fields: [hostId], references: [id], onDelete: Cascade)
+  startsAt    String // naive "YYYY-MM-DDTHH:mm" (mesma convenção de Booking)
+  durationMin Int      @default(60)
+  capacity    Int      @default(8) // assentos na sala (2..12 — WebRTC em malha)
+  status      String   @default("SCHEDULED") // SCHEDULED | CANCELLED
+  createdAt   DateTime @default(now())
+
+  participants EventParticipant[]
+
+  @@index([startsAt])
+  @@index([hostId])
+}
+
+/// Presença confirmada num evento (assento reservado para entrar na sala)
+model EventParticipant {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation("EventParticipants", fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("GUEST") // HOST | GUEST (decidido no servidor)
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId])
+  @@index([userId])
 }
 
 /// Trilha de auditoria das ações administrativas (quem fez o quê, quando)

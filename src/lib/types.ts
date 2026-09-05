@@ -124,6 +124,32 @@ export interface MentorDetailDTO {
 
 export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED'
 
+/** Evento/reunião multi-participante (diferencial da plataforma — sala própria, sem YouTube) */
+export interface EventDTO {
+  id: string
+  title: string
+  description: string
+  coverUrl: string | null
+  category: string
+  startsAt: string // naive "YYYY-MM-DDTHH:mm"
+  durationMin: number
+  capacity: number
+  status: string
+  /** ao vivo agora (dentro da janela start..fim) */
+  live: boolean
+  /** sala já pode ser aberta (15min antes até o fim) */
+  openable: boolean
+  ended: boolean
+  cancelled: boolean
+  host: { id: string; name: string; avatarUrl: string | null }
+  participants: { id: string; name: string; avatarUrl: string | null; role: 'HOST' | 'GUEST' }[]
+  joinedCount: number
+  seatsLeft: number
+  isHost: boolean
+  isParticipant: boolean
+  myRole: 'HOST' | 'GUEST' | null
+}
+
 export interface BookingDTO {
   id: string
   startsAt: string // "YYYY-MM-DDTHH:mm"

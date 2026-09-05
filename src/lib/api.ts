@@ -20,6 +20,7 @@ import type {
   CouponValidationDTO,
   CourseDetailDTO,
   CourseLessonDTO,
+  EventDTO,
   CourseListItemDTO,
   CourseReviewsResponseDTO,
   CourseThemeDTO,
@@ -259,6 +260,35 @@ export const api = {
       wsPort: number
       expiresAt: string
     }>(`/api/bookings/${id}/meeting-token`),
+
+  // ==================== EVENTOS & REUNIÕES (multi-participante) ====================
+  listEvents: (scope: 'upcoming' | 'mine' | 'hosting' = 'upcoming') =>
+    request<{ items: EventDTO[]; total: number }>(`/api/events?scope=${scope}`),
+  getEvent: (id: string) => request<{ event: EventDTO }>(`/api/events/${id}`),
+  createEvent: (input: {
+    title: string
+    description?: string
+    category?: string
+    coverUrl?: string | null
+    startsAt: string
+    durationMin?: number
+    capacity?: number
+  }) => request<{ event: EventDTO }>('/api/events', { method: 'POST', body: JSON.stringify(input) }),
+  joinEvent: (id: string) =>
+    request<{ event: EventDTO }>(`/api/events/${id}/join`, { method: 'POST' }),
+  leaveEvent: (id: string) =>
+    request<{ event: EventDTO | null }>(`/api/events/${id}/join`, { method: 'DELETE' }),
+  cancelEvent: (id: string) =>
+    request<{ ok: boolean; event: EventDTO }>(`/api/events/${id}`, { method: 'DELETE' }),
+  getEventMeetingToken: (id: string) =>
+    request<{
+      token: string
+      room: string
+      role: 'HOST' | 'GUEST'
+      capacity: number
+      wsPort: number
+      expiresAt: string
+    }>(`/api/events/${id}/meeting-token`),
 
   // Baixa o .ics via fetch autenticado (a rota exige sessão — <a href> não
   // anexa Authorization) e dispara o download no browser.

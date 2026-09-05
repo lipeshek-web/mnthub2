@@ -1,6 +1,6 @@
 'use client'
 
-import { Compass, CalendarDays, MessageCircle, Ellipsis, Gift, LayoutDashboard, LogOut, PlusCircle, ShieldCheck } from 'lucide-react'
+import { Compass, CalendarDays, MessageCircle, Ellipsis, Gift, LayoutDashboard, LogOut, PlusCircle, Radio, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/platform/avatar'
@@ -71,6 +71,7 @@ export function MobileTabbar() {
     >
       <div className="mx-auto flex max-w-lg items-stretch pb-[env(safe-area-inset-bottom)]">
         {tab({ name: 'marketplace' }, 'Explorar', <Compass className="h-5 w-5" />)}
+        {user && tab({ name: 'events' }, 'Eventos', <Radio className="h-5 w-5" />)}
         {tab({ name: 'dashboard' }, 'Sessões', <CalendarDays className="h-5 w-5" />)}
         {user && tab({ name: 'messages' }, 'Mensagens', <MessageCircle className="h-5 w-5" />, badges.messages + badges.notifications)}
 

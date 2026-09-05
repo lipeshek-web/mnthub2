@@ -907,3 +907,76 @@ export async function getMeetingToken(bookingId: string): Promise<MeetingTokenRe
     `/bookings/${encodeURIComponent(bookingId)}/meeting-token`
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Eventos & Reuniões (diferencial: sala multi-participante própria)   */
+/* ------------------------------------------------------------------ */
+
+export type EventRole = "HOST" | "GUEST";
+
+export type EventParticipantDTO = {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  role: EventRole;
+};
+
+export type EventItem = {
+  id: string;
+  title: string;
+  description: string;
+  coverUrl: string | null;
+  category: string;
+  startsAt: string;
+  durationMin: number;
+  capacity: number;
+  status: string;
+  live: boolean;
+  openable: boolean;
+  ended: boolean;
+  cancelled: boolean;
+  host: { id: string; name: string; avatarUrl: string | null };
+  participants: EventParticipantDTO[];
+  joinedCount: number;
+  seatsLeft: number;
+  isHost: boolean;
+  isParticipant: boolean;
+  myRole: EventRole | null;
+};
+
+export type EventMeetingTokenResponse = {
+  token: string;
+  room: string;
+  role: EventRole;
+  capacity: number;
+  wsPort: number;
+  expiresAt: string;
+};
+
+/** Lista de eventos. scope: upcoming = próximos + ao vivo · mine = onde participo. */
+export async function listEvents(scope: "upcoming" | "mine" = "upcoming"): Promise<{ items: EventItem[]; total: number }> {
+  return request<{ items: EventItem[]; total: number }>(`/events`, { query: { scope } });
+}
+
+export async function getEvent(id: string): Promise<{ event: EventItem }> {
+  return request<{ event: EventItem }>(`/events/${encodeURIComponent(id)}`);
+}
+
+/** Participar do evento (reserva o assento) ou sair, por action. */
+export async function joinEvent(id: string, action: "join" | "leave" = "join"): Promise<{ event: EventItem | null }> {
+  return request<{ event: EventItem | null }>(`/events/${encodeURIComponent(id)}/join`, {
+    method: "POST",
+    body: { action },
+  });
+}
+
+/**
+ * Credencial da sala multi-participante do evento. A página /room.html do
+ * servidor monta a malha de vídeos (WebRTC) — a capacidade vai assinada no
+ * token e o papel (anfitrião/participante) é decidido pelo servidor.
+ */
+export async function getEventMeetingToken(eventId: string): Promise<EventMeetingTokenResponse> {
+  return request<EventMeetingTokenResponse>(
+    `/events/${encodeURIComponent(eventId)}/meeting-token`
+  );
+}

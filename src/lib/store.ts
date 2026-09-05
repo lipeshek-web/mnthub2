@@ -15,6 +15,8 @@ export type AppView =
   | { name: 'reader'; itemId: string; returnTo?: { courseId: string; lessonId: string } } // leitor de artigo/livro (overlay tela cheia); returnTo = aula de origem
   | { name: 'dashboard' }
   | { name: 'meeting'; bookingId: string }
+  | { name: 'events' } // eventos & reuniões multi-participante (diferencial)
+  | { name: 'event'; eventId: string } // detalhe + sala de um evento
   | { name: 'onboarding' }
   | { name: 'for-mentors' }
   | { name: 'mentor-lp'; slug: string } // LP pública rastreável (tráfego pago)

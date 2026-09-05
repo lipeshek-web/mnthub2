@@ -2,11 +2,11 @@
 
 App do aluno do MentorHub, publicado e testado de ponta a ponta. Dois jeitos de abrir:
 
-1. **Expo Snack (link direto):** **https://snack.expo.dev/zMAgG5tdRrZOIKd7PJc06**
+1. **Expo Snack (link direto):** **https://snack.expo.dev/o9HnZJaSceRiGeOEdjwd6**
    - No preview **Web** (painel direito) ou no celular com o app **Expo Go** escaneando o QR Code ("My Device").
-   - Publicado via API oficial (`exp.host/--/api/v2/snack/save`) com código (56 arquivos) + 12 dependências — abrindo o link, já está tudo lá (nada de copiar/colar). SEM expo-clipboard (não resolve no Snack web): copiar PIX usa o clipboard do navegador + código selecionável.
+   - Publicado via API oficial (`exp.host/--/api/v2/snack/save`) com código (57 arquivos) + 12 dependências — abrindo o link, já está tudo lá (nada de copiar/colar). SEM expo-clipboard (não resolve no Snack web): copiar PIX usa o clipboard do navegador + código selecionável.
    - ⚠️ **NÃO republique pelo painel de dependências do editor**: uma republicação por cima já salvou o snack SEM o `react-native-webview` e o app inteiro morria com "Unable to resolve module 'module://react-native-webview.js'". A `SalaScreen` agora é resiliente (require tardio + fallback "Abrir sala no navegador"), mas o correto é publicar pelo script (`bun mobile-app-snack/scripts/publish-snack.js`) com as 12 dependências.
-   - **Novidades desta versão (design enxuto — Duolingo/Apple):** LOGIN MINIMALISTA — só marca + e-mail + senha + "Entrar" (sem campo de servidor e sem dica de conta demo na tela). HOME ENXUTA — a própria home É a exploração: card destaque "Continuar" (gradiente), carrossel "Meus cursos", 3 atalhos grandes "Explorar" (Cursos · Biblioteca · Mentores), "Em alta agora" e próximas mentorias (saiu: stats e pílula de busca — a busca virou ícone no header). BIBLIOTECA COM VISUAL DE ESTANTE — grade de 2 colunas com capas grandes em pé + chips de categoria (filtro no servidor). CURSOS EM GRADE — cards verticais com capa 16:9 + chips de categoria. DOCK FLUTUANTE no rodapé (pill destacada, não colada na borda) com 5 abas — **Mensagens é aba dedicada**. Cabeçalhos contextuais padrão Apple em todas as telas de detalhe: voltar à esquerda e o título no centro dizendo ONDE você está (nome do mentor, do livro, do curso) com subtítulo qualificando. Arquitetura de scroll: cabeçalho e dock FIXOS — só o corpo rola, com folga para não nascer sob o dock.
+   - **Novidades desta versão (EVENTOS — o diferencial):** REUNIÕES MULTI-PARTICIPANTE DENTRO DA PLATAFORMA — sem YouTube e sem links externos: eventos com sala de vídeo em malha WebRTC (2–12 participantes) servida pela `/room.html` do próprio servidor, com grid de vídeos, badges de mic/câmera por participante, timer e controles (mic/câmera/sair). Home ganhou a seção "Eventos ao vivo & reuniões" (carrossel, AO VIVO em destaque); tela do evento com capa, participantes confirmados, participar/sair e "Entrar na sala ao vivo" (abre 15 min antes). TAMBÉM NESTA VERSÃO: conteúdo turbinado — 6 cursos novos (incl. MANUAL DO TCC: do Tema à Defesa, 12 aulas), +12 aulas nos cursos rasos, ebook "Guia Prático do TCC" e 4 artigos acadêmicos. Mantém o design enxuto: login minimalista, home como explorar, biblioteca em grade, dock flutuante e cabeçalhos contextuais Apple.
 2. **Web app no site:** **https://mentorhub.space-z.ai/app-mobile/** — o mesmo código exportado (`expo export --platform web`) e servido junto do site (atualizado a cada publish).
 
 Mesma API (`/api/v1`, JWT Bearer 30 dias), mesmo visual, mesmos dados do Turso em produção.
@@ -73,9 +73,9 @@ bunx expo export --platform web   # gera dist/ (vai para public/app-mobile no pu
 
 ## 📦 ZIP (backup)
 
-`https://mentorhub.space-z.ai/mentorhub-mobile-snack-v13.zip` — código com páginas embutidas como data URI (as versões antigas v12/v11/v10 estão obsoletas).
+`https://mentorhub.space-z.ai/mentorhub-mobile-snack-v14.zip` — código com páginas embutidas como data URI (as versões antigas v13/v12/v11 estão obsoletas).
 
-> 🎥 **Sala de reunião (infra do lado do servidor):** a página `public/live.html` (estática, servida pelo site) + `public/vendor/socket.io.min.js` + rotas `GET /api/bookings/[id]/meeting-token` (web) e `GET /api/v1/bookings/[id]/meeting-token` (app) + mini-serviço `mini-services/meeting-service` (:3004, sinalização). **Publique o site na plataforma** para a sala no app funcionar contra a produção.
+> 🎥 **Sala de reunião (infra do lado do servidor):** a página `public/live.html` (estática, servida pelo site) + `public/vendor/socket.io.min.js` + rotas `GET /api/bookings/[id]/meeting-token` (web) e `GET /api/v1/bookings/[id]/meeting-token` (app) + mini-serviço `mini-services/meeting-service` (:3004, sinalização 1:1 + malha multi-participante). **Publique o site na plataforma** para a sala no app funcionar contra a produção.
 
 ## 🛠 Regenerar páginas / publicar
 

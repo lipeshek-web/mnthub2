@@ -36,6 +36,9 @@ export async function notify(input: {
     | 'goal_achieved'
     | 'question_new'
     | 'question_answered'
+    | 'event_new'
+    | 'event_cancelled'
+    | 'event_joined'
   title: string
   body?: string | null
   linkView?: 'dashboard' | 'course' | 'onboarding' | 'messages' | 'referrals' | null

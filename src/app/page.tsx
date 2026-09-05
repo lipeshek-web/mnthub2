@@ -69,6 +69,14 @@ const MeetingRoomView = dynamic(
   () => import('@/components/platform/meeting-room').then((m) => m.MeetingRoomView),
   { ssr: false, loading: ViewLoading }
 )
+const EventsView = dynamic(
+  () => import('@/components/platform/events-view').then((m) => m.EventsView),
+  { ssr: false, loading: ViewLoading }
+)
+const EventDetailView = dynamic(
+  () => import('@/components/platform/events-view').then((m) => m.EventDetailView),
+  { ssr: false, loading: ViewLoading }
+)
 const DashboardView = dynamic(() => import('@/components/platform/dashboard'), {
   ssr: false,
   loading: ViewLoading,
@@ -107,8 +115,8 @@ const LandingMentor = dynamic(() => import('@/components/platform/landing-mentor
 })
 
 /** Views que exigem sessão ativa — convidado é levado ao login/cadastro */
-const AUTH_REQUIRED: AppViewNames[] = ['dashboard', 'onboarding', 'checkout', 'meeting', 'messages', 'referrals', 'admin']
-type AppViewNames = 'dashboard' | 'onboarding' | 'checkout' | 'meeting' | 'messages' | 'referrals' | 'admin'
+const AUTH_REQUIRED: AppViewNames[] = ['dashboard', 'onboarding', 'checkout', 'meeting', 'messages', 'referrals', 'admin', 'event']
+type AppViewNames = 'dashboard' | 'onboarding' | 'checkout' | 'meeting' | 'messages' | 'referrals' | 'admin' | 'event'
 
 /** Título da aba por view — renderizado como <title> hoisted no shell */
 function docTitleFor(viewName: string): string {
@@ -123,6 +131,8 @@ function docTitleFor(viewName: string): string {
     reader: 'Leitor — MentorHub',
     dashboard: 'Minhas mentorias — MentorHub',
     meeting: 'Sala de reunião — MentorHub',
+    events: 'Eventos & Reuniões — MentorHub',
+    event: 'Evento — MentorHub',
     onboarding: 'Painel do mentor — MentorHub',
     'mentor-lp': 'MentorHub',
     checkout: 'Checkout — MentorHub',
@@ -177,6 +187,7 @@ export default function Home() {
     const certCode = sp.get('cert')?.trim()
     const resetToken = sp.get('reset')?.trim()
     const bookingId = sp.get('booking')?.trim()
+    const eventId = sp.get('event')?.trim()
 
     // 1. Atribuição (last non-direct click, janela de 7 dias)
     captureAttributionFromUrl(mentorSlug)
@@ -198,6 +209,9 @@ export default function Home() {
     } else if (bookingId) {
       // Convite da sala de reunião (MentorHub Live): cai direto na sessão
       navigate({ name: 'meeting', bookingId })
+    } else if (eventId) {
+      // Convite de um evento/reunião multi-participante
+      navigate({ name: 'event', eventId })
     }
     trackEvent('page_view')
 
@@ -300,6 +314,8 @@ export default function Home() {
               {view.name === 'track' && <TrackView trackId={view.trackId} />}
               {view.name === 'dashboard' && <DashboardView />}
               {view.name === 'meeting' && <MeetingRoomView bookingId={view.bookingId} />}
+              {view.name === 'events' && <EventsView />}
+              {view.name === 'event' && <EventDetailView eventId={view.eventId} />}
               {view.name === 'onboarding' && <OnboardingView />}
               {view.name === 'mentor-lp' && <MentorLpView slug={view.slug} />}
               {view.name === 'checkout' && (
