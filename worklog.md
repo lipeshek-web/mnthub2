@@ -2729,3 +2729,24 @@ Stage Summary:
 - PLATAFORMA REBRANDADA: Órbita — neutros stone quentes + destaque âmbar/caramelo, linguagem Apple (pílula flutuante, vidro fosco, grafite nas faixas profundas), profundidade da landing e organização de settings/admin/busca preservadas
 - Verde reservado para sucesso; âmbar é a cor da marca em toda a experiência (light/dark, desktop/mobile)
 - SUGESTÃO de follow-up: regenerar capas dos cursos/livros (hoje verdes, estilo isométrico antigo) para a paleta âmbar/grafite quando for conteúdo again
+
+---
+Task ID: U
+Agent: Z.ai Code (sessão principal)
+Task: Redesenho completo — identidade AZUL (usuário rejeitou âmbar: "ainda ta com cor amarelo, quero tons de azul"), foco no header + tela home
+
+Work Log:
+- Troca global de cor no código: amber-*→blue-* (733 ocorrências/38 arquivos) e stone-*→slate-* (1.422 ocorrências) via sed; dourado SEMÂNTICO preservado (estrelas de avaliação fill-amber→fill-yellow antes da troca; laranja de streak/medalhas mantido)
+- globals.css: tokens oklch reescritos (light primary blue-600 #155dfc; dark primary blue-400 #54a2ff; neutros slate; ring/acentos/charts/seleção azuis)
+- Navbar (header) redesenhado: h-16 no desktop, gap/spacing refinados, pill de navegação ativa com anel azul (ring-inset), busca maior (max-w-md, h-10, shadow no focus), divisor fino estilo toolbar de sistema antes do menu da conta, chip do usuário com shadow
+- Home (landing-mentee) redesenhada mantendo profundidade: badge-pill no eyebrow com dot pulsante, spans do H1 em blue-600, CTA primário azul com shadow-lg (antes preto), atmosfera de brilhos azuis no hero (CSS puro), brilho atrás do card rotativo + shadow-xl, círculos dos passos (Como funciona) em azul, faixa "plataforma em números" em degradê azul-950 com glows, card final "Quero aprender" em degradê azul-700→slate-950
+- brand.tsx: gradiente do símbolo azul-500→azul-700
+- footer.tsx: coração 🧡→💙
+- DB: coupon BEMVINDO10 promoMessage "Boas-vindas à MentorHub"→"à Órbita" (reaplicado após git checkout db/custom.db; cupom não tem seed — criado via admin)
+- INCIDENTE RESOLVIDO: dev-server pré-existente (iniciado antes das edições) servia CSS velho do Turbopack — .dark ainda âmbar apesar do arquivo correto. watcher não pegava mudanças externas; matar por PID + limpar .next + subir novo server com Bun.spawn desanexado (PPID 1, padrão dos mini-services) resolveu; CSS servido verificado por curl (apenas azul)
+- E2E agent-browser: home light/dark/mobile (390px), Explorar, busca ("excel" vazio bonito; "dados" → 1 resultado), promo bar exibindo "Boas-vindas à Órbita", sem erros de console; lint limpo
+
+Stage Summary:
+- Identidade visual da plataforma agora é AZUL (claro blue-600, escuro blue-400) com neutros frios slate; âmbar 100% removido exceto dourado semântico (estrelas) e laranja semântico (streak/medalhas/categorias)
+- Header estilo toolbar de sistema e home com momentos de marca azul (hero, números, CTA final); profundidade da landing preservada
+- Commit 84799f1 enviado para main; lição registrada: dev server antigo + Turbopack pode servir CSS stale — reiniciar e verificar CSS servido via curl quando troca de token não refletir
