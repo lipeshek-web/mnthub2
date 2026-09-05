@@ -31,6 +31,8 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   /** Revalida os dados do usuário (ex.: após marcar notificações como lidas). */
   refresh: () => Promise<void>;
+  /** Atualiza o usuário em cache com dados frescos (ex.: bootstrap /home). */
+  updateUser: (next: MeUser | null) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -108,8 +110,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ status, user, login, logout, refresh }),
-    [status, user, login, logout, refresh]
+    () => ({ status, user, login, logout, refresh, updateUser: applyUser }),
+    [status, user, login, logout, refresh, applyUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

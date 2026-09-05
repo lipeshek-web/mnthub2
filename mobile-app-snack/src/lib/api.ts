@@ -182,8 +182,27 @@ const STATUS_MESSAGES: Record<number, string> = {
   403: "Você não tem permissão para isso.",
   404: "Conteúdo não encontrado.",
   409: "Este horário ficou indisponível. Escolha outro, por favor.",
+  429: "Muitas tentativas em sequência. Aguarde alguns segundos e tente de novo.",
   500: "Erro interno do servidor. Tente novamente em instantes.",
 };
+
+/**
+ * Timeout por requisição: em rede móvel instável uma conexão pendurada
+ * travava a tela para sempre. Agora toda chamada tem prazo (e GETs tentam de
+ * novo uma vez — falha de rede costuma ser passageira).
+ */
+const REQUEST_TIMEOUT_MS = 15000;
+const RETRY_DELAY_MS = 700;
+
+async function fetchWithTimeout(url: string, init: Record<string, unknown>): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal } as RequestInit);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 // RN/Hermes não tem URLSearchParams — montamos a query na mão (com encode seguro).
 function buildUrl(path: string, query?: RequestOptions["query"]): string {
@@ -225,13 +244,38 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   let res: Response;
   try {
-    res = await fetch(buildUrl(path, query), {
+    res = await fetchWithTimeout(buildUrl(path, query), {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-  } catch {
-    throw new ApiError(STATUS_MESSAGES[0], 0);
+  } catch (err) {
+    // Timeout (abort) ou falha de rede → GET tenta mais UMA vez; POST/PATCH
+    // não (não são idempotentes — repetir podia duplicar a ação).
+    const aborted = err instanceof Error && err.name === "AbortError";
+    if (method === "GET") {
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+      try {
+        res = await fetchWithTimeout(buildUrl(path, query), {
+          method,
+          headers,
+          body: undefined,
+        });
+      } catch (retryErr) {
+        const retryAborted = retryErr instanceof Error && retryErr.name === "AbortError";
+        throw new ApiError(
+          retryAborted || aborted
+            ? "A conexão demorou demais. Verifique sua internet e tente novamente."
+            : STATUS_MESSAGES[0],
+          0
+        );
+      }
+    } else {
+      throw new ApiError(
+        aborted ? "A conexão demorou demais. Verifique sua internet e tente novamente." : STATUS_MESSAGES[0],
+        0
+      );
+    }
   }
 
   const text = await res.text();
@@ -469,7 +513,7 @@ export interface Booking {
   meetingRoom: string | null;
   price: number;
   createdAt: string;
-  mentor: { id: string; userId?: string; name: string; headline: string | null; avatarUrl: string | null };
+  mentor: { id: string; userId?: string; name: string; headline?: string | null; avatarUrl: string | null };
   reviewed: boolean;
   /** true quando já existe pedido pago para esta sessão. */
   paid?: boolean;
@@ -505,6 +549,19 @@ export interface DashboardEnrolledCourse {
 
 export interface DashboardResponse {
   user: { xp: number; studyStreak: number; longestStreak: number };
+  enrolledCourses: DashboardEnrolledCourse[];
+  upcomingBookings: Booking[];
+  newBooks: LibraryItemSummary[];
+  recommendedCourses: CourseItem[];
+  weeklyGoal: { targetLessons: number; doneLessons: number } | null;
+}
+
+/* Bootstrap (GET /home) — usuário + badges + dashboard em UMA chamada */
+
+export interface HomeResponse {
+  user: MeUser;
+  /** Mensagens diretas não lidas (badge da aba Mensagens). */
+  unreadMessages: number;
   enrolledCourses: DashboardEnrolledCourse[];
   upcomingBookings: Booking[];
   newBooks: LibraryItemSummary[];
@@ -579,7 +636,7 @@ export async function getLibraryItem(id: string): Promise<{ item: LibraryItemDet
 export interface ReaderPage {
   /** Número da página (1-based). */
   n: number;
-  /** URL absoluta do PNG da página (/api/v1/library/:id/pages/:n). */
+  /** URL absoluta do PNG da página (arquivo estático /library-pages/<id>/pN.png). */
   url: string;
 }
 
@@ -683,6 +740,14 @@ export async function cancelBooking(id: string): Promise<{ ok: boolean }> {
 
 export async function getDashboard(): Promise<DashboardResponse> {
   return request<DashboardResponse>("/dashboard");
+}
+
+/* 15-b) Bootstrap do início — usuário + badges + dashboard numa chamada só.
+ * Em servidores antigos a rota não existe (404 sem JSON): use isMissingEndpoint
+ * e caia para getDashboard() normalmente. */
+
+export async function getHome(): Promise<HomeResponse> {
+  return request<HomeResponse>("/home");
 }
 
 /* 16) Notificações */

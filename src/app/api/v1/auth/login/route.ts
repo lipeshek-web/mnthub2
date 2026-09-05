@@ -4,18 +4,33 @@ import { verifyPassword } from '@/lib/password'
 import { signMobileToken, publicMobileUser } from '@/lib/mobile-auth'
 import { activeStreak } from '@/lib/xp'
 import { absolutize, getOrigin, v1Error, v1Json } from '@/lib/api-v1'
+import { clientIp, rateLimit } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
 /** POST /api/v1/auth/login — autentica o aluno e devolve um JWT Bearer (30 dias) */
 export async function POST(req: NextRequest) {
   try {
+    // Força bruta: 10 tentativas por IP a cada 5 minutos (o site tem o próprio
+    // limitador — este cobre a API mobile)
+    const rl = rateLimit(`v1login:${clientIp(req)}`, 10, 5 * 60_000)
+    if (!rl.ok) {
+      return v1Json(
+        {
+          error: `Muitas tentativas de login. Aguarde ${rl.retryAfterSec}s e tente de novo.`,
+          code: 'RATE_LIMITED',
+        },
+        429,
+        { 'Retry-After': String(rl.retryAfterSec) }
+      )
+    }
+
     const body = await req.json().catch(() => null)
     const email = String(body?.email ?? '').trim().toLowerCase()
     const password = String(body?.password ?? '')
 
     if (!email || !password) {
-      return v1Error('Informe e-mail e senha.', 400)
+      return v1Error('Informe e-mail e senha.', 400, 'VALIDATION')
     }
 
     const user = await db.user.findUnique({
@@ -39,16 +54,17 @@ export async function POST(req: NextRequest) {
     })
 
     if (!user || !verifyPassword(password, user.passwordHash)) {
-      return v1Error('E-mail ou senha incorretos.', 401)
+      return v1Error('E-mail ou senha incorretos.', 401, 'INVALID_CREDENTIALS')
     }
     if (user.blocked) {
-      return v1Error('Esta conta está bloqueada. Fale com o suporte.', 403)
+      return v1Error('Esta conta está bloqueada. Fale com o suporte.', 403, 'BLOCKED')
     }
     // v1 mobile não implementa o desafio TOTP — contas com 2FA precisam do site
     if (user.mfaEnabled) {
       return v1Error(
         'Esta conta usa verificação em duas etapas. Faça login pelo site do MentorHub.',
-        403
+        403,
+        'MFA_REQUIRED'
       )
     }
 

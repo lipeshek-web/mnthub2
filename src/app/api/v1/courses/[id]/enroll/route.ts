@@ -18,7 +18,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       where: { id, isPublished: true },
       include: { mentor: { select: { userId: true } } },
     })
-    if (!course) return v1Error('Curso não encontrado.', 404)
+    if (!course) return v1Error('Curso não encontrado.', 404, 'COURSE_NOT_FOUND')
 
     const existing = await db.enrollment.findUnique({
       where: { courseId_studentId: { courseId: id, studentId: user.id } },
@@ -28,7 +28,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     // No mobile não há checkout: cursos pagos são comprados pelo site
     if (course.price > 0) {
       return v1Json(
-        { error: 'Este curso é pago. A compra é feita pelo site do MentorHub.', price: course.price },
+        {
+          error: 'Este curso é pago. A compra é feita pelo site do MentorHub.',
+          code: 'PAID_COURSE',
+          price: course.price,
+        },
         402
       )
     }
@@ -58,53 +62,78 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
     const body = await req.json().catch(() => null)
     const lessonId = String(body?.lessonId ?? '')
-    if (!lessonId) return v1Error('Aula não informada.', 400)
+    if (!lessonId) return v1Error('Aula não informada.', 400, 'VALIDATION')
 
-    const enrollment = await db.enrollment.findUnique({
-      where: { courseId_studentId: { courseId: id, studentId: user.id } },
-    })
-    if (!enrollment) return v1Error('Você precisa estar inscrito no curso.', 403)
+    // Toggle atômico: a leitura-modificação-gravação de completedLessonIds roda
+    // numa transação CURTA (2 round-trips). A gamificação (XP) fica FORA — o
+    // awardXp usa o cliente global e, com o adapter libsql, chamadas globais
+    // dentro de uma transação aberta entram em fila na MESMA conexão (stall →
+    // P2028). O ledger XpEvent é idempotente (unique userId+kind+refId), então
+    // não há XP duplicado mesmo com corrida.
+    const result = await db.$transaction(
+      async (tx): Promise<{ ok: false; error: string; status: 403 | 404 } | { ok: true; wasCompleted: boolean; completedLessonIds: string[] }> => {
+        const enrollment = await tx.enrollment.findUnique({
+          where: { courseId_studentId: { courseId: id, studentId: user.id } },
+        })
+        if (!enrollment) return { ok: false, error: 'Você precisa estar inscrito no curso.', status: 403 }
 
-    const lesson = await db.lesson.findUnique({ where: { id: lessonId } })
-    if (!lesson || lesson.courseId !== id) return v1Error('Aula não encontrada.', 404)
+        const lesson = await tx.lesson.findUnique({ where: { id: lessonId } })
+        if (!lesson || lesson.courseId !== id) {
+          return { ok: false, error: 'Aula não encontrada.', status: 404 }
+        }
 
-    let completed: string[] = []
-    try {
-      const parsed = JSON.parse(enrollment.completedLessonIds || '[]')
-      if (Array.isArray(parsed)) completed = parsed.map(String)
-    } catch {
-      completed = []
+        let completed: string[] = []
+        try {
+          const parsed = JSON.parse(enrollment.completedLessonIds || '[]')
+          if (Array.isArray(parsed)) completed = parsed.map(String)
+        } catch {
+          completed = []
+        }
+
+        const wasCompleted = completed.includes(lessonId)
+        const next = wasCompleted ? completed.filter((x) => x !== lessonId) : [...completed, lessonId]
+
+        await tx.enrollment.update({
+          where: { id: enrollment.id },
+          data: { completedLessonIds: JSON.stringify(next) },
+        })
+
+        return { ok: true, wasCompleted, completedLessonIds: next }
+      },
+      // Turso é remoto — folga explícita para round-trips HTTP
+      { isolationLevel: 'Serializable', maxWait: 10_000, timeout: 20_000 }
+    )
+
+    if (!result.ok) {
+      return v1Error(result.error, result.status)
     }
-
-    const wasCompleted = completed.includes(lessonId)
-    const next = wasCompleted ? completed.filter((x) => x !== lessonId) : [...completed, lessonId]
-
-    await db.enrollment.update({
-      where: { id: enrollment.id },
-      data: { completedLessonIds: JSON.stringify(next) },
-    })
 
     // Mesma gamificação do site: XP por aula (ledger anti-farm) + bônus ao fechar 100%
     let xpAwarded = 0
     let courseCompleted = false
-    if (!wasCompleted) {
+    if (!result.wasCompleted) {
       xpAwarded = await awardXp(user.id, 'LESSON', lessonId, XP_LESSON)
       const totalLessons = await db.lesson.count({ where: { courseId: id } })
-      if (totalLessons > 0 && next.length >= totalLessons) {
+      if (totalLessons > 0 && result.completedLessonIds.length >= totalLessons) {
         courseCompleted = true
-        const enrData: { completedAt: Date; bonusAwarded?: boolean } = { completedAt: new Date() }
-        if (!enrollment.bonusAwarded) {
+        const enrollment = await db.enrollment.findUnique({
+          where: { courseId_studentId: { courseId: id, studentId: user.id } },
+          select: { id: true, bonusAwarded: true },
+        })
+        if (enrollment && !enrollment.bonusAwarded) {
           const bonus = await awardXp(user.id, 'COURSE', id, XP_COURSE)
           if (bonus > 0) {
-            enrData.bonusAwarded = true
             xpAwarded += bonus
+            await db.enrollment.update({
+              where: { id: enrollment.id },
+              data: { completedAt: new Date(), bonusAwarded: true },
+            })
           }
         }
-        await db.enrollment.update({ where: { id: enrollment.id }, data: enrData })
       }
     }
 
-    return v1Json({ completedLessonIds: next, xpAwarded, courseCompleted })
+    return v1Json({ completedLessonIds: result.completedLessonIds, xpAwarded, courseCompleted })
   } catch (err) {
     console.error('PATCH /api/v1/courses/[id]/enroll', err)
     return v1Error('Erro ao atualizar progresso.', 500)

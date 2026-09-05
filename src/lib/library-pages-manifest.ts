@@ -24,4 +24,11 @@ export const LIBRARY_PAGES_MANIFEST: Record<string, { totalPages: number }> = {
   cmtm036il00dtmdarmgq6pesk: { totalPages: 5 }, // Guia de Fotografia de Produto
   cmtm036ol00dvmdarvtjik0bv: { totalPages: 5 }, // Rotina de Alta Performance
   cmtm036up00dxmdar29zcsdpj: { totalPages: 5 }, // Métodos de Estudo Científicos
+  'cmtnqyjib00dlpj4548s0csvs': { totalPages: 5 }, // Clean Code na Prática — apostila
+  'cmtnqyk3100dnpj45tuhcq1o7': { totalPages: 5 }, // Marketing Digital para Pequenos Negócios
+  'cmtnqyke600dppj4585m4qwlv': { totalPages: 5 }, // Primeiros Passos na Bolsa de Valores
+  'cmtnqykoe00drpj45jbmz5bh5': { totalPages: 5 }, // Receitas que Vendem: bolos e brigadeiros
+  'cmtnqykyf00dtpj45xyh63kaz': { totalPages: 5 }, // Guia de Fotografia de Produto
+  'cmtnqyl7z00dvpj45sutkr000': { totalPages: 5 }, // Rotina de Alta Performance
+  'cmtnqylic00dxpj45sowc5k59': { totalPages: 5 }, // Métodos de Estudo Científicos
 }

@@ -33,13 +33,23 @@ export function verifyMobileToken(token: string): string | null {
   const expected = Buffer.from(sign(`${header}.${payload}`), 'utf8')
   const actual = Buffer.from(sig, 'utf8')
   if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null
+
+  // Header precisa declarar o algoritmo que de fato usamos (evita confusão de alg)
   try {
+    const hdr = JSON.parse(Buffer.from(header, 'base64url').toString('utf8')) as {
+      alg?: unknown
+      typ?: unknown
+    }
+    if (hdr.alg !== 'HS256' || (hdr.typ !== undefined && hdr.typ !== 'JWT')) return null
+
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as {
       sub?: unknown
       exp?: unknown
     }
     if (typeof data.sub !== 'string') return null
-    if (typeof data.exp === 'number' && data.exp < Math.floor(Date.now() / 1000)) return null
+    // `exp` é OBRIGATÓRIO: todo token emitido pelo signMobileToken tem exp —
+    // payload sem exp não é nosso e nunca expiraria.
+    if (typeof data.exp !== 'number' || data.exp < Math.floor(Date.now() / 1000)) return null
     return data.sub
   } catch {
     return null

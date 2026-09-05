@@ -5,7 +5,9 @@ API REST pública para consumo pelo app mobile (alunos). Todas as rotas ficam so
 
 - **Base URL**: a mesma do site (ex.: `https://mentorhub.com.br`). Em desenvolvimento local: `http://<ip-da-máquina>:3000`.
 - **Auth**: `Authorization: Bearer <token>` — token HS256 emitido no login, válido por **30 dias**.
-- **Erros**: sempre `{ "error": "mensagem em pt-BR" }` com o status HTTP adequado.
+- **Erros**: sempre `{ "error": "mensagem em pt-BR" }` com o status HTTP adequado. Rotas-chave também devolvem **`code`** estável para decisões do app (`RATE_LIMITED`, `INVALID_CREDENTIALS`, `BLOCKED`, `MFA_REQUIRED`, `VALIDATION`, `PAID_COURSE`, `COURSE_NOT_FOUND`, `MENTOR_NOT_FOUND`, `SELF_BOOKING`, `PAST_SLOT`, `SLOT_UNAVAILABLE`, `SLOT_TAKEN`) — o texto pode mudar, o código não.
+- **429**: vem com `Retry-After` (segundos) e `code: "RATE_LIMITED"` (login tem limite de 10 tentativas/5 min por IP).
+- **Cache**: GETs públicos de catálogo (`/courses`, `/mentors`, `/library`) com token AUSENTE respondem `Cache-Control: public, max-age=30, stale-while-revalidate=120`; com token, `no-store` (dados personalizados).
 - **CORS**: liberado (`*`) — o app nativo não precisa, mas o Expo Go/web sim.
 - **URLs**: todos os campos de imagem/PDF/anexo voltam **absolutos** (o app não precisa montar nada).
 
@@ -30,7 +32,7 @@ Body: `{ "email": "ana@demo.com", "password": "demo123" }`
   }
 }
 ```
-`401` credenciais erradas · `403` conta bloqueada **ou** com 2FA ativo (v1 não suporta TOTP — usar o site).
+`401` credenciais erradas (`INVALID_CREDENTIALS`) · `403` conta bloqueada (`BLOCKED`) **ou** com 2FA ativo (`MFA_REQUIRED`; v1 não suporta TOTP — usar o site) · `429` limite de tentativas (`RATE_LIMITED` + `Retry-After`).
 
 ### `GET /api/v1/auth/me` *(Bearer)*
 `200` → `{ "user": { ...mesmos campos, "creditCents": 0, "unreadNotifications": 2 } }`
@@ -130,10 +132,12 @@ Body: `{ "lessonId": "cmf..." }`
 ### `GET /api/v1/bookings` *(Bearer)*
 `200` → `{ "items": [{ "id": "...", "startsAt": "2025-12-01T14:00", "durationMin": 60, "topic": "...", "notes": null, "status": "PENDING|CONFIRMED|COMPLETED|CANCELLED", "meetingRoom": "mentorhub-...", "price": 120, "createdAt": "...", "mentor": { "id": "...", "name": "...", "avatarUrl": "..." }, "reviewed": false }] }`
 
+Opcionalmente paginado: `?page=&pageSize=` (máx. 50) → acrescenta `page/pageSize/total/hasMore`. Sem parâmetros devolve o histórico completo (teto de 500).
+
 ### `POST /api/v1/bookings` *(Bearer)*
 Body: `{ "mentorId": "...", "startsAt": "2025-12-01T14:00", "durationMin": 60, "topic": "Carreira em dados", "notes": "opcional" }`
 `201` → `{ "id": "...", "status": "PENDING", "meetingRoom": "...", "price": 120 }`
-`409` horário fora da agenda ou conflito.
+`409` horário fora da agenda (`SLOT_UNAVAILABLE`) ou conflito (`SLOT_TAKEN`). A checagem de conflito + criação rodam numa transação serializável — dois alunos competindo pelo mesmo horário nunca reservam os dois.
 
 ### `PATCH /api/v1/bookings/:id` *(Bearer)*
 Body: `{ "action": "cancel" }` → `200 { "ok": true }` (só o próprio aluno; só PENDING/CONFIRMED).
@@ -141,6 +145,22 @@ Body: `{ "action": "cancel" }` → `200 { "ok": true }` (só o próprio aluno; s
 ---
 
 ## Home e notificações
+
+### `GET /api/v1/home` *(Bearer)* — BOOTSTRAP em 1 chamada
+Junta `auth/me` + contadores + `dashboard` numa única resposta (o app usa no arranque — menos round-trips):
+```json
+{
+  "user": { "id": "...", "name": "Ana", "email": "...", "avatarUrl": "...", "xp": 120,
+            "studyStreak": 3, "longestStreak": 5, "role": "USER", "isMentor": false,
+            "creditCents": 6000, "unreadNotifications": 2 },
+  "unreadMessages": 1,
+  "enrolledCourses": [ /* idem dashboard */ ],
+  "upcomingBookings": [ /* idem dashboard */ ],
+  "newBooks": [ /* idem dashboard */ ],
+  "recommendedCourses": [ /* idem dashboard */ ],
+  "weeklyGoal": { "targetLessons": 5, "doneLessons": 2 }
+}
+```
 
 ### `GET /api/v1/dashboard` *(Bearer)*
 `200` →
@@ -157,6 +177,11 @@ Body: `{ "action": "cancel" }` → `200 { "ok": true }` (só o próprio aluno; s
 
 ### `GET /api/v1/notifications` *(Bearer)*
 `200` → `{ "items": [{ "id": "...", "kind": "booking_confirmed", "title": "...", "body": "...", "readAt": null, "createdAt": "..." }], "unread": 2 }`
+
+Opcionalmente paginado: `?page=&pageSize=` (máx. 50) → acrescenta `page/pageSize/total/hasMore`.
+
+### `GET /api/v1/health` *(público)*
+`200` → `{ "ok": true, "service": "mentorhub-v1", "time": "..." }` — batimento p/ o app distinguir "servidor fora do ar" de "servidor antigo".
 
 ### `POST /api/v1/notifications` *(Bearer)*
 Body: `{ "action": "read-all" }` → `200 { "ok": true }`

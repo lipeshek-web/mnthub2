@@ -9,6 +9,11 @@ export const dynamic = 'force-dynamic'
  * linha por par de conversa com última mensagem, data e contagem de não lidas.
  * Identidade da SESSÃO (antes vinha da query e permitia ler a caixa de
  * entrada de qualquer pessoa).
+ *
+ * A agregação roda em SQL (window function): a última mensagem por par e os
+ * não lidos saem direto do banco — sem teto artificial de mensagens (o recorte
+ * antigo em 500 fazia conversas antigas sumirem para quem tem muito histórico)
+ * e sem carregar todo o histórico no processo Node.
  */
 export async function GET(req: NextRequest) {
   const session = await resolveUser(req)
@@ -16,34 +21,41 @@ export async function GET(req: NextRequest) {
 
   try {
     const userId = session.id
-    const messages = await db.directMessage.findMany({
-      where: { OR: [{ senderId: userId }, { recipientId: userId }] },
-      orderBy: { createdAt: 'desc' },
-      take: 500,
-    })
 
-    // Agrupa por par (o "outro" de cada mensagem)
-    const byPeer = new Map<
-      string,
-      { lastBody: string; lastAt: string; lastMine: boolean; unread: number }
-    >()
-    for (const m of messages) {
-      const peer = m.senderId === userId ? m.recipientId : m.senderId
-      const entry = byPeer.get(peer)
-      const mine = m.senderId === userId
-      if (!entry) {
-        byPeer.set(peer, {
-          lastBody: m.body,
-          lastAt: m.createdAt.toISOString(),
-          lastMine: mine,
-          unread: !mine && !m.readAt ? 1 : 0,
-        })
-      } else {
-        if (!mine && !m.readAt) entry.unread += 1
-      }
+    // Última mensagem por par (a conversa é sempre "eu ↔ outro")
+    const lastMessages = await db.$queryRaw<
+      { senderId: string; recipientId: string; body: string; readAt: Date | null; createdAt: Date }[]
+    >`
+      SELECT senderId, recipientId, body, readAt, createdAt
+      FROM (
+        SELECT m.*,
+               ROW_NUMBER() OVER (
+                 PARTITION BY CASE WHEN m.senderId = ${userId} THEN m.recipientId ELSE m.senderId END
+                 ORDER BY m.createdAt DESC, m.id DESC
+               ) AS rn
+        FROM DirectMessage m
+        WHERE m.senderId = ${userId} OR m.recipientId = ${userId}
+      ) ranked
+      WHERE rn = 1
+    `
+
+    // Não lidas por par (mensagens recebidas e ainda não lidas)
+    const unreadRows = await db.$queryRaw<{ peerId: string; unread: bigint }[]>`
+      SELECT CASE WHEN senderId = ${userId} THEN recipientId ELSE senderId END AS peerId,
+             COUNT(*) AS unread
+      FROM DirectMessage
+      WHERE (senderId = ${userId} OR recipientId = ${userId})
+        AND senderId <> ${userId}
+        AND readAt IS NULL
+      GROUP BY peerId
+    `
+    const unreadByPeer = new Map(unreadRows.map((r) => [r.peerId, Number(r.unread)]))
+
+    const peerIds = lastMessages.map((m) => (m.senderId === userId ? m.recipientId : m.senderId))
+    if (peerIds.length === 0) {
+      return NextResponse.json({ unreadTotal: 0, threads: [] })
     }
 
-    const peerIds = [...byPeer.keys()]
     const users = await db.user.findMany({
       where: { id: { in: peerIds } },
       select: {
@@ -55,17 +67,18 @@ export async function GET(req: NextRequest) {
     })
     const usersById = new Map(users.map((u) => [u.id, u]))
 
-    const threads = peerIds
-      .map((peerId) => {
+    const threads = lastMessages
+      .map((m) => {
+        const mine = m.senderId === userId
+        const peerId = mine ? m.recipientId : m.senderId
         const u = usersById.get(peerId)
-        const agg = byPeer.get(peerId)!
         if (!u) return null
         return {
           peer: { id: u.id, name: u.name, avatarUrl: u.avatarUrl, isMentor: Boolean(u.mentorProfile) },
-          lastBody: agg.lastBody,
-          lastAt: agg.lastAt,
-          lastMine: agg.lastMine,
-          unread: agg.unread,
+          lastBody: m.body,
+          lastAt: new Date(m.createdAt).toISOString(),
+          lastMine: mine,
+          unread: unreadByPeer.get(peerId) ?? 0,
         }
       })
       .filter((t): t is NonNullable<typeof t> => t !== null)

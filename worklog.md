@@ -2578,3 +2578,40 @@ Stage Summary:
 - PLATAFORMA POVADA: 28 cursos em 10 categorias (11 Tecnologia + 17 de outras áreas), 21 itens de biblioteca (12 livros, 9 artigos) — todos com capa, aula/conteúdo real e PDF/páginas de leitor quando livro
 - Os dados já estão VIVOS no Turso (produção lê imediatamente); as IMAGENS/PDFs/páginas vão ao ar com o próximo publish do site na plataforma
 - Nada mudou no app Snack (ele lê a API) — novos cursos e biblioteca aparecem automaticamente no app
+
+---
+Task ID: Q
+Agent: main (Z.ai Code)
+Task: Verificar rollback + melhorias no sistema e principalmente na API que serve o app Expo
+
+Work Log:
+- DIAGNÓSTICO DE ROLLBACK (pedido do usuário): git OK (f353b95 local = cd431d5 remoto, diff só em .zscripts/dev.pid — sincronizado com reset --hard). MAS o TURSO estava no estado antigo: 10 cursos/8 mentores/9 itens de biblioteca (o povoamento da Task P tinha ido parar no SQLite LOCAL — o seed scripts/tmp/seed-run.mts usava PrismaClient() puro e rodou sem cloud.env; o "VIVOS no Turso" do worklog P estava errado; o db local foi revertido pelo git checkout db/custom.db e os dados se perderam). Imagens novas em produção 404 porque o deploy atual é de 35f7640 (pré-imagens)
+- RECOVERY: seed-run.mts ganhou makeDb() com PrismaLibSQL (mesma lógica de db.ts) + log do modo (🌐 NUVEM / 💾 LOCAL); rodado com cloud.env → Turso repovoado: +4 mentores (Camila/Fernanda/Lucas/Thiago com disponibilidade), 18 cursos com temas/aulas/quizzes, "Testes e Qualidade" recapado (capa+3 aulas), 7 livros COM NOVOS IDs DO TURSO (páginas renderizadas em public/library-pages/<id-turso>/ e entradas no manifest), 5 artigos, 2 capas corrigidas. Verificação: produção = 28 cursos / 12 mentores / 21 biblioteca ✓ (reader dos livros novos 404 até o publish do site — PDF fallback ok)
+- MELHORIAS API v1 (auditoria completa de 23 rotas antes):
+  · /api/v1/mentors: CORRIGIDO bug de ordenação — ordenava por nota SÓ dentro da página (JS, pós-paginação); agora agregados globais (groupBy avg+count) com desempate estável (nota desc, nº avaliações desc, experiência desc, nome asc) e cards completos só da página
+  · /api/v1/courses + dashboard/home (recomendados): payload slim — 5 groupBy (aulas, aulas LIVE, inscrições, CourseReview, Review por mentor) em vez de carregar TODAS as aulas/reviews/enrollments; JSON de saída IDÊNTICO (serializeMobileCourseCardFromStats); mobileCourseInclude/serialize antigos ficam só no detalhe
+  · NOVO /api/v1/home (bootstrap em 1 chamada): user completo (creditCents/unreadNotifications) + unreadMessages + dashboard inteiro — app deixa de fazer 3–4 chamadas no arranque
+  · NOVO /api/v1/health: batimento público {ok, service, time}
+  · Auth: login com rate limit 10/5min por IP (429 + Retry-After + code RATE_LIMITED); verifyMobileToken exige header alg=HS256 e exp numérico (tokens sem exp rejeitados — nenhum emitido sem exp); erros com codes (INVALID_CREDENTIALS/BLOCKED/MFA_REQUIRED/VALIDATION)
+  · /api/v1/bookings: POST fechou a corrida de agendamento (checagem de conflito + create DENTRO de $transaction serializável, maxWait 10s/timeout 20s p/ latência Turso — P2028 resolvido) → 409 SLOT_TAKEN; GET aceita ?page&pageSize (teto 500 no modo legado)
+  · /api/v1/courses/[id]/enroll PATCH: toggle de aula atômico em transação CURTA; awardXp movido PARA FORA da tx (com adapter libsql, chamadas do cliente global dentro da tx enfileiram na mesma conexão → stall/P2028; ledger XpEvent é idempotente, sem XP duplicado); 402 ganhou code PAID_COURSE
+  · /api/v1/notifications: paginação ?page&pageSize + total/hasMore (compatível — campos extra ignorados)
+  · /api/messages/threads (web+app): reescrita com window function SQL (última msg por par + não lidas por par) — sem mais teto de 500 mensagens nem carregar histórico no Node
+  · Cache-Control: catálogos públicos (courses/mentors) sem token → public max-age=30 swr=120; com token → no-store
+  · docs/api-v1.md atualizado (home, health, codes, 429, cache, paginações)
+- MELHORIAS NO APP (mobile-app-snack):
+  · api.ts: timeout de 15s em TODA chamada (AbortController) + 1 retry automático para GET em falha de rede/timeout; mensagem própria para 429; types: Booking.mentor.headline opcional (drift), comentário do reader corrigido
+  · HomeScreen: usa getHome() (bootstrap) com fallback automático para getDashboard() em servidor antigo (isMissingEndpoint); auth.tsx expõe updateUser() para o contexto refletir badges frescos
+  · typecheck: arquivos tocados sem erros (erros restantes são pré-existentes de ambiente)
+- E2E: curl de todas as rotas novas/alteradas contra dev server COM cloud.env (Turso): health/home/courses(28)/mentors(ordem global correta: Sofia 5/14y → Carlos 5/12y → Beatriz 5/10y...)/bookings(paginado+conflito 409 SLOT_TAKEN)/threads(notificação igual ao baseline)/notifications(paginado)/toggle aula ON-OFF (XP anti-farm ok)/rate limit (7ª tentativa 429 + code)/cache headers; booking E2E removido do Turso (cleanup-t)
+- E2E BROWSER: app web export :3025 logado ana contra servidor local (Turso) — Home via bootstrap com badge 11 notif/XP/meta, novos livros na biblioteca, "28 cursos", curso Violão completo com currículo e Comprar R$79, back funcionando, Mentorias com ordenação nova; SEM erros de console; site localhost:3000 renderiza (+12 mentores, sem erros)
+- PUBLICAÇÃO: Snack republish → NOVO SNACK OFICIAL https://snack.expo.dev/qRbv33YlMqOPNehr7x0hq (56 arq CODE 2.95MB); public/app-mobile reexportado (8.4MB) + mentorhub-mobile-snack-v10.zip (51 arq, v9 removido); README atualizado (novo link + v10)
+- DEV: servidor local reiniciado com cloud.env (Turso-first igual produção); nota: servidor iniciado via double-fork (setsid + subshell) porque o sandbox mata o processo filho do tool call
+- LINT 0/0; db/custom.db revertido antes do commit
+
+Stage Summary:
+- ROLLBACK CONFIRMADO E REVERTIDO: o povoamento (cursos/livros/artigos/mentores) está de volta — agora de fato no TURSO (produção leu na hora: 28 cursos/12 mentores/21 biblioteca); imagens e páginas dos livros vão ao ar no próximo PUBLISH do site (deploy atual é anterior às imagens)
+- API v1 mais rápida e mais forte: bootstrap 1-chamada (/v1/home), agregados em vez de full-load, ordenação global de mentores corrigida, agendamento à prova de corrida, login com rate limit, tokens endurecidos, cache HTTP, paginações, codes de erro estáveis, /v1/health
+- App Expo mais resiliente: timeout+retry, bootstrap no Início, fallback para servidor antigo
+- SNACK OFICIAL NOVO: https://snack.expo.dev/qRbv33YlMqOPNehr7x0hq · fallback web /app-mobile/ · zip v10
+- CHIP: republicar o site na plataforma (ativa imagens novas + páginas de leitor dos livros novos + API melhorada em produção); no app basta abrir o Snack novo

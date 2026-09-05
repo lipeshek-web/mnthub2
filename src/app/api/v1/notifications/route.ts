@@ -5,19 +5,29 @@ import { v1Error, v1Json } from '@/lib/api-v1'
 
 export const dynamic = 'force-dynamic'
 
-/** GET /api/v1/notifications — notificações do aluno (30 mais recentes) */
+/**
+ * GET /api/v1/notifications — notificações do aluno (30 mais recentes por
+ * padrão). `?page=&pageSize=` pagina o histórico (pageSize máx. 50) — a
+ * resposta ganha total/hasMore, campos que o app atual simplesmente ignora.
+ */
 export async function GET(req: NextRequest) {
   try {
     const user = await requireMobileUser(req)
     if (!user) return v1Error('Sessão inválida ou expirada.', 401)
 
-    const [items, unread] = await Promise.all([
+    const sp = req.nextUrl.searchParams
+    const page = Math.max(1, Math.trunc(Number(sp.get('page')) || 1))
+    const pageSize = Math.min(50, Math.max(1, Math.trunc(Number(sp.get('pageSize')) || 30)))
+
+    const [items, unread, total] = await Promise.all([
       db.notification.findMany({
         where: { userId: user.id },
         orderBy: { createdAt: 'desc' },
-        take: 30,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
       }),
       db.notification.count({ where: { userId: user.id, readAt: null } }),
+      db.notification.count({ where: { userId: user.id } }),
     ])
 
     return v1Json({
@@ -30,6 +40,10 @@ export async function GET(req: NextRequest) {
         createdAt: n.createdAt.toISOString(),
       })),
       unread,
+      page,
+      pageSize,
+      total,
+      hasMore: page * pageSize < total,
     })
   } catch (err) {
     console.error('GET /api/v1/notifications', err)

@@ -9,14 +9,24 @@ const CORS_HEADERS: Record<string, string> = {
 }
 
 /** JSON padrão da API v1 já com headers de CORS */
-export function v1Json(data: unknown, status = 200) {
-  return NextResponse.json(data, { status, headers: CORS_HEADERS })
+export function v1Json(data: unknown, status = 200, headers?: Record<string, string>) {
+  return NextResponse.json(data, { status, headers: { ...CORS_HEADERS, ...headers } })
 }
 
-/** Erro padrão { error } da API v1 */
-export function v1Error(message: string, status = 400) {
-  return v1Json({ error: message }, status)
+/**
+ * Erro padrão da API v1: { error, code? } — a mensagem (pt-BR) é para exibir
+ * ao usuário; o `code` é estável e existe para o app tomar decisões (ex.:
+ * RATE_LIMITED → mostrar cronômetro; PAID_COURSE → abrir checkout) sem
+ * depender do texto.
+ */
+export function v1Error(message: string, status = 400, code?: string) {
+  return v1Json(code ? { error: message, code } : { error: message }, status)
 }
+
+/** Cache longo para GETs públicos (listas de catálogo) — CDNs/proxy podem reusar */
+export const CACHE_PUBLIC_LIST = 'public, max-age=30, stale-while-revalidate=120'
+/** Respostas pessoalizadas/autenticadas nunca podem ser cacheadas */
+export const CACHE_NO_STORE = 'no-store'
 
 /** Preflight CORS (roteado pelo middleware para todas as rotas /api/v1) */
 export function v1Preflight() {
@@ -80,4 +90,10 @@ export function avgRating(ratings: { rating: number }[]): number {
   if (ratings.length === 0) return 0
   const sum = ratings.reduce((acc, r) => acc + r.rating, 0)
   return Math.round((sum / ratings.length) * 10) / 10
+}
+
+/** Nota média (1 casa) a partir do resultado de um aggregate/groupBy do Prisma */
+export function avgRatingFromAgg(avg: number | null): number {
+  if (avg == null) return 0
+  return Math.round(avg * 10) / 10
 }

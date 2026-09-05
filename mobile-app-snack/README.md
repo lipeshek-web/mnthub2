@@ -2,7 +2,7 @@
 
 App do aluno do MentorHub, publicado e testado de ponta a ponta. Dois jeitos de abrir:
 
-1. **Expo Snack (link direto):** **https://snack.expo.dev/E3K45Kbp1_zjj9LU20EXm**
+1. **Expo Snack (link direto):** **https://snack.expo.dev/qRbv33YlMqOPNehr7x0hq**
    - No preview **Web** (painel direito) ou no celular com o app **Expo Go** escaneando o QR Code ("My Device").
    - Publicado via API oficial (`exp.host/--/api/v2/snack/save`) com código (56 arquivos) + 12 dependências — abrindo o link, já está tudo lá (nada de copiar/colar). SEM expo-clipboard (não resolve no Snack web): copiar PIX usa o clipboard do navegador + código selecionável.
    - **Novidades desta versão (M — reunião nativa):** a SESSÃO 1:1 AO VIVO agora acontece DENTRO do app — botão "Entrar na sala de reunião" em todas as sessões (PENDING/CONFIRMED), badge "AO VIVO AGORA" quando é a hora, tela de sala com resumo/dicas/papel (anfitrião ou convidado decidido no servidor) e a reunião por vídeo/áudio rodando num WebView na página `/live.html` do servidor (WebRTC + sinalização socket.io — a MESMA sala do site, sem login externo). Sair pelo botão nativo, pelo botão vermelho da sala ou pelo voltar do Android (com confirmação). No navegador (web preview), a sala abre numa aba nova. Também: card vertical dedicado em "Recomendados para você" (não fica mais "quebrado").
@@ -72,7 +72,7 @@ bunx expo export --platform web   # gera dist/ (vai para public/app-mobile no pu
 
 ## 📦 ZIP (backup)
 
-`https://mentorhub.space-z.ai/mentorhub-mobile-snack-v9.zip` — código com páginas embutidas como data URI (as versões antigas v8/v7 estão obsoletas).
+`https://mentorhub.space-z.ai/mentorhub-mobile-snack-v10.zip` — código com páginas embutidas como data URI (as versões antigas v9/v8/v7 estão obsoletas).
 
 > 🎥 **Sala de reunião (infra do lado do servidor):** a página `public/live.html` (estática, servida pelo site) + `public/vendor/socket.io.min.js` + rotas `GET /api/bookings/[id]/meeting-token` (web) e `GET /api/v1/bookings/[id]/meeting-token` (app) + mini-serviço `mini-services/meeting-service` (:3004, sinalização). **Publique o site na plataforma** para a sala no app funcionar contra a produção.
 

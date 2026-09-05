@@ -11,8 +11,28 @@ import { newAreaCourses } from './seed-data-3'
 import type { CourseDef } from './seed-types'
 import { newBooks, newArticles, coverFixes } from './seed-lib-data'
 import { writePdf } from './pdf-gen'
+import { PrismaLibSQL } from '@prisma/adapter-libsql'
 
-const db = new PrismaClient()
+/**
+ * Cliente do seed: com TURSO_DATABASE_URL/LIBSQL_URL no ambiente grava na NUVEM
+ * (mesma lógica de src/lib/db.ts — dados visíveis na produção na hora); sem as
+ * variáveis, grava no SQLite local (DATABASE_URL). O modo é impresso no log
+ * para nunca mais rodar "no banco errado" sem perceber.
+ */
+function makeDb() {
+  const url = process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL
+  if (url) {
+    const authToken = process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN || undefined
+    type ClientOptions = ConstructorParameters<typeof PrismaClient>[0]
+    // Cast necessário: tipos do adapter divergem do client 6.11.x (ver db.ts)
+    const adapter = new PrismaLibSQL({ url, authToken })
+    console.log('🌐 MODO NUVEM — gravando no Turso/libSQL remoto')
+    return new PrismaClient({ adapter, log: ['error'] } as unknown as ClientOptions)
+  }
+  console.log('💾 MODO LOCAL — gravando no SQLite (DATABASE_URL)')
+  return new PrismaClient()
+}
+const db = makeDb()
 const DRY = process.argv.includes('--dry')
 const SEED_DIR = path.join(process.cwd(), 'public', 'uploads', 'seed')
 const PAGES_DIR = path.join(process.cwd(), 'public', 'library-pages')

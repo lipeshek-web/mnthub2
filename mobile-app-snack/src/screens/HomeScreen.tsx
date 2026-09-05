@@ -23,6 +23,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import {
   errMessage,
   getDashboard,
+  getHome,
+  isMissingEndpoint,
   type Booking,
   type CourseItem,
   type DashboardEnrolledCourse,
@@ -65,7 +67,7 @@ export default function HomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const { setTab } = useTabs();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const { mode, toggle } = useThemeMode();
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,20 +75,44 @@ export default function HomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  const load = useCallback(async (loadMode: "initial" | "refresh") => {
-    if (loadMode === "initial") setLoading(true);
-    else setRefreshing(true);
-    setError(null);
-    try {
-      const dashboard = await getDashboard();
-      setData(dashboard);
-    } catch (err) {
-      setError(errMessage(err));
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  const load = useCallback(
+    async (loadMode: "initial" | "refresh") => {
+      if (loadMode === "initial") setLoading(true);
+      else setRefreshing(true);
+      setError(null);
+      try {
+        // Bootstrap: usuário + badges + dashboard em UMA chamada (servidor novo).
+        // Em servidor antigo (rota /home inexistente) cai para o dashboard normal.
+        try {
+          const home = await getHome();
+          updateUser(home.user);
+          setData({
+            user: {
+              xp: home.user.xp,
+              studyStreak: home.user.studyStreak,
+              longestStreak: home.user.longestStreak,
+            },
+            enrolledCourses: home.enrolledCourses,
+            upcomingBookings: home.upcomingBookings,
+            newBooks: home.newBooks,
+            recommendedCourses: home.recommendedCourses,
+            weeklyGoal: home.weeklyGoal,
+          });
+          return;
+        } catch (homeErr) {
+          if (!isMissingEndpoint(homeErr)) throw homeErr;
+        }
+        const dashboard = await getDashboard();
+        setData(dashboard);
+      } catch (err) {
+        setError(errMessage(err));
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [updateUser]
+  );
 
   useEffect(() => {
     void load("initial");
