@@ -1,8 +1,9 @@
 /**
  * Cliente da API REST do MentorHub (v1) — edição Snack.
  *
- * - URL do servidor: constante DEFAULT_SERVER_URL abaixo (ou trocada em
- *   runtime no campo "Servidor da API" da tela de login); rotas ficam sob /api/v1.
+ * - URL do servidor: constante DEFAULT_SERVER_URL abaixo (produção); rotas
+ *   ficam sob /api/v1. Não há configuração na tela de login — o app "só
+ *   funciona" (funções get/setServerUrl continuam exportadas para usos futuros).
  * - Token JWT é guardado com expo-secure-store e enviado como "Authorization: Bearer".
  * - Erros da API chegam como { "error": "mensagem em pt-BR" } → convertidos em ApiError.
  * - 401 em chamada autenticada → limpa o token e dispara logout automático.
@@ -15,8 +16,7 @@ import * as SecureStore from "expo-secure-store";
 
 /**
  * URL de produção do MentorHub (sem /api/v1 no final).
- * Já vem configurada — se um dia mudar, troque aqui OU no campo
- * “Servidor da API” da tela de login (o valor digitado lá fica salvo no aparelho).
+ * Já vem configurada — se um dia mudar, troque aqui.
  */
 export const DEFAULT_SERVER_URL = "https://mentorhub.space-z.ai";
 
@@ -27,7 +27,7 @@ function normalizeServer(url: string): string {
   return url.trim().replace(/\/+$/, "");
 }
 
-// Servidor em uso — pode ser trocado em runtime pela tela de login.
+// Servidor em uso — DEFAULT (produção); pode ser trocado em runtime via setServerUrl.
 let memoryServer = DEFAULT_SERVER_URL;
 
 // Token em memória (cache) + persistência segura via SecureStore.
@@ -175,7 +175,7 @@ interface RequestOptions {
 }
 
 const STATUS_MESSAGES: Record<number, string> = {
-  0: "Não foi possível conectar ao servidor. Verifique sua internet e o endereço do servidor (campo “Servidor da API” no login).",
+  0: "Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.",
   400: "Requisição inválida. Verifique os dados e tente novamente.",
   401: "Sessão expirada. Faça login novamente.",
   402: "Este curso é pago. A compra é feita pelo site do MentorHub.",
@@ -613,13 +613,13 @@ export async function getMe(): Promise<MeResponse> {
 
 /* 3) Biblioteca (lista) */
 
-export interface LibraryQuery {
+export type LibraryQuery = {
   kind?: LibraryKind;
   q?: string;
   category?: string;
   page?: number;
   pageSize?: number;
-}
+};
 
 export async function listLibrary(query: LibraryQuery = {}): Promise<Paged<LibraryItemSummary>> {
   return request<Paged<LibraryItemSummary>>("/library", { query });
@@ -653,13 +653,13 @@ export async function getLibraryReader(id: string): Promise<{ reader: LibraryRea
 
 /* 5) Cursos (lista) */
 
-export interface CoursesQuery {
+export type CoursesQuery = {
   q?: string;
   category?: string;
   level?: string;
   page?: number;
   pageSize?: number;
-}
+};
 
 export async function listCourses(query: CoursesQuery = {}): Promise<Paged<CourseItem>> {
   return request<Paged<CourseItem>>("/courses", { query });
@@ -691,11 +691,11 @@ export async function toggleLessonCompletion(courseId: string, lessonId: string)
 
 /* 9) Mentores (lista) */
 
-export interface MentorsQuery {
+export type MentorsQuery = {
   q?: string;
   page?: number;
   pageSize?: number;
-}
+};
 
 export async function listMentors(query: MentorsQuery = {}): Promise<Paged<MentorListItem>> {
   return request<Paged<MentorListItem>>("/mentors", { query });

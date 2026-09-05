@@ -18,6 +18,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  DimensionValue,
   Modal,
   PanResponder,
   Pressable,
@@ -106,7 +107,7 @@ function SeekBar({ value, total, disabled, onSeek, onCommit }: SeekBarProps) {
   onSeekRef.current = onSeek;
 
   const ratio = total > 1 ? (value - 1) / (total - 1) : 0;
-  const pct = `${Math.round(Math.min(Math.max(ratio, 0), 1) * 100)}%`;
+  const pct: DimensionValue = `${Math.round(Math.min(Math.max(ratio, 0), 1) * 100)}%`;
 
   const update = (x: number) => {
     const t = Math.min(Math.max(x / trackW.current, 0), 1);

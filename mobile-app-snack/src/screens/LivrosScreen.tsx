@@ -1,9 +1,13 @@
 /**
- * Aba Livros: biblioteca de livros e artigos com busca por texto,
- * filtro por tipo (Todos/Livros/Artigos), paginação e pull-to-refresh.
+ * Aba Biblioteca: visual de ESTANTE (estilo Apple/Duolingo).
+ * - Título grande + busca + chips de tipo (Todos/Livros/Artigos) e de
+ *   categoria (derivadas dos itens carregados, filtro no servidor);
+ * - Grade de 2 colunas com capas grandes em pé (BookCard "grid") — a lista
+ *   rola por dentro, o cabeçalho fica fixo acima do dock flutuante;
+ * - Paginação infinita + pull-to-refresh.
  */
-import React, { useEffect, useState } from "react";
-import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { FlatList, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import {
   listLibrary,
@@ -35,6 +39,7 @@ export default function LibraryScreen() {
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [kind, setKind] = useState<KindFilter>("ALL");
+  const [category, setCategory] = useState<string | null>(null);
 
   // Debounce simples da busca (350ms) para não disparar a cada tecla.
   useEffect(() => {
@@ -49,11 +54,26 @@ export default function LibraryScreen() {
         pageSize: 20,
         q: search || undefined,
         kind: kind === "ALL" ? undefined : kind,
+        category: category ?? undefined,
       }),
-    [search, kind]
+    [search, kind, category]
   );
 
-  const hasFilters = search.length > 0 || kind !== "ALL";
+  // Categorias derivadas dos itens já carregados (o servidor aplica o filtro).
+  const categories = useMemo(
+    () =>
+      Array.from(new Set(list.items.map((item) => item.category).filter(Boolean))).sort((a, b) =>
+        a.localeCompare(b)
+      ),
+    [list.items]
+  );
+
+  // Categoria selecionada sumiu (troca de filtro/busca) → volta para "Todas".
+  useEffect(() => {
+    if (category && !categories.includes(category)) setCategory(null);
+  }, [categories, category]);
+
+  const hasFilters = search.length > 0 || kind !== "ALL" || category !== null;
 
   return (
     <Screen>
@@ -61,8 +81,14 @@ export default function LibraryScreen() {
         style={styles.flex}
         data={list.items}
         keyExtractor={(item) => item.id}
+        numColumns={2}
+        columnWrapperStyle={styles.gridRow}
         renderItem={({ item }) => (
-          <BookCard item={item} onPress={() => navigation.navigate("Livro", { id: item.id })} />
+          <BookCard
+            item={item}
+            variant="grid"
+            onPress={() => navigation.navigate("Livro", { id: item.id })}
+          />
         )}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}
@@ -96,6 +122,28 @@ export default function LibraryScreen() {
                 />
               ))}
             </View>
+            {categories.length > 0 ? (
+              <ScrollView
+                horizontal
+                nestedScrollEnabled
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.catRow}
+              >
+                <FilterChip
+                  label="Todas"
+                  selected={category === null}
+                  onPress={() => setCategory(null)}
+                />
+                {categories.map((cat) => (
+                  <FilterChip
+                    key={cat}
+                    label={cat}
+                    selected={category === cat}
+                    onPress={() => setCategory(cat === category ? null : cat)}
+                  />
+                ))}
+              </ScrollView>
+            ) : null}
             {list.error && list.items.length > 0 ? (
               <View style={styles.banner}>
                 <ErrorBox compact message={list.error} onRetry={list.refresh} />
@@ -128,6 +176,7 @@ export default function LibraryScreen() {
                   ? () => {
                       setQuery("");
                       setKind("ALL");
+                      setCategory(null);
                     }
                   : undefined
               }
@@ -148,9 +197,11 @@ const makeStyles = () =>
       paddingBottom: DOCK_CLEARANCE,
     },
     header: { gap: theme.spacing.md, marginBottom: theme.spacing.md },
-    title: { color: theme.colors.text, fontSize: 24, fontWeight: "700", letterSpacing: -0.4 },
-    subtitle: { color: theme.colors.textMuted, fontSize: 13, marginTop: -6 },
+    title: { color: theme.colors.text, fontSize: 26, fontWeight: "800", letterSpacing: -0.6 },
+    subtitle: { color: theme.colors.textMuted, fontSize: 13, marginTop: -8 },
     filters: { flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm },
+    catRow: { gap: theme.spacing.sm, paddingRight: theme.spacing.lg },
+    gridRow: { gap: theme.spacing.md, marginBottom: theme.spacing.xl },
     banner: { marginTop: -2 },
     count: { color: theme.colors.textFaint, fontSize: 12, fontWeight: "600", marginTop: -4 },
   });

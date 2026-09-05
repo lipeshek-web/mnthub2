@@ -2,12 +2,14 @@
  * Card de livro/artigo com cara de LIVRO: capa em retrato com lombra à
  * esquerda (faixa escura + brilho), beirada de páginas à direita, borda fina
  * e elevação — do carrossel à lista, o card lê como um livro de verdade.
- * - variant "row": lista da aba Biblioteca (capa-livro à esquerda + infos).
+ * - variant "grid": grade 2 colunas da aba Biblioteca (capa grande em
+ *   pé + título + mentor — visual de estante).
+ * - variant "row": lista vertical (capa-livro à esquerda + infos).
  * - variant "mini": carrossel horizontal do início (capa maior + legenda,
  *   sem coração de favorito).
  */
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { DimensionValue, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import type { LibraryItemSummary } from "../lib/api";
@@ -18,12 +20,12 @@ import { RemoteImage } from "./RemoteImage";
 interface BookCardProps {
   item: LibraryItemSummary;
   onPress: () => void;
-  variant?: "row" | "mini";
+  variant?: "row" | "mini" | "grid";
   /** false oculta o coração de favorito (usos compactos/decorativos). */
   showFavorite?: boolean;
 }
 
-/** Capa com tratamento de livro (usada nas duas variantes). */
+/** Capa com tratamento de livro (usada nas três variantes). */
 function BookCover({
   item,
   width,
@@ -33,7 +35,8 @@ function BookCover({
   showKindBadge,
 }: {
   item: LibraryItemSummary;
-  width: number;
+  /** número (px) ou percentual como "100%" (célula fluida da grade). */
+  width: DimensionValue;
   height: number;
   radius: number;
   iconSize: number;
@@ -71,6 +74,49 @@ export function BookCard({ item, onPress, variant = "row", showFavorite = true }
   const styles = makeStyles();
   const { isFavorite, toggle } = useFavorites();
   const favorite = isFavorite("book", item.id);
+
+  if (variant === "grid") {
+    return (
+      <TouchableOpacity style={styles.gridCard} onPress={onPress} activeOpacity={0.85}>
+        <View>
+          <BookCover
+            item={item}
+            width="100%"
+            height={168}
+            radius={9}
+            iconSize={34}
+            showKindBadge
+          />
+          {showFavorite ? (
+            <TouchableOpacity
+              style={styles.gridFav}
+              onPress={() =>
+                toggle({ type: "book", id: item.id, title: item.title, savedAt: Date.now() })
+              }
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={
+                favorite ? `Remover ${item.title} dos salvos` : `Salvar ${item.title}`
+              }
+            >
+              <Ionicons
+                name={favorite ? "heart" : "heart-outline"}
+                size={15}
+                color={favorite ? theme.colors.danger : theme.colors.white}
+              />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+        <Text style={styles.gridTitle} numberOfLines={2}>
+          {item.title}
+        </Text>
+        <Text style={styles.gridMentor} numberOfLines={1}>
+          {item.mentor?.name ?? ""}
+        </Text>
+      </TouchableOpacity>
+    );
+  }
 
   if (variant === "mini") {
     return (
@@ -220,4 +266,28 @@ const makeStyles = () =>
     miniCard: { width: 116, gap: 8 },
     miniTitle: { color: theme.colors.text, fontSize: 13, fontWeight: "600", lineHeight: 17 },
     miniMentor: { color: theme.colors.textFaint, fontSize: 11 },
+
+    /* Grade 2 colunas da Biblioteca (célula fluida: flex 1 + gap do row) */
+    gridCard: { flex: 1, gap: 3 },
+    gridTitle: {
+      color: theme.colors.text,
+      fontSize: 13,
+      fontWeight: "700",
+      lineHeight: 17,
+      marginTop: 8,
+    },
+    gridMentor: { color: theme.colors.textFaint, fontSize: 11 },
+    gridFav: {
+      position: "absolute",
+      top: 8,
+      right: 8,
+      width: 32,
+      height: 32,
+      borderRadius: theme.radius.full,
+      backgroundColor: "rgba(0, 0, 0, 0.45)",
+      borderWidth: 1,
+      borderColor: "rgba(255, 255, 255, 0.25)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
   });

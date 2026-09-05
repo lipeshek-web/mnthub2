@@ -2,11 +2,11 @@
 
 App do aluno do MentorHub, publicado e testado de ponta a ponta. Dois jeitos de abrir:
 
-1. **Expo Snack (link direto):** **https://snack.expo.dev/O8xAobeAWBQAstwwkUo5c**
+1. **Expo Snack (link direto):** **https://snack.expo.dev/zMAgG5tdRrZOIKd7PJc06**
    - No preview **Web** (painel direito) ou no celular com o app **Expo Go** escaneando o QR Code ("My Device").
    - Publicado via API oficial (`exp.host/--/api/v2/snack/save`) com código (56 arquivos) + 12 dependências — abrindo o link, já está tudo lá (nada de copiar/colar). SEM expo-clipboard (não resolve no Snack web): copiar PIX usa o clipboard do navegador + código selecionável.
    - ⚠️ **NÃO republique pelo painel de dependências do editor**: uma republicação por cima já salvou o snack SEM o `react-native-webview` e o app inteiro morria com "Unable to resolve module 'module://react-native-webview.js'". A `SalaScreen` agora é resiliente (require tardio + fallback "Abrir sala no navegador"), mas o correto é publicar pelo script (`bun mobile-app-snack/scripts/publish-snack.js`) com as 12 dependências.
-   - **Novidades desta versão (UI minimalista — Duolingo/Apple):** DOCK FLUTUANTE no rodapé (pill destacada com sombra, não colada na borda) com 5 abas — **Mensagens agora é aba dedicada** (lista com título grande + badge global de não lidas; a conversa 1:1 abre na stack com header contextual "nome + Mentor"). Cabeçalhos contextuais padrão Apple em todas as telas de detalhe: voltar à esquerda e o título no centro dizendo ONDE você está (nome do mentor, do livro, do curso, "Ana Souza · Meu perfil") com subtítulo qualificando. Home minimalista: saudação grande ("Olá, Ana"), busca em pílula, stats sem borda. Arquitetura de scroll: cabeçalho e dock FIXOS — só o corpo rola, com folga para não nascer sob o dock.
+   - **Novidades desta versão (design enxuto — Duolingo/Apple):** LOGIN MINIMALISTA — só marca + e-mail + senha + "Entrar" (sem campo de servidor e sem dica de conta demo na tela). HOME ENXUTA — a própria home É a exploração: card destaque "Continuar" (gradiente), carrossel "Meus cursos", 3 atalhos grandes "Explorar" (Cursos · Biblioteca · Mentores), "Em alta agora" e próximas mentorias (saiu: stats e pílula de busca — a busca virou ícone no header). BIBLIOTECA COM VISUAL DE ESTANTE — grade de 2 colunas com capas grandes em pé + chips de categoria (filtro no servidor). CURSOS EM GRADE — cards verticais com capa 16:9 + chips de categoria. DOCK FLUTUANTE no rodapé (pill destacada, não colada na borda) com 5 abas — **Mensagens é aba dedicada**. Cabeçalhos contextuais padrão Apple em todas as telas de detalhe: voltar à esquerda e o título no centro dizendo ONDE você está (nome do mentor, do livro, do curso) com subtítulo qualificando. Arquitetura de scroll: cabeçalho e dock FIXOS — só o corpo rola, com folga para não nascer sob o dock.
 2. **Web app no site:** **https://mentorhub.space-z.ai/app-mobile/** — o mesmo código exportado (`expo export --platform web`) e servido junto do site (atualizado a cada publish).
 
 Mesma API (`/api/v1`, JWT Bearer 30 dias), mesmo visual, mesmos dados do Turso em produção.
@@ -29,9 +29,9 @@ navegando e aprendendo normalmente, e compra/mensagens mostram um aviso claro
 
 ## 📱 O que tem no app (tudo verificado em E2E com browser real)
 
-- **Login** — campo "Servidor da API" configurável (padrão: produção)
-- **Início** — XP, ofensiva, meta semanal, "Continuar estudando", novos livros, recomendados (card vertical dedicado no carrossel)
-- **Livros** — biblioteca com busca/filtros e **LEITOR DE PDF NATIVO**: pager página a página (sem WebView e sem browser), zoom por dois toques, modo noturno, barra de progresso arrastável e retomada da leitura. As páginas dos 5 livros do catálogo vêm embutidas no app (abertura instantânea) e também são servidas por `GET /api/v1/library/:id/reader` (URLs absolutas de `/library-pages/<id>/p<N>.png`) — livros novos respondem 404 com mensagem amigável até terem páginas renderizadas
+- **Login** — minimalista: marca + e-mail + senha + "Entrar" (servidor padrão embutido; sessão salva no aparelho)
+- **Início (enxuta)** — card destaque "Continuar" com gradiente, "Meus cursos" (carrossel), atalhos "Explorar" (Cursos · Biblioteca · Mentores), "Em alta agora" e próximas mentorias; busca global pelo ícone no header
+- **Livros** — biblioteca em GRADE de estante (capas grandes + chips de tipo e categoria) com busca e **LEITOR DE PDF NATIVO**: pager página a página (sem WebView e sem browser), zoom por dois toques, modo noturno, barra de progresso arrastável e retomada da leitura. As páginas dos 5 livros do catálogo vêm embutidas no app (abertura instantânea) e também são servidas por `GET /api/v1/library/:id/reader` (URLs absolutas de `/library-pages/<id>/p<N>.png`) — livros novos respondem 404 com mensagem amigável até terem páginas renderizadas
 - **Cursos — CONTENT-FIRST:** curso inscrito abre DIRETO na aula atual com o conteúdo em foco (vídeo em destaque com capa + play, texto completo já renderizado, materiais, concluir +XP, anterior/próxima). O índice completo do curso fica atrás do botão **"Índice"** (header ou faixa de progresso) que abre um modal com todas as aulas por tema. Catálogo com preços e **CHECKOUT COMPLETO NO APP** para cursos pagos (PIX com QR Code + copia-e-cola, cartão, boleto, cupom de desconto, polling automático de confirmação — sem sair do app)
 - **Mentorias** — buscar mentores, ver horários livres, agendar, **pagar a sessão 1:1 no app** (botão "Pagar agora" nas pendentes), acompanhar e cancelar sessões
 - **REUNIÃO AO VIVO DENTRO DO APP (MentorHub Live)** — "Entrar na sala de reunião" em Minhas sessões (com badge "AO VIVO AGORA" no horário), tela pré-entrada com resumo/dicas/papel, vídeo+áudio por WebRTC num WebView (`/live.html` do servidor, token HMAC curto assinado pela API — papel anfitrião/convidado decidido no servidor), sala idêntica à do site: espera do par, timer, badges de mic/câmera do par, controles mic/câmera/encerrar, reconexão automática e TURN de fallback. Sair: botão nativo no topo, botão vermelho da sala ou voltar do Android (confirma). E2E real com 2 navegadores: presença, conexão P2P e saída do par verificados
@@ -73,7 +73,7 @@ bunx expo export --platform web   # gera dist/ (vai para public/app-mobile no pu
 
 ## 📦 ZIP (backup)
 
-`https://mentorhub.space-z.ai/mentorhub-mobile-snack-v12.zip` — código com páginas embutidas como data URI (as versões antigas v11/v10/v9 estão obsoletas).
+`https://mentorhub.space-z.ai/mentorhub-mobile-snack-v13.zip` — código com páginas embutidas como data URI (as versões antigas v12/v11/v10 estão obsoletas).
 
 > 🎥 **Sala de reunião (infra do lado do servidor):** a página `public/live.html` (estática, servida pelo site) + `public/vendor/socket.io.min.js` + rotas `GET /api/bookings/[id]/meeting-token` (web) e `GET /api/v1/bookings/[id]/meeting-token` (app) + mini-serviço `mini-services/meeting-service` (:3004, sinalização). **Publique o site na plataforma** para a sala no app funcionar contra a produção.
 

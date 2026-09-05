@@ -18,7 +18,7 @@
  *     └─ ThemeProvider (modo Claro/Escuro persistido em SecureStore)
  *         └─ AuthProvider → gate de sessão
  *             - loading       → splash
- *             - anonymous     → LoginScreen (com campo "Servidor da API")
+ *             - anonymous     → LoginScreen (minimalista: só e-mail + senha)
  *             - authenticated → TabsContext.Provider
  *                 └─ NavigationContainer
  *                     RootStack (headerShown: false)

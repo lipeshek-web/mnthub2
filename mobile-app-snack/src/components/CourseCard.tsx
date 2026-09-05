@@ -224,6 +224,7 @@ const makeStyles = () =>
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
+      flexWrap: "wrap",
       marginTop: 6,
     },
     categoryReco: {

@@ -1,13 +1,13 @@
 /**
- * Aba Início — painel do aluno (minimalista, estilo Duolingo/Apple):
- * - Header fixo: saudação GRANDE à esquerda ("Olá, Ana" + "Bem-vinda de volta");
- *   à direita, ícone de notificações (com badge de não-lidas), botão de tema e
- *   avatar da conta (único acesso ao Perfil — não existe aba de perfil).
- * - Atalho de busca global em pílula + linha de stats compacta SEM borda
- *   (XP, ofensiva, meta).
- * - Card destaque "Continuar estudando" (gradiente), carrossel "Novos na
- *   biblioteca", "Recomendados para você" e as próximas mentorias (máx. 3).
- * - Header e rodapé fixos: só o corpo rola (com folga para o dock flutuante).
+ * Aba Início — ENXUTA (estilo Duolingo/Apple). A própria Home É a exploração:
+ * - Header fixo: saudação à esquerda; à direita, busca global, notificações
+ *   (com badge), tema e avatar da conta (único acesso ao Perfil).
+ * - "Continuar estudando" — card destaque com gradiente (o próximo passo).
+ * - "Meus cursos" — carrossel compacto com o resto dos cursos inscritos.
+ * - "Explorar" — 3 atalhos grandes (Cursos · Biblioteca · Mentores).
+ * - "Em alta agora" — carrossel de cursos recomendados.
+ * - "Mentorias" — próximas sessões (máx. 3).
+ * Header e rodapé fixos: só o corpo rola (com folga para o dock flutuante).
  */
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -31,15 +31,13 @@ import {
   type CourseItem,
   type DashboardEnrolledCourse,
   type DashboardResponse,
-  type LibraryItemSummary,
 } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useThemeMode } from "../lib/theme";
 import { DOCK_CLEARANCE, useTabs } from "../lib/tabs";
-import { formatNaiveDateTime, formatXp } from "../lib/format";
+import { formatNaiveDateTime } from "../lib/format";
 import { theme } from "../theme";
 import { Avatar } from "../components/Avatar";
-import { BookCard } from "../components/BookCard";
 import { CourseCard } from "../components/CourseCard";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBox } from "../components/ErrorBox";
@@ -52,6 +50,13 @@ import { SectionTitle } from "../components/SectionTitle";
 import { StatusPill } from "../components/StatusPill";
 
 import { clearPendingCheckout, readPendingCheckout } from "../lib/pendingCheckout";
+
+/** Atalhos da seção "Explorar" — trocam de aba sem navegar no stack. */
+const EXPLORAR = [
+  { tab: "Cursos", icon: "play-circle-outline", title: "Cursos", sub: "Aulas no seu ritmo" },
+  { tab: "Livros", icon: "book-outline", title: "Biblioteca", sub: "Livros e artigos" },
+  { tab: "Mentorias", icon: "people-outline", title: "Mentores", sub: "Sessões 1:1" },
+] as const;
 
 export default function HomeScreen() {
   const styles = makeStyles();
@@ -121,20 +126,22 @@ export default function HomeScreen() {
   }, [load]);
 
   const firstName = (user?.name ?? "").trim().split(/\s+/)[0] ?? "";
-  const goal = data?.weeklyGoal ?? null;
   const enrolledCourses = data?.enrolledCourses ?? [];
   const continueCourse: DashboardEnrolledCourse | null =
     enrolledCourses.find((c) => c.progressPct > 0 && c.progressPct < 100) ??
     enrolledCourses[0] ??
     null;
+  // Os outros cursos inscritos (sem repetir o card destaque).
+  const myOtherCourses = continueCourse
+    ? enrolledCourses.filter((c) => c.id !== continueCourse.id)
+    : enrolledCourses;
   const bookings: Booking[] = data?.upcomingBookings ?? [];
-  const newBooks: LibraryItemSummary[] = data?.newBooks ?? [];
   const recommended: CourseItem[] = data?.recommendedCourses ?? [];
   const unreadNotifications = user?.unreadNotifications ?? 0;
 
   return (
     <Screen>
-      {/* Header fixo: saudação grande | notificações, tema e conta */}
+      {/* Header fixo: saudação | busca, notificações, tema e conta */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.greetingBig} numberOfLines={1}>
@@ -143,6 +150,15 @@ export default function HomeScreen() {
           <Text style={styles.greetingSub}>Bem-vinda de volta 👋</Text>
         </View>
         <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => navigation.navigate("Busca")}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Buscar cursos, livros e mentores"
+          >
+            <Ionicons name="search-outline" size={20} color={theme.colors.text} />
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => setNotificationsOpen(true)}
@@ -162,19 +178,6 @@ export default function HomeScreen() {
                 </Text>
               </View>
             ) : null}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={toggle}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel={mode === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
-          >
-            <Ionicons
-              name={mode === "dark" ? "sunny-outline" : "moon-outline"}
-              size={20}
-              color={theme.colors.text}
-            />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => navigation.navigate("Perfil")}
@@ -208,47 +211,7 @@ export default function HomeScreen() {
         >
           {error && data ? <ErrorBox compact message={error} /> : null}
 
-          {/* Atalho de busca global — abre a tela Busca (não é input real) */}
-          <TouchableOpacity
-            style={styles.searchFake}
-            onPress={() => navigation.navigate("Busca")}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel="Buscar cursos, livros e mentores"
-          >
-            <Ionicons name="search-outline" size={17} color={theme.colors.textFaint} />
-            <Text style={styles.searchFakeText} numberOfLines={1}>
-              Buscar cursos, livros e mentores...
-            </Text>
-          </TouchableOpacity>
-
-          {/* Stats compactas: XP · ofensiva · meta semanal */}
-          <View style={styles.statsRow}>
-            <View style={styles.statCard}>
-              <Ionicons name="flash" size={14} color={theme.colors.accent} />
-              <Text style={styles.statValue} numberOfLines={1}>
-                {formatXp(data?.user.xp ?? 0)}
-              </Text>
-              <Text style={styles.statLabel}>XP</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Ionicons name="flame" size={14} color={theme.colors.warning} />
-              <Text style={styles.statValue} numberOfLines={1}>
-                {data?.user.studyStreak ?? 0} {data?.user.studyStreak === 1 ? "dia" : "dias"}
-              </Text>
-              <Text style={styles.statLabel}>Ofensiva</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Ionicons name="flag" size={14} color={theme.colors.info} />
-              <Text style={styles.statValue} numberOfLines={1}>
-                {goal && goal.targetLessons > 0 ? `${goal.doneLessons}/${goal.targetLessons}` : "—"}
-              </Text>
-              <Text style={styles.statLabel}>Meta semanal</Text>
-            </View>
-          </View>
-
           {/* Continuar estudando — card destaque com gradiente */}
-          <SectionTitle title="Continuar estudando" />
           {continueCourse ? (
             <TouchableOpacity
               onPress={() => navigation.navigate("Curso", { id: continueCourse.id })}
@@ -270,6 +233,7 @@ export default function HomeScreen() {
                   iconSize={22}
                 />
                 <View style={styles.continueInfo}>
+                  <Text style={styles.continueKicker}>CONTINUAR</Text>
                   <Text style={styles.continueTitle} numberOfLines={2}>
                     {continueCourse.title}
                   </Text>
@@ -300,25 +264,42 @@ export default function HomeScreen() {
             />
           )}
 
-          {/* Novos na biblioteca — carrossel horizontal */}
-          {newBooks.length > 0 ? (
+          {/* Meus cursos — o resto dos cursos inscritos, em carrossel compacto */}
+          {myOtherCourses.length > 0 ? (
             <>
               <SectionTitle
-                title="Novos na biblioteca"
+                title="Meus cursos"
                 actionLabel="Ver todos"
-                onAction={() => setTab("Livros")}
+                onAction={() => setTab("Cursos")}
               />
               <FlatList
                 horizontal
                 nestedScrollEnabled
-                data={newBooks}
+                data={myOtherCourses}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
-                  <BookCard
-                    item={item}
-                    variant="mini"
-                    onPress={() => navigation.navigate("Livro", { id: item.id })}
-                  />
+                  <TouchableOpacity
+                    style={styles.myCourseCard}
+                    onPress={() => navigation.navigate("Curso", { id: item.id })}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Abrir o curso ${item.title}`}
+                  >
+                    <RemoteImage
+                      uri={item.coverUrl}
+                      style={styles.myCourseCover}
+                      recyclingKey={item.id}
+                      errorIcon="play-circle-outline"
+                      iconSize={20}
+                    />
+                    <Text style={styles.myCourseTitle} numberOfLines={2}>
+                      {item.title}
+                    </Text>
+                    <View style={styles.myCourseProgress}>
+                      <ProgressBar pct={item.progressPct} height={4} />
+                      <Text style={styles.myCoursePct}>{item.progressPct}%</Text>
+                    </View>
+                  </TouchableOpacity>
                 )}
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.carousel}
@@ -326,12 +307,37 @@ export default function HomeScreen() {
             </>
           ) : null}
 
-          {/* Recomendados para você — carrossel horizontal (card vertical dedicado) */}
+          {/* Explorar — a home É a porta de entrada para o catálogo */}
+          <SectionTitle title="Explorar" />
+          <View style={styles.explorarRow}>
+            {EXPLORAR.map((tile) => (
+              <TouchableOpacity
+                key={tile.tab}
+                style={styles.explorarTile}
+                onPress={() => setTab(tile.tab)}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={`Explorar ${tile.title}`}
+              >
+                <View style={styles.explorarIcon}>
+                  <Ionicons name={tile.icon} size={20} color={theme.colors.accent} />
+                </View>
+                <Text style={styles.explorarTitle} numberOfLines={1}>
+                  {tile.title}
+                </Text>
+                <Text style={styles.explorarSub} numberOfLines={1}>
+                  {tile.sub}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Em alta agora — carrossel horizontal de recomendados */}
           {recommended.length > 0 ? (
             <>
               <SectionTitle
-                title="Recomendados para você"
-                actionLabel="Ver todos"
+                title="Em alta agora"
+                actionLabel="Ver tudo"
                 onAction={() => setTab("Cursos")}
               />
               <FlatList
@@ -356,7 +362,7 @@ export default function HomeScreen() {
 
           {/* Próximas mentorias */}
           <SectionTitle
-            title="Próximas mentorias"
+            title="Mentorias"
             actionLabel={bookings.length > 0 ? "Ver todas" : undefined}
             onAction={() => setTab("Mentorias")}
           />
@@ -461,40 +467,7 @@ const makeStyles = () =>
     },
     badgeText: { color: theme.colors.white, fontSize: 9, fontWeight: "700" },
 
-    /* Atalho de busca global (pílula macia, abre a tela Busca) */
-    searchFake: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: theme.spacing.sm,
-      height: 44,
-      paddingHorizontal: theme.spacing.md,
-      marginBottom: theme.spacing.md,
-      backgroundColor: theme.colors.surfaceAlt,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      borderRadius: theme.radius.full,
-    },
-    searchFakeText: { flex: 1, color: theme.colors.textFaint, fontSize: 14.5 },
-
-    /* Stats compactas (sem borda — mais leve, estilo Duolingo) */
-    statsRow: {
-      flexDirection: "row",
-      gap: theme.spacing.sm,
-      marginBottom: theme.spacing.lg,
-    },
-    statCard: {
-      flex: 1,
-      backgroundColor: theme.colors.surfaceAlt,
-      borderRadius: theme.radius.lg,
-      paddingVertical: theme.spacing.md,
-      paddingHorizontal: theme.spacing.md,
-      gap: 3,
-      alignItems: "flex-start",
-    },
-    statValue: { color: theme.colors.text, fontSize: 14, fontWeight: "800" },
-    statLabel: { color: theme.colors.textFaint, fontSize: 10.5, fontWeight: "600" },
-
-    /* Carrosséis horizontais (novidades e recomendados) */
+    /* Carrosséis horizontais */
     carousel: {
       paddingHorizontal: theme.spacing.lg,
       gap: theme.spacing.md,
@@ -516,7 +489,13 @@ const makeStyles = () =>
       borderRadius: theme.radius.md,
       backgroundColor: "rgba(255, 255, 255, 0.18)",
     },
-    continueInfo: { flex: 1, gap: 6 },
+    continueInfo: { flex: 1, gap: 5 },
+    continueKicker: {
+      color: "rgba(255, 255, 255, 0.75)",
+      fontSize: 9.5,
+      fontWeight: "800",
+      letterSpacing: 1.2,
+    },
     continueTitle: { color: theme.colors.white, fontSize: 15, fontWeight: "700", lineHeight: 20 },
     continueMeta: { color: "rgba(255, 255, 255, 0.85)", fontSize: 12, fontWeight: "600" },
     continueCta: {
@@ -526,6 +505,58 @@ const makeStyles = () =>
       marginTop: 2,
     },
     continueCtaText: { color: theme.colors.white, fontSize: 12, fontWeight: "700" },
+
+    /* Meus cursos (carrossel compacto) */
+    myCourseCard: {
+      width: 148,
+      gap: 6,
+      padding: theme.spacing.sm,
+      backgroundColor: theme.colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.lg,
+    },
+    myCourseCover: {
+      width: "100%",
+      height: 62,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.surfaceAlt,
+    },
+    myCourseTitle: { color: theme.colors.text, fontSize: 12.5, fontWeight: "700", lineHeight: 16 },
+    myCourseProgress: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    myCoursePct: { color: theme.colors.textFaint, fontSize: 10.5, fontWeight: "700" },
+
+    /* Explorar — 3 atalhos grandes */
+    explorarRow: {
+      flexDirection: "row",
+      gap: theme.spacing.sm,
+    },
+    explorarTile: {
+      flex: 1,
+      gap: 4,
+      padding: theme.spacing.md,
+      backgroundColor: theme.colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.lg,
+    },
+    explorarIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.accentSoft,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.accentBorder,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 4,
+    },
+    explorarTitle: { color: theme.colors.text, fontSize: 13.5, fontWeight: "800" },
+    explorarSub: { color: theme.colors.textFaint, fontSize: 10.5, fontWeight: "600" },
 
     /* Próximas mentorias */
     bookingCard: {
