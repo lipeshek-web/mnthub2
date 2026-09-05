@@ -27,6 +27,7 @@ import {
 } from "../lib/api";
 import { formatNaiveLong, formatPrice, parseNaive } from "../lib/format";
 import { usePagedList } from "../lib/usePagedList";
+import { DOCK_CLEARANCE } from "../lib/tabs";
 import { consumeSessionsSegmentHint } from "../lib/uiHints";
 import { theme } from "../theme";
 import { Avatar } from "../components/Avatar";
@@ -490,7 +491,8 @@ const makeStyles = () =>
   segmentCountTextActive: { color: theme.colors.onAccent },
   listContent: {
     paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxl,
+    /* folga para o conteúdo nunca nascer sob o dock flutuante */
+    paddingBottom: DOCK_CLEARANCE,
   },
   header: { gap: theme.spacing.md, marginBottom: theme.spacing.md },
   banner: { marginTop: -2 },

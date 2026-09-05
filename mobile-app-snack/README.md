@@ -2,11 +2,11 @@
 
 App do aluno do MentorHub, publicado e testado de ponta a ponta. Dois jeitos de abrir:
 
-1. **Expo Snack (link direto):** **https://snack.expo.dev/fN2ZJ1P270o1c0WkrN8o-**
+1. **Expo Snack (link direto):** **https://snack.expo.dev/O8xAobeAWBQAstwwkUo5c**
    - No preview **Web** (painel direito) ou no celular com o app **Expo Go** escaneando o QR Code ("My Device").
    - Publicado via API oficial (`exp.host/--/api/v2/snack/save`) com código (56 arquivos) + 12 dependências — abrindo o link, já está tudo lá (nada de copiar/colar). SEM expo-clipboard (não resolve no Snack web): copiar PIX usa o clipboard do navegador + código selecionável.
    - ⚠️ **NÃO republique pelo painel de dependências do editor**: uma republicação por cima já salvou o snack SEM o `react-native-webview` e o app inteiro morria com "Unable to resolve module 'module://react-native-webview.js'". A `SalaScreen` agora é resiliente (require tardio + fallback "Abrir sala no navegador"), mas o correto é publicar pelo script (`bun mobile-app-snack/scripts/publish-snack.js`) com as 12 dependências.
-   - **Novidades desta versão (M — reunião nativa):** a SESSÃO 1:1 AO VIVO agora acontece DENTRO do app — botão "Entrar na sala de reunião" em todas as sessões (PENDING/CONFIRMED), badge "AO VIVO AGORA" quando é a hora, tela de sala com resumo/dicas/papel (anfitrião ou convidado decidido no servidor) e a reunião por vídeo/áudio rodando num WebView na página `/live.html` do servidor (WebRTC + sinalização socket.io — a MESMA sala do site, sem login externo). Sair pelo botão nativo, pelo botão vermelho da sala ou pelo voltar do Android (com confirmação). No navegador (web preview), a sala abre numa aba nova. Também: card vertical dedicado em "Recomendados para você" (não fica mais "quebrado").
+   - **Novidades desta versão (UI minimalista — Duolingo/Apple):** DOCK FLUTUANTE no rodapé (pill destacada com sombra, não colada na borda) com 5 abas — **Mensagens agora é aba dedicada** (lista com título grande + badge global de não lidas; a conversa 1:1 abre na stack com header contextual "nome + Mentor"). Cabeçalhos contextuais padrão Apple em todas as telas de detalhe: voltar à esquerda e o título no centro dizendo ONDE você está (nome do mentor, do livro, do curso, "Ana Souza · Meu perfil") com subtítulo qualificando. Home minimalista: saudação grande ("Olá, Ana"), busca em pílula, stats sem borda. Arquitetura de scroll: cabeçalho e dock FIXOS — só o corpo rola, com folga para não nascer sob o dock.
 2. **Web app no site:** **https://mentorhub.space-z.ai/app-mobile/** — o mesmo código exportado (`expo export --platform web`) e servido junto do site (atualizado a cada publish).
 
 Mesma API (`/api/v1`, JWT Bearer 30 dias), mesmo visual, mesmos dados do Turso em produção.
@@ -73,7 +73,7 @@ bunx expo export --platform web   # gera dist/ (vai para public/app-mobile no pu
 
 ## 📦 ZIP (backup)
 
-`https://mentorhub.space-z.ai/mentorhub-mobile-snack-v11.zip` — código com páginas embutidas como data URI (as versões antigas v10/v9/v8 estão obsoletas).
+`https://mentorhub.space-z.ai/mentorhub-mobile-snack-v12.zip` — código com páginas embutidas como data URI (as versões antigas v11/v10/v9 estão obsoletas).
 
 > 🎥 **Sala de reunião (infra do lado do servidor):** a página `public/live.html` (estática, servida pelo site) + `public/vendor/socket.io.min.js` + rotas `GET /api/bookings/[id]/meeting-token` (web) e `GET /api/v1/bookings/[id]/meeting-token` (app) + mini-serviço `mini-services/meeting-service` (:3004, sinalização). **Publique o site na plataforma** para a sala no app funcionar contra a produção.
 

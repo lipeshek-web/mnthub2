@@ -282,7 +282,7 @@ export default function CourseDetailScreen() {
         <ErrorBox message={error} onRetry={() => void load("initial")} />
       ) : detail && course ? (
         <View style={styles.flex}>
-          <ScreenHeader title="Curso" onBack={goBack} />
+          <ScreenHeader title={course.title} subtitle="Curso" onBack={goBack} />
 
           {enrolled ? (
             <>
@@ -974,8 +974,8 @@ const makeStyles = () =>
     modalBackdropTouch: { flex: 1 },
     modalSheet: {
       backgroundColor: theme.colors.bg,
-      borderTopLeftRadius: theme.radius.xl,
-      borderTopRightRadius: theme.radius.xl,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
       maxHeight: "85%",
       minHeight: "55%",
       paddingBottom: theme.spacing.xl,

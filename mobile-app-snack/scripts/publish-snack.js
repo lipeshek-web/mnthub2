@@ -63,7 +63,7 @@ console.log("raízes:", [...new Set(files.map(f => f.split("/")[0]))].join(", ")
 
 // hash oficial anterior (log/uuid) — após o publish, o link oficial é o
 // hashId devolvido pela API. Atualizar README + worklog com o hash novo.
-const OFFICIAL_HASH_ID = process.argv[2] || "fN2ZJ1P270o1c0WkrN8o-";
+const OFFICIAL_HASH_ID = process.argv[2] || "O8xAobeAWBQAstwwkUo5c";
 
 async function resolveOfficialId(hashId) {
   // descobre o UUID interno do snack a partir do hashId público

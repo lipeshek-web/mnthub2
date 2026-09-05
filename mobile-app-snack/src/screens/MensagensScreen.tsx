@@ -1,16 +1,19 @@
 /**
- * Mensagens — conversas 1:1 do aluno com mentores (API /api/v1/messages).
+ * Mensagens — agora em DUAS partes (estilo Apple/Duolingo):
  *
- * Dois modos na mesma tela do stack:
- *  - LISTA (threads): uma linha por conversa com avatar, última mensagem e
- *    badge de não lidas. SEM conversas → estado vazio AMIGÁVEL (nunca parece
- *    um erro): ilustração de balão, título acolhedor e atalho para achar
- *    mentores. Puxar para atualizar + leve polling enquanto visível.
- *  - CONVERSA: balões (meus à direita em verde), hora, envio no rodapé e
- *    atualização automática a cada 4s. Sem mensagens ainda → dica "Diga oi 👋".
+ *  • MessagesTabPage (aba "Mensagens" do dock): lista de conversas 1:1 com
+ *    mentores — título grande no corpo, linha por conversa com avatar, última
+ *    mensagem e badge de não lidas; badge global no dock (unreadStore).
+ *    Puxar para atualizar + polling leve SÓ quando a aba está visível.
+ *    SEM conversas → estado vazio AMIGÁVEL (nunca parece um erro).
  *
- * Params: { peerId?, peerName? } — abre direto na conversa (ex.: "Falar com
- * o mentor" na tela do mentor).
+ *  • ConversaScreen (tela do stack "Conversa"): balões (meus à direita em
+ *    verde), hora, envio no rodapé e atualização automática a cada 4s.
+ *    Header contextual Apple: nome da pessoa no centro + "Mentor" abaixo.
+ *    Sem mensagens ainda → dica "Diga oi 👋".
+ *
+ * Params (Conversa): { peerId, peerName } — abre direto na conversa
+ * (ex.: "Falar com o mentor" na tela do mentor).
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -26,9 +29,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused, useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { useBackStage, useSafeBack } from "../lib/navigation";
+import { useSafeBack } from "../lib/navigation";
+import { DOCK_CLEARANCE, useTabs } from "../lib/tabs";
+import { unreadStore } from "../lib/unread";
 import {
   errMessage,
   getConversation,
@@ -66,52 +71,14 @@ function timeLabel(raw: string): string {
   return time;
 }
 
-export default function MessagesScreen() {
-  const navigation = useNavigation<any>();
-  const goBack = useSafeBack(navigation);
-  const params = (useRoute<any>().params ?? {}) as { peerId?: string; peerName?: string };
+/* ------------------------- Aba Mensagens (lista) ------------------------- */
 
-  // Conversa aberta via params (deep entry do mentor) ou escolhida na lista.
-  const [peer, setPeer] = useState<MessagePeer | null>(
-    params.peerId
-      ? { id: params.peerId, name: params.peerName ?? "Conversa", avatarUrl: null, isMentor: false }
-      : null
-  );
-
-  /* Botão nativo do Android: com conversa aberta (escolhida na lista), volta
-     para a LISTA de conversas em vez de desempilhar a tela inteira. Na entrada
-     direta pelo mentor (params.peerId), desempilha mesmo — era de lá que veio. */
-  useBackStage(
-    !!peer && !params.peerId,
-    useCallback(() => {
-      setPeer(null);
-      return true;
-    }, [])
-  );
-
-  return (
-    <Screen edges={["top", "left", "right", "bottom"]}>
-      {peer ? (
-        <ConversationView
-          peer={peer}
-          onBackToList={() => {
-            if (params.peerId) goBack();
-            else setPeer(null);
-          }}
-        />
-      ) : (
-        <ThreadsListView onOpenThread={(p) => setPeer(p)} />
-      )}
-    </Screen>
-  );
-}
-
-/* ------------------------------ Lista (threads) ------------------------------ */
-
-function ThreadsListView({ onOpenThread }: { onOpenThread: (peer: MessagePeer) => void }) {
+export function MessagesTabPage() {
   const styles = makeStyles();
   const navigation = useNavigation<any>();
-  const goBack = useSafeBack(navigation);
+  const { setTab } = useTabs();
+  // Polling/pull só quando a aba está de fato visível (Main em foco).
+  const isFocused = useIsFocused();
   const [data, setData] = useState<ThreadsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -123,12 +90,15 @@ function ThreadsListView({ onOpenThread }: { onOpenThread: (peer: MessagePeer) =
     try {
       const res = await listThreads();
       setData(res);
+      // Alimenta o badge do dock (e do Perfil) — o GET marca como lida.
+      unreadStore.set(res.unreadTotal);
       setError(null);
     } catch (err) {
       // Servidor sem as rotas novas (site desatualizado): caixa vazia amigável,
       // NUNCA cara de erro.
       if (isMissingEndpoint(err)) {
         setData({ unreadTotal: 0, threads: [] });
+        unreadStore.set(0);
         setError(null);
       } else {
         setError(errMessage(err));
@@ -139,29 +109,25 @@ function ThreadsListView({ onOpenThread }: { onOpenThread: (peer: MessagePeer) =
     }
   }, []);
 
+  // Recarrega sempre que a aba ganha foco (voltou de uma conversa, por ex.).
+  useFocusEffect(
+    useCallback(() => {
+      void load("silent");
+    }, [load])
+  );
+
   useEffect(() => {
+    if (!isFocused) return;
     void load("initial");
-    // Polling leve enquanto a lista está visível (novas conversas/contadores).
     const timer = setInterval(() => void load("silent"), 8000);
     return () => clearInterval(timer);
-  }, [load]);
+  }, [load, isFocused]);
 
   const threads = data?.threads ?? [];
   const unreadTotal = data?.unreadTotal ?? 0;
 
   return (
     <View style={styles.flex}>
-      <ScreenHeader
-        title="Mensagens"
-        onBack={goBack}
-        right={
-          unreadTotal > 0 ? (
-            <View style={styles.unreadBadge}>
-              <Text style={styles.unreadBadgeText}>{formatNumber(unreadTotal)}</Text>
-            </View>
-          ) : null
-        }
-      />
       {loading ? (
         <LoadingList label="Carregando conversas..." />
       ) : error && !data ? (
@@ -190,7 +156,7 @@ function ThreadsListView({ onOpenThread }: { onOpenThread: (peer: MessagePeer) =
           </Text>
           <TouchableOpacity
             style={styles.emptyAction}
-            onPress={() => navigation.navigate("Main", { screen: "Mentorias" })}
+            onPress={() => setTab("Mentorias")}
             activeOpacity={0.85}
             accessibilityRole="button"
             accessibilityLabel="Explorar mentores para começar uma conversa"
@@ -217,11 +183,28 @@ function ThreadsListView({ onOpenThread }: { onOpenThread: (peer: MessagePeer) =
             />
           }
         >
+          {/* Cabeçalho da aba — título grande + contador de não lidas */}
+          <View style={styles.pageHeader}>
+            <View style={styles.pageHeaderRow}>
+              <Text style={styles.pageTitle}>Mensagens</Text>
+              {unreadTotal > 0 ? (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadBadgeText}>
+                    {unreadTotal > 99 ? "99+" : formatNumber(unreadTotal)}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+            <Text style={styles.pageSubtitle}>Suas conversas com mentores</Text>
+          </View>
+
           {threads.map((t) => (
             <TouchableOpacity
               key={t.peer.id}
               style={styles.threadRow}
-              onPress={() => onOpenThread(t.peer)}
+              onPress={() =>
+                navigation.navigate("Conversa", { peerId: t.peer.id, peerName: t.peer.name })
+              }
               activeOpacity={0.75}
               accessibilityRole="button"
               accessibilityLabel={`Conversa com ${t.peer.name}`}
@@ -257,13 +240,33 @@ function ThreadsListView({ onOpenThread }: { onOpenThread: (peer: MessagePeer) =
               </View>
             </TouchableOpacity>
           ))}
+          <View style={styles.dockSpacer} />
         </ScrollView>
       )}
     </View>
   );
 }
 
-/* ------------------------------ Conversa ------------------------------ */
+/* --------------------------- Conversa (stack) --------------------------- */
+
+export default function ConversaScreen() {
+  const navigation = useNavigation<any>();
+  const goBack = useSafeBack(navigation);
+  const params = (useRoute<any>().params ?? {}) as { peerId?: string; peerName?: string };
+
+  const peer: MessagePeer = {
+    id: params.peerId ?? "",
+    name: params.peerName ?? "Conversa",
+    avatarUrl: null,
+    isMentor: false,
+  };
+
+  return (
+    <Screen edges={["top", "left", "right", "bottom"]}>
+      <ConversationView peer={peer} onBackToList={goBack} />
+    </Screen>
+  );
+}
 
 function ConversationView({ peer, onBackToList }: { peer: MessagePeer; onBackToList: () => void }) {
   const styles = makeStyles();
@@ -273,7 +276,8 @@ function ConversationView({ peer, onBackToList }: { peer: MessagePeer; onBackToL
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<ScrollView | null>(null);
-  // Peer completo (avatar/headline) chega na 1ª resposta da API.
+  const isFocused = useIsFocused();
+  // Peer completo (avatar/isMentor) chega na 1ª resposta da API.
   const [peerCache, setPeerCache] = useState<MessagePeer>(peer);
 
   const load = useCallback(async (mode: "initial" | "silent") => {
@@ -298,10 +302,11 @@ function ConversationView({ peer, onBackToList }: { peer: MessagePeer; onBackToL
   }, [peer.id]);
 
   useEffect(() => {
+    if (!isFocused) return;
     void load("initial");
     const timer = setInterval(() => void load("silent"), 4000);
     return () => clearInterval(timer);
-  }, [load]);
+  }, [load, isFocused]);
 
   // Rolagem para a última mensagem quando chega conversa nova.
   useEffect(() => {
@@ -345,21 +350,13 @@ function ConversationView({ peer, onBackToList }: { peer: MessagePeer; onBackToL
 
   return (
     <View style={styles.flex}>
+      {/* Header contextual Apple: voltar + a pessoa no centro */}
       <ScreenHeader
-        title=""
+        title={headerPeer.name}
+        subtitle={headerPeer.isMentor ? "Mentor" : "Conversa"}
         onBack={onBackToList}
         right={<View style={styles.headerPlaceholder} />}
       />
-      {/* Cabeçalho do par sobreposto ao header */}
-      <View style={styles.peerBar} pointerEvents="none">
-        <Avatar uri={headerPeer.avatarUrl} name={headerPeer.name} size={30} />
-        <View style={styles.peerBarInfo}>
-          <Text style={styles.peerBarName} numberOfLines={1}>
-            {headerPeer.name}
-          </Text>
-          {headerPeer.isMentor ? <Text style={styles.peerBarMentor}>mentor</Text> : null}
-        </View>
-      </View>
 
       {loading ? (
         <LoadingList label="Abrindo conversa..." />
@@ -444,8 +441,28 @@ const makeStyles = () =>
   StyleSheet.create({
     flex: { flex: 1 },
 
+    /* Cabeçalho da aba (título grande no corpo, estilo das outras abas) */
+    pageHeader: {
+      paddingHorizontal: theme.spacing.lg,
+      paddingTop: theme.spacing.sm,
+      paddingBottom: theme.spacing.md,
+      gap: 2,
+    },
+    pageHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.sm,
+    },
+    pageTitle: {
+      color: theme.colors.text,
+      fontSize: 26,
+      fontWeight: "800",
+      letterSpacing: -0.6,
+    },
+    pageSubtitle: { color: theme.colors.textMuted, fontSize: 13, fontWeight: "500" },
+
     /* Lista */
-    listContent: { paddingBottom: theme.spacing.xl },
+    listContent: { paddingBottom: DOCK_CLEARANCE },
     threadRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -484,6 +501,7 @@ const makeStyles = () =>
       paddingHorizontal: 6,
     },
     unreadBadgeText: { color: theme.colors.onAccent, fontSize: 11, fontWeight: "800" },
+    dockSpacer: { height: theme.spacing.md },
 
     /* Empty state (amigável) */
     emptyScroll: { flexGrow: 1, justifyContent: "center", alignItems: "center", padding: theme.spacing.xl },
@@ -527,23 +545,8 @@ const makeStyles = () =>
       lineHeight: 16,
     },
 
-    /* Cabeçalho do par */
-    headerPlaceholder: { width: 44 },
-    peerBar: {
-      position: "absolute",
-      top: 6,
-      left: 64,
-      right: theme.spacing.lg,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-      zIndex: 10,
-    },
-    peerBarInfo: { flex: 1 },
-    peerBarName: { color: theme.colors.text, fontSize: 14, fontWeight: "700" },
-    peerBarMentor: { color: theme.colors.textFaint, fontSize: 10, fontWeight: "600" },
-
     /* Conversa */
+    headerPlaceholder: { width: 40 },
     chatContent: { padding: theme.spacing.lg, paddingTop: theme.spacing.md },
     chatEmpty: {
       alignItems: "center",

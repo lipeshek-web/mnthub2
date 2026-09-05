@@ -269,7 +269,11 @@ export default function CheckoutScreen() {
   if (loading) {
     return (
       <Screen edges={["top", "left", "right", "bottom"]}>
-        <ScreenHeader title="Checkout" onBack={goBack} />
+        <ScreenHeader
+            title="Checkout"
+            subtitle={itemTitle || undefined}
+            onBack={goBack}
+          />
         <LoadingList label="Preparando o pagamento..." />
       </Screen>
     );
@@ -277,7 +281,11 @@ export default function CheckoutScreen() {
   if (error || (!isBooking && !course)) {
     return (
       <Screen edges={["top", "left", "right", "bottom"]}>
-        <ScreenHeader title="Checkout" onBack={goBack} />
+        <ScreenHeader
+            title="Checkout"
+            subtitle={itemTitle || undefined}
+            onBack={goBack}
+          />
         <ErrorBox
           message={error ?? "Curso não encontrado."}
           onRetry={() => void load()}
@@ -347,6 +355,7 @@ export default function CheckoutScreen() {
       <Screen edges={["top", "left", "right", "bottom"]}>
         <ScreenHeader
           title={payment.billingType === "PIX" ? "Pagar com PIX" : "Fatura"}
+          subtitle={itemTitle || undefined}
           onBack={() => {
             setPayment(null);
           }}
@@ -458,7 +467,11 @@ export default function CheckoutScreen() {
   /* ------------------------------ Formulário ------------------------------ */
   return (
     <Screen edges={["top", "left", "right", "bottom"]}>
-      <ScreenHeader title="Checkout" onBack={goBack} />
+      <ScreenHeader
+            title="Checkout"
+            subtitle={itemTitle || undefined}
+            onBack={goBack}
+          />
       <ScrollView style={styles.flex} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Resumo do item (curso ou sessão 1:1) */}
         <View style={styles.summaryCard}>

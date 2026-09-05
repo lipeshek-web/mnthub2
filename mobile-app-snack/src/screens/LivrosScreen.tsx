@@ -11,6 +11,7 @@ import {
   type LibraryKind,
 } from "../lib/api";
 import { usePagedList } from "../lib/usePagedList";
+import { DOCK_CLEARANCE } from "../lib/tabs";
 import { theme } from "../theme";
 import { BookCard } from "../components/BookCard";
 import { EmptyState } from "../components/EmptyState";
@@ -143,7 +144,8 @@ const makeStyles = () =>
     flex: { flex: 1 },
     content: {
       paddingHorizontal: theme.spacing.lg,
-      paddingBottom: theme.spacing.xxl,
+      /* folga para o conteúdo nunca nascer sob o dock flutuante */
+      paddingBottom: DOCK_CLEARANCE,
     },
     header: { gap: theme.spacing.md, marginBottom: theme.spacing.md },
     title: { color: theme.colors.text, fontSize: 24, fontWeight: "700", letterSpacing: -0.4 },

@@ -152,7 +152,7 @@ export default function MentorDetailScreen() {
             onSchedule={() => setStage("booking")}
             onMessage={() =>
               mentor.userId &&
-              navigation.navigate("Mensagens", { peerId: mentor.userId, peerName: mentor.name })
+              navigation.navigate("Conversa", { peerId: mentor.userId, peerName: mentor.name })
             }
           />
         )
@@ -217,7 +217,7 @@ function MentorProfile({
 
   return (
     <View style={styles.flex}>
-      <ScreenHeader title="Mentor" onBack={goBack} />
+      <ScreenHeader title={mentor.name} subtitle="Mentor" onBack={goBack} />
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}

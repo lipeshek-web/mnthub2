@@ -5,10 +5,11 @@
  * (@react-navigation/stack) — a navegação nativa de stack não resolve no
  * runtime do Snack; mesma identidade visual e mesmas telas da versão local.
  *
- * As 5 abas principais (Início · Livros · Cursos · Mentorias · Perfil) NÃO usam
+ * As 5 abas principais (Início · Livros · Cursos · Mentorias · Mensagens) NÃO usam
  * mais bottom-tabs: são páginas de um pager horizontal (ScrollView pagingEnabled)
- * com tab bar custom, sincronizadas pelo TabsContext (src/lib/tabs.tsx) — dá para
- * deslizar entre as abas com o dedo ou tocar na tab bar. O estado da aba ativa
+ * com DOCK flutuante custom (pill destacada, solta acima do rodapé — estilo
+ * Duolingo/Apple), sincronizadas pelo TabsContext (src/lib/tabs.tsx) — dá para
+ * deslizar entre as abas com o dedo ou tocar no dock. O estado da aba ativa
  * vive no Root, ACIMA do NavigationContainer, para que telas do stack também
  * consigam trocar de aba (useTabs().setTab) antes de desempilhar.
  *
@@ -21,13 +22,13 @@
  *             - authenticated → TabsContext.Provider
  *                 └─ NavigationContainer
  *                     RootStack (headerShown: false)
- *                       ├─ Main (pager horizontal + tab bar custom): Início ·
- *                       │   Livros · Cursos · Mentorias
+ *                       ├─ Main (pager horizontal + dock flutuante): Início ·
+ *                       │   Livros · Cursos · Mentorias · Mensagens
  *                       ├─ Livro  (params: { id })
  *                       ├─ Curso  (params: { id }) — conteúdo em foco
  *                       ├─ Checkout (params: { id }) — compra PIX/cartão no app
  *                       ├─ Mentor (params: { id })
- *                       ├─ Mensagens (conversas com mentores)
+ *                       ├─ Conversa (params: { peerId, peerName }) — chat 1:1
  *                       ├─ Sala   (params: { bookingId, ... }) — reunião ao
  *                       │   vivo DENTRO do app (WebView → /live.html)
  *                       ├─ Perfil (aberto pelo ícone da conta na Home)
@@ -39,7 +40,14 @@
  * a interface recalcula as cores da paleta nova.
  */
 import "react-native-gesture-handler";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -95,8 +103,9 @@ import MentorScreen from "./src/screens/MentorScreen";
 import BuscaScreen from "./src/screens/BuscaScreen";
 import SalvosScreen from "./src/screens/SalvosScreen";
 import CheckoutScreen from "./src/screens/CheckoutScreen";
-import MensagensScreen from "./src/screens/MensagensScreen";
+import MensagensScreen, { MessagesTabPage } from "./src/screens/MensagensScreen";
 import SalaScreen from "./src/screens/SalaScreen";
+import { unreadStore } from "./src/lib/unread";
 
 /* ----------------------------- Tema de navegação ---------------------------- */
 
@@ -133,12 +142,13 @@ function Splash() {
 
 /* ------------------------------ Abas (pager) -------------------------------- */
 
-/** Itens da tab bar — 4 abas; o Perfil fica no stack (ícone da conta na Home). */
+/** Itens do dock flutuante — 5 abas; o Perfil fica no stack (ícone da conta na Home). */
 const TABS = [
   { name: "Início", icon: "home-outline", Component: HomeScreen },
   { name: "Livros", icon: "book-outline", Component: LivrosScreen },
   { name: "Cursos", icon: "play-circle-outline", Component: CursosScreen },
   { name: "Mentorias", icon: "videocam-outline", Component: MentoriasScreen },
+  { name: "Mensagens", icon: "chatbubble-ellipses-outline", Component: MessagesTabPage },
 ];
 
 function MainTabs() {
@@ -147,6 +157,12 @@ function MainTabs() {
   const { width, height: windowHeight } = useWindowDimensions();
   const route = useRoute();
   const { tab, setTab } = useTabs();
+  // Badge global de mensagens não lidas (o store é atualizado pela aba Mensagens).
+  const unreadMessages = useSyncExternalStore(
+    unreadStore.subscribe,
+    unreadStore.get,
+    unreadStore.get
+  );
   // Foco do "Main" no stack: ao abrir uma tela por cima (Perfil, Curso,
   // Mentor...), o pager PERDE foco — travamos a rolagem para que gestos de
   // transição nunca deixem o pager meio deslizado ao voltar (bug do voltar).
@@ -231,30 +247,46 @@ function MainTabs() {
         ))}
       </ScrollView>
 
-      {/* Tab bar custom — mesmo visual do bottom-tabs anterior */}
-      <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+      {/* Dock flutuante — pill solta acima do rodapé (não colada), estilo
+          Duolingo/Apple: sombra suave, cantos redondos e destaque na aba ativa. */}
+      <View
+        style={[
+          styles.dock,
+          { bottom: Math.max(insets.bottom, 10) + 8 },
+        ]}
+      >
         {TABS.map(({ name, icon }) => {
           const active = tab === name;
           return (
             <TouchableOpacity
               key={name}
-              style={styles.tabItem}
+              style={[styles.dockItem, active ? styles.dockItemActive : null]}
               onPress={() => setTab(name)}
               activeOpacity={0.7}
               accessibilityRole="tab"
               accessibilityState={{ selected: active }}
               accessibilityLabel={name}
             >
-              <Ionicons
-                name={icon}
-                size={24}
-                color={active ? theme.colors.accent : theme.colors.textFaint}
-              />
+              <View style={styles.dockIconWrap}>
+                <Ionicons
+                  name={icon}
+                  size={22}
+                  color={active ? theme.colors.accent : theme.colors.textFaint}
+                />
+                {name === "Mensagens" && unreadMessages > 0 ? (
+                  <View style={styles.dockBadge}>
+                    <Text style={styles.dockBadgeText}>
+                      {unreadMessages > 9 ? "9+" : String(unreadMessages)}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
               <Text
                 style={[
-                  styles.tabLabel,
+                  styles.dockLabel,
                   { color: active ? theme.colors.accent : theme.colors.textFaint },
                 ]}
+                numberOfLines={1}
               >
                 {name}
               </Text>
@@ -284,7 +316,7 @@ function RootNavigator() {
       <Stack.Screen name="Curso" component={CursoScreen} />
       <Stack.Screen name="Checkout" component={CheckoutScreen} />
       <Stack.Screen name="Mentor" component={MentorScreen} />
-      <Stack.Screen name="Mensagens" component={MensagensScreen} />
+      <Stack.Screen name="Conversa" component={MensagensScreen} />
       <Stack.Screen name="Sala" component={SalaScreen} />
       <Stack.Screen name="Perfil" component={PerfilScreen} />
       <Stack.Screen name="Busca" component={BuscaScreen} />
@@ -370,20 +402,49 @@ const makeStyles = () =>
     flex: { flex: 1 },
     page: { backgroundColor: theme.colors.bg },
 
-    /* Tab bar custom */
-    tabBar: {
+    /* Dock flutuante — pill solta, sombra suave, não colada no rodapé */
+    dock: {
+      position: "absolute",
+      left: 18,
+      right: 18,
+      height: 62,
       flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 6,
       backgroundColor: theme.colors.surface,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.colors.border,
+      borderRadius: 22,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      shadowColor: "#000000",
+      shadowOpacity: 0.16,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 14,
     },
-    tabItem: {
+    dockItem: {
       flex: 1,
+      height: "100%",
       alignItems: "center",
       justifyContent: "center",
       gap: 2,
-      paddingTop: 7,
-      minHeight: 50,
+      borderRadius: 18,
     },
-    tabLabel: { fontSize: 11, fontWeight: "600" },
+    dockItemActive: { backgroundColor: theme.colors.accentSoft },
+    dockIconWrap: { alignItems: "center", justifyContent: "center" },
+    dockBadge: {
+      position: "absolute",
+      top: -4,
+      right: -9,
+      minWidth: 16,
+      height: 16,
+      paddingHorizontal: 4,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.danger,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 2,
+      borderColor: theme.colors.surface,
+    },
+    dockBadgeText: { color: theme.colors.white, fontSize: 8.5, fontWeight: "800" },
+    dockLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 0.1 },
   });

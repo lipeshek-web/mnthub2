@@ -75,7 +75,11 @@ export default function BookDetailScreen() {
         <ErrorBox message={error} onRetry={() => void load()} />
       ) : item ? (
         <>
-          <ScreenHeader title={isBook ? "Livro" : "Artigo"} onBack={goBack} />
+          <ScreenHeader
+            title={item.title}
+            subtitle={isBook ? "Livro" : "Artigo"}
+            onBack={goBack}
+          />
           <ScrollView
             style={styles.flex}
             contentContainerStyle={styles.content}

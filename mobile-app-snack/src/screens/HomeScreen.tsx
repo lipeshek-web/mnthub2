@@ -1,11 +1,13 @@
 /**
- * Aba Início — painel do aluno:
- * - Header fixo: logo "MentorHub" + saudação à esquerda; à direita, ícone de
- *   notificações (com badge de não-lidas), botão de tema e avatar da conta
- *   (único acesso ao Perfil — não existe aba de perfil).
- * - Atalho de busca global + linha de stats compacta (XP, ofensiva, meta).
+ * Aba Início — painel do aluno (minimalista, estilo Duolingo/Apple):
+ * - Header fixo: saudação GRANDE à esquerda ("Olá, Ana" + "Bem-vinda de volta");
+ *   à direita, ícone de notificações (com badge de não-lidas), botão de tema e
+ *   avatar da conta (único acesso ao Perfil — não existe aba de perfil).
+ * - Atalho de busca global em pílula + linha de stats compacta SEM borda
+ *   (XP, ofensiva, meta).
  * - Card destaque "Continuar estudando" (gradiente), carrossel "Novos na
  *   biblioteca", "Recomendados para você" e as próximas mentorias (máx. 3).
+ * - Header e rodapé fixos: só o corpo rola (com folga para o dock flutuante).
  */
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -33,7 +35,7 @@ import {
 } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useThemeMode } from "../lib/theme";
-import { useTabs } from "../lib/tabs";
+import { DOCK_CLEARANCE, useTabs } from "../lib/tabs";
 import { formatNaiveDateTime, formatXp } from "../lib/format";
 import { theme } from "../theme";
 import { Avatar } from "../components/Avatar";
@@ -132,15 +134,13 @@ export default function HomeScreen() {
 
   return (
     <Screen>
-      {/* Header fixo: logo + saudação | notificações, tema e conta */}
+      {/* Header fixo: saudação grande | notificações, tema e conta */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.logo}>
-            Mentor<Text style={styles.logoAccent}>Hub</Text>
-          </Text>
-          <Text style={styles.greeting} numberOfLines={1}>
+          <Text style={styles.greetingBig} numberOfLines={1}>
             Olá{firstName ? `, ${firstName}` : ""}
           </Text>
+          <Text style={styles.greetingSub}>Bem-vinda de volta 👋</Text>
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity
@@ -409,7 +409,7 @@ const makeStyles = () =>
     flex: { flex: 1 },
     content: {
       paddingHorizontal: theme.spacing.lg,
-      paddingBottom: theme.spacing.xxl,
+      paddingBottom: theme.spacing.sm,
     },
 
     /* Header */
@@ -423,9 +423,13 @@ const makeStyles = () =>
       paddingBottom: theme.spacing.md,
     },
     headerLeft: { flexShrink: 1, gap: 2 },
-    logo: { color: theme.colors.text, fontSize: 22, fontWeight: "700", letterSpacing: -0.5 },
-    logoAccent: { color: theme.colors.accent },
-    greeting: { color: theme.colors.textMuted, fontSize: 13, fontWeight: "600" },
+    greetingBig: {
+      color: theme.colors.text,
+      fontSize: 26,
+      fontWeight: "800",
+      letterSpacing: -0.6,
+    },
+    greetingSub: { color: theme.colors.textMuted, fontSize: 12.5, fontWeight: "500" },
     headerActions: {
       flexDirection: "row",
       alignItems: "center",
@@ -457,38 +461,38 @@ const makeStyles = () =>
     },
     badgeText: { color: theme.colors.white, fontSize: 9, fontWeight: "700" },
 
-    /* Atalho de busca global (aparência do SearchField, abre a tela Busca) */
+    /* Atalho de busca global (pílula macia, abre a tela Busca) */
     searchFake: {
       flexDirection: "row",
       alignItems: "center",
       gap: theme.spacing.sm,
-      height: 46,
+      height: 44,
       paddingHorizontal: theme.spacing.md,
       marginBottom: theme.spacing.md,
       backgroundColor: theme.colors.surfaceAlt,
       borderWidth: 1,
       borderColor: theme.colors.border,
-      borderRadius: theme.radius.md,
+      borderRadius: theme.radius.full,
     },
-    searchFakeText: { flex: 1, color: theme.colors.textFaint, fontSize: 15 },
+    searchFakeText: { flex: 1, color: theme.colors.textFaint, fontSize: 14.5 },
 
-    /* Stats compactas */
+    /* Stats compactas (sem borda — mais leve, estilo Duolingo) */
     statsRow: {
       flexDirection: "row",
       gap: theme.spacing.sm,
+      marginBottom: theme.spacing.lg,
     },
     statCard: {
       flex: 1,
-      backgroundColor: theme.colors.surface,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.colors.border,
-      borderRadius: theme.radius.md,
-      padding: theme.spacing.md,
+      backgroundColor: theme.colors.surfaceAlt,
+      borderRadius: theme.radius.lg,
+      paddingVertical: theme.spacing.md,
+      paddingHorizontal: theme.spacing.md,
       gap: 3,
       alignItems: "flex-start",
     },
-    statValue: { color: theme.colors.text, fontSize: 13, fontWeight: "700" },
-    statLabel: { color: theme.colors.textFaint, fontSize: 11 },
+    statValue: { color: theme.colors.text, fontSize: 14, fontWeight: "800" },
+    statLabel: { color: theme.colors.textFaint, fontSize: 10.5, fontWeight: "600" },
 
     /* Carrosséis horizontais (novidades e recomendados) */
     carousel: {
@@ -539,5 +543,6 @@ const makeStyles = () =>
     bookingName: { color: theme.colors.text, fontSize: 14, fontWeight: "600" },
     bookingTopic: { color: theme.colors.textMuted, fontSize: 12 },
     bookingWhen: { color: theme.colors.textFaint, fontSize: 11, fontWeight: "600" },
-    bottomSpacer: { height: theme.spacing.lg },
+    /* folga para o conteúdo nunca nascer sob o dock flutuante */
+    bottomSpacer: { height: DOCK_CLEARANCE },
   });

@@ -24,6 +24,7 @@ import { errMessage, getMe, type MeUser } from "../lib/api";
 import { listFavorites } from "../lib/favorites";
 import { useAuth } from "../lib/auth";
 import { useThemeMode } from "../lib/theme";
+import { useTabs } from "../lib/tabs";
 import { formatCents, formatXp } from "../lib/format";
 import { theme } from "../theme";
 import { Avatar } from "../components/Avatar";
@@ -39,6 +40,7 @@ export default function ProfileScreen() {
   const auth = useAuth();
   const navigation = useNavigation<any>();
   const goBack = useSafeBack(navigation);
+  const { setTab } = useTabs();
   const { mode, setMode } = useThemeMode();
   const [me, setMe] = useState<MeUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,7 +99,7 @@ export default function ProfileScreen() {
 
   return (
     <Screen>
-      <ScreenHeader title="Perfil" onBack={goBack} />
+      <ScreenHeader title={me?.name ?? "Meu perfil"} subtitle="Meu perfil" onBack={goBack} />
       {loading ? (
         <LoadingList label="Carregando seu perfil..." />
       ) : error && !me ? (
@@ -210,10 +212,13 @@ export default function ProfileScreen() {
               </View>
             </View>
 
-            {/* Mensagens (conversas com mentores) */}
+            {/* Mensagens — agora é ABA do dock: troca a aba e revela o pager */}
             <TouchableOpacity
               style={styles.settingRow}
-              onPress={() => navigation.navigate("Mensagens")}
+              onPress={() => {
+                setTab("Mensagens");
+                goBack();
+              }}
               activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityLabel="Abrir mensagens"
