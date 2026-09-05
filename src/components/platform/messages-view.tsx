@@ -199,29 +199,29 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
     <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-5 sm:px-6">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50 sm:text-2xl">
+          <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 sm:text-2xl">
             Mensagens
           </h1>
-          <p className="text-sm text-stone-500 dark:text-stone-400">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             Converse com mentores antes de agendar sua sessão.
           </p>
         </div>
       </div>
 
-      <div className="grid h-[calc(100dvh-13.5rem)] min-h-80 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900 md:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]">
+      <div className="grid h-[calc(100dvh-13.5rem)] min-h-80 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 md:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]">
         {/* ---------- Lista de conversas ---------- */}
         <aside
           className={cn(
-            'flex min-h-0 flex-col border-stone-200 dark:border-stone-800',
+            'flex min-h-0 flex-col border-slate-200 dark:border-slate-800',
             mobileChatOpen ? 'hidden md:flex' : 'flex',
             'md:border-r'
           )}
         >
-          <div className="border-b border-stone-100 p-3 dark:border-stone-800">
+          <div className="border-b border-slate-100 p-3 dark:border-slate-800">
             <div className="relative">
               <Search
                 aria-hidden
-                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400"
+                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
               />
               <Input
                 value={filter}
@@ -248,15 +248,15 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
               </div>
             ) : filteredThreads.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-10 text-center">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
-                  <MessagesSquare className="h-5 w-5 text-stone-400" aria-hidden />
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                  <MessagesSquare className="h-5 w-5 text-slate-400" aria-hidden />
                 </span>
-                <p className="text-sm font-semibold text-stone-700 dark:text-stone-200">
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                   {filter ? 'Nenhuma conversa encontrada' : 'Nenhuma conversa ainda'}
                 </p>
                 {!filter && (
                   <>
-                    <p className="text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+                    <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                       Abra o perfil de um mentor e toque em <strong>Conversar</strong> para
                       tirar dúvidas antes de agendar.
                     </p>
@@ -284,17 +284,17 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
                         className={cn(
                           'flex w-full items-center gap-3 px-3 py-3 text-left transition-colors',
                           active
-                            ? 'bg-amber-50 dark:bg-amber-900/25'
-                            : 'hover:bg-stone-50 dark:hover:bg-stone-800/60'
+                            ? 'bg-blue-50 dark:bg-blue-900/25'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'
                         )}
                       >
                         <Avatar name={t.peer.name} src={t.peer.avatarUrl} size="md" />
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center justify-between gap-2">
-                            <span className="truncate text-sm font-semibold text-stone-900 dark:text-stone-100">
+                            <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
                               {t.peer.name}
                             </span>
-                            <span className="shrink-0 text-[10px] text-stone-400 dark:text-stone-500">
+                            <span className="shrink-0 text-[10px] text-slate-400 dark:text-slate-500">
                               {timeLabel(t.lastAt)}
                             </span>
                           </span>
@@ -303,15 +303,15 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
                               className={cn(
                                 'truncate text-xs',
                                 t.unread > 0
-                                  ? 'font-semibold text-stone-800 dark:text-stone-100'
-                                  : 'text-stone-500 dark:text-stone-400'
+                                  ? 'font-semibold text-slate-800 dark:text-slate-100'
+                                  : 'text-slate-500 dark:text-slate-400'
                               )}
                             >
                               {t.lastMine ? 'Você: ' : ''}
                               {t.lastBody}
                             </span>
                             {t.unread > 0 && (
-                              <span className="flex h-4.5 min-w-4.5 shrink-0 items-center justify-center rounded-full bg-amber-600 px-1 text-[10px] font-bold leading-none text-white">
+                              <span className="flex h-4.5 min-w-4.5 shrink-0 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold leading-none text-white">
                                 {t.unread > 99 ? '99+' : t.unread}
                               </span>
                             )}
@@ -336,13 +336,13 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
         >
           {!activePeerId ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-700/10 dark:bg-amber-500/10">
-                <MessageCircle className="h-6 w-6 text-amber-700 dark:text-amber-400" aria-hidden />
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-700/10 dark:bg-blue-500/10">
+                <MessageCircle className="h-6 w-6 text-blue-700 dark:text-blue-400" aria-hidden />
               </span>
-              <p className="text-sm font-semibold text-stone-700 dark:text-stone-200">
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                 Selecione uma conversa
               </p>
-              <p className="max-w-xs text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+              <p className="max-w-xs text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                 Suas mensagens com mentores aparecem aqui. Converse antes de reservar para
                 garantir que a mentoria é ideal para você.
               </p>
@@ -350,12 +350,12 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
           ) : (
             <>
               {/* Cabeçalho do chat */}
-              <div className="flex items-center gap-3 border-b border-stone-100 px-4 py-3 dark:border-stone-800">
+              <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setMobileChatOpen(false)}
                   aria-label="Voltar para a lista de conversas"
-                  className="-ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 md:hidden dark:text-stone-400 dark:hover:bg-stone-800"
+                  className="-ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 md:hidden dark:text-slate-400 dark:hover:bg-slate-800"
                 >
                   <ArrowLeft className="h-4.5 w-4.5" />
                 </button>
@@ -363,7 +363,7 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
                   <>
                     <Avatar name={peerMeta.name} src={peerMeta.avatarUrl} size="sm" />
                     <div className="min-w-0 flex-1">
-                      <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-stone-900 dark:text-stone-100">
+                      <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
                         {peerMeta.name}
                         {peerMeta.isMentor && (
                           <Badge variant="secondary" className="shrink-0 text-[10px]">
@@ -372,7 +372,7 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
                         )}
                       </p>
                       {activeHeadline && (
-                        <p className="truncate text-xs text-stone-500 dark:text-stone-400">
+                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                           {activeHeadline}
                         </p>
                       )}
@@ -389,12 +389,12 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
                     )}
                   </>
                 ) : (
-                  <p className="text-sm font-medium text-stone-400">carregando…</p>
+                  <p className="text-sm font-medium text-slate-400">carregando…</p>
                 )}
               </div>
 
               {/* Mensagens */}
-              <div className="min-h-0 flex-1 overflow-y-auto bg-stone-50/60 px-4 py-4 [scrollbar-width:thin] dark:bg-stone-950/40">
+              <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/60 px-4 py-4 [scrollbar-width:thin] dark:bg-slate-950/40">
                 {messagesLoading && messages.length === 0 ? (
                   <div className="space-y-3" aria-busy="true">
                     <Skeleton className="h-10 w-2/3 rounded-2xl" />
@@ -403,7 +403,7 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
                   </div>
                 ) : messages.length === 0 ? (
                   <div className="flex h-full items-center justify-center">
-                    <p className="max-w-xs text-center text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+                    <p className="max-w-xs text-center text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                       Nenhuma mensagem ainda. Diga oi e tire suas dúvidas sobre a mentoria 👋
                     </p>
                   </div>
@@ -424,15 +424,15 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
                             className={cn(
                               'max-w-[78%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm',
                               m.mine
-                                ? 'rounded-br-md bg-amber-700 text-white'
-                                : 'rounded-bl-md border border-stone-200/70 bg-white text-stone-900 dark:border-stone-700/60 dark:bg-stone-800 dark:text-stone-100'
+                                ? 'rounded-br-md bg-blue-700 text-white'
+                                : 'rounded-bl-md border border-slate-200/70 bg-white text-slate-900 dark:border-slate-700/60 dark:bg-slate-800 dark:text-slate-100'
                             )}
                           >
                             <p className="whitespace-pre-wrap break-words">{m.body}</p>
                             <p
                               className={cn(
                                 'mt-0.5 text-right text-[10px]',
-                                m.mine ? 'text-amber-100/80' : 'text-stone-400 dark:text-stone-500',
+                                m.mine ? 'text-blue-100/80' : 'text-slate-400 dark:text-slate-500',
                                 grouped && 'sr-only'
                               )}
                             >
@@ -453,7 +453,7 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
                   e.preventDefault()
                   send()
                 }}
-                className="flex items-center gap-2 border-t border-stone-100 p-3 dark:border-stone-800"
+                className="flex items-center gap-2 border-t border-slate-100 p-3 dark:border-slate-800"
               >
                 <Input
                   value={draft}

@@ -242,12 +242,12 @@ export function CourseView({ courseId }: { courseId: string }) {
   if (!course) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-6 sm:py-8">
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 dark:border-stone-700 px-6 py-14 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 px-6 py-14 text-center">
           <span className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 dark:bg-rose-950/50">
             <AlertCircle aria-hidden className="h-7 w-7 text-rose-500" />
           </span>
-          <p className="font-bold text-stone-900 dark:text-stone-50">Não foi possível carregar o curso</p>
-          <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+          <p className="font-bold text-slate-900 dark:text-slate-50">Não foi possível carregar o curso</p>
+          <p className="max-w-sm text-sm leading-relaxed text-slate-500 dark:text-slate-400">
             {error ?? 'Curso não encontrado.'}
           </p>
           <Button variant="outline" className="rounded-full" onClick={() => void fetchCourse()}>
@@ -274,7 +274,7 @@ export function CourseView({ courseId }: { courseId: string }) {
         <Button
           variant="ghost"
           onClick={() => navigate({ name: 'marketplace' })}
-          className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-50"
+          className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-50"
         >
           <ArrowLeft aria-hidden className="h-4 w-4" /> Voltar
         </Button>
@@ -282,17 +282,17 @@ export function CourseView({ courseId }: { courseId: string }) {
         {/* Hero do aluno inscrito */}
         <section
           aria-label="Seu curso"
-          className="relative mt-2 overflow-hidden rounded-3xl bg-amber-950 p-6 text-white sm:p-8"
+          className="relative mt-2 overflow-hidden rounded-3xl bg-blue-950 p-6 text-white sm:p-8"
         >
-          <div aria-hidden className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-amber-500/20 blur-3xl" />
+          <div aria-hidden className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-blue-500/20 blur-3xl" />
           <div aria-hidden className="absolute -bottom-24 left-10 h-48 w-48 rounded-full bg-teal-400/10 blur-3xl" />
-          <p className="relative inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">
+          <p className="relative inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-blue-300">
             {isOwner && !isEnrolled ? 'Seu curso' : 'Inscrição ativa'}
           </p>
           <h1 className="relative mt-2 max-w-2xl text-3xl font-extrabold tracking-tight sm:text-4xl">
             {course.title}
           </h1>
-          <p className="relative mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-amber-100/80">
+          <p className="relative mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-blue-100/80">
             <span>por {course.mentor.name}</span>
             <span aria-hidden>·</span>
             <span>{course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'}</span>
@@ -304,13 +304,13 @@ export function CourseView({ courseId }: { courseId: string }) {
               size="lg"
               onClick={() => navigate({ name: 'classroom', courseId: course.id })}
               aria-label="Abrir a sala de aula"
-              className="h-12 rounded-full bg-white px-7 font-bold text-amber-950 hover:bg-amber-100"
+              className="h-12 rounded-full bg-white px-7 font-bold text-blue-950 hover:bg-blue-100"
             >
               <PlayCircle aria-hidden className="h-5 w-5" />
               {done > 0 ? 'Continuar curso' : 'Começar agora'}
             </Button>
             <div className="min-w-40 flex-1 max-w-xs" aria-hidden>
-              <div className="flex items-center justify-between text-xs font-semibold text-amber-100/80">
+              <div className="flex items-center justify-between text-xs font-semibold text-blue-100/80">
                 <span>Seu progresso</span>
                 <span className="tabular-nums">{pct}%</span>
               </div>
@@ -323,11 +323,11 @@ export function CourseView({ courseId }: { courseId: string }) {
                 className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/15"
               >
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-500"
+                  className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-500"
                   style={{ width: `${pct}%` }}
                 />
               </div>
-              <p className="mt-1 text-[11px] text-amber-100/60">
+              <p className="mt-1 text-[11px] text-blue-100/60">
                 {done} de {course.lessonCount} {course.lessonCount === 1 ? 'aula concluída' : 'aulas concluídas'}
               </p>
             </div>
@@ -366,7 +366,7 @@ export function CourseView({ courseId }: { courseId: string }) {
       <Button
         variant="ghost"
         onClick={() => navigate({ name: 'marketplace' })}
-        className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-50"
+        className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-50"
       >
         <ArrowLeft aria-hidden className="h-4 w-4" /> Voltar
       </Button>
@@ -459,7 +459,7 @@ function OverviewContent({
               aria-hidden
               className="absolute inset-0 h-full w-full object-cover"
             />
-            <div aria-hidden className="absolute inset-0 bg-stone-950/55" />
+            <div aria-hidden className="absolute inset-0 bg-slate-950/55" />
           </>
         )}
         {!course.coverUrl && (
@@ -470,7 +470,7 @@ function OverviewContent({
             <Badge className="rounded-full border-white/25 bg-white/15 text-white hover:bg-white/15">
               {course.category}
             </Badge>
-            <Badge className="rounded-full border-white/25 bg-stone-900/30 text-white hover:bg-stone-900/30">
+            <Badge className="rounded-full border-white/25 bg-slate-900/30 text-white hover:bg-slate-900/30">
               {LEVEL_LABELS[course.level] ?? course.level}
             </Badge>
           </div>
@@ -517,22 +517,22 @@ function OverviewContent({
           {/* O que você vai aprender */}
           <section
             aria-labelledby="aprender-title"
-            className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 sm:p-6"
+            className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6"
           >
-            <h2 id="aprender-title" className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+            <h2 id="aprender-title" className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
               O que você vai aprender
             </h2>
             {lessons.length > 0 ? (
               <ul className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
                 {lessons.slice(0, 6).map((lesson) => (
-                  <li key={lesson.id} className="flex items-start gap-2.5 text-sm text-stone-700 dark:text-stone-200">
-                    <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <li key={lesson.id} className="flex items-start gap-2.5 text-sm text-slate-700 dark:text-slate-200">
+                    <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
                     <span className="leading-snug">{lesson.title}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="mt-3 text-sm text-stone-400 dark:text-stone-500">
+              <p className="mt-3 text-sm text-slate-400 dark:text-slate-500">
                 As aulas deste curso estão sendo preparadas.
               </p>
             )}
@@ -541,20 +541,20 @@ function OverviewContent({
           {/* Currículo */}
           <section
             aria-labelledby="curriculo-title"
-            className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 sm:p-6"
+            className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6"
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 id="curriculo-title" className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+              <h2 id="curriculo-title" className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
                 Currículo do curso
               </h2>
               {lessons.length > 0 && (
-                <span className="inline-flex items-center gap-4 text-xs font-medium text-stone-500 dark:text-stone-400">
+                <span className="inline-flex items-center gap-4 text-xs font-medium text-slate-500 dark:text-slate-400">
                   <span className="inline-flex items-center gap-1.5">
-                    <BookOpen aria-hidden className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                    <BookOpen aria-hidden className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                     {lessons.length} {lessons.length === 1 ? 'aula' : 'aulas'}
                   </span>
                   <span className="inline-flex items-center gap-1.5 tabular-nums">
-                    <Clock aria-hidden className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                    <Clock aria-hidden className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                     {formatTotalDuration(course.totalDurationMin)}
                   </span>
                 </span>
@@ -568,39 +568,39 @@ function OverviewContent({
                     <section key={group.key} aria-label={`Tema: ${group.title}`}>
                       <header className="flex items-center gap-3">
                         {group.key === 'none' ? (
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
-                            <Folder aria-hidden className="h-4 w-4 text-stone-500 dark:text-stone-400" />
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                            <Folder aria-hidden className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                           </span>
                         ) : (
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-600 text-sm font-bold text-white">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
                             {gi + 1}
                           </span>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-bold text-stone-900 dark:text-stone-50">{group.title}</p>
-                          <p className="text-xs text-stone-400 dark:text-stone-500">
+                          <p className="truncate text-sm font-bold text-slate-900 dark:text-slate-50">{group.title}</p>
+                          <p className="text-xs text-slate-400 dark:text-slate-500">
                             {group.lessons.length} {group.lessons.length === 1 ? 'aula' : 'aulas'} ·{' '}
                             {formatTotalDuration(groupDuration)}
                           </p>
                         </div>
                       </header>
-                      <ol className="mt-1 divide-y divide-stone-100 dark:divide-stone-800">
+                      <ol className="mt-1 divide-y divide-slate-100 dark:divide-slate-800">
                         {group.lessons.map((lesson) => (
                           <li key={lesson.id} className="flex items-center gap-3 py-3 first:pt-3 last:pb-0">
-                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
                               {lesson.kind === 'LIVE' ? (
                                 <Radio aria-hidden className="h-3.5 w-3.5 text-rose-500" />
                               ) : lesson.kind === 'READING' ? (
-                                <BookOpen aria-hidden className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                                <BookOpen aria-hidden className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                               ) : lesson.videoUrl ? (
-                                <PlayCircle aria-hidden className="h-3.5 w-3.5 text-stone-500 dark:text-stone-400" />
+                                <PlayCircle aria-hidden className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
                               ) : (
-                                <FileText aria-hidden className="h-3.5 w-3.5 text-stone-500 dark:text-stone-400" />
+                                <FileText aria-hidden className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
                               )}
                             </span>
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-semibold text-stone-800 dark:text-stone-200">{lesson.title}</p>
-                              <p className="mt-0.5 line-clamp-1 text-xs text-stone-400 dark:text-stone-500">{lesson.description}</p>
+                              <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-200">{lesson.title}</p>
+                              <p className="mt-0.5 line-clamp-1 text-xs text-slate-400 dark:text-slate-500">{lesson.description}</p>
                             </div>
                             {lesson.kind === 'LIVE' ? (
                               <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 text-[11px] font-bold text-rose-600 dark:text-rose-400">
@@ -611,19 +611,19 @@ function OverviewContent({
                               </span>
                             ) : null}
                             {lesson.kind === 'READING' ? (
-                              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 text-[11px] font-bold text-amber-700 dark:text-amber-400">
+                              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 text-[11px] font-bold text-blue-700 dark:text-blue-400">
                                 <BookOpen aria-hidden className="h-3 w-3" />
                                 {lesson.reading?.kind === 'BOOK' ? 'Livro' : 'Artigo'}
                               </span>
                             ) : null}
                             {lesson.kind !== 'LIVE' ? (
-                              <span className="hidden shrink-0 items-center gap-1 text-xs tabular-nums text-stone-400 dark:text-stone-500 sm:inline-flex">
+                              <span className="hidden shrink-0 items-center gap-1 text-xs tabular-nums text-slate-400 dark:text-slate-500 sm:inline-flex">
                                 {lesson.durationMin} min
                               </span>
                             ) : null}
                             <Lock
                               aria-label="Aula bloqueada — inscreva-se para acessar"
-                              className="h-3.5 w-3.5 shrink-0 text-stone-300 dark:text-stone-600"
+                              className="h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600"
                             />
                           </li>
                         ))}
@@ -633,15 +633,15 @@ function OverviewContent({
                 })}
               </div>
             ) : (
-              <ol className="mt-3 divide-y divide-stone-100 dark:divide-stone-800">
+              <ol className="mt-3 divide-y divide-slate-100 dark:divide-slate-800">
                 {lessons.map((lesson, i) => (
                   <li key={lesson.id} className="flex items-center gap-3 py-3.5 first:pt-4 last:pb-0">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-bold tabular-nums text-stone-500 dark:bg-stone-800 dark:text-stone-400">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold tabular-nums text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                       {i + 1}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-stone-800 dark:text-stone-200">{lesson.title}</p>
-                      <p className="mt-0.5 line-clamp-1 text-xs text-stone-400 dark:text-stone-500">{lesson.description}</p>
+                      <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-200">{lesson.title}</p>
+                      <p className="mt-0.5 line-clamp-1 text-xs text-slate-400 dark:text-slate-500">{lesson.description}</p>
                     </div>
                     {lesson.kind === 'LIVE' ? (
                       <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 text-[11px] font-bold text-rose-600 dark:text-rose-400">
@@ -651,9 +651,9 @@ function OverviewContent({
                           : 'Ao vivo'}
                       </span>
                     ) : (
-                      <span className="hidden shrink-0 items-center gap-1 text-xs tabular-nums text-stone-400 dark:text-stone-500 sm:inline-flex">
+                      <span className="hidden shrink-0 items-center gap-1 text-xs tabular-nums text-slate-400 dark:text-slate-500 sm:inline-flex">
                         {lesson.kind === 'READING' ? (
-                          <BookOpen aria-hidden className="h-4 w-4 text-amber-500" />
+                          <BookOpen aria-hidden className="h-4 w-4 text-blue-500" />
                         ) : lesson.videoUrl ? (
                           <PlayCircle aria-hidden className="h-4 w-4" />
                         ) : (
@@ -664,14 +664,14 @@ function OverviewContent({
                     )}
                     <Lock
                       aria-label="Aula bloqueada — inscreva-se para acessar"
-                      className="h-3.5 w-3.5 shrink-0 text-stone-300 dark:text-stone-600"
+                      className="h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600"
                     />
                   </li>
                 ))}
               </ol>
             )}
             {lessons.length === 0 && (
-              <p className="py-4 text-sm text-stone-400 dark:text-stone-500">Nenhuma aula publicada ainda.</p>
+              <p className="py-4 text-sm text-slate-400 dark:text-slate-500">Nenhuma aula publicada ainda.</p>
             )}
           </section>
 
@@ -687,19 +687,19 @@ function OverviewContent({
           {/* Mentor */}
           <section
             aria-label="Mentor do curso"
-            className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 sm:p-6"
+            className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6"
           >
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <Avatar name={course.mentor.name} src={course.mentor.avatarUrl} size="lg" />
               <div className="min-w-0 flex-1">
-                <p className="font-bold text-stone-900 dark:text-stone-50">{course.mentor.name}</p>
-                <p className="line-clamp-1 text-sm text-stone-500 dark:text-stone-400">{course.mentor.headline}</p>
+                <p className="font-bold text-slate-900 dark:text-slate-50">{course.mentor.name}</p>
+                <p className="line-clamp-1 text-sm text-slate-500 dark:text-slate-400">{course.mentor.headline}</p>
                 <div className="mt-1.5 flex items-center gap-1.5">
                   <Stars rating={course.mentor.rating} size={13} />
-                  <span className="text-xs font-semibold text-stone-700 dark:text-stone-200">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
                     {course.mentor.rating > 0 ? course.mentor.rating.toFixed(1) : 'Novo'}
                   </span>
-                  <span className="text-xs text-stone-400 dark:text-stone-500">
+                  <span className="text-xs text-slate-400 dark:text-slate-500">
                     ({course.mentor.reviewCount} {course.mentor.reviewCount === 1 ? 'avaliação' : 'avaliações'})
                   </span>
                 </div>
@@ -718,17 +718,17 @@ function OverviewContent({
 
         {/* ---------- SIDEBAR DE INSCRIÇÃO ---------- */}
         <div className="min-w-0 space-y-6 self-start lg:sticky lg:top-6">
-        <Card className="rounded-2xl border-stone-200 dark:border-stone-800 p-6 shadow-none">
+        <Card className="rounded-2xl border-slate-200 dark:border-slate-800 p-6 shadow-none">
           {enrolled ? (
             <>
-              <p className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-amber-800 dark:text-amber-300">
+              <p className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-blue-800 dark:text-blue-300">
                 <Check aria-hidden className="h-5 w-5" /> Você já está inscrito
               </p>
-              <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 Todo o conteúdo, perguntas e anotações estão liberados na sua sala de aula.
               </p>
               <Button
-                className="mt-5 h-11 w-full rounded-full bg-gradient-to-r from-amber-700 to-amber-600 font-bold shadow-lg shadow-amber-600/20 transition-shadow hover:from-amber-800 hover:to-amber-700"
+                className="mt-5 h-11 w-full rounded-full bg-gradient-to-r from-blue-700 to-blue-600 font-bold shadow-lg shadow-blue-600/20 transition-shadow hover:from-blue-800 hover:to-blue-700"
                 onClick={onContinue}
                 aria-label="Abrir a sala de aula"
                 disabled={!onContinue}
@@ -741,19 +741,19 @@ function OverviewContent({
               <p
                 className={cn(
                   'text-3xl font-extrabold tracking-tight',
-                  course.price === 0 ? 'text-amber-700 dark:text-amber-300' : 'text-stone-900 dark:text-stone-50'
+                  course.price === 0 ? 'text-blue-700 dark:text-blue-300' : 'text-slate-900 dark:text-slate-50'
                 )}
               >
                 {course.price === 0 ? 'Grátis' : currencyBRL(course.price)}
               </p>
-              <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 {course.price === 0
                   ? 'Acesso gratuito a todo o conteúdo.'
                   : 'Pagamento único, acesso ao conteúdo completo.'}
               </p>
 
               <Button
-                className="mt-5 h-11 w-full rounded-full bg-gradient-to-r from-amber-700 to-amber-600 font-bold shadow-lg shadow-amber-600/20 transition-shadow hover:from-amber-800 hover:to-amber-700"
+                className="mt-5 h-11 w-full rounded-full bg-gradient-to-r from-blue-700 to-blue-600 font-bold shadow-lg shadow-blue-600/20 transition-shadow hover:from-blue-800 hover:to-blue-700"
                 onClick={onEnrollClick}
                 disabled={enrolling}
               >
@@ -764,62 +764,62 @@ function OverviewContent({
                     : 'Inscrever-se no curso'}
               </Button>
           {enrolling ? (
-            <p className="mt-2 text-center text-xs text-stone-400 dark:text-stone-500">Processando inscrição…</p>
+            <p className="mt-2 text-center text-xs text-slate-400 dark:text-slate-500">Processando inscrição…</p>
           ) : !isLoggedIn ? (
-            <p className="mt-2 text-center text-xs text-stone-400 dark:text-stone-500">
+            <p className="mt-2 text-center text-xs text-slate-400 dark:text-slate-500">
               Entre com uma conta para se inscrever.{' '}
               <button
                 type="button"
                 onClick={onLogin}
-                className="font-semibold text-amber-700 dark:text-amber-300 underline underline-offset-2 transition-colors hover:text-amber-800 dark:hover:text-amber-200"
+                className="font-semibold text-blue-700 dark:text-blue-300 underline underline-offset-2 transition-colors hover:text-blue-800 dark:hover:text-blue-200"
               >
                 Entrar
               </button>
             </p>
           ) : null}
 
-          <ul className="mt-5 space-y-2.5 border-t border-stone-100 dark:border-stone-800 pt-5 text-sm text-stone-600 dark:text-stone-300">
+          <ul className="mt-5 space-y-2.5 border-t border-slate-100 dark:border-slate-800 pt-5 text-sm text-slate-600 dark:text-slate-300">
             <li className="flex items-start gap-2">
-              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
               {course.lessonCount} {course.lessonCount === 1 ? 'aula' : 'aulas'} (
               {formatTotalDuration(course.totalDurationMin)})
             </li>
             {course.liveCount > 0 ? (
               <li className="flex items-start gap-2">
-                <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
                 {course.liveCount} aula{course.liveCount > 1 ? 's' : ''} ao vivo com o mentor
               </li>
             ) : null}
             {course.mentorshipCount > 0 ? (
               <li className="flex items-start gap-2">
-                <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
                 {course.mentorshipCount} {course.mentorshipCount > 1 ? 'sessões' : 'sessão'} de mentoria 1:1 inclusa{course.mentorshipCount > 1 ? 's' : ''}
               </li>
             ) : null}
             <li className="flex items-start gap-2">
-              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
               Materiais e anexos para download
             </li>
             <li className="flex items-start gap-2">
-              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
               Perguntas respondidas pelo mentor
             </li>
           </ul>
 
           {course.mentorshipCount > 0 ? (
-            <div className="mt-5 rounded-2xl border border-amber-100 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/50 p-4">
-              <p className="flex items-center gap-2 text-sm font-bold text-amber-900 dark:text-amber-200">
-                <UserRound aria-hidden className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+            <div className="mt-5 rounded-2xl border border-blue-100 dark:border-blue-900 bg-blue-50/60 dark:bg-blue-950/50 p-4">
+              <p className="flex items-center gap-2 text-sm font-bold text-blue-900 dark:text-blue-200">
+                <UserRound aria-hidden className="h-4 w-4 text-blue-700 dark:text-blue-300" />
                 Mentorias 1:1 inclusas
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-amber-800/80 dark:text-amber-300/80">
+              <p className="mt-1 text-xs leading-relaxed text-blue-800/80 dark:text-blue-300/80">
                 Este curso inclui {course.mentorshipCount} {course.mentorshipCount > 1 ? 'sessões' : 'sessão'} de
                 mentoria individual com {course.mentor.name.split(' ')[0]}. Agende após se inscrever.
               </p>
               <Button
                 variant="outline"
                 size="sm"
-                className="mt-3 w-full rounded-full border-amber-200 dark:border-amber-900 bg-white dark:bg-stone-900 font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 hover:text-amber-800 dark:hover:text-amber-200"
+                className="mt-3 w-full rounded-full border-blue-200 dark:border-blue-900 bg-white dark:bg-slate-900 font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 hover:text-blue-800 dark:hover:text-blue-200"
                 onClick={() => onViewMentor(course.mentor.id)}
               >
                 Ver disponibilidade do mentor
@@ -872,12 +872,12 @@ function BundleCallout({
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })
 
   return (
-    <div className="rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/50 p-4">
-      <p className="flex items-center gap-2 text-sm font-bold text-amber-900 dark:text-amber-200">
-        <Layers aria-hidden className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+    <div className="rounded-2xl border border-blue-200 dark:border-blue-900 bg-blue-50/60 dark:bg-blue-950/50 p-4">
+      <p className="flex items-center gap-2 text-sm font-bold text-blue-900 dark:text-blue-200">
+        <Layers aria-hidden className="h-4 w-4 text-blue-700 dark:text-blue-300" />
         Este curso faz parte do pacote “{bundle.title}”
       </p>
-      <p className="mt-1 text-xs leading-relaxed text-amber-800/80 dark:text-amber-300/80">
+      <p className="mt-1 text-xs leading-relaxed text-blue-800/80 dark:text-blue-300/80">
         Leve {bundle.courseCount} cursos de {bundle.mentor.name} por {bundle.price === 0 ? 'grátis' : brl(bundle.price)}
         {bundle.coursesTotal > bundle.price && bundle.price > 0
           ? ` — economize ${bundle.discountPercent}% em relação à compra separada`
@@ -887,7 +887,7 @@ function BundleCallout({
       <Button
         size="sm"
         onClick={() => navigate({ name: 'checkout', bundleId: bundle.id })}
-        className="mt-3 h-10 w-full rounded-full bg-amber-700 font-bold hover:bg-amber-800"
+        className="mt-3 h-10 w-full rounded-full bg-blue-700 font-bold hover:bg-blue-800"
       >
         <BadgePercent aria-hidden className="h-4 w-4" />
         Ver pacote
@@ -931,19 +931,19 @@ function MembershipCallout({
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })
 
   return (
-    <div className="rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/50 p-4">
-      <p className="flex items-center gap-2 text-sm font-bold text-amber-900 dark:text-amber-200">
-        <CreditCard aria-hidden className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+    <div className="rounded-2xl border border-blue-200 dark:border-blue-900 bg-blue-50/60 dark:bg-blue-950/50 p-4">
+      <p className="flex items-center gap-2 text-sm font-bold text-blue-900 dark:text-blue-200">
+        <CreditCard aria-hidden className="h-4 w-4 text-blue-700 dark:text-blue-300" />
         Acesse tudo com a assinatura “{membership.title}”
       </p>
-      <p className="mt-1 text-xs leading-relaxed text-amber-800/80 dark:text-amber-300/80">
+      <p className="mt-1 text-xs leading-relaxed text-blue-800/80 dark:text-blue-300/80">
         Todos os {membership.coursesCount} cursos de {membership.mentor.name} + sessão em grupo
         mensal por {brl(membership.price)}/mês — cancele quando quiser.
       </p>
       <Button
         size="sm"
         onClick={() => navigate({ name: 'checkout', membershipId: membership.id })}
-        className="mt-3 h-10 w-full rounded-full bg-amber-700 font-bold hover:bg-amber-800"
+        className="mt-3 h-10 w-full rounded-full bg-blue-700 font-bold hover:bg-blue-800"
       >
         <Sparkles aria-hidden className="h-4 w-4" />
         Ver assinatura
@@ -981,20 +981,20 @@ function ReviewFormCard({
   }
 
   return (
-    <Card className="rounded-2xl border-stone-200 dark:border-stone-800 p-6 shadow-none">
-      <p className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">Avaliar este curso</p>
+    <Card className="rounded-2xl border-slate-200 dark:border-slate-800 p-6 shadow-none">
+      <p className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-50">Avaliar este curso</p>
 
       {completed && !myReview ? (
-        <p className="mt-2 flex items-start gap-2 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 px-3 py-2.5 text-xs font-semibold leading-relaxed text-amber-800 dark:text-amber-300">
-          <Star aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />
+        <p className="mt-2 flex items-start gap-2 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/50 px-3 py-2.5 text-xs font-semibold leading-relaxed text-blue-800 dark:text-blue-300">
+          <Star aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 fill-yellow-400 text-blue-400" />
           Você concluiu o curso! Deixe sua avaliação ⭐
         </p>
       ) : myReview ? (
-        <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Sua avaliação está salva — você pode atualizá-la quando quiser.
         </p>
       ) : (
-        <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Como foi sua experiência? Sua nota ajuda outros alunos.
         </p>
       )}
@@ -1017,20 +1017,20 @@ function ReviewFormCard({
               disabled={saving}
               onClick={() => setRating(i)}
               onMouseEnter={() => setHover(i)}
-              className="flex h-9 w-9 items-center justify-center rounded-full transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700 disabled:pointer-events-none"
+              className="flex h-9 w-9 items-center justify-center rounded-full transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:pointer-events-none"
             >
               <Star
                 aria-hidden
                 className={cn(
                   'h-6 w-6 transition-colors',
-                  active ? 'fill-amber-400 text-amber-400' : 'text-stone-300 dark:text-stone-600'
+                  active ? 'fill-yellow-400 text-blue-400' : 'text-slate-300 dark:text-slate-600'
                 )}
               />
             </button>
           )
         })}
         {rating > 0 ? (
-          <span className="ml-2 text-sm font-bold tabular-nums text-stone-700 dark:text-stone-200">
+          <span className="ml-2 text-sm font-bold tabular-nums text-slate-700 dark:text-slate-200">
             {rating.toFixed(1).replace('.', ',')}
           </span>
         ) : null}
@@ -1043,14 +1043,14 @@ function ReviewFormCard({
         rows={4}
         placeholder="Conte como foi sua experiência (opcional)"
         aria-label="Comentário da avaliação (opcional)"
-        className="mt-3 min-h-24 resize-none rounded-2xl border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-sm focus-visible:ring-amber-600/30"
+        className="mt-3 min-h-24 resize-none rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus-visible:ring-blue-600/30"
       />
-      <p className="mt-1 text-right text-[11px] tabular-nums text-stone-400 dark:text-stone-500">{comment.length}/800</p>
+      <p className="mt-1 text-right text-[11px] tabular-nums text-slate-400 dark:text-slate-500">{comment.length}/800</p>
 
       <Button
         onClick={submit}
         disabled={rating < 1 || saving}
-        className="mt-2 h-11 w-full rounded-full bg-amber-700 font-bold text-white hover:bg-amber-800"
+        className="mt-2 h-11 w-full rounded-full bg-blue-700 font-bold text-white hover:bg-blue-800"
       >
         {saving ? 'Enviando…' : myReview ? 'Atualizar minha avaliação' : 'Enviar avaliação'}
       </Button>
@@ -1088,25 +1088,25 @@ function CourseReviewsSection({
   return (
     <section
       aria-labelledby="avaliacoes-title"
-      className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 sm:p-6"
+      className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6"
     >
-      <h2 id="avaliacoes-title" className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+      <h2 id="avaliacoes-title" className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
         Avaliações dos alunos
       </h2>
 
       {count === 0 ? (
-        <p className="mt-4 rounded-2xl border border-dashed border-stone-200 dark:border-stone-800 px-4 py-6 text-center text-sm text-stone-400 dark:text-stone-500">
+        <p className="mt-4 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 px-4 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
           Este curso ainda não tem avaliações — seja o primeiro a avaliar!
         </p>
       ) : (
         <div className="mt-4 grid gap-6 sm:grid-cols-[220px_minmax(0,1fr)]">
           {/* Resumo: nota grande + distribuição por estrela */}
-          <div className="self-start rounded-2xl bg-stone-50/80 dark:bg-stone-950/50 p-4">
-            <p className="text-4xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+          <div className="self-start rounded-2xl bg-slate-50/80 dark:bg-slate-950/50 p-4">
+            <p className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
               {summary.rating.toFixed(1).replace('.', ',')}
             </p>
             <Stars rating={summary.rating} size={15} className="mt-1.5" />
-            <p className="mt-1 text-xs font-medium text-stone-500 dark:text-stone-400">
+            <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
               {count} {count === 1 ? 'avaliação' : 'avaliações'}
             </p>
             <div className="mt-4 space-y-1.5" role="group" aria-label="Distribuição das notas">
@@ -1115,14 +1115,14 @@ function CourseReviewsSection({
                 const pct = count > 0 ? Math.round((n / count) * 100) : 0
                 return (
                   <div key={star} className="flex items-center gap-1.5">
-                    <span className="w-3 shrink-0 text-right text-[11px] font-semibold tabular-nums text-stone-500 dark:text-stone-400">
+                    <span className="w-3 shrink-0 text-right text-[11px] font-semibold tabular-nums text-slate-500 dark:text-slate-400">
                       {star}
                     </span>
-                    <Star aria-hidden className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
-                    <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
-                      <div className="h-full rounded-full bg-amber-400" style={{ width: `${pct}%` }} />
+                    <Star aria-hidden className="h-3 w-3 shrink-0 fill-yellow-400 text-blue-400" />
+                    <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                      <div className="h-full rounded-full bg-blue-400" style={{ width: `${pct}%` }} />
                     </div>
-                    <span className="w-6 shrink-0 text-right text-[11px] tabular-nums text-stone-400 dark:text-stone-500">
+                    <span className="w-6 shrink-0 text-right text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
                       {n}
                     </span>
                   </div>
@@ -1134,28 +1134,28 @@ function CourseReviewsSection({
           {/* Lista de avaliações */}
           <ul className="min-w-0 space-y-3">
             {reviews.map((review) => (
-              <li key={review.id} className="rounded-2xl border border-stone-200 dark:border-stone-800 p-4">
+              <li key={review.id} className="rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
                 <div className="flex items-center gap-3">
                   <Avatar name={review.student.name} src={review.student.avatarUrl} size="sm" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-bold text-stone-900 dark:text-stone-50">
+                      <p className="truncate text-sm font-bold text-slate-900 dark:text-slate-50">
                         {review.student.name}
                       </p>
                       {review.student.id === currentUserId ? (
-                        <span className="shrink-0 rounded-full bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300">
+                        <span className="shrink-0 rounded-full bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300">
                           Você
                         </span>
                       ) : null}
                     </div>
                     <Stars rating={review.rating} size={12} className="mt-0.5" />
                   </div>
-                  <span className="shrink-0 text-xs text-stone-400 dark:text-stone-500">
+                  <span className="shrink-0 text-xs text-slate-400 dark:text-slate-500">
                     {reviewDateLabel(review.createdAt)}
                   </span>
                 </div>
                 {review.comment ? (
-                  <p className="mt-2.5 text-sm leading-relaxed text-stone-700 dark:text-stone-200">{review.comment}</p>
+                  <p className="mt-2.5 text-sm leading-relaxed text-slate-700 dark:text-slate-200">{review.comment}</p>
                 ) : null}
               </li>
             ))}

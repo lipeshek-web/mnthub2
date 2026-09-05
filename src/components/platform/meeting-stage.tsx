@@ -488,19 +488,19 @@ export function MeetingStage({
 
   const statePill =
     state === 'preparing' ? (
-      <Badge className="gap-1 border-transparent bg-stone-700 text-white">
+      <Badge className="gap-1 border-transparent bg-slate-700 text-white">
         <Loader2 className="h-3 w-3 animate-spin" /> preparando…
       </Badge>
     ) : state === 'waiting' ? (
-      <Badge className="gap-1 border-transparent bg-amber-600 text-white">
+      <Badge className="gap-1 border-transparent bg-blue-600 text-white">
         <CircleDot className="h-3 w-3 animate-pulse" /> aguardando {peerName.split(' ')[0]}…
       </Badge>
     ) : state === 'connecting' || state === 'reconnecting' ? (
-      <Badge className="gap-1 border-transparent bg-amber-600 text-white">
+      <Badge className="gap-1 border-transparent bg-blue-600 text-white">
         <Loader2 className="h-3 w-3 animate-spin" /> conectando…
       </Badge>
     ) : state === 'connected' ? (
-      <Badge className="gap-1 border-transparent bg-amber-600 text-white">
+      <Badge className="gap-1 border-transparent bg-blue-600 text-white">
         <CircleDot className="h-3 w-3" /> ao vivo · {mm}:{ss}
       </Badge>
     ) : (
@@ -512,14 +512,14 @@ export function MeetingStage({
   return (
     <div className="space-y-3">
       {/* ---------- PALCO DE VÍDEO ---------- */}
-      <div className="relative overflow-hidden rounded-2xl border border-stone-800 bg-stone-950 shadow-xl">
+      <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-xl">
         {/* vídeo remoto (ou local enquanto o par não chega) */}
         <video
           ref={remoteVideoRef}
           autoPlay
           playsInline
           className={
-            'h-[46vh] min-h-[300px] w-full bg-stone-950 object-cover sm:h-[56vh] ' +
+            'h-[46vh] min-h-[300px] w-full bg-slate-950 object-cover sm:h-[56vh] ' +
             (state === 'connected' && peerOnline ? '' : 'opacity-0')
           }
           aria-label={`Vídeo de ${peerName}`}
@@ -531,10 +531,10 @@ export function MeetingStage({
             {state === 'failed' ? (
               <>
                 <MessageSquareWarning className="h-10 w-10 text-rose-400" />
-                <p className="max-w-sm text-sm text-stone-200">{statusMsg}</p>
+                <p className="max-w-sm text-sm text-slate-200">{statusMsg}</p>
                 <Button
                   variant="outline"
-                  className="border-stone-600 bg-transparent text-stone-100 hover:bg-stone-800 hover:text-white"
+                  className="border-slate-600 bg-transparent text-slate-100 hover:bg-slate-800 hover:text-white"
                   onClick={() => void connectToRoom()}
                 >
                   <RefreshCw className="h-4 w-4" /> Tentar novamente
@@ -542,7 +542,7 @@ export function MeetingStage({
               </>
             ) : (
               <>
-                <span className="flex h-20 w-20 items-center justify-center rounded-full bg-stone-800 text-2xl font-extrabold text-stone-300">
+                <span className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-800 text-2xl font-extrabold text-slate-300">
                   {peerName
                     .split(' ')
                     .slice(0, 2)
@@ -550,8 +550,8 @@ export function MeetingStage({
                     .join('')}
                 </span>
                 <div className="space-y-1">
-                  <p className="font-bold text-stone-100">{peerName}</p>
-                  <p className="text-sm text-stone-400">{statusMsg}</p>
+                  <p className="font-bold text-slate-100">{peerName}</p>
+                  <p className="text-sm text-slate-400">{statusMsg}</p>
                 </div>
               </>
             )}
@@ -561,8 +561,8 @@ export function MeetingStage({
         {/* barra superior: status + segurança */}
         <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 bg-gradient-to-b from-black/70 to-transparent p-3">
           <div className="flex flex-wrap items-center gap-2">{statePill}</div>
-          <span className="hidden items-center gap-1 rounded-full bg-black/40 px-2.5 py-1 text-[11px] font-medium text-stone-200 sm:inline-flex">
-            <ShieldCheck className="h-3.5 w-3.5 text-amber-400" /> P2P criptografado
+          <span className="hidden items-center gap-1 rounded-full bg-black/40 px-2.5 py-1 text-[11px] font-medium text-slate-200 sm:inline-flex">
+            <ShieldCheck className="h-3.5 w-3.5 text-blue-400" /> P2P criptografado
           </span>
         </div>
 
@@ -572,19 +572,19 @@ export function MeetingStage({
             <span className="flex items-center gap-2 rounded-full bg-black/55 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur">
               {peerName}
               {peerIsMentor && (
-                <span className="rounded-full bg-amber-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">
                   Anfitrião · Mentor
                 </span>
               )}
               {!remoteMedia.audio && <MicOff className="h-3.5 w-3.5 text-rose-400" />}
               {!remoteMedia.video && <CameraOff className="h-3.5 w-3.5 text-rose-400" />}
-              {remoteMedia.screen && <MonitorUp className="h-3.5 w-3.5 text-amber-300" />}
+              {remoteMedia.screen && <MonitorUp className="h-3.5 w-3.5 text-blue-300" />}
             </span>
           </div>
         )}
 
         {/* PiP local */}
-        <div className="absolute bottom-3 right-3 h-[72px] w-[110px] overflow-hidden rounded-xl border border-stone-700 bg-stone-900 shadow-lg sm:h-[96px] sm:w-[150px]">
+        <div className="absolute bottom-3 right-3 h-[72px] w-[110px] overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-lg sm:h-[96px] sm:w-[150px]">
           <video
             ref={localVideoRef}
             autoPlay
@@ -595,7 +595,7 @@ export function MeetingStage({
           />
           {!videoOn && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <CameraOff className="h-5 w-5 text-stone-500" />
+              <CameraOff className="h-5 w-5 text-slate-500" />
             </div>
           )}
           <span className="absolute bottom-1 left-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">
@@ -606,7 +606,7 @@ export function MeetingStage({
 
       {/* aviso de permissão de mídia */}
       {mediaError !== 'none' && (
-        <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
+        <div className="flex items-start gap-2.5 rounded-xl border border-blue-200 bg-blue-50 p-3.5 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-200">
           <MessageSquareWarning className="mt-0.5 h-4.5 w-4.5 shrink-0" />
           <p>
             {mediaError === 'denied'
@@ -617,7 +617,7 @@ export function MeetingStage({
       )}
 
       {/* ---------- BARRA DE CONTROLES FIXA (sticky acima da tab bar no mobile) ---------- */}
-      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 -mx-4 rounded-t-2xl border border-stone-200 bg-white/95 px-3 py-2.5 shadow-[0_-6px_24px_rgba(0,0,0,0.08)] backdrop-blur sm:-mx-6 sm:rounded-2xl dark:border-stone-800 dark:bg-stone-900/95 md:bottom-0 md:mx-0">
+      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 -mx-4 rounded-t-2xl border border-slate-200 bg-white/95 px-3 py-2.5 shadow-[0_-6px_24px_rgba(0,0,0,0.08)] backdrop-blur sm:-mx-6 sm:rounded-2xl dark:border-slate-800 dark:bg-slate-900/95 md:bottom-0 md:mx-0">
         <div className="flex items-center justify-center gap-2 sm:gap-3">
           <button
             type="button"
@@ -627,7 +627,7 @@ export function MeetingStage({
             className={
               'flex h-11 min-w-11 items-center justify-center rounded-full border transition-colors ' +
               (audioOn
-                ? 'border-stone-300 bg-stone-100 text-stone-800 hover:bg-stone-200 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:hover:bg-stone-700'
+                ? 'border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700'
                 : 'border-rose-300 bg-rose-600 text-white hover:bg-rose-700 dark:border-rose-800')
             }
           >
@@ -642,7 +642,7 @@ export function MeetingStage({
             className={
               'flex h-11 min-w-11 items-center justify-center rounded-full border transition-colors ' +
               (videoOn
-                ? 'border-stone-300 bg-stone-100 text-stone-800 hover:bg-stone-200 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:hover:bg-stone-700'
+                ? 'border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700'
                 : 'border-rose-300 bg-rose-600 text-white hover:bg-rose-700 dark:border-rose-800')
             }
           >
@@ -657,14 +657,14 @@ export function MeetingStage({
             className={
               'flex h-11 min-w-11 items-center justify-center rounded-full border transition-colors ' +
               (screenOn
-                ? 'border-amber-300 bg-amber-500 text-stone-900 hover:bg-amber-600 dark:border-amber-700'
-                : 'border-stone-300 bg-stone-100 text-stone-800 hover:bg-stone-200 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:hover:bg-stone-700')
+                ? 'border-blue-300 bg-blue-500 text-slate-900 hover:bg-blue-600 dark:border-blue-700'
+                : 'border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700')
             }
           >
             {screenOn ? <MonitorX className="h-5 w-5" /> : <MonitorUp className="h-5 w-5" />}
           </button>
 
-          <div className="mx-1 hidden h-8 w-px bg-stone-200 sm:block dark:bg-stone-700" aria-hidden />
+          <div className="mx-1 hidden h-8 w-px bg-slate-200 sm:block dark:bg-slate-700" aria-hidden />
 
           <Button
             variant="destructive"

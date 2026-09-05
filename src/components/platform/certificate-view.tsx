@@ -94,18 +94,18 @@ export function CertificateView({ code }: { code: string }) {
   if (failed || !cert) {
     return (
       <div className="mx-auto flex w-full max-w-md flex-col items-center gap-4 px-4 py-20 text-center">
-        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 text-stone-400 dark:bg-stone-800 dark:text-stone-500">
+        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
           <Link2 className="h-7 w-7" aria-hidden />
         </span>
-        <h1 className="text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+        <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
           Certificado não encontrado
         </h1>
-        <p className="text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+        <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
           O código <span className="font-mono font-semibold">{code}</span> não corresponde a nenhum
           certificado emitido. Confira o link e tente novamente.
         </p>
         <Button
-          className="mt-2 h-11 rounded-full bg-amber-700 px-6 font-bold hover:bg-amber-800"
+          className="mt-2 h-11 rounded-full bg-blue-700 px-6 font-bold hover:bg-blue-800"
           onClick={() => navigate({ name: 'home' })}
         >
           <Home className="h-4 w-4" aria-hidden /> Ir para o início
@@ -120,21 +120,21 @@ export function CertificateView({ code }: { code: string }) {
       <div className="mb-6 flex flex-wrap items-center justify-center gap-2 print:hidden">
         <Button
           variant="outline"
-          className="h-10 rounded-full border-stone-200 bg-white font-semibold text-stone-700 hover:border-amber-300 hover:bg-amber-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-amber-700 dark:hover:bg-amber-900/30"
+          className="h-10 rounded-full border-slate-200 bg-white font-semibold text-slate-700 hover:border-blue-300 hover:bg-blue-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-blue-700 dark:hover:bg-blue-900/30"
           onClick={copyLink}
         >
           <Copy className="h-4 w-4" aria-hidden /> Copiar link
         </Button>
         <Button
           variant="outline"
-          className="h-10 rounded-full border-stone-200 bg-white font-semibold text-stone-700 hover:border-amber-300 hover:bg-amber-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-amber-700 dark:hover:bg-amber-900/30"
+          className="h-10 rounded-full border-slate-200 bg-white font-semibold text-slate-700 hover:border-blue-300 hover:bg-blue-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-blue-700 dark:hover:bg-blue-900/30"
           onClick={linkedInShare}
         >
           <Linkedin className="h-4 w-4" aria-hidden /> Compartilhar no LinkedIn
         </Button>
         <Button
           variant="outline"
-          className="h-10 rounded-full border-stone-200 bg-white font-semibold text-stone-700 hover:border-amber-300 hover:bg-amber-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-amber-700 dark:hover:bg-amber-900/30"
+          className="h-10 rounded-full border-slate-200 bg-white font-semibold text-slate-700 hover:border-blue-300 hover:bg-blue-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-blue-700 dark:hover:bg-blue-900/30"
           onClick={() => window.print()}
         >
           <Printer className="h-4 w-4" aria-hidden /> Imprimir / PDF
@@ -144,22 +144,22 @@ export function CertificateView({ code }: { code: string }) {
       {/* Certificado */}
       <article
         aria-label={`Certificado de conclusão de ${cert.studentName}`}
-        className="relative overflow-hidden rounded-3xl border-2 border-amber-700/25 bg-white p-6 shadow-xl shadow-stone-900/5 sm:p-10"
+        className="relative overflow-hidden rounded-3xl border-2 border-blue-700/25 bg-white p-6 shadow-xl shadow-slate-900/5 sm:p-10"
       >
         {/* Faixa superior */}
-        <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-amber-700 via-amber-500 to-amber-700" aria-hidden />
+        <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-blue-700 via-blue-500 to-blue-700" aria-hidden />
         {/* Blobs decorativos */}
-        <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-amber-100/60 blur-2xl print:hidden" aria-hidden />
-        <div className="pointer-events-none absolute -bottom-20 -left-16 h-56 w-56 rounded-full bg-amber-50 blur-2xl print:hidden" aria-hidden />
+        <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-blue-100/60 blur-2xl print:hidden" aria-hidden />
+        <div className="pointer-events-none absolute -bottom-20 -left-16 h-56 w-56 rounded-full bg-blue-50 blur-2xl print:hidden" aria-hidden />
 
         <div className="relative flex flex-col items-center text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-lg shadow-amber-700/25">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-400 to-blue-600 text-white shadow-lg shadow-blue-700/25">
             <Orbit className="h-7 w-7" aria-hidden />
           </span>
-          <p className="mt-4 text-xs font-bold uppercase tracking-[0.22em] text-stone-400">
+          <p className="mt-4 text-xs font-bold uppercase tracking-[0.22em] text-slate-400">
             Órbita · Certificado de Conclusão
           </p>
-          <h1 className="mt-6 text-sm font-semibold uppercase tracking-widest text-amber-700">
+          <h1 className="mt-6 text-sm font-semibold uppercase tracking-widest text-blue-700">
             Certificamos que
           </h1>
           <p
@@ -168,50 +168,50 @@ export function CertificateView({ code }: { code: string }) {
           >
             {cert.studentName}
           </p>
-          <p className="mt-5 max-w-md text-sm leading-relaxed text-stone-600">
+          <p className="mt-5 max-w-md text-sm leading-relaxed text-slate-600">
             concluiu com dedicação o curso
           </p>
-          <p className="mt-1.5 max-w-xl text-xl font-extrabold leading-snug tracking-tight text-stone-900 sm:text-2xl">
+          <p className="mt-1.5 max-w-xl text-xl font-extrabold leading-snug tracking-tight text-slate-900 sm:text-2xl">
             “{cert.courseTitle}”
           </p>
 
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-stone-500">
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-slate-500">
             <span className="inline-flex items-center gap-1.5">
-              <Clock className="h-3.5 w-3.5 text-amber-600" aria-hidden /> {durationLabel} de conteúdo
+              <Clock className="h-3.5 w-3.5 text-blue-600" aria-hidden /> {durationLabel} de conteúdo
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <Award className="h-3.5 w-3.5 text-amber-600" aria-hidden /> {cert.category}
+              <Award className="h-3.5 w-3.5 text-blue-600" aria-hidden /> {cert.category}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <CalendarDays className="h-3.5 w-3.5 text-amber-600" aria-hidden /> Concluído em{' '}
+              <CalendarDays className="h-3.5 w-3.5 text-blue-600" aria-hidden /> Concluído em{' '}
               {issuedLabel}
             </span>
           </div>
 
           {/* Mentor */}
-          <div className="mt-8 border-t border-stone-200 pt-6">
-            <p className="text-base font-bold text-stone-900">{cert.mentorName}</p>
-            <p className="mt-0.5 max-w-xs text-xs leading-relaxed text-stone-500">
+          <div className="mt-8 border-t border-slate-200 pt-6">
+            <p className="text-base font-bold text-slate-900">{cert.mentorName}</p>
+            <p className="mt-0.5 max-w-xs text-xs leading-relaxed text-slate-500">
               {cert.mentorHeadline}
             </p>
-            <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
               Mentor responsável
             </p>
           </div>
 
           {/* Verificação */}
-          <div className="mt-7 flex flex-col items-center gap-1.5 rounded-2xl bg-stone-50 px-5 py-3 ring-1 ring-stone-200">
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700">
+          <div className="mt-7 flex flex-col items-center gap-1.5 rounded-2xl bg-slate-50 px-5 py-3 ring-1 ring-slate-200">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700">
               <BadgeCheck className="h-4 w-4" aria-hidden /> Certificado autêntico
             </span>
-            <p className="text-[11px] leading-relaxed text-stone-500">
+            <p className="text-[11px] leading-relaxed text-slate-500">
               Verificável em <span className="font-mono font-semibold">/?cert={cert.code}</span>
             </p>
           </div>
         </div>
       </article>
 
-      <p className="mt-6 text-center text-xs leading-relaxed text-stone-400 print:hidden dark:text-stone-500">
+      <p className="mt-6 text-center text-xs leading-relaxed text-slate-400 print:hidden dark:text-slate-500">
         Emitido pela plataforma Órbita · mentorias, cursos e trilhas com certificação
       </p>
     </div>

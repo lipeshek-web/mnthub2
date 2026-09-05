@@ -82,20 +82,20 @@ export function DailyMissionsCard() {
     <div
       role="group"
       aria-label="Missões de hoje"
-      className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 shadow-sm tabular-nums"
+      className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm tabular-nums"
     >
       <div className="flex items-center gap-3">
         <span
           aria-hidden
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400"
+          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400"
         >
           <Target className="size-5" />
         </span>
         <div className="min-w-0">
-          <h2 className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+          <h2 className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
             Missões de hoje
           </h2>
-          <p className="text-xs text-stone-400 dark:text-stone-500">
+          <p className="text-xs text-slate-400 dark:text-slate-500">
             Complete e colete XP — renovam à meia-noite
           </p>
         </div>
@@ -125,8 +125,8 @@ export function DailyMissionsCard() {
                 className={cn(
                   'flex flex-wrap items-center gap-3 rounded-xl border p-3 sm:flex-nowrap',
                   mission.claimed
-                    ? 'border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/30'
-                    : 'border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/40'
+                    ? 'border-blue-200 dark:border-blue-900 bg-blue-50/60 dark:bg-blue-950/30'
+                    : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40'
                 )}
               >
                 <span
@@ -134,8 +134,8 @@ export function DailyMissionsCard() {
                   className={cn(
                     'flex size-10 shrink-0 items-center justify-center rounded-full',
                     mission.claimed
-                      ? 'bg-amber-600 dark:bg-amber-500 text-white'
-                      : 'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400'
+                      ? 'bg-blue-600 dark:bg-blue-500 text-white'
+                      : 'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400'
                   )}
                 >
                   {mission.claimed ? <Check className="size-5" /> : <Icon className="size-5" />}
@@ -143,14 +143,14 @@ export function DailyMissionsCard() {
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-bold text-stone-900 dark:text-stone-50">
+                    <p className="truncate text-sm font-bold text-slate-900 dark:text-slate-50">
                       {mission.title}
                     </p>
-                    <span className="shrink-0 rounded-full bg-amber-100 dark:bg-amber-950/50 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-700 dark:text-amber-400">
+                    <span className="shrink-0 rounded-full bg-blue-100 dark:bg-blue-950/50 px-1.5 py-0.5 text-[10px] font-extrabold text-blue-700 dark:text-blue-400">
                       +{mission.xp} XP
                     </span>
                   </div>
-                  <p className="truncate text-xs text-stone-400 dark:text-stone-500">
+                  <p className="truncate text-xs text-slate-400 dark:text-slate-500">
                     {mission.description}
                   </p>
                   {mission.progress < mission.target ? (
@@ -160,7 +160,7 @@ export function DailyMissionsCard() {
                         aria-label={`${pct}% da missão ${mission.title}`}
                         className="h-1.5 max-w-40"
                       />
-                      <span className="shrink-0 text-[11px] font-semibold text-stone-400 dark:text-stone-500">
+                      <span className="shrink-0 text-[11px] font-semibold text-slate-400 dark:text-slate-500">
                         {mission.progress}/{mission.target}
                       </span>
                     </div>
@@ -168,7 +168,7 @@ export function DailyMissionsCard() {
                 </div>
 
                 {mission.claimed ? (
-                  <span className="shrink-0 text-xs font-bold text-amber-700 dark:text-amber-400">
+                  <span className="shrink-0 text-xs font-bold text-blue-700 dark:text-blue-400">
                     Coletada ✓
                   </span>
                 ) : mission.claimable ? (
@@ -181,7 +181,7 @@ export function DailyMissionsCard() {
                     {claiming === mission.id ? 'Coletando…' : 'Coletar'}
                   </Button>
                 ) : (
-                  <span className="shrink-0 text-xs font-semibold text-stone-400 dark:text-stone-500">
+                  <span className="shrink-0 text-xs font-semibold text-slate-400 dark:text-slate-500">
                     Em andamento…
                   </span>
                 )}
@@ -199,11 +199,11 @@ export function DailyMissionsCard() {
 
 /** Escala de cor do heatmap (0 → 4 níveis de esmeralda). */
 function heatClass(xp: number): string {
-  if (xp <= 0) return 'bg-stone-100 dark:bg-stone-800'
-  if (xp < 10) return 'bg-amber-200 dark:bg-amber-900'
-  if (xp < 20) return 'bg-amber-400 dark:bg-amber-700'
-  if (xp < 40) return 'bg-amber-500 dark:bg-amber-600'
-  return 'bg-amber-700 dark:bg-amber-400'
+  if (xp <= 0) return 'bg-slate-100 dark:bg-slate-800'
+  if (xp < 10) return 'bg-blue-200 dark:bg-blue-900'
+  if (xp < 20) return 'bg-blue-400 dark:bg-blue-700'
+  if (xp < 40) return 'bg-blue-500 dark:bg-blue-600'
+  return 'bg-blue-700 dark:bg-blue-400'
 }
 
 function ConsistencyHeatmap({ daily }: { daily: DailyMissionsDTO }) {
@@ -234,18 +234,18 @@ function ConsistencyHeatmap({ daily }: { daily: DailyMissionsDTO }) {
   }, [daily.heatmap.days])
 
   return (
-    <div className="mt-4 border-t border-stone-100 dark:border-stone-800 pt-4">
+    <div className="mt-4 border-t border-slate-100 dark:border-slate-800 pt-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="flex items-center gap-1.5 text-xs font-semibold text-stone-500 dark:text-stone-400">
+        <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
           <Flame
-            className={cn('size-3.5', daily.streak > 0 ? 'text-orange-500' : 'text-stone-300 dark:text-stone-600')}
+            className={cn('size-3.5', daily.streak > 0 ? 'text-orange-500' : 'text-slate-300 dark:text-slate-600')}
             aria-hidden
           />
           {daily.streak > 0
             ? `Ofensiva de ${daily.streak} ${daily.streak === 1 ? 'dia' : 'dias'} — não quebre a corrente!`
             : 'Estude hoje para começar uma ofensiva'}
         </p>
-        <p className="text-xs text-stone-400 dark:text-stone-500">
+        <p className="text-xs text-slate-400 dark:text-slate-500">
           {daily.heatmap.activeDays} {daily.heatmap.activeDays === 1 ? 'dia ativo' : 'dias ativos'} nos últimos 3 meses
         </p>
       </div>
@@ -277,8 +277,8 @@ function ConsistencyHeatmap({ daily }: { daily: DailyMissionsDTO }) {
 // ------------------------------ Ranking da semana ---------------------------
 
 const RANK_STYLES = [
-  'bg-amber-400 text-white', // 1º ouro
-  'bg-stone-300 text-stone-800', // 2º prata
+  'bg-blue-400 text-white', // 1º ouro
+  'bg-slate-300 text-slate-800', // 2º prata
   'bg-orange-300 text-orange-900', // 3º bronze
 ]
 
@@ -301,20 +301,20 @@ export function WeeklyRankingCard() {
     <div
       role="group"
       aria-label="Ranking da semana"
-      className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 shadow-sm tabular-nums"
+      className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm tabular-nums"
     >
       <div className="flex items-center gap-3">
         <span
           aria-hidden
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400"
+          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400"
         >
           <Trophy className="size-5" />
         </span>
         <div className="min-w-0">
-          <h2 className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+          <h2 className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
             Ranking da semana
           </h2>
-          <p className="text-xs text-stone-400 dark:text-stone-500">
+          <p className="text-xs text-slate-400 dark:text-slate-500">
             XP ganho desde a segunda-feira — recomeça toda semana
           </p>
         </div>
@@ -342,28 +342,28 @@ export function WeeklyRankingCard() {
               key={entry.userId}
               className={cn(
                 'flex items-center gap-3 rounded-xl p-2',
-                idx === 0 && 'bg-amber-50 dark:bg-amber-950/30'
+                idx === 0 && 'bg-blue-50 dark:bg-blue-950/30'
               )}
             >
               <span
                 aria-hidden
                 className={cn(
                   'flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-extrabold',
-                  idx < 3 ? RANK_STYLES[idx] : 'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400'
+                  idx < 3 ? RANK_STYLES[idx] : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
                 )}
               >
                 {idx + 1}
               </span>
               <Avatar name={entry.name} src={entry.avatarUrl} size="sm" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-stone-900 dark:text-stone-50">
+                <p className="truncate text-sm font-bold text-slate-900 dark:text-slate-50">
                   {entry.name}
                 </p>
-                <p className="truncate text-[11px] font-semibold text-stone-400 dark:text-stone-500">
+                <p className="truncate text-[11px] font-semibold text-slate-400 dark:text-slate-500">
                   {entry.levelLabel}
                 </p>
               </div>
-              <span className="flex shrink-0 items-center gap-1 text-sm font-extrabold text-amber-700 dark:text-amber-400">
+              <span className="flex shrink-0 items-center gap-1 text-sm font-extrabold text-blue-700 dark:text-blue-400">
                 <Zap className="size-3.5" aria-hidden />+{entry.weekXp}
               </span>
             </li>
@@ -373,22 +373,22 @@ export function WeeklyRankingCard() {
 
       {/* Minha posição — sempre visível (mesmo fora do top) */}
       {board?.me ? (
-        <div className="mt-4 border-t border-stone-100 dark:border-stone-800 pt-3">
+        <div className="mt-4 border-t border-slate-100 dark:border-slate-800 pt-3">
           {board.me.rank > 0 ? (
-            <p className="flex flex-wrap items-center gap-1.5 text-sm font-bold text-stone-900 dark:text-stone-50">
-              <Trophy className="size-4 text-amber-500" aria-hidden />
+            <p className="flex flex-wrap items-center gap-1.5 text-sm font-bold text-slate-900 dark:text-slate-50">
+              <Trophy className="size-4 text-blue-500" aria-hidden />
               Você está em {board.me.rank}º lugar
-              <span className="font-semibold text-stone-400 dark:text-stone-500">
+              <span className="font-semibold text-slate-400 dark:text-slate-500">
                 com +{board.me.weekXp} XP esta semana
               </span>
             </p>
           ) : (
-            <p className="text-sm font-semibold text-stone-500 dark:text-stone-400">
+            <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
               Você ainda não pontuou esta semana — conclua uma aula e entre no ranking! ✨
             </p>
           )}
           {board.totalActive > 0 ? (
-            <p className="mt-1 text-xs text-stone-400 dark:text-stone-500">
+            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
               {board.totalActive} {board.totalActive === 1 ? 'membro pontuou' : 'membros pontuaram'} esta semana
             </p>
           ) : null}

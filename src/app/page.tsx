@@ -33,10 +33,10 @@ const MarketplaceView = dynamic(
 function ViewLoading() {
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3" aria-busy="true">
-      <span className="flex h-12 w-12 animate-pulse items-center justify-center rounded-2xl bg-amber-600/10 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+      <span className="flex h-12 w-12 animate-pulse items-center justify-center rounded-2xl bg-blue-600/10 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400">
         <Orbit className="h-6 w-6" />
       </span>
-      <p className="text-sm font-medium text-stone-400 dark:text-stone-500">carregando…</p>
+      <p className="text-sm font-medium text-slate-400 dark:text-slate-500">carregando…</p>
     </div>
   )
 }
@@ -288,7 +288,7 @@ export default function Home() {
   return (
     /* Shell tipo app: header e rodapé fora do fluxo de rolagem. O <main> é o
        ÚNICO container de rolagem — o corpo nunca entra por baixo do header. */
-    <div className="flex h-dvh flex-col overflow-hidden bg-white dark:bg-stone-950">
+    <div className="flex h-dvh flex-col overflow-hidden bg-white dark:bg-slate-950">
       {!immersive && <PromoBar />}
 
       {!immersive && <Navbar />}
@@ -342,12 +342,12 @@ export default function Home() {
 
       {/* Imersão: sala de aula e leitor em overlay tela cheia sobre tudo */}
       {view.name === 'classroom' && (
-        <div className="fixed inset-0 z-50 bg-stone-50 dark:bg-stone-950">
+        <div className="fixed inset-0 z-50 bg-slate-50 dark:bg-slate-950">
           <ClassroomView courseId={view.courseId} />
         </div>
       )}
       {view.name === 'reader' && (
-        <div className="fixed inset-0 z-50 bg-stone-50 dark:bg-stone-950">
+        <div className="fixed inset-0 z-50 bg-slate-50 dark:bg-slate-950">
           <ReaderView itemId={view.itemId} />
         </div>
       )}

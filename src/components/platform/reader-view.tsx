@@ -24,13 +24,13 @@ import { cn } from '@/lib/utils'
 const KIND_META: Record<string, { label: string; badge: string; badgeDark: string }> = {
   ARTICLE: {
     label: 'Artigo',
-    badge: 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300 dark:hover:bg-amber-950/50',
-    badgeDark: 'border-amber-300/25 bg-white/10 text-amber-100 hover:bg-white/10',
+    badge: 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300 dark:hover:bg-blue-950/50',
+    badgeDark: 'border-blue-300/25 bg-white/10 text-blue-100 hover:bg-white/10',
   },
   BOOK: {
     label: 'Livro',
-    badge: 'border-amber-200 bg-amber-100 text-amber-800 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300 dark:hover:bg-amber-950/50',
-    badgeDark: 'border-amber-300/30 bg-amber-300/10 text-amber-100 hover:bg-amber-300/10',
+    badge: 'border-blue-200 bg-blue-100 text-blue-800 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300 dark:hover:bg-blue-950/50',
+    badgeDark: 'border-blue-300/30 bg-blue-300/10 text-blue-100 hover:bg-blue-300/10',
   },
 }
 
@@ -62,7 +62,7 @@ function ArticleBlocks({
         // Subtítulo: "## "
         if (lines.length === 1 && lines[0].startsWith('## ')) {
           return (
-            <h2 key={i} className="mt-8 text-xl font-bold tracking-tight text-stone-900 dark:text-stone-50">
+            <h2 key={i} className="mt-8 text-xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
               {lines[0].slice(3).trim()}
             </h2>
           )
@@ -74,8 +74,8 @@ function ArticleBlocks({
             <ul key={i} className="space-y-2 py-2">
               {lines.map((l, j) => (
                 <li key={j} className="flex items-start gap-2.5">
-                  <span aria-hidden className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-                  <span className={cn(sizeClass, 'text-stone-700 dark:text-stone-200')}>{l.slice(2).trim()}</span>
+                  <span aria-hidden className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />
+                  <span className={cn(sizeClass, 'text-slate-700 dark:text-slate-200')}>{l.slice(2).trim()}</span>
                 </li>
               ))}
             </ul>
@@ -83,7 +83,7 @@ function ArticleBlocks({
         }
 
         return (
-          <p key={i} className={cn('whitespace-pre-line py-2', sizeClass, 'text-stone-700 dark:text-stone-200')}>
+          <p key={i} className={cn('whitespace-pre-line py-2', sizeClass, 'text-slate-700 dark:text-slate-200')}>
             {block}
           </p>
         )
@@ -188,11 +188,11 @@ export function ReaderView({ itemId }: { itemId: string }) {
       <>
         {/* Card do autor */}
         <section className={cn('mt-10', wide && 'max-w-3xl')}>
-          <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-stone-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900">
+          <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
             <Avatar name={item.author.name} src={item.author.avatarUrl} size="lg" />
             <div className="min-w-0 flex-1">
-              <p className="truncate font-bold text-stone-900 dark:text-stone-50">{item.author.name}</p>
-              <p className="truncate text-sm text-stone-500 dark:text-stone-400">{item.author.headline}</p>
+              <p className="truncate font-bold text-slate-900 dark:text-slate-50">{item.author.name}</p>
+              <p className="truncate text-sm text-slate-500 dark:text-slate-400">{item.author.headline}</p>
             </div>
             <Button
               variant="outline"
@@ -209,7 +209,7 @@ export function ReaderView({ itemId }: { itemId: string }) {
         {/* Cursos que usam este conteúdo */}
         {item.linkedCourses && item.linkedCourses.length > 0 && (
           <section className={cn('mt-8', wide && 'max-w-3xl')}>
-            <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-stone-400 dark:text-stone-500">
+            <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
               Este conteúdo está nos cursos
             </h2>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -217,10 +217,10 @@ export function ReaderView({ itemId }: { itemId: string }) {
                 <button
                   key={course.id}
                   onClick={() => navigate({ name: 'course', courseId: course.id })}
-                  className="inline-flex max-w-full items-center gap-2 rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition-colors hover:border-amber-300 hover:text-amber-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-amber-700 dark:hover:text-amber-300"
+                  className="inline-flex max-w-full items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-blue-300 hover:text-blue-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-blue-700 dark:hover:text-blue-300"
                   aria-label={`Ver curso ${course.title}`}
                 >
-                  <BookOpen aria-hidden className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <BookOpen aria-hidden className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
                   <span className="truncate">{course.title}</span>
                 </button>
               ))}
@@ -231,7 +231,7 @@ export function ReaderView({ itemId }: { itemId: string }) {
         {/* Continue lendo */}
         {related.length > 0 && (
           <section className={cn('mt-8', wide && 'max-w-3xl')}>
-            <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-stone-400 dark:text-stone-500">
+            <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
               Continue lendo
             </h2>
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
@@ -242,10 +242,10 @@ export function ReaderView({ itemId }: { itemId: string }) {
                     const view = useAppStore.getState().view
                     navigate({ name: 'reader', itemId: r.id, returnTo: view.name === 'reader' ? view.returnTo : undefined })
                   }}
-                  className="group flex min-w-0 items-center gap-3 rounded-2xl border border-stone-200 bg-white p-3 text-left transition-all hover:border-amber-300 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-amber-700"
+                  className="group flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 text-left transition-all hover:border-blue-300 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:hover:border-blue-700"
                   aria-label={`Ler ${r.title}`}
                 >
-                  <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-stone-100 dark:bg-stone-800">
+                  <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800">
                     {r.coverUrl ? (
                       <img src={r.coverUrl} alt="" aria-hidden className="h-full w-full object-cover" />
                     ) : (
@@ -269,7 +269,7 @@ export function ReaderView({ itemId }: { itemId: string }) {
                     >
                       {(KIND_META[r.kind] ?? KIND_META.ARTICLE).label}
                     </Badge>
-                    <span className="mt-1 line-clamp-2 block text-sm font-semibold leading-snug text-stone-900 dark:text-stone-50">
+                    <span className="mt-1 line-clamp-2 block text-sm font-semibold leading-snug text-slate-900 dark:text-slate-50">
                       {r.title}
                     </span>
                   </span>
@@ -282,9 +282,9 @@ export function ReaderView({ itemId }: { itemId: string }) {
     ) : null
 
   return (
-    <div className="flex h-full flex-col bg-stone-50 dark:bg-stone-950">
+    <div className="flex h-full flex-col bg-slate-50 dark:bg-slate-950">
       {/* ---------- TOP BAR IMERSIVA ---------- */}
-      <header className="shrink-0 border-b border-amber-400/15 bg-amber-950 text-white">
+      <header className="shrink-0 border-b border-blue-400/15 bg-blue-950 text-white">
         <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-2 px-4 sm:gap-3 sm:px-6">
           <Button
             variant="ghost"
@@ -310,8 +310,8 @@ export function ReaderView({ itemId }: { itemId: string }) {
             )}
             <p className="truncate font-bold text-white">{item?.title ?? 'Carregando...'}</p>
             {item && (
-              <p className="hidden min-w-0 items-center gap-1 text-xs text-amber-100/70 md:flex">
-                <span aria-hidden className="text-amber-100/40">·</span>
+              <p className="hidden min-w-0 items-center gap-1 text-xs text-blue-100/70 md:flex">
+                <span aria-hidden className="text-blue-100/40">·</span>
                 <span className="truncate">
                   {firstName(item.author.name)} · {item.author.headline}
                 </span>
@@ -348,7 +348,7 @@ export function ReaderView({ itemId }: { itemId: string }) {
               </div>
             ) : null}
             {item && (
-              <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-amber-100/70">
+              <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-blue-100/70">
                 <Clock aria-hidden className="h-3.5 w-3.5" />
                 {item.readingMin} min
               </span>
@@ -380,7 +380,7 @@ export function ReaderView({ itemId }: { itemId: string }) {
           <div aria-hidden className="h-1.5 w-full bg-white/10">
             <div
               ref={barRef}
-              className="h-full bg-gradient-to-r from-amber-600 to-amber-400 transition-[width] duration-150 ease-linear"
+              className="h-full bg-gradient-to-r from-blue-600 to-blue-400 transition-[width] duration-150 ease-linear"
               style={{ width: '0%' }}
             />
           </div>
@@ -411,12 +411,12 @@ export function ReaderView({ itemId }: { itemId: string }) {
         ) : error || !item ? (
           /* Erro / 404 */
           <div className="flex h-full items-center justify-center p-6">
-            <div className="flex w-full max-w-md flex-col items-center gap-3 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-12 text-center dark:border-stone-700 dark:bg-stone-900">
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
-                <AlertCircle className="h-7 w-7 text-stone-400 dark:text-stone-500" aria-hidden />
+            <div className="flex w-full max-w-md flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center dark:border-slate-700 dark:bg-slate-900">
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                <AlertCircle className="h-7 w-7 text-slate-400 dark:text-slate-500" aria-hidden />
               </span>
-              <p className="font-bold text-stone-900 dark:text-stone-50">Não foi possível carregar o conteúdo.</p>
-              <p className="max-w-sm text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+              <p className="font-bold text-slate-900 dark:text-slate-50">Não foi possível carregar o conteúdo.</p>
+              <p className="max-w-sm text-sm leading-relaxed text-slate-500 dark:text-slate-400">
                 {error || 'Este conteúdo pode ter sido removido da Biblioteca.'}
               </p>
               <Button variant="outline" className="mt-1 rounded-full" onClick={() => void load()}>
@@ -427,18 +427,18 @@ export function ReaderView({ itemId }: { itemId: string }) {
         ) : !item.canRead ? (
           /* Estado de bloqueio: conteúdo exclusivo de curso */
           <div className="flex h-full items-center justify-center p-6">
-            <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-8 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900">
-              <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 ring-1 ring-amber-100 dark:bg-amber-950/50 dark:ring-amber-900/40">
-                <Lock className="h-6 w-6 text-amber-600 dark:text-amber-400" aria-hidden />
+            <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 ring-1 ring-blue-100 dark:bg-blue-950/50 dark:ring-blue-900/40">
+                <Lock className="h-6 w-6 text-blue-600 dark:text-blue-400" aria-hidden />
               </span>
-              <h2 className="mt-4 text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+              <h2 className="mt-4 text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
                 Este conteúdo é exclusivo
               </h2>
-              <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+              <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
                 {firstCourse ? (
                   <>
                     Ele faz parte do curso{' '}
-                    <span className="font-semibold text-stone-700 dark:text-stone-200">{firstCourse.title}</span>.
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">{firstCourse.title}</span>.
                     Inscreva-se para ter acesso.
                   </>
                 ) : (
@@ -462,14 +462,14 @@ export function ReaderView({ itemId }: { itemId: string }) {
         ) : item.pdfUrl ? (
           /* Modo PDF */
           <div className="mx-auto w-full max-w-5xl p-4">
-            <p className="mb-3 flex items-center gap-1.5 text-xs text-stone-400 dark:text-stone-500">
+            <p className="mb-3 flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
               <Info aria-hidden className="h-3.5 w-3.5" />
               Use os controles do leitor para navegar e ampliar.
             </p>
             <iframe
               src={`${item.pdfUrl}#view=FitH`}
               title={item.title}
-              className="h-[calc(100dvh-8rem)] min-h-[520px] w-full rounded-xl border border-stone-200 bg-white"
+              className="h-[calc(100dvh-8rem)] min-h-[520px] w-full rounded-xl border border-slate-200 bg-white"
             />
             {footerSections(true)}
             <div className="h-6" />
@@ -477,12 +477,12 @@ export function ReaderView({ itemId }: { itemId: string }) {
         ) : item.content ? (
           /* Modo texto: artigo editorial */
           <article className="mx-auto w-full max-w-2xl px-4 py-8">
-            <h1 className="text-3xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50 sm:text-4xl">{item.title}</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 sm:text-4xl">{item.title}</h1>
             <div className="mt-4 flex items-center gap-3">
               <Avatar name={item.author.name} src={item.author.avatarUrl} size="sm" />
               <div className="min-w-0 text-sm">
-                <p className="truncate font-semibold text-stone-800 dark:text-stone-200">{item.author.name}</p>
-                <p className="text-xs text-stone-400 dark:text-stone-500">
+                <p className="truncate font-semibold text-slate-800 dark:text-slate-200">{item.author.name}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">
                   {new Date(item.createdAt).toLocaleDateString('pt-BR', {
                     day: 'numeric',
                     month: 'long',
@@ -492,7 +492,7 @@ export function ReaderView({ itemId }: { itemId: string }) {
               </div>
             </div>
             {item.description && (
-              <p className="mt-6 text-lg leading-relaxed text-stone-500 dark:text-stone-400">{item.description}</p>
+              <p className="mt-6 text-lg leading-relaxed text-slate-500 dark:text-slate-400">{item.description}</p>
             )}
             <div className="mt-8">
               <ArticleBlocks content={item.content ?? ''} sizeClass={READER_FONT_CLASSES[fontStep]} />
@@ -502,8 +502,8 @@ export function ReaderView({ itemId }: { itemId: string }) {
         ) : (
           /* Publicado sem PDF nem texto (não deveria ocorrer via UI) */
           <div className="mx-auto w-full max-w-3xl px-4 py-16 text-center">
-            <BookOpen aria-hidden className="mx-auto h-10 w-10 text-stone-300 dark:text-stone-600" />
-            <p className="mt-4 font-bold text-stone-900 dark:text-stone-50">Este item ainda não tem conteúdo disponível.</p>
+            <BookOpen aria-hidden className="mx-auto h-10 w-10 text-slate-300 dark:text-slate-600" />
+            <p className="mt-4 font-bold text-slate-900 dark:text-slate-50">Este item ainda não tem conteúdo disponível.</p>
             <Button variant="outline" className="mt-4 rounded-full" onClick={goBack}>
               Voltar para a Biblioteca
             </Button>

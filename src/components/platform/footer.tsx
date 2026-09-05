@@ -50,7 +50,7 @@ export function PlatformFooter() {
   ]
 
   return (
-    <footer className="mt-auto shrink-0 border-t border-stone-200/70 bg-stone-50 pb-[env(safe-area-inset-bottom)] dark:border-stone-800 dark:bg-stone-950">
+    <footer className="mt-auto shrink-0 border-t border-slate-200/70 bg-slate-50 pb-[env(safe-area-inset-bottom)] dark:border-slate-800 dark:bg-slate-950">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12">
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr]">
           {/* Marca */}
@@ -61,11 +61,11 @@ export function PlatformFooter() {
               aria-label="Órbita — ir para a página inicial"
             >
               <BrandMark className="h-9 w-9 transition-transform duration-200 group-hover:scale-[1.04]" />
-              <span className="text-lg font-semibold tracking-tight text-stone-900 dark:text-stone-50">
+              <span className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
                 Órbita
               </span>
             </button>
-            <p className="max-w-xs text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+            <p className="max-w-xs text-sm leading-relaxed text-slate-500 dark:text-slate-400">
               Seu universo de aprendizado — mentorias 1:1, cursos, trilhas guiadas e uma
               biblioteca de artigos e livros em um só lugar.
             </p>
@@ -73,7 +73,7 @@ export function PlatformFooter() {
 
           {/* Plataforma */}
           <nav aria-label="Explorar no rodapé">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-stone-400 dark:text-stone-500">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
               Plataforma
             </p>
             <ul className="mt-3 space-y-1">
@@ -81,9 +81,9 @@ export function PlatformFooter() {
                 <li key={link.label}>
                   <button
                     onClick={link.onClick}
-                    className="inline-flex items-center gap-2 rounded-md py-1.5 text-sm font-medium text-stone-600 transition-colors hover:text-amber-700 dark:text-stone-300 dark:hover:text-amber-300"
+                    className="inline-flex items-center gap-2 rounded-md py-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-blue-700 dark:text-slate-300 dark:hover:text-blue-300"
                   >
-                    <span className="text-stone-400 dark:text-stone-500">{link.icon}</span>
+                    <span className="text-slate-400 dark:text-slate-500">{link.icon}</span>
                     {link.label}
                   </button>
                 </li>
@@ -93,7 +93,7 @@ export function PlatformFooter() {
 
           {/* Conta */}
           <nav aria-label="Sua conta no rodapé">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-stone-400 dark:text-stone-500">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
               {user ? 'Sua conta' : 'Comece agora'}
             </p>
             <ul className="mt-3 space-y-1">
@@ -101,9 +101,9 @@ export function PlatformFooter() {
                 <li key={link.label}>
                   <button
                     onClick={link.onClick}
-                    className="inline-flex items-center gap-2 rounded-md py-1.5 text-sm font-medium text-stone-600 transition-colors hover:text-amber-700 dark:text-stone-300 dark:hover:text-amber-300"
+                    className="inline-flex items-center gap-2 rounded-md py-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-blue-700 dark:text-slate-300 dark:hover:text-blue-300"
                   >
-                    <span className="text-stone-400 dark:text-stone-500">{link.icon}</span>
+                    <span className="text-slate-400 dark:text-slate-500">{link.icon}</span>
                     {link.label}
                   </button>
                 </li>
@@ -112,9 +112,9 @@ export function PlatformFooter() {
           </nav>
         </div>
 
-        <div className="mt-10 flex flex-col items-start justify-between gap-2 border-t border-stone-200 pt-5 sm:flex-row sm:items-center dark:border-stone-800">
-          <p className="text-xs text-stone-400 dark:text-stone-500">© {year} Órbita · Todos os direitos reservados</p>
-          <p className="text-xs text-stone-400 dark:text-stone-500">Feito com dedicação para quem ensina e aprende 🧡</p>
+        <div className="mt-10 flex flex-col items-start justify-between gap-2 border-t border-slate-200 pt-5 sm:flex-row sm:items-center dark:border-slate-800">
+          <p className="text-xs text-slate-400 dark:text-slate-500">© {year} Órbita · Todos os direitos reservados</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">Feito com dedicação para quem ensina e aprende 💙</p>
         </div>
       </div>
     </footer>

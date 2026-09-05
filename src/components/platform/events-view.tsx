@@ -57,11 +57,11 @@ import { toast } from 'sonner'
 
 /** Gradiente por categoria (eventos sem capa ficam bonitos mesmo assim) */
 const CATEGORY_STYLES: Record<string, string> = {
-  Acadêmico: 'from-amber-500/80 to-orange-600/80',
-  Tecnologia: 'from-amber-500/80 to-teal-600/80',
+  Acadêmico: 'from-blue-500/80 to-orange-600/80',
+  Tecnologia: 'from-blue-500/80 to-teal-600/80',
   Carreira: 'from-rose-500/80 to-pink-600/80',
   Negócios: 'from-sky-500/80 to-cyan-600/80',
-  Geral: 'from-stone-600/80 to-stone-700/80',
+  Geral: 'from-slate-600/80 to-slate-700/80',
 }
 function coverStyle(category: string): string {
   return CATEGORY_STYLES[category] ?? CATEGORY_STYLES.Geral
@@ -134,7 +134,7 @@ function EventCard({
       </button>
       <CardContent className="space-y-2.5 p-4">
         <button onClick={onOpen} className="block w-full text-left">
-          <p className="line-clamp-2 font-bold leading-snug tracking-tight transition-colors group-hover:text-amber-700 dark:group-hover:text-amber-300">
+          <p className="line-clamp-2 font-bold leading-snug tracking-tight transition-colors group-hover:text-blue-700 dark:group-hover:text-blue-300">
             {ev.title}
           </p>
         </button>
@@ -146,7 +146,7 @@ function EventCard({
         <div className="flex items-center gap-2">
           <Avatar name={ev.host.name} size="sm" />
           <p className="truncate text-xs text-muted-foreground">
-            por <strong className="font-semibold text-stone-700 dark:text-stone-200">{ev.host.name}</strong>
+            por <strong className="font-semibold text-slate-700 dark:text-slate-200">{ev.host.name}</strong>
           </p>
         </div>
         <div className="flex items-center justify-between gap-2 pt-1">
@@ -168,7 +168,7 @@ function EventCard({
               </Button>
             ) : (
               <div className="flex gap-1.5">
-                <Button size="sm" className="h-8 bg-amber-600 hover:bg-amber-500" onClick={onOpen}>
+                <Button size="sm" className="h-8 bg-blue-600 hover:bg-blue-500" onClick={onOpen}>
                   Detalhes
                 </Button>
                 <Button size="sm" variant="ghost" className="h-8 text-muted-foreground" disabled={busy} onClick={leave}>
@@ -181,7 +181,7 @@ function EventCard({
           ) : (
             <Button
               size="sm"
-              className="h-8 bg-amber-600 hover:bg-amber-500"
+              className="h-8 bg-blue-600 hover:bg-blue-500"
               disabled={busy || full}
               onClick={join}
             >
@@ -238,7 +238,7 @@ function CreateEventDialog({ onCreated }: { onCreated: (ev: EventDTO) => void })
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-amber-600 hover:bg-amber-500">
+        <Button className="bg-blue-600 hover:bg-blue-500">
           <CalendarPlus className="h-4 w-4" /> Criar evento
         </Button>
       </DialogTrigger>
@@ -329,7 +329,7 @@ function CreateEventDialog({ onCreated }: { onCreated: (ev: EventDTO) => void })
             Cancelar
           </Button>
           <Button
-            className="bg-amber-600 hover:bg-amber-500"
+            className="bg-blue-600 hover:bg-blue-500"
             disabled={busy || title.trim().length < 3}
             onClick={() => void submit()}
           >
@@ -378,17 +378,17 @@ export function EventsView() {
   return (
     <div className="mx-auto max-w-7xl px-4 pb-10 pt-6 sm:px-6">
       {/* hero */}
-      <div className="overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-white p-6 dark:border-amber-900 dark:from-amber-950/40 dark:via-stone-950 dark:to-stone-950 sm:p-8">
+      <div className="overflow-hidden rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 via-white to-white p-6 dark:border-blue-900 dark:from-blue-950/40 dark:via-slate-950 dark:to-slate-950 sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-2xl">
-            <Badge className="mb-3 border-none bg-amber-600 text-white">
+            <Badge className="mb-3 border-none bg-blue-600 text-white">
               <Radio className="mr-1 h-3 w-3" /> Diferencial Órbita
             </Badge>
             <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
               Eventos & Reuniões ao vivo
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-[15px]">
-              Reuniões com <strong className="font-semibold text-stone-700 dark:text-stone-200">vários participantes</strong> —
+              Reuniões com <strong className="font-semibold text-slate-700 dark:text-slate-200">vários participantes</strong> —
               tudo dentro da plataforma, com vídeo e áudio próprios. Nada de YouTube ou links
               externos: crie um círculo de estudos, um plantão de dúvidas ou um evento e receba
               os membros na sala com um toque.
@@ -425,8 +425,8 @@ export function EventsView() {
               onClick={() => setScope(t.key)}
               className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
                 scope === t.key
-                  ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900'
-                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700'
+                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
               }`}
             >
               {t.label}
@@ -444,13 +444,13 @@ export function EventsView() {
       {loading ? (
         <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-72 animate-pulse rounded-2xl bg-stone-100 dark:bg-stone-800" />
+            <div key={i} className="h-72 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
           ))}
         </div>
       ) : items.length === 0 ? (
         <Card className="mt-5 border-dashed">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
-            <CalendarDays className="h-10 w-10 text-stone-400 dark:text-stone-500" />
+            <CalendarDays className="h-10 w-10 text-slate-400 dark:text-slate-500" />
             <p className="font-semibold">
               {scope === 'mine' ? 'Você ainda não participa de nenhum evento' : 'Nenhum evento agendado ainda'}
             </p>
@@ -562,8 +562,8 @@ export function EventDetailView({ eventId }: { eventId: string }) {
   if (loading) {
     return (
       <div className="mx-auto max-w-5xl space-y-4 px-4 py-8 sm:px-6">
-        <div className="h-8 w-52 animate-pulse rounded-lg bg-stone-100 dark:bg-stone-800" />
-        <div className="h-64 animate-pulse rounded-2xl bg-stone-100 dark:bg-stone-800" />
+        <div className="h-8 w-52 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+        <div className="h-64 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
       </div>
     )
   }
@@ -573,7 +573,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
       <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
         <Card className="mx-auto max-w-md border-dashed">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
-            <CalendarDays className="h-10 w-10 text-stone-400" />
+            <CalendarDays className="h-10 w-10 text-slate-400" />
             <p className="font-semibold">Evento não encontrado</p>
             <Button onClick={() => navigate({ name: 'events' })}>Ver eventos</Button>
           </CardContent>
@@ -591,7 +591,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
     <div className="mx-auto max-w-5xl px-4 pb-10 pt-6 sm:px-6">
       <button
         onClick={() => navigate({ name: 'events' })}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 transition-colors hover:text-amber-700 dark:text-stone-400 dark:hover:text-amber-300"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition-colors hover:text-blue-700 dark:text-slate-400 dark:hover:text-blue-300"
       >
         <ArrowLeft className="h-4 w-4" /> Voltar para eventos
       </button>
@@ -610,7 +610,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
             </Badge>
           )}
           {ev.cancelled && (
-            <Badge className="border-none bg-stone-800 text-stone-100">Cancelado</Badge>
+            <Badge className="border-none bg-slate-800 text-slate-100">Cancelado</Badge>
           )}
           <Badge className="border-none bg-black/50 text-white backdrop-blur">{ev.category}</Badge>
         </div>
@@ -621,7 +621,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
           <h1 className="text-2xl font-extrabold tracking-tight">{ev.title}</h1>
           <p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
             <CalendarDays className="h-4 w-4" />
-            {relative && <strong className="text-stone-700 dark:text-stone-200">{relative} · </strong>}
+            {relative && <strong className="text-slate-700 dark:text-slate-200">{relative} · </strong>}
             {formatDayLabelLong(ev.startsAt)} · {formatTimeLabel(ev.startsAt)} →{' '}
             {addMinutesToTime(ev.startsAt, ev.durationMin)}
           </p>
@@ -635,8 +635,8 @@ export function EventDetailView({ eventId }: { eventId: string }) {
       </div>
 
       {ev.description && (
-        <div className="mt-4 rounded-xl border border-stone-200 bg-stone-50 p-4 dark:border-stone-800 dark:bg-stone-950/50">
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-stone-700 dark:text-stone-300">
+        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/50">
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">
             {ev.description}
           </p>
         </div>
@@ -655,7 +655,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
                 inRoom ? null : (
                   <Button
                     size="lg"
-                    className="bg-amber-600 hover:bg-amber-500"
+                    className="bg-blue-600 hover:bg-blue-500"
                     onClick={() => setInRoom(true)}
                   >
                     <Video className="h-4 w-4" /> Entrar na sala ao vivo
@@ -677,7 +677,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
         ) : (
           <Button
             size="lg"
-            className="bg-amber-600 hover:bg-amber-500"
+            className="bg-blue-600 hover:bg-blue-500"
             disabled={busy || full}
             onClick={join}
           >
@@ -716,7 +716,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
         <Card className="sm:col-span-2">
           <CardContent className="p-4 sm:p-6">
             <p className="flex items-center gap-1.5 text-sm font-bold">
-              <Users className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               Participantes confirmados
               <span className="font-normal text-muted-foreground">
                 ({ev.joinedCount}/{ev.capacity})
@@ -729,12 +729,12 @@ export function EventDetailView({ eventId }: { eventId: string }) {
                 {ev.participants.map((p) => (
                   <li
                     key={p.id}
-                    className="flex items-center gap-2.5 rounded-xl border border-stone-200 p-2.5 dark:border-stone-800"
+                    className="flex items-center gap-2.5 rounded-xl border border-slate-200 p-2.5 dark:border-slate-800"
                   >
                     <Avatar name={p.name} size="sm" />
                     <span className="truncate text-sm font-semibold">{p.name}</span>
                     {p.role === 'HOST' && (
-                      <Badge variant="outline" className="ml-auto shrink-0 border-amber-300 text-[10px] text-amber-700 dark:text-amber-300">
+                      <Badge variant="outline" className="ml-auto shrink-0 border-blue-300 text-[10px] text-blue-700 dark:text-blue-300">
                         Anfitrião
                       </Badge>
                     )}
@@ -773,8 +773,8 @@ const EventStage = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-[46vh] min-h-[300px] items-center justify-center rounded-2xl border border-stone-800 bg-stone-950">
-        <Loader2 className="h-8 w-8 animate-spin text-amber-400" />
+      <div className="flex h-[46vh] min-h-[300px] items-center justify-center rounded-2xl border border-slate-800 bg-slate-950">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
       </div>
     ),
   }

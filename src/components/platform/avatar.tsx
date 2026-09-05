@@ -70,7 +70,7 @@ export function Stars({
           key={i}
           size={size}
           className={
-            i <= Math.round(rating) ? 'fill-amber-400 text-amber-400' : 'fill-stone-200 text-stone-200'
+            i <= Math.round(rating) ? 'fill-yellow-400 text-blue-400' : 'fill-slate-200 text-slate-200'
           }
         />
       ))}

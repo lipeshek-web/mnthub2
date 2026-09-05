@@ -360,17 +360,17 @@ export function AuthView({
   }
 
   return (
-    <div className="grid min-h-full bg-stone-50 dark:bg-stone-950 lg:grid-cols-2">
+    <div className="grid min-h-full bg-slate-50 dark:bg-slate-950 lg:grid-cols-2">
       {/* ---------- Painel esquerdo (header compacto no mobile, completo no lg+) ---------- */}
       <section
         aria-label="Sobre o Órbita"
-        className="relative flex flex-col gap-10 overflow-hidden bg-gradient-to-br from-stone-900 via-stone-900 to-amber-950 p-6 text-white lg:justify-between lg:gap-12 lg:p-10 xl:p-14"
+        className="relative flex flex-col gap-10 overflow-hidden bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 p-6 text-white lg:justify-between lg:gap-12 lg:p-10 xl:p-14"
       >
         {/* Blobs decorativos (brilho quente sobre graphite) */}
         <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div className="absolute -left-28 -top-28 h-80 w-80 rounded-full bg-amber-500/20 blur-3xl" />
+          <div className="absolute -left-28 -top-28 h-80 w-80 rounded-full bg-blue-500/20 blur-3xl" />
           <div className="absolute -right-24 top-1/3 h-96 w-96 rounded-full bg-white/[0.07] blur-3xl" />
-          <div className="absolute -bottom-32 left-1/4 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
+          <div className="absolute -bottom-32 left-1/4 h-72 w-72 rounded-full bg-blue-400/10 blur-3xl" />
           {/* Anel orbital decorativo */}
           <div className="absolute -right-40 -top-40 h-[28rem] w-[28rem] rounded-full border border-white/10" />
           <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full border border-white/10" />
@@ -389,7 +389,7 @@ export function AuthView({
           <h1 className="max-w-lg text-2xl font-extrabold leading-tight tracking-tight lg:text-4xl lg:leading-[1.1]">
             Aprenda com quem vive o que ensina.
           </h1>
-          <p className="mt-3 max-w-md text-sm text-stone-300 lg:mt-4 lg:text-base">
+          <p className="mt-3 max-w-md text-sm text-slate-300 lg:mt-4 lg:text-base">
             Cursos ao vivo, mentorias 1:1 e biblioteca — tudo o que você precisa para evoluir de
             verdade, em um só lugar.
           </p>
@@ -397,9 +397,9 @@ export function AuthView({
             {PANEL_BULLETS.map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-center gap-3.5">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/10">
-                  <Icon className="h-5 w-5 text-amber-300" aria-hidden />
+                  <Icon className="h-5 w-5 text-blue-300" aria-hidden />
                 </span>
-                <span className="text-sm text-stone-100/90">{text}</span>
+                <span className="text-sm text-slate-100/90">{text}</span>
               </li>
             ))}
           </ul>
@@ -409,7 +409,7 @@ export function AuthView({
         <div className="relative hidden lg:block">
           <div className="max-w-md rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
             <Stars rating={5} size={16} />
-            <p className="mt-2 text-sm text-stone-100/90">
+            <p className="mt-2 text-sm text-slate-100/90">
               4,9 de média · +2.400 alunos aprendendo todos os dias
             </p>
           </div>
@@ -418,22 +418,22 @@ export function AuthView({
 
       {/* ---------- Painel direito: formulário ---------- */}
       <section className="flex items-center justify-center p-4 sm:p-6 lg:p-8 xl:p-12">
-        <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900 p-6 shadow-sm sm:p-8">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-sm sm:p-8">
           {/* ----- Modo redefinir senha (chegou pelo link do e-mail) ----- */}
           {isReset ? (
             <div className="space-y-4">
               <div>
-                <h2 className="text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+                <h2 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
                   Definir nova senha
                 </h2>
-                <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   Escolha uma nova senha para acessar sua conta.
                 </p>
               </div>
 
               {resetDone ? (
                 <div className="space-y-4">
-                  <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
+                  <div className="flex items-start gap-2.5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-200">
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
                     <p>Senha alterada com sucesso! Faça login com a nova senha.</p>
                   </div>
@@ -447,7 +447,7 @@ export function AuthView({
               ) : (
                 <form onSubmit={handleResetSubmit} noValidate className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="reset-password" className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                    <Label htmlFor="reset-password" className="text-sm font-medium text-slate-700 dark:text-slate-200">
                       Nova senha
                     </Label>
                     <Input
@@ -463,7 +463,7 @@ export function AuthView({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="reset-confirm" className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                    <Label htmlFor="reset-confirm" className="text-sm font-medium text-slate-700 dark:text-slate-200">
                       Confirmar nova senha
                     </Label>
                     <Input
@@ -503,16 +503,16 @@ export function AuthView({
           ) : (
           <>
           <Tabs value={tab} onValueChange={switchTab}>
-            <TabsList className="grid h-11 w-full grid-cols-2 rounded-full bg-stone-100 dark:bg-stone-800 p-1">
+            <TabsList className="grid h-11 w-full grid-cols-2 rounded-full bg-slate-100 dark:bg-slate-800 p-1">
               <TabsTrigger
                 value="login"
-                className="rounded-full text-sm font-semibold text-stone-500 data-[state=active]:bg-white data-[state=active]:text-stone-900 data-[state=active]:shadow-sm dark:text-stone-400 dark:data-[state=active]:bg-stone-900 dark:data-[state=active]:text-stone-50"
+                className="rounded-full text-sm font-semibold text-slate-500 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:text-slate-400 dark:data-[state=active]:bg-slate-900 dark:data-[state=active]:text-slate-50"
               >
                 Entrar
               </TabsTrigger>
               <TabsTrigger
                 value="register"
-                className="rounded-full text-sm font-semibold text-stone-500 data-[state=active]:bg-white data-[state=active]:text-stone-900 data-[state=active]:shadow-sm dark:text-stone-400 dark:data-[state=active]:bg-stone-900 dark:data-[state=active]:text-stone-50"
+                className="rounded-full text-sm font-semibold text-slate-500 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:text-slate-400 dark:data-[state=active]:bg-slate-900 dark:data-[state=active]:text-slate-50"
               >
                 Criar conta
               </TabsTrigger>
@@ -522,13 +522,13 @@ export function AuthView({
             <TabsContent value="login" className="mt-6">
               {mfaTicket ? (
                 <div className="flex flex-col items-center text-center">
-                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
                     <ShieldCheck className="h-7 w-7" aria-hidden />
                   </span>
-                  <h2 className="mt-4 text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+                  <h2 className="mt-4 text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
                     Verificação em duas etapas
                   </h2>
-                  <p className="mt-1.5 max-w-xs text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+                  <p className="mt-1.5 max-w-xs text-sm leading-relaxed text-slate-500 dark:text-slate-400">
                     {mfaMode === 'totp' ? (
                       <>Digite o código de 6 dígitos do seu app autenticador (Google Authenticator, Authy…).</>
                     ) : (
@@ -550,7 +550,7 @@ export function AuthView({
                       >
                         <InputOTPGroup>
                           {[0, 1, 2, 3, 4, 5].map((i) => (
-                            <InputOTPSlot key={i} index={i} className="h-12 w-11 rounded-lg border-stone-300 text-lg font-bold dark:border-stone-700" />
+                            <InputOTPSlot key={i} index={i} className="h-12 w-11 rounded-lg border-slate-300 text-lg font-bold dark:border-slate-700" />
                           ))}
                         </InputOTPGroup>
                       </InputOTP>
@@ -610,7 +610,7 @@ export function AuthView({
                       }
                       setMfaError(null)
                     }}
-                    className="mt-4 text-xs font-medium text-stone-400 underline-offset-2 transition-colors hover:text-stone-600 hover:underline dark:text-stone-500 dark:hover:text-stone-300"
+                    className="mt-4 text-xs font-medium text-slate-400 underline-offset-2 transition-colors hover:text-slate-600 hover:underline dark:text-slate-500 dark:hover:text-slate-300"
                   >
                     {mfaMode === 'recovery'
                       ? 'Usar o app autenticador'
@@ -625,7 +625,7 @@ export function AuthView({
                       setMfaError(null)
                       setMfaMode('totp')
                     }}
-                    className="mt-2 text-xs font-medium text-stone-400 underline-offset-2 transition-colors hover:text-stone-600 hover:underline dark:text-stone-500 dark:hover:text-stone-300"
+                    className="mt-2 text-xs font-medium text-slate-400 underline-offset-2 transition-colors hover:text-slate-600 hover:underline dark:text-slate-500 dark:hover:text-slate-300"
                   >
                     Voltar para o login
                   </button>
@@ -633,16 +633,16 @@ export function AuthView({
               ) : (
               <form onSubmit={handleLogin} noValidate className="space-y-4">
                 <div>
-                  <h2 className="text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+                  <h2 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
                     Bem-vindo de volta
                   </h2>
-                  <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     Entre para continuar sua jornada de aprendizado.
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="login-email" className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                  <Label htmlFor="login-email" className="text-sm font-medium text-slate-700 dark:text-slate-200">
                     E-mail
                   </Label>
                   <Input
@@ -668,7 +668,7 @@ export function AuthView({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="login-password" className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                  <Label htmlFor="login-password" className="text-sm font-medium text-slate-700 dark:text-slate-200">
                     Senha
                   </Label>
                   <div className="relative">
@@ -691,7 +691,7 @@ export function AuthView({
                       type="button"
                       onClick={() => setShowLoginPassword((v) => !v)}
                       aria-label={showLoginPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                      className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center text-stone-400 transition-colors hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
+                      className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center text-slate-400 transition-colors hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
                     >
                       {showLoginPassword ? (
                         <EyeOff className="h-4 w-4" aria-hidden />
@@ -711,7 +711,7 @@ export function AuthView({
                   <button
                     type="button"
                     onClick={handleForgotPassword}
-                    className="text-xs font-medium text-amber-700 underline-offset-2 transition-colors hover:text-amber-800 hover:underline dark:text-amber-300 dark:hover:text-amber-300"
+                    className="text-xs font-medium text-blue-700 underline-offset-2 transition-colors hover:text-blue-800 hover:underline dark:text-blue-300 dark:hover:text-blue-300"
                   >
                     Esqueceu a senha?
                   </button>
@@ -745,16 +745,16 @@ export function AuthView({
             <TabsContent value="register" className="mt-6">
               <form onSubmit={handleRegister} noValidate className="space-y-4">
                 <div>
-                  <h2 className="text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+                  <h2 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
                     Crie sua conta
                   </h2>
-                  <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     Estude com os melhores e, se quiser, vire mentor.
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="reg-name" className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                  <Label htmlFor="reg-name" className="text-sm font-medium text-slate-700 dark:text-slate-200">
                     Nome completo
                   </Label>
                   <Input
@@ -778,7 +778,7 @@ export function AuthView({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="reg-email" className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                  <Label htmlFor="reg-email" className="text-sm font-medium text-slate-700 dark:text-slate-200">
                     E-mail
                   </Label>
                   <Input
@@ -803,7 +803,7 @@ export function AuthView({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="reg-password" className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                  <Label htmlFor="reg-password" className="text-sm font-medium text-slate-700 dark:text-slate-200">
                     Senha
                   </Label>
                   <div className="relative">
@@ -828,7 +828,7 @@ export function AuthView({
                       type="button"
                       onClick={() => setShowRegPassword((v) => !v)}
                       aria-label={showRegPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                      className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center text-stone-400 transition-colors hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
+                      className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center text-slate-400 transition-colors hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
                     >
                       {showRegPassword ? (
                         <EyeOff className="h-4 w-4" aria-hidden />
@@ -842,7 +842,7 @@ export function AuthView({
                       {regErrors.password}
                     </p>
                   ) : (
-                    <p id="reg-password-hint" className="text-xs text-stone-400 dark:text-stone-500">
+                    <p id="reg-password-hint" className="text-xs text-slate-400 dark:text-slate-500">
                       Mínimo de 6 caracteres
                     </p>
                   )}
@@ -875,14 +875,14 @@ export function AuthView({
           {/* ----- Divisor + contas de demonstração ----- */}
           <div className="mt-7">
             <div className="flex items-center gap-3" aria-hidden>
-              <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" />
-              <span className="text-xs font-medium text-stone-400 dark:text-stone-500">ou continue com</span>
-              <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" />
+              <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+              <span className="text-xs font-medium text-slate-400 dark:text-slate-500">ou continue com</span>
+              <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
             </div>
 
             <div className="mt-5">
-              <p className="text-xs font-semibold text-stone-500 dark:text-stone-400">Contas de demonstração</p>
-              <p className="mt-0.5 text-xs text-stone-400 dark:text-stone-500">
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Contas de demonstração</p>
+              <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
                 Ideal para conhecer a plataforma · senha: demo123
               </p>
 
@@ -893,7 +893,7 @@ export function AuthView({
                   ))}
                 </div>
               ) : demoUsers.length > 0 ? (
-                <div className="mt-3 flex max-h-40 flex-wrap gap-2 overflow-y-auto pr-1 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-200 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar]:w-1">
+                <div className="mt-3 flex max-h-40 flex-wrap gap-2 overflow-y-auto pr-1 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-200 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar]:w-1">
                   {demoUsers.map((u) => (
                     <button
                       key={u.id}
@@ -901,13 +901,13 @@ export function AuthView({
                       onClick={() => handleDemoLogin(u)}
                       disabled={demoBusyId !== null}
                       aria-label={`Entrar como ${u.name}`}
-                      className="flex h-11 items-center gap-2 rounded-full border border-stone-200 bg-white pl-1.5 pr-4 text-xs font-semibold text-stone-700 transition-colors hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-amber-700 dark:hover:bg-amber-900/30 dark:hover:text-amber-300 disabled:cursor-wait disabled:opacity-60"
+                      className="flex h-11 items-center gap-2 rounded-full border border-slate-200 bg-white pl-1.5 pr-4 text-xs font-semibold text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-blue-700 dark:hover:bg-blue-900/30 dark:hover:text-blue-300 disabled:cursor-wait disabled:opacity-60"
                     >
                       <Avatar name={u.name} src={u.avatarUrl} size="sm" className="ring-0" />
                       <span className="max-w-36 truncate">{u.name}</span>
                       {demoBusyId === u.id && (
                         <Loader2
-                          className="h-3.5 w-3.5 animate-spin text-amber-700 dark:text-amber-300"
+                          className="h-3.5 w-3.5 animate-spin text-blue-700 dark:text-blue-300"
                           aria-hidden
                         />
                       )}
@@ -932,7 +932,7 @@ export function AuthView({
 
               {forgotResult ? (
                 <div className="space-y-4">
-                  <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
+                  <div className="flex items-start gap-2.5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-200">
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
                     <p>
                       {forgotResult.delivery === 'email'
@@ -949,7 +949,7 @@ export function AuthView({
               ) : (
                 <form onSubmit={handleForgotSubmit} noValidate className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="forgot-email" className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                    <Label htmlFor="forgot-email" className="text-sm font-medium text-slate-700 dark:text-slate-200">
                       E-mail da conta
                     </Label>
                     <Input

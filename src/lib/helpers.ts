@@ -113,15 +113,15 @@ export function labelToHour(label: string): number {
 
 // ---------- Status de agendamento ----------
 export const STATUS_META: Record<string, { label: string; className: string }> = {
-  PENDING: { label: 'Aguardando confirmação', className: 'bg-amber-100 text-amber-800 border-amber-200' },
+  PENDING: { label: 'Aguardando confirmação', className: 'bg-blue-100 text-blue-800 border-blue-200' },
   CONFIRMED: { label: 'Confirmada', className: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
-  COMPLETED: { label: 'Concluída', className: 'bg-stone-100 text-stone-700 border-stone-200' },
+  COMPLETED: { label: 'Concluída', className: 'bg-slate-100 text-slate-700 border-slate-200' },
   CANCELLED: { label: 'Cancelada', className: 'bg-rose-100 text-rose-700 border-rose-200' },
 }
 
 // ---------- Conteúdos do mural ----------
 export const CONTENT_TYPE_META: Record<string, { label: string; className: string }> = {
-  ARTICLE: { label: 'Artigo', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+  ARTICLE: { label: 'Artigo', className: 'bg-blue-50 text-blue-700 border-blue-200' },
   VIDEO: { label: 'Vídeo', className: 'bg-orange-50 text-orange-700 border-orange-200' },
   WORKSHOP: { label: 'Workshop', className: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200' },
   TRAIL: { label: 'Trilha', className: 'bg-teal-50 text-teal-700 border-teal-200' },

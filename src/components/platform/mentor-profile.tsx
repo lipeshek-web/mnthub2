@@ -134,7 +134,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
       <div className="mx-auto max-w-7xl px-4 py-16">
         <Card className="mx-auto max-w-md border-dashed">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
-            <CalendarOff className="h-10 w-10 text-stone-400 dark:text-stone-500" />
+            <CalendarOff className="h-10 w-10 text-slate-400 dark:text-slate-500" />
             <p className="font-semibold">{error ?? 'Mentor não encontrado'}</p>
             <Button onClick={() => navigate({ name: 'marketplace' })}>Voltar para mentores</Button>
           </CardContent>
@@ -151,15 +151,15 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
     <div className="mx-auto max-w-7xl px-4 pb-16 pt-6">
       <button
         onClick={() => navigate({ name: 'marketplace' })}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 transition-colors hover:text-amber-700 dark:text-stone-400 dark:hover:text-amber-300"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition-colors hover:text-blue-700 dark:text-slate-400 dark:hover:text-blue-300"
       >
         <ArrowLeft className="h-4 w-4" /> Voltar para mentores
       </button>
 
       {/* ---------- BANNER ---------- */}
-      <section className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900" aria-label="Perfil do mentor">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900" aria-label="Perfil do mentor">
         {/* Capa com altura generosa — mesma identidade da página pública do criador */}
-        <div className="relative h-52 w-full bg-gradient-to-r from-amber-950 via-amber-900 to-amber-800 sm:h-64 md:h-72">
+        <div className="relative h-52 w-full bg-gradient-to-r from-blue-950 via-blue-900 to-blue-800 sm:h-64 md:h-72">
           {mentor.coverUrl ? (
             <img
               src={mentor.coverUrl}
@@ -173,7 +173,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
           )}
           {/* Véu inferior: assenta o avatar e dá profundidade */}
           <div aria-hidden className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/35 via-black/10 to-transparent" />
-          <div aria-hidden className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-amber-500/20 blur-2xl" />
+          <div aria-hidden className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-blue-500/20 blur-2xl" />
           <div aria-hidden className="absolute bottom-6 left-1/3 h-24 w-24 rounded-full bg-teal-400/10 blur-xl" />
         </div>
         <div className="px-6 pb-6 sm:px-8">
@@ -186,46 +186,46 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
               className="-mt-14 h-28 w-28 text-3xl shadow-xl ring-4 ring-white"
             />
             {mentor.rating > 0 && (
-              <div className="mt-3 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 shadow-sm dark:border-amber-900 dark:bg-amber-950/50">
-                <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 shadow-sm dark:border-blue-900 dark:bg-blue-950/50">
+                <Star className="h-5 w-5 fill-yellow-400 text-blue-400" />
                 <div>
-                  <p className="text-lg font-extrabold leading-none text-stone-900 dark:text-stone-50">
+                  <p className="text-lg font-extrabold leading-none text-slate-900 dark:text-slate-50">
                     {mentor.rating.toFixed(1)}
                   </p>
-                  <p className="text-[11px] text-stone-500 dark:text-stone-400">{mentor.reviewCount} avaliações</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">{mentor.reviewCount} avaliações</p>
                 </div>
               </div>
             )}
           </div>
           <h1
-            className="mt-4 text-3xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50"
+            className="mt-4 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50"
             style={headingStyle}
           >
             {mentor.name}
           </h1>
-          <p className="mt-1 text-base font-medium text-stone-600 dark:text-stone-300" style={bodyStyle}>
+          <p className="mt-1 text-base font-medium text-slate-600 dark:text-slate-300" style={bodyStyle}>
             {mentor.headline}
           </p>
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
             {mentor.categories.map((c) => (
-              <Badge key={c} className="bg-amber-700 font-medium text-white">
+              <Badge key={c} className="bg-blue-700 font-medium text-white">
                 {c}
               </Badge>
             ))}
-            <Badge variant="outline" className="gap-1 border-stone-300 text-stone-600 dark:border-stone-700 dark:text-stone-300">
+            <Badge variant="outline" className="gap-1 border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300">
               <GraduationCap className="h-3.5 w-3.5" />{' '}
               {mentor.totalSessions === 1
                 ? '1 sessão realizada'
                 : `${mentor.totalSessions} sessões realizadas`}
             </Badge>
-            <Badge variant="outline" className="gap-1 border-stone-300 text-stone-600 dark:border-stone-700 dark:text-stone-300">
+            <Badge variant="outline" className="gap-1 border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300">
               <Clock3 className="h-3.5 w-3.5" /> {mentor.experienceYears} anos de experiência
             </Badge>
-            <Badge variant="outline" className="gap-1 border-stone-300 text-stone-600 dark:border-stone-700 dark:text-stone-300">
+            <Badge variant="outline" className="gap-1 border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300">
               <Globe2 className="h-3.5 w-3.5" /> {mentor.languages}
             </Badge>
-            <Badge variant="outline" className="gap-1 border-stone-300 text-stone-600 dark:border-stone-700 dark:text-stone-300">
+            <Badge variant="outline" className="gap-1 border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300">
               <ListVideo className="h-3.5 w-3.5" /> {mentor.contents.length} conteúdos no mural
             </Badge>
           </div>
@@ -245,7 +245,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                     rel="noopener noreferrer"
                     aria-label={hint}
                     title={hint}
-                    className="flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-600 transition-colors hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300 dark:hover:border-amber-700 dark:hover:bg-amber-900/30 dark:hover:text-amber-300"
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-blue-700 dark:hover:bg-blue-900/30 dark:hover:text-blue-300"
                   >
                     <Icon className="h-4.5 w-4.5" aria-hidden />
                   </a>
@@ -260,7 +260,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
       <div className="mt-7 grid grid-cols-1 gap-7 lg:grid-cols-3">
         <div className="min-w-0 lg:col-span-2">
           <Tabs defaultValue="sobre">
-            <TabsList className="w-full justify-start overflow-x-auto rounded-xl bg-stone-100 dark:bg-stone-800 p-1">
+            <TabsList className="w-full justify-start overflow-x-auto rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
               <TabsTrigger value="sobre" className="rounded-lg">Sobre</TabsTrigger>
               <TabsTrigger value="mural" className="rounded-lg">
                 Mural de conteúdos ({mentor.contents.length})
@@ -278,10 +278,10 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
               <Card>
                 <CardContent className="p-6">
                   <h2 className="flex items-center gap-2 text-lg font-bold" style={headingStyle}>
-                    <UserRound className="h-4.5 w-4.5 text-amber-700 dark:text-amber-300" /> Sobre a mentoria
+                    <UserRound className="h-4.5 w-4.5 text-blue-700 dark:text-blue-300" /> Sobre a mentoria
                   </h2>
                   <p
-                    className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-stone-600 dark:text-stone-300"
+                    className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-slate-600 dark:text-slate-300"
                     style={bodyStyle}
                   >
                     {mentor.description}
@@ -291,8 +291,8 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
               {mentor.bio && (
                 <Card>
                   <CardContent className="p-6">
-                    <h3 className="text-sm font-bold text-stone-900 dark:text-stone-50" style={headingStyle}>Em resumo</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-stone-300" style={bodyStyle}>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-50" style={headingStyle}>Em resumo</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300" style={bodyStyle}>
                       {mentor.bio}
                     </p>
                   </CardContent>
@@ -309,10 +309,10 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                   { icon: CalendarCheck2, title: 'Agenda real', text: 'Horários atualizados pelo próprio mentor.' },
                   { icon: MessageSquareQuote, title: 'Método 1:1', text: 'Conversa focada nos seus objetivos.' },
                 ].map((f) => (
-                  <div key={f.title} className="rounded-xl border border-amber-100 bg-amber-50/60 p-4 dark:border-amber-900 dark:bg-amber-950/50">
-                    <f.icon className="h-5 w-5 text-amber-700 dark:text-amber-300" />
-                    <p className="mt-2 text-sm font-bold text-stone-800 dark:text-stone-200">{f.title}</p>
-                    <p className="mt-0.5 text-xs leading-relaxed text-stone-500 dark:text-stone-400">{f.text}</p>
+                  <div key={f.title} className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 dark:border-blue-900 dark:bg-blue-950/50">
+                    <f.icon className="h-5 w-5 text-blue-700 dark:text-blue-300" />
+                    <p className="mt-2 text-sm font-bold text-slate-800 dark:text-slate-200">{f.title}</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{f.text}</p>
                   </div>
                 ))}
               </div>
@@ -322,7 +322,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
               {mentor.contents.length === 0 ? (
                 <Card className="border-dashed">
                   <CardContent className="flex flex-col items-center gap-2 p-10 text-center">
-                    <ListVideo className="h-9 w-9 text-stone-300 dark:text-stone-600" />
+                    <ListVideo className="h-9 w-9 text-slate-300 dark:text-slate-600" />
                     <p className="text-sm text-muted-foreground">
                       Este mentor ainda não publicou conteúdos no mural.
                     </p>
@@ -334,9 +334,9 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                     const Icon = CONTENT_ICONS[c.type] ?? BookOpenCheck
                     const meta = CONTENT_TYPE_META[c.type] ?? CONTENT_TYPE_META.ARTICLE
                     return (
-                      <Card key={c.id} className="border-stone-200 transition-shadow hover:shadow-md dark:border-stone-800">
+                      <Card key={c.id} className="border-slate-200 transition-shadow hover:shadow-md dark:border-slate-800">
                         <CardContent className="flex gap-4 p-5">
-                          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+                          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
                             <Icon className="h-5.5 w-5.5" />
                           </span>
                           <div className="min-w-0 flex-1">
@@ -344,23 +344,23 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                               <Badge variant="outline" className={cn('border', meta.className)}>
                                 {meta.label}
                               </Badge>
-                              <Badge variant="outline" className="border-stone-200 text-stone-500 dark:border-stone-800 dark:text-stone-400">
+                              <Badge variant="outline" className="border-slate-200 text-slate-500 dark:border-slate-800 dark:text-slate-400">
                                 {LEVEL_LABELS[c.level] ?? c.level}
                               </Badge>
                               <span className="text-xs text-muted-foreground">{c.durationMin} min</span>
                             </div>
-                            <h3 className="mt-2 font-bold text-stone-900 dark:text-stone-50" style={headingStyle}>
+                            <h3 className="mt-2 font-bold text-slate-900 dark:text-slate-50" style={headingStyle}>
                               {c.title}
                             </h3>
                             <p
-                              className="mt-1 line-clamp-2 text-sm leading-relaxed text-stone-600 dark:text-stone-300"
+                              className="mt-1 line-clamp-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300"
                               style={bodyStyle}
                             >
                               {c.description}
                             </p>
                             <div className="mt-2.5 flex flex-wrap gap-1.5">
                               {c.tags.map((t) => (
-                                <Badge key={t} variant="secondary" className="bg-stone-100 text-[11px] text-stone-600 dark:bg-stone-800 dark:text-stone-300">
+                                <Badge key={t} variant="secondary" className="bg-slate-100 text-[11px] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                                   #{t}
                                 </Badge>
                               ))}
@@ -378,7 +378,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
               {courses.length === 0 ? (
                 <Card className="border-dashed">
                   <CardContent className="flex flex-col items-center gap-2 p-10 text-center">
-                    <Library className="h-9 w-9 text-stone-300 dark:text-stone-600" />
+                    <Library className="h-9 w-9 text-slate-300 dark:text-slate-600" />
                     <p className="text-sm text-muted-foreground">
                       Este mentor ainda não publicou cursos.
                     </p>
@@ -389,10 +389,10 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                   {courses.map((course) => (
                     <Card
                       key={course.id}
-                      className="flex flex-col overflow-hidden rounded-2xl border-stone-200 py-0 shadow-sm transition-shadow hover:shadow-md dark:border-stone-800"
+                      className="flex flex-col overflow-hidden rounded-2xl border-slate-200 py-0 shadow-sm transition-shadow hover:shadow-md dark:border-slate-800"
                     >
                       {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
-                      <div className="relative h-20 w-full shrink-0 bg-stone-100 dark:bg-stone-800">
+                      <div className="relative h-20 w-full shrink-0 bg-slate-100 dark:bg-slate-800">
                         {course.coverUrl ? (
                           <img
                             src={course.coverUrl}
@@ -409,30 +409,30 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                             <Library className="h-8 w-8 text-white/20" />
                           </div>
                         )}
-                        <Badge className="absolute right-3 top-3 bg-white text-stone-700 dark:bg-stone-900 dark:text-stone-200">
+                        <Badge className="absolute right-3 top-3 bg-white text-slate-700 dark:bg-slate-900 dark:text-slate-200">
                           {LEVEL_LABELS[course.level] ?? course.level}
                         </Badge>
                       </div>
                       <CardContent className="flex flex-1 flex-col p-4">
-                        <h3 className="line-clamp-1 font-bold text-stone-900 dark:text-stone-50" style={headingStyle}>
+                        <h3 className="line-clamp-1 font-bold text-slate-900 dark:text-slate-50" style={headingStyle}>
                           {course.title}
                         </h3>
                         <p
-                          className="mt-1 line-clamp-2 text-sm leading-relaxed text-stone-600 dark:text-stone-300"
+                          className="mt-1 line-clamp-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300"
                           style={bodyStyle}
                         >
                           {course.description}
                         </p>
-                        <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
+                        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                           {course.lessonCount} aulas · {formatTotalDuration(course.totalDurationMin)} ·{' '}
                           {course.studentCount}{' '}
                           {course.studentCount === 1 ? 'aluno' : 'alunos'}
                         </p>
-                        <div className="mt-auto flex items-center justify-between border-t border-stone-100 pt-3 dark:border-stone-800">
+                        <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
                           {course.price === 0 ? (
-                            <span className="text-sm font-extrabold text-amber-700 dark:text-amber-400">Grátis</span>
+                            <span className="text-sm font-extrabold text-blue-700 dark:text-blue-400">Grátis</span>
                           ) : (
-                            <span className="text-sm font-extrabold text-stone-900 dark:text-stone-50">
+                            <span className="text-sm font-extrabold text-slate-900 dark:text-slate-50">
                               {currencyBRL(course.price)}
                             </span>
                           )}
@@ -468,20 +468,20 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                           key={dayName}
                           className={cn(
                             'flex flex-col gap-2 rounded-xl border px-4 py-3 sm:flex-row sm:items-center',
-                            ranges.length > 0 ? 'border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900' : 'border-dashed border-stone-200 bg-stone-50 dark:border-stone-800 dark:bg-stone-950/50'
+                            ranges.length > 0 ? 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900' : 'border-dashed border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/50'
                           )}
                         >
-                          <p className="w-36 shrink-0 text-sm font-semibold text-stone-800 dark:text-stone-200">{dayName}</p>
+                          <p className="w-36 shrink-0 text-sm font-semibold text-slate-800 dark:text-slate-200">{dayName}</p>
                           {ranges.length > 0 ? (
                             <div className="flex flex-wrap gap-1.5">
                               {ranges.map((r) => (
-                                <Badge key={r.id} className="bg-amber-50 font-medium text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+                                <Badge key={r.id} className="bg-blue-50 font-medium text-blue-800 dark:bg-blue-950/50 dark:text-blue-300">
                                   {hourToLabel(r.startHour)} – {hourToLabel(r.endHour)}
                                 </Badge>
                               ))}
                             </div>
                           ) : (
-                            <p className="text-xs text-stone-400 dark:text-stone-500">Indisponível</p>
+                            <p className="text-xs text-slate-400 dark:text-slate-500">Indisponível</p>
                           )}
                         </div>
                       )
@@ -495,7 +495,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
               {mentor.reviews.length === 0 ? (
                 <Card className="border-dashed">
                   <CardContent className="flex flex-col items-center gap-2 p-10 text-center">
-                    <Star className="h-9 w-9 text-stone-300 dark:text-stone-600" />
+                    <Star className="h-9 w-9 text-slate-300 dark:text-slate-600" />
                     <p className="text-sm text-muted-foreground">
                       Ainda sem avaliações — seja o primeiro a mentorar com {mentor.name.split(' ')[0]}!
                     </p>
@@ -503,33 +503,33 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                 </Card>
               ) : (
                 <>
-                  <Card className="border-amber-100 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/50">
+                  <Card className="border-blue-100 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/50">
                     <CardContent className="flex items-center gap-5 p-6">
-                      <p className="text-4xl font-black text-stone-900 dark:text-stone-50" style={headingStyle}>
+                      <p className="text-4xl font-black text-slate-900 dark:text-slate-50" style={headingStyle}>
                         {mentor.rating.toFixed(1)}
                       </p>
                       <div>
                         <Stars rating={mentor.rating} size={17} />
-                        <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                           Baseado em {mentor.reviewCount} avaliações de sessões reais
                         </p>
                       </div>
                     </CardContent>
                   </Card>
                   {mentor.reviews.map((r) => (
-                    <Card key={r.id} className="border-stone-200 dark:border-stone-800">
+                    <Card key={r.id} className="border-slate-200 dark:border-slate-800">
                       <CardContent className="p-5">
                         <div className="flex items-center gap-3">
                           <Avatar name={r.authorName} size="md" />
                           <div className="flex-1">
-                            <p className="text-sm font-bold text-stone-900 dark:text-stone-50">{r.authorName}</p>
+                            <p className="text-sm font-bold text-slate-900 dark:text-slate-50">{r.authorName}</p>
                             <p className="text-xs text-muted-foreground">
                               {formatDayLabel(r.createdAt.replace('T00:00:00.000Z', 'T12:00'))}
                             </p>
                           </div>
                           <Stars rating={r.rating} size={14} />
                         </div>
-                        <p className="mt-3 text-sm leading-relaxed text-stone-600 dark:text-stone-300" style={bodyStyle}>
+                        <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300" style={bodyStyle}>
                           {r.comment}
                         </p>
                       </CardContent>
@@ -646,7 +646,7 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
 
   if (isOwner) {
     return (
-      <Card className="border-amber-200 dark:border-amber-900">
+      <Card className="border-blue-200 dark:border-blue-900">
         <CardContent className="flex flex-col items-center gap-3 p-6 text-center">
           <Avatar name={mentor.name} size="lg" />
           <p className="font-bold">Este é o seu perfil público de mentor</p>
@@ -662,14 +662,14 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
   }
 
   return (
-    <Card className="border-stone-200 shadow-md dark:border-stone-800">
+    <Card className="border-slate-200 shadow-md dark:border-slate-800">
       <CardContent className="space-y-5 p-6">
         <div className="flex items-end justify-between">
-          <p className="text-3xl font-black tracking-tight text-stone-900 dark:text-stone-50">
+          <p className="text-3xl font-black tracking-tight text-slate-900 dark:text-slate-50">
             {currencyBRL(mentor.hourlyRate)}
             <span className="text-sm font-medium text-muted-foreground"> / sessão</span>
           </p>
-          <Badge variant="secondary" className="bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300">60 min · vídeo</Badge>
+          <Badge variant="secondary" className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">60 min · vídeo</Badge>
         </div>
 
         {/* Conversar antes de agendar: tira dúvidas sem reservar */}
@@ -699,15 +699,15 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
                   className={cn(
                     'flex h-[62px] w-[52px] shrink-0 flex-col items-center justify-center rounded-xl border text-center transition-all',
                     active
-                      ? 'border-amber-700 bg-amber-700 text-white shadow-md'
-                      : 'border-stone-200 bg-white text-stone-600 hover:border-amber-300 hover:bg-amber-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300 dark:hover:border-amber-700 dark:hover:bg-amber-900/30'
+                      ? 'border-blue-700 bg-blue-700 text-white shadow-md'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-blue-700 dark:hover:bg-blue-900/30'
                   )}
                 >
-                  <span className={cn('text-[10px] font-semibold uppercase', active ? 'text-amber-200' : 'text-stone-400 dark:text-stone-500')}>
+                  <span className={cn('text-[10px] font-semibold uppercase', active ? 'text-blue-200' : 'text-slate-400 dark:text-slate-500')}>
                     {WEEKDAYS_PT[d.getDay()]}
                   </span>
                   <span className="text-lg font-extrabold leading-tight">{d.getDate()}</span>
-                  <span className={cn('text-[10px]', active ? 'text-amber-200' : 'text-stone-400 dark:text-stone-500')}>
+                  <span className={cn('text-[10px]', active ? 'text-blue-200' : 'text-slate-400 dark:text-slate-500')}>
                     {MONTHS_PT[d.getMonth()]}
                   </span>
                 </button>
@@ -728,7 +728,7 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
               ))}
             </div>
           ) : slots.length === 0 ? (
-            <div className="mt-2 flex items-center gap-2 rounded-xl border border-dashed border-stone-200 bg-stone-50 p-4 text-sm text-stone-500 dark:border-stone-800 dark:bg-stone-950/50 dark:text-stone-400">
+            <div className="mt-2 flex items-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950/50 dark:text-slate-400">
               <CalendarOff className="h-4 w-4 shrink-0" />
               Sem horários livres neste dia. Tente outra data.
             </div>
@@ -744,8 +744,8 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
                     className={cn(
                       'h-10 rounded-lg border text-sm font-semibold transition-all',
                       active
-                        ? 'border-amber-700 bg-amber-700 text-white shadow'
-                        : 'border-stone-200 bg-white text-stone-700 hover:border-amber-400 hover:text-amber-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-amber-700 dark:hover:text-amber-300'
+                        ? 'border-blue-700 bg-blue-700 text-white shadow'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-blue-400 hover:text-blue-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-blue-700 dark:hover:text-blue-300'
                     )}
                   >
                     {formatTimeLabel(s)}
@@ -758,9 +758,9 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
 
         {/* Resumo */}
         {selectedSlot && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-sm dark:border-amber-900 dark:bg-amber-950/50">
-            <p className="font-bold text-amber-900 dark:text-amber-200">{formatDayLabelLong(selectedSlot)}</p>
-            <p className="mt-0.5 text-amber-800 dark:text-amber-300">
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-3.5 text-sm dark:border-blue-900 dark:bg-blue-950/50">
+            <p className="font-bold text-blue-900 dark:text-blue-200">{formatDayLabelLong(selectedSlot)}</p>
+            <p className="mt-0.5 text-blue-800 dark:text-blue-300">
               {formatTimeLabel(selectedSlot)} → {addMinutesToTime(selectedSlot, 60)} · {currencyBRL(mentor.hourlyRate)}
             </p>
           </div>
@@ -818,7 +818,7 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
               Revise os dados antes de enviar para {mentor.name.split(' ')[0]}.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2.5 rounded-xl border border-stone-200 bg-stone-50 p-4 text-sm dark:border-stone-800 dark:bg-stone-950/50">
+          <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm dark:border-slate-800 dark:bg-slate-950/50">
             <div className="flex justify-between gap-4">
               <span className="text-muted-foreground">Mentor</span>
               <span className="font-semibold">{mentor.name}</span>
@@ -836,9 +836,9 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
               <span className="text-muted-foreground">Tema</span>
               <span className="max-w-56 text-right font-semibold">{topic || '—'}</span>
             </div>
-            <div className="flex justify-between gap-4 border-t border-stone-200 pt-2.5 dark:border-stone-800">
+            <div className="flex justify-between gap-4 border-t border-slate-200 pt-2.5 dark:border-slate-800">
               <span className="text-muted-foreground">Valor</span>
-              <span className="font-extrabold text-amber-700 dark:text-amber-400">{currencyBRL(mentor.hourlyRate)}</span>
+              <span className="font-extrabold text-blue-700 dark:text-blue-400">{currencyBRL(mentor.hourlyRate)}</span>
             </div>
           </div>
           <DialogFooter>
@@ -915,25 +915,25 @@ function MembershipCard({
   }
 
   return (
-    <Card className="rounded-2xl border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/40">
+    <Card className="rounded-2xl border-blue-200 dark:border-blue-900 bg-blue-50/60 dark:bg-blue-950/40">
       <CardContent className="grid gap-3 p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <Badge className="rounded-full border border-amber-200 dark:border-amber-900 bg-white dark:bg-stone-900 text-amber-700 dark:text-amber-300 hover:bg-white dark:hover:bg-stone-900">
+          <Badge className="rounded-full border border-blue-200 dark:border-blue-900 bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-300 hover:bg-white dark:hover:bg-slate-900">
             <CreditCard aria-hidden className="h-3 w-3" /> Assinatura
           </Badge>
-          <p className="text-lg font-extrabold text-amber-700 dark:text-amber-300">
+          <p className="text-lg font-extrabold text-blue-700 dark:text-blue-300">
             {currencyBRL(membership.price)}
-            <span className="text-sm font-semibold text-amber-700/70 dark:text-amber-300/70">/mês</span>
+            <span className="text-sm font-semibold text-blue-700/70 dark:text-blue-300/70">/mês</span>
           </p>
         </div>
 
         <div>
-          <p className="text-base font-bold text-stone-900 dark:text-stone-50" style={headingFontStyle(fontHeading)}>
+          <p className="text-base font-bold text-slate-900 dark:text-slate-50" style={headingFontStyle(fontHeading)}>
             {membership.title}
           </p>
           {membership.description && (
             <p
-              className="mt-1 text-sm leading-relaxed text-stone-600 dark:text-stone-300"
+              className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300"
               style={bodyFontStyle(fontBody)}
             >
               {membership.description}
@@ -941,17 +941,17 @@ function MembershipCard({
           )}
         </div>
 
-        <ul className="grid gap-1.5 text-sm text-stone-600 dark:text-stone-300">
+        <ul className="grid gap-1.5 text-sm text-slate-600 dark:text-slate-300">
           <li className="flex items-center gap-1.5">
-            <BookOpenCheck aria-hidden className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
+            <BookOpenCheck aria-hidden className="h-4 w-4 shrink-0 text-blue-700 dark:text-blue-300" />
             Todos os {membership.coursesCount} cursos publicados (e os próximos)
           </li>
           <li className="flex items-center gap-1.5">
-            <CalendarCheck2 aria-hidden className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
+            <CalendarCheck2 aria-hidden className="h-4 w-4 shrink-0 text-blue-700 dark:text-blue-300" />
             Sessão em grupo mensal · {sessionLabel}
           </li>
           <li className="flex items-center gap-1.5">
-            <Sparkles aria-hidden className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
+            <Sparkles aria-hidden className="h-4 w-4 shrink-0 text-blue-700 dark:text-blue-300" />
             Cancele quando quiser — acesso até o fim do ciclo pago
           </li>
         </ul>
@@ -974,14 +974,14 @@ function MembershipCard({
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
-              <Badge className="rounded-full bg-amber-700 text-white hover:bg-amber-700">
+              <Badge className="rounded-full bg-blue-700 text-white hover:bg-blue-700">
                 Assinatura ativa{membership.renewsAt ? ` até ${new Date(membership.renewsAt).toLocaleDateString('pt-BR')}` : ''}
               </Badge>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setConfirming(true)}
-                className="h-10 rounded-full px-4 text-stone-500 hover:text-stone-700 dark:text-stone-400"
+                className="h-10 rounded-full px-4 text-slate-500 hover:text-slate-700 dark:text-slate-400"
               >
                 Cancelar assinatura
               </Button>
@@ -990,7 +990,7 @@ function MembershipCard({
         ) : (
           <Button
             onClick={() => navigate({ name: 'checkout', membershipId: membership.id })}
-            className="h-11 w-full rounded-full bg-amber-700 font-bold hover:bg-amber-800 sm:w-auto sm:px-8"
+            className="h-11 w-full rounded-full bg-blue-700 font-bold hover:bg-blue-800 sm:w-auto sm:px-8"
           >
             {membership.myStatus === 'CANCELLED' ? 'Reativar assinatura' : 'Assinar agora'}
           </Button>

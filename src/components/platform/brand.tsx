@@ -14,12 +14,12 @@ export const BRAND_TAGLINE = 'Seu universo de aprendizado'
 export const BRAND_DESCRIPTION =
   'Mentorias 1:1, cursos, trilhas, biblioteca e eventos orbitando o seu crescimento — tudo em uma só plataforma.'
 
-/** Símbolo da marca: quadrado âmbar com o planeta + anel orbital */
+/** Símbolo da marca: quadrado azul com o planeta + anel orbital */
 export function BrandMark({ className, iconClassName }: { className?: string; iconClassName?: string }) {
   return (
     <span
       className={cn(
-        'flex items-center justify-center rounded-[0.9rem] bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-sm shadow-amber-600/20',
+        'flex items-center justify-center rounded-[0.9rem] bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-sm shadow-blue-600/25',
         'h-9 w-9',
         className
       )}
@@ -47,7 +47,7 @@ export function BrandLogo({
       {!compact && (
         <span
           className={cn(
-            'text-lg font-semibold tracking-tight text-stone-900 dark:text-stone-50',
+            'text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50',
             textClassName
           )}
         >

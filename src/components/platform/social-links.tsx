@@ -31,7 +31,7 @@ function hashString(value: string): number {
 
 /** Classes base de um cartão-âncora (claro) com foco visível em esmeralda */
 const CARD_BASE =
-  'group flex flex-col rounded-2xl border border-stone-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-amber-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600'
+  'group flex flex-col rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-blue-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600'
 
 /** Rodapé padrão dos cartões claros: ação + seta */
 function CardFooter({ label, dark = false }: { label: string; dark?: boolean }) {
@@ -39,13 +39,13 @@ function CardFooter({ label, dark = false }: { label: string; dark?: boolean }) 
     <div
       className={cn(
         'mt-3 flex items-center justify-between border-t pt-2.5',
-        dark ? 'border-white/10' : 'border-stone-100'
+        dark ? 'border-white/10' : 'border-slate-100'
       )}
     >
       <span
         className={cn(
           'text-[11px] font-bold',
-          dark ? 'text-white/70' : 'text-stone-600 group-hover:text-amber-700'
+          dark ? 'text-white/70' : 'text-slate-600 group-hover:text-blue-700'
         )}
       >
         {label}
@@ -53,7 +53,7 @@ function CardFooter({ label, dark = false }: { label: string; dark?: boolean }) 
       <ArrowUpRight
         className={cn(
           'size-3.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5',
-          dark ? 'text-white/50' : 'text-stone-400'
+          dark ? 'text-white/50' : 'text-slate-400'
         )}
         aria-hidden
       />
@@ -81,10 +81,10 @@ function InstagramCard({ handle, mentorName }: { handle: string; mentorName: str
           <Avatar name={mentorName} size="sm" className="ring-1 ring-white" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold text-stone-900">@{handle.replace(/^@/, '')}</p>
-          <p className="text-[11px] font-medium text-stone-400">Instagram</p>
+          <p className="truncate text-sm font-bold text-slate-900">@{handle.replace(/^@/, '')}</p>
+          <p className="text-[11px] font-medium text-slate-400">Instagram</p>
         </div>
-        <ExternalLink className="size-3.5 shrink-0 text-stone-300" aria-hidden />
+        <ExternalLink className="size-3.5 shrink-0 text-slate-300" aria-hidden />
       </div>
 
       {/* Grid de "posts" simulando o perfil */}
@@ -124,8 +124,8 @@ function LinkedInCard({ value, mentorName }: { value: string; mentorName: string
           in
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold text-stone-900">{socialDisplay('linkedin', value)}</p>
-          <p className="text-[11px] font-medium text-stone-400">LinkedIn</p>
+          <p className="truncate text-sm font-bold text-slate-900">{socialDisplay('linkedin', value)}</p>
+          <p className="text-[11px] font-medium text-slate-400">LinkedIn</p>
         </div>
       </div>
       <CardFooter label="Abrir perfil" />
@@ -143,7 +143,7 @@ function GitHubCard({ handle, mentorName }: { handle: string; mentorName: string
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`GitHub de ${mentorName} — @${clean} (abre em nova aba)`}
-      className="group flex w-full flex-col rounded-2xl border border-stone-800 bg-stone-900 p-4 text-left shadow-sm transition-colors hover:border-amber-400/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 sm:w-72"
+      className="group flex w-full flex-col rounded-2xl border border-slate-800 bg-slate-900 p-4 text-left shadow-sm transition-colors hover:border-blue-400/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 sm:w-72"
     >
       <div className="flex items-center gap-2.5">
         <span
@@ -200,13 +200,13 @@ function WebsiteCard({ value, mentorName }: { value: string; mentorName: string 
       <div className="flex items-center gap-3">
         <span
           aria-hidden
-          className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 ring-1 ring-amber-100"
+          className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 ring-1 ring-blue-100"
         >
           <Globe2 className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold text-stone-900">{socialDisplay('website', value)}</p>
-          <p className="text-[11px] font-medium text-stone-400">Portfólio / Site</p>
+          <p className="truncate text-sm font-bold text-slate-900">{socialDisplay('website', value)}</p>
+          <p className="text-[11px] font-medium text-slate-400">Portfólio / Site</p>
         </div>
       </div>
       <CardFooter label="Abrir" />
@@ -241,7 +241,7 @@ export function SocialLinksSection({
       <p className="sr-only">
         Onde encontrar {mentorName} na internet — {headline}
       </p>
-      <p className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
+      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
         Encontre {firstName(mentorName)} também em
       </p>
 

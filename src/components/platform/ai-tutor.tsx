@@ -102,7 +102,7 @@ export function AiTutor(props: AiTutorProps) {
         onClick={() => setOpen(true)}
         aria-label="Abrir Tutor IA do curso"
         className={cn(
-          'fixed right-6 z-40 h-12 rounded-full bg-amber-700 pl-4 pr-5 text-sm font-bold text-white shadow-2xl shadow-amber-900/30 ring-1 ring-amber-500/30 hover:bg-amber-800 focus-visible:ring-2 focus-visible:ring-amber-400',
+          'fixed right-6 z-40 h-12 rounded-full bg-blue-700 pl-4 pr-5 text-sm font-bold text-white shadow-2xl shadow-blue-900/30 ring-1 ring-blue-500/30 hover:bg-blue-800 focus-visible:ring-2 focus-visible:ring-blue-400',
           raised ? 'bottom-[8.5rem]' : 'bottom-[5.5rem]'
         )}
       >
@@ -120,7 +120,7 @@ export function AiTutor(props: AiTutorProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="fixed inset-0 z-[60] bg-stone-950/40 backdrop-blur-[2px]"
+              className="fixed inset-0 z-[60] bg-slate-950/40 backdrop-blur-[2px]"
               onClick={() => setOpen(false)}
               aria-hidden
             />
@@ -133,19 +133,19 @@ export function AiTutor(props: AiTutorProps) {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-              className="fixed bottom-0 right-0 top-0 z-[61] flex w-full flex-col bg-white shadow-2xl sm:bottom-3 sm:right-3 sm:top-3 sm:w-[420px] sm:rounded-2xl dark:bg-stone-900"
+              className="fixed bottom-0 right-0 top-0 z-[61] flex w-full flex-col bg-white shadow-2xl sm:bottom-3 sm:right-3 sm:top-3 sm:w-[420px] sm:rounded-2xl dark:bg-slate-900"
             >
               {/* Header */}
-              <header className="flex shrink-0 items-start justify-between gap-3 border-b border-stone-100 px-4 py-3.5 dark:border-stone-800">
+              <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-4 py-3.5 dark:border-slate-800">
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-700 text-white shadow-sm dark:bg-amber-600">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-700 text-white shadow-sm dark:bg-blue-600">
                     <Bot aria-hidden className="h-5 w-5" />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-sm font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+                    <p className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
                       Tutor IA
                     </p>
-                    <p className="truncate text-xs text-stone-500 dark:text-stone-400">
+                    <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                       {currentLessonTitle ? `Aula atual: ${currentLessonTitle}` : courseTitle}
                     </p>
                   </div>
@@ -168,11 +168,11 @@ export function AiTutor(props: AiTutorProps) {
                 aria-live="polite"
               >
                 {messages.length === 0 && (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-900 dark:bg-amber-950/30">
-                    <p className="text-sm font-semibold text-stone-800 dark:text-stone-100">
-                      Oi! 👋 Sou o Tutor IA de <span className="text-amber-700 dark:text-amber-300">{courseTitle}</span>.
+                  <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-900 dark:bg-blue-950/30">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                      Oi! 👋 Sou o Tutor IA de <span className="text-blue-700 dark:text-blue-300">{courseTitle}</span>.
                     </p>
-                    <p className="mt-1 text-xs leading-relaxed text-stone-600 dark:text-stone-300">
+                    <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
                       Tire dúvidas sobre o conteúdo das aulas — respondo com base no material do
                       curso. Para questões pessoais, o {mentorName} responde na aba Perguntas.
                     </p>
@@ -184,8 +184,8 @@ export function AiTutor(props: AiTutorProps) {
                     <div
                       className={
                         m.role === 'user'
-                          ? 'max-w-[85%] rounded-2xl rounded-br-md bg-amber-700 px-3.5 py-2.5 text-sm leading-relaxed text-white dark:bg-amber-600'
-                          : 'max-w-[90%] whitespace-pre-line rounded-2xl rounded-bl-md border border-stone-200 bg-stone-50 px-3.5 py-2.5 text-sm leading-relaxed text-stone-700 dark:border-stone-800 dark:bg-stone-950 dark:text-stone-200'
+                          ? 'max-w-[85%] rounded-2xl rounded-br-md bg-blue-700 px-3.5 py-2.5 text-sm leading-relaxed text-white dark:bg-blue-600'
+                          : 'max-w-[90%] whitespace-pre-line rounded-2xl rounded-bl-md border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm leading-relaxed text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200'
                       }
                     >
                       {m.content}
@@ -195,11 +195,11 @@ export function AiTutor(props: AiTutorProps) {
 
                 {sending && (
                   <div className="flex justify-start" aria-busy="true">
-                    <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md border border-stone-200 bg-stone-50 px-4 py-3 dark:border-stone-800 dark:bg-stone-950">
+                    <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
                       {[0, 1, 2].map((i) => (
                         <span
                           key={i}
-                          className="h-1.5 w-1.5 animate-bounce rounded-full bg-amber-600 dark:bg-amber-400"
+                          className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-600 dark:bg-blue-400"
                           style={{ animationDelay: `${i * 150}ms` }}
                         />
                       ))}
@@ -215,7 +215,7 @@ export function AiTutor(props: AiTutorProps) {
                         key={s}
                         type="button"
                         onClick={() => void send(s)}
-                        className="min-h-11 rounded-full border border-stone-200 bg-white px-3.5 py-2 text-left text-xs font-semibold text-stone-600 transition-colors hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800 sm:min-h-0 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300 dark:hover:border-amber-700 dark:hover:bg-amber-900/30 dark:hover:text-amber-300"
+                        className="min-h-11 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-left text-xs font-semibold text-slate-600 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800 sm:min-h-0 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-blue-700 dark:hover:bg-blue-900/30 dark:hover:text-blue-300"
                       >
                         {s}
                       </button>
@@ -225,7 +225,7 @@ export function AiTutor(props: AiTutorProps) {
               </div>
 
               {/* Composer */}
-              <div className="shrink-0 border-t border-stone-100 p-3 dark:border-stone-800">
+              <div className="shrink-0 border-t border-slate-100 p-3 dark:border-slate-800">
                 {user ? (
                   <form
                     onSubmit={(e) => {
@@ -253,21 +253,21 @@ export function AiTutor(props: AiTutorProps) {
                       size="icon"
                       disabled={sending || draft.trim().length === 0}
                       aria-label="Enviar dúvida"
-                      className="h-11 w-11 shrink-0 rounded-xl bg-amber-700 hover:bg-amber-800"
+                      className="h-11 w-11 shrink-0 rounded-xl bg-blue-700 hover:bg-blue-800"
                     >
                       <Send aria-hidden className="h-4 w-4" />
                     </Button>
                   </form>
                 ) : (
                   <Button
-                    className="h-11 w-full rounded-xl bg-amber-700 font-semibold hover:bg-amber-800"
+                    className="h-11 w-full rounded-xl bg-blue-700 font-semibold hover:bg-blue-800"
                     onClick={onLogin}
                   >
                     <MessageCircleQuestion aria-hidden className="h-4 w-4" />
                     Entrar para conversar com o Tutor IA
                   </Button>
                 )}
-                <p className="mt-2 flex items-center justify-center gap-1 text-[11px] text-stone-400 dark:text-stone-500">
+                <p className="mt-2 flex items-center justify-center gap-1 text-[11px] text-slate-400 dark:text-slate-500">
                   <CornerDownLeft aria-hidden className="h-3 w-3" />
                   Enter envia · Shift+Enter quebra linha · a IA pode errar — confira no material
                 </p>

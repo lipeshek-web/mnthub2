@@ -90,16 +90,16 @@ import type {
 import { cn } from '@/lib/utils'
 
 const PAYMENT_STATUS_META: Record<string, { label: string; cls: string }> = {
-  PENDING: { label: 'Pendente', cls: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-900' },
-  RECEIVED: { label: 'Recebido', cls: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-900' },
+  PENDING: { label: 'Pendente', cls: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-900' },
+  RECEIVED: { label: 'Recebido', cls: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-900' },
   CONFIRMED: { label: 'Confirmado', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-900' },
   OVERDUE: { label: 'Vencido', cls: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-900' },
-  REFUNDED: { label: 'Estornado', cls: 'bg-stone-100 text-stone-600 border-stone-200 dark:bg-stone-900 dark:text-stone-300 dark:border-stone-800' },
-  CANCELED: { label: 'Cancelado', cls: 'bg-stone-100 text-stone-500 border-stone-200 dark:bg-stone-900 dark:text-stone-400 dark:border-stone-800' },
+  REFUNDED: { label: 'Estornado', cls: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800' },
+  CANCELED: { label: 'Cancelado', cls: 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800' },
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const meta = PAYMENT_STATUS_META[status] ?? { label: status, cls: 'bg-stone-100 text-stone-600 border-stone-200 dark:bg-stone-900 dark:text-stone-300 dark:border-stone-800' }
+  const meta = PAYMENT_STATUS_META[status] ?? { label: status, cls: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800' }
   return (
     <Badge variant="outline" className={cn('rounded-full text-[10px] font-bold', meta.cls)}>
       {meta.label}
@@ -604,13 +604,13 @@ export function AdminPanel() {
       <div className="mx-auto w-full max-w-md px-4 py-16">
         <Card className="rounded-2xl">
           <CardContent className="flex flex-col items-center p-8 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300">
               <ShieldAlert className="h-7 w-7" aria-hidden />
             </span>
-            <h1 className="mt-4 text-lg font-extrabold text-stone-900 dark:text-stone-50">
+            <h1 className="mt-4 text-lg font-extrabold text-slate-900 dark:text-slate-50">
               Sessão administrativa necessária
             </h1>
-            <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+            <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
               Faça login novamente com a sua conta admin para acessar o painel. Se o MFA estiver
               ativo, o código será pedido na hora.
             </p>
@@ -627,17 +627,17 @@ export function AdminPanel() {
     <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
       {/* Cabeçalho */}
       <div className="flex flex-wrap items-center gap-3">
-        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-950 text-amber-300 dark:bg-amber-950/60">
+        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-blue-300 dark:bg-blue-950/60">
           <ShieldCheck className="h-5.5 w-5.5" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+          <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
             Administração da plataforma
           </h1>
-          <p className="text-xs text-stone-500 dark:text-stone-400">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Logado como {user?.name} · sessão segura de 12h
             {mfaEnabled === false && (
-              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
                 <ShieldAlert className="h-3 w-3" aria-hidden /> MFA inativo
               </span>
             )}
@@ -650,7 +650,7 @@ export function AdminPanel() {
 
       {/* Aviso de MFA inativo */}
       {mfaEnabled === false && (
-        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/50 px-4 py-3 text-sm text-blue-800 dark:text-blue-200">
           <ShieldAlert aria-hidden className="h-4 w-4 shrink-0" />
           <span className="flex-1">
             Sua conta admin está <strong>sem MFA</strong>. Ative o segundo fator na aba Segurança — é
@@ -663,7 +663,7 @@ export function AdminPanel() {
       )}
 
       <Tabs value={tab} onValueChange={setTab} className="mt-6">
-        <TabsList className="flex h-auto w-full flex-wrap gap-1 rounded-2xl bg-stone-100 dark:bg-stone-800 p-1 sm:grid sm:grid-cols-6">
+        <TabsList className="flex h-auto w-full flex-wrap gap-1 rounded-2xl bg-slate-100 dark:bg-slate-800 p-1 sm:grid sm:grid-cols-6">
           <TabsTrigger value="overview" className="rounded-xl text-xs font-bold sm:text-sm">
             <TrendingUp className="h-4 w-4" aria-hidden /> Visão geral
           </TabsTrigger>
@@ -721,11 +721,11 @@ export function AdminPanel() {
                 ].map(({ label, value, icon: Icon }) => (
                   <Card key={label} className="rounded-2xl">
                     <CardContent className="p-4">
-                      <div className="flex items-center gap-2 text-stone-400 dark:text-stone-500">
+                      <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
                         <Icon aria-hidden className="h-4 w-4" />
                         <span className="truncate text-[11px] font-bold uppercase tracking-wide">{label}</span>
                       </div>
-                      <p className="mt-1.5 truncate text-xl font-extrabold text-stone-900 dark:text-stone-50">
+                      <p className="mt-1.5 truncate text-xl font-extrabold text-slate-900 dark:text-slate-50">
                         {value}
                       </p>
                     </CardContent>
@@ -737,20 +737,20 @@ export function AdminPanel() {
               <Card className="mt-5 rounded-2xl">
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                    <h2 className="text-sm font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                       Gateway de pagamentos
                     </h2>
                     {stats.asaas.configured ? (
-                      <Badge className="rounded-full bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300">
+                      <Badge className="rounded-full bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300">
                         Asaas · {stats.asaas.env === 'production' ? 'PRODUÇÃO' : 'SANDBOX'}
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="rounded-full border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300">
+                      <Badge variant="outline" className="rounded-full border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300">
                         Modo demonstração
                       </Badge>
                     )}
                   </div>
-                  <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+                  <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
                     {stats.asaas.configured
                       ? `Cobranças reais ativas via Asaas${stats.asaas.webhookConfigured ? ' · webhook configurado (confirmação automática)' : ' · webhook não configurado (use "Verificar status" / confirmação manual)'}.`
                       : 'Nenhuma chave configurada — os pedidos são marcados como SIMULADO e aprovados na hora. Configure na aba Pagamentos.'}
@@ -760,29 +760,29 @@ export function AdminPanel() {
 
               <Card className="mt-4 rounded-2xl">
                 <CardContent className="p-4 sm:p-5">
-                  <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                  <h2 className="text-sm font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                     Últimas cobranças
                   </h2>
-                  <ul className="mt-3 divide-y divide-stone-100 dark:divide-stone-800">
+                  <ul className="mt-3 divide-y divide-slate-100 dark:divide-slate-800">
                     {stats.recentPayments.map((p) => (
                       <li key={p.id} className="flex items-center gap-3 py-2.5">
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-stone-800 dark:text-stone-100">
+                          <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
                             {p.itemTitle}
                           </p>
-                          <p className="truncate text-xs text-stone-400 dark:text-stone-500">
+                          <p className="truncate text-xs text-slate-400 dark:text-slate-500">
                             {p.userName} · {new Date(p.createdAt).toLocaleDateString('pt-BR')} ·{' '}
                             {p.gateway === 'ASAAS' ? 'Asaas' : 'Simulado'}
                           </p>
                         </div>
                         <StatusBadge status={p.status} />
-                        <span className="text-sm font-bold text-stone-800 dark:text-stone-100">
+                        <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
                           {currencyBRL(p.value)}
                         </span>
                       </li>
                     ))}
                     {stats.recentPayments.length === 0 && (
-                      <li className="py-6 text-center text-sm text-stone-400 dark:text-stone-500">
+                      <li className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">
                         Nenhuma cobrança ainda.
                       </li>
                     )}
@@ -799,11 +799,11 @@ export function AdminPanel() {
           <Card className="rounded-2xl">
             <CardContent className="p-4 sm:p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                <h2 className="text-sm font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                   Configuração do Asaas
                 </h2>
                 {asaas?.configured && (
-                  <Badge className="rounded-full bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300">
+                  <Badge className="rounded-full bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300">
                     {asaas.env === 'production' ? 'PRODUÇÃO' : 'SANDBOX'} · {asaas.maskedKey}
                   </Badge>
                 )}
@@ -811,7 +811,7 @@ export function AdminPanel() {
 
               <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
-                  <Label htmlFor="asaas-key" className="text-xs font-semibold text-stone-600 dark:text-stone-300">
+                  <Label htmlFor="asaas-key" className="text-xs font-semibold text-slate-600 dark:text-slate-300">
                     Chave de API {asaas?.configured ? '(deixe vazio para manter a atual)' : 'do sandbox'}
                   </Label>
                   <Input
@@ -825,7 +825,7 @@ export function AdminPanel() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs font-semibold text-stone-600 dark:text-stone-300">Ambiente</Label>
+                  <Label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Ambiente</Label>
                   <div className="mt-1.5 grid grid-cols-2 gap-2">
                     <Button
                       type="button"
@@ -862,18 +862,18 @@ export function AdminPanel() {
               </div>
 
               {/* Webhook */}
-              <div className="mt-4 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-950/50 p-3">
+              <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/50 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs font-bold text-stone-600 dark:text-stone-300">
+                  <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
                     Webhook de confirmação automática{' '}
                     {asaas?.webhookConfigured ? (
                       <CheckCircle2 aria-hidden className="inline h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                     ) : (
-                      <span className="font-normal text-stone-400 dark:text-stone-500">(não configurado)</span>
+                      <span className="font-normal text-slate-400 dark:text-slate-500">(não configurado)</span>
                     )}
                   </p>
                 </div>
-                <p className="mt-1 text-xs leading-relaxed text-stone-400 dark:text-stone-500">
+                <p className="mt-1 text-xs leading-relaxed text-slate-400 dark:text-slate-500">
                   Cole a URL pública da plataforma (ex.: <code>https://seudominio.com/api/webhooks/asaas</code>).
                   Em ambiente local o Asaas não alcança o servidor — use &quot;Verificar status&quot; ou a
                   confirmação manual abaixo. Em produção o webhook confirma tudo sozinho.
@@ -899,7 +899,7 @@ export function AdminPanel() {
                     aria-label="E-mail de contato do webhook"
                     className="h-10 rounded-xl"
                   />
-                  <p className="mt-1 text-[11px] leading-relaxed text-stone-400 dark:text-stone-500">
+                  <p className="mt-1 text-[11px] leading-relaxed text-slate-400 dark:text-slate-500">
                     O Asaas exige um e-mail de contato do webhook (comunicações de falha) — já preenchemos com o seu e-mail de admin.
                   </p>
                 </div>
@@ -911,12 +911,12 @@ export function AdminPanel() {
           <Card className="rounded-2xl">
             <CardContent className="p-4 sm:p-5">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                <h2 className="text-sm font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                   Cobranças {payments ? `(${payments.total})` : ''}
                 </h2>
                 <div className="ml-auto flex flex-1 flex-wrap items-center gap-2 sm:flex-none">
                   <div className="relative min-w-44 flex-1 sm:w-56">
-                    <Search aria-hidden className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                    <Search aria-hidden className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <Input
                       value={paymentsQuery}
                       onChange={(e) => setPaymentsQuery(e.target.value)}
@@ -932,7 +932,7 @@ export function AdminPanel() {
                       loadPayments(e.target.value, paymentsQuery)
                     }}
                     aria-label="Filtrar por status"
-                    className="h-9 rounded-full border border-stone-200 bg-white px-3 text-xs font-semibold text-stone-600 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300"
+                    className="h-9 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                   >
                     <option value="ALL">Todos</option>
                     <option value="PENDING">Pendentes</option>
@@ -953,14 +953,14 @@ export function AdminPanel() {
                   ))}
                 </div>
               ) : (
-                <ul className="mt-3 divide-y divide-stone-100 dark:divide-stone-800">
+                <ul className="mt-3 divide-y divide-slate-100 dark:divide-slate-800">
                   {payments?.payments.map((p) => (
                     <li key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
                       <div className="min-w-0 flex-1 basis-56">
-                        <p className="truncate text-sm font-semibold text-stone-800 dark:text-stone-100">
+                        <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
                           {p.itemTitle}
                         </p>
-                        <p className="truncate text-xs text-stone-400 dark:text-stone-500">
+                        <p className="truncate text-xs text-slate-400 dark:text-slate-500">
                           {p.userName} · {new Date(p.createdAt).toLocaleDateString('pt-BR')}{' '}
                           {new Date(p.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ·{' '}
                           {p.gateway === 'ASAAS' ? `Asaas ${p.billingType}` : 'Simulado'}
@@ -968,7 +968,7 @@ export function AdminPanel() {
                         </p>
                       </div>
                       <StatusBadge status={p.status} />
-                      <span className="text-sm font-bold text-stone-800 dark:text-stone-100">
+                      <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
                         {currencyBRL(p.value)}
                       </span>
                       <div className="flex items-center gap-1.5">
@@ -1049,7 +1049,7 @@ export function AdminPanel() {
                     </li>
                   ))}
                   {payments?.payments.length === 0 && (
-                    <li className="py-8 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <li className="py-8 text-center text-sm text-slate-400 dark:text-slate-500">
                       Nenhuma cobrança encontrada com esse filtro.
                     </li>
                   )}
@@ -1064,11 +1064,11 @@ export function AdminPanel() {
           <Card className="rounded-2xl">
             <CardContent className="p-4 sm:p-5">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                <h2 className="text-sm font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                   Usuários {users ? `(${users.total})` : ''}
                 </h2>
                 <div className="relative ml-auto w-full sm:w-64">
-                  <Search aria-hidden className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                  <Search aria-hidden className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
                     value={usersQuery}
                     onChange={(e) => setUsersQuery(e.target.value)}
@@ -1086,17 +1086,17 @@ export function AdminPanel() {
                   ))}
                 </div>
               ) : (
-                <ul className="mt-3 divide-y divide-stone-100 dark:divide-stone-800">
+                <ul className="mt-3 divide-y divide-slate-100 dark:divide-slate-800">
                   {users?.users.map((u) => (
                     <li key={u.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
                       <Avatar name={u.name} src={undefined} size="sm" className="ring-0" />
                       <div className="min-w-0 flex-1 basis-52">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <p className="truncate text-sm font-semibold text-stone-800 dark:text-stone-100">
+                          <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
                             {u.name}
                           </p>
                           {u.role === 'ADMIN' && (
-                            <Badge className="rounded-full bg-stone-950 text-amber-300 hover:bg-stone-950 dark:bg-amber-950/60 dark:text-amber-300">
+                            <Badge className="rounded-full bg-slate-950 text-blue-300 hover:bg-slate-950 dark:bg-blue-950/60 dark:text-blue-300">
                               ADMIN
                             </Badge>
                           )}
@@ -1111,7 +1111,7 @@ export function AdminPanel() {
                             </Badge>
                           )}
                         </div>
-                        <p className="truncate text-xs text-stone-400 dark:text-stone-500">
+                        <p className="truncate text-xs text-slate-400 dark:text-slate-500">
                           {u.email} · {u.enrollments} matrículas · {u.orders} pedidos · desde{' '}
                           {new Date(u.createdAt).toLocaleDateString('pt-BR')}
                         </p>
@@ -1168,7 +1168,7 @@ export function AdminPanel() {
                     </li>
                   ))}
                   {users?.users.length === 0 && (
-                    <li className="py-8 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <li className="py-8 text-center text-sm text-slate-400 dark:text-slate-500">
                       Nenhum usuário encontrado.
                     </li>
                   )}
@@ -1183,12 +1183,12 @@ export function AdminPanel() {
           {/* Criar cupom */}
           <Card className="rounded-2xl">
             <CardContent className="p-4 sm:p-5">
-              <h2 className="text-sm font-semibold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                 Criar cupom
               </h2>
               <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="min-w-0">
-                  <Label htmlFor="cp-code" className="text-xs font-semibold text-stone-500 dark:text-stone-400">
+                  <Label htmlFor="cp-code" className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                     Código
                   </Label>
                   <Input
@@ -1201,21 +1201,21 @@ export function AdminPanel() {
                   />
                 </div>
                 <div className="min-w-0">
-                  <Label htmlFor="cp-kind" className="text-xs font-semibold text-stone-500 dark:text-stone-400">
+                  <Label htmlFor="cp-kind" className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                     Desconto
                   </Label>
                   <select
                     id="cp-kind"
                     value={cpKind}
                     onChange={(e) => setCpKind(e.target.value as 'percent' | 'amount')}
-                    className="mt-1 h-10 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm dark:border-stone-800 dark:bg-stone-900"
+                    className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-800 dark:bg-slate-900"
                   >
                     <option value="percent">Percentual (%)</option>
                     <option value="amount">Valor fixo (R$)</option>
                   </select>
                 </div>
                 <div className="min-w-0">
-                  <Label htmlFor="cp-value" className="text-xs font-semibold text-stone-500 dark:text-stone-400">
+                  <Label htmlFor="cp-value" className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                     Valor {cpKind === 'percent' ? '(%)' : '(R$)'}
                   </Label>
                   <Input
@@ -1231,14 +1231,14 @@ export function AdminPanel() {
                   />
                 </div>
                 <div className="min-w-0">
-                  <Label htmlFor="cp-scope" className="text-xs font-semibold text-stone-500 dark:text-stone-400">
+                  <Label htmlFor="cp-scope" className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                     Onde vale
                   </Label>
                   <select
                     id="cp-scope"
                     value={cpScope}
                     onChange={(e) => setCpScope(e.target.value as typeof cpScope)}
-                    className="mt-1 h-10 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm dark:border-stone-800 dark:bg-stone-900"
+                    className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-800 dark:bg-slate-900"
                   >
                     <option value="SITE_WIDE">Site inteiro</option>
                     <option value="NEW_ACCOUNTS">Só contas novas (1ª compra)</option>
@@ -1249,14 +1249,14 @@ export function AdminPanel() {
 
                 {cpScope === 'CATEGORY' && (
                   <div className="min-w-0">
-                    <Label htmlFor="cp-category" className="text-xs font-semibold text-stone-500 dark:text-stone-400">
+                    <Label htmlFor="cp-category" className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                       Categoria
                     </Label>
                     <select
                       id="cp-category"
                       value={cpCategory}
                       onChange={(e) => setCpCategory(e.target.value)}
-                      className="mt-1 h-10 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm dark:border-stone-800 dark:bg-stone-900"
+                      className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-800 dark:bg-slate-900"
                     >
                       {CATEGORIES.map((c) => (
                         <option key={c} value={c}>
@@ -1268,14 +1268,14 @@ export function AdminPanel() {
                 )}
                 {cpScope === 'MENTOR' && (
                   <div className="min-w-0 sm:col-span-2">
-                    <Label htmlFor="cp-mentor" className="text-xs font-semibold text-stone-500 dark:text-stone-400">
+                    <Label htmlFor="cp-mentor" className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                       Mentor
                     </Label>
                     <select
                       id="cp-mentor"
                       value={cpMentorId}
                       onChange={(e) => setCpMentorId(e.target.value)}
-                      className="mt-1 h-10 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm dark:border-stone-800 dark:bg-stone-900"
+                      className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-800 dark:bg-slate-900"
                     >
                       <option value="">Escolha o mentor…</option>
                       {(coupons?.mentors ?? []).map((m) => (
@@ -1288,7 +1288,7 @@ export function AdminPanel() {
                 )}
 
                 <div className="min-w-0">
-                  <Label htmlFor="cp-maxuses" className="text-xs font-semibold text-stone-500 dark:text-stone-400">
+                  <Label htmlFor="cp-maxuses" className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                     Usos máximos
                   </Label>
                   <Input
@@ -1302,7 +1302,7 @@ export function AdminPanel() {
                   />
                 </div>
                 <div className="min-w-0">
-                  <Label htmlFor="cp-expires" className="text-xs font-semibold text-stone-500 dark:text-stone-400">
+                  <Label htmlFor="cp-expires" className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                     Validade
                   </Label>
                   <Input
@@ -1316,15 +1316,15 @@ export function AdminPanel() {
               </div>
 
               {/* Barra promocional */}
-              <div className="mt-4 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-950/50 p-3">
+              <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/50 p-3">
                 <label className="flex min-h-11 cursor-pointer items-center gap-2.5">
                   <input
                     type="checkbox"
                     checked={cpPromoBar}
                     onChange={(e) => setCpPromoBar(e.target.checked)}
-                    className="h-4 w-4 accent-amber-700"
+                    className="h-4 w-4 accent-blue-700"
                   />
-                  <span className="text-sm font-semibold text-stone-700 dark:text-stone-200">
+                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                     Mostrar na barra promocional rotativa (topo do site)
                   </span>
                 </label>
@@ -1341,7 +1341,7 @@ export function AdminPanel() {
                       maxLength={140}
                       className="h-10 rounded-xl"
                     />
-                    <p className="mt-1 text-[11px] text-stone-400 dark:text-stone-500">
+                    <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
                       O visitante copia o código com um clique, direto na barra.
                     </p>
                   </div>
@@ -1363,7 +1363,7 @@ export function AdminPanel() {
           {/* Lista de cupons */}
           <Card className="rounded-2xl">
             <CardContent className="p-4 sm:p-5">
-              <h2 className="text-sm font-semibold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                 Cupons da plataforma {coupons ? `(${coupons.coupons.length})` : ''}
               </h2>
 
@@ -1374,7 +1374,7 @@ export function AdminPanel() {
                   ))}
                 </div>
               ) : (coupons?.coupons.length ?? 0) === 0 ? (
-                <p className="mt-4 rounded-2xl border border-dashed border-stone-200 dark:border-stone-800 p-8 text-center text-sm text-stone-500 dark:text-stone-400">
+                <p className="mt-4 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-8 text-center text-sm text-slate-500 dark:text-slate-400">
                   Nenhum cupom de plataforma ainda — crie o primeiro acima. Cupons criados por mentores
                   continuam valendo apenas nos itens deles.
                 </p>
@@ -1388,32 +1388,32 @@ export function AdminPanel() {
                       busyCoupon === `${c.id}:showInPromoBar` ||
                       busyCoupon === `${c.id}:del`
                     const status = !c.isActive
-                      ? { label: 'Pausado', cls: 'bg-stone-100 text-stone-600 border-stone-200 dark:bg-stone-900 dark:text-stone-300 dark:border-stone-800' }
+                      ? { label: 'Pausado', cls: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800' }
                       : expired
                         ? { label: 'Expirado', cls: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-900' }
                         : exhausted
-                          ? { label: 'Esgotado', cls: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-900' }
-                          : { label: 'Ativo', cls: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-900' }
+                          ? { label: 'Esgotado', cls: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-900' }
+                          : { label: 'Ativo', cls: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-900' }
                     return (
                       <li
                         key={c.id}
-                        className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 py-3"
+                        className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3"
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-mono text-sm font-bold tracking-wide text-stone-900 dark:text-stone-50">
+                            <span className="font-mono text-sm font-bold tracking-wide text-slate-900 dark:text-slate-50">
                               {c.code}
                             </span>
                             <Badge variant="outline" className={cn('rounded-full text-[10px] font-bold', status.cls)}>
                               {status.label}
                             </Badge>
                             {c.showInPromoBar && c.isActive && !expired && !exhausted && (
-                              <Badge className="rounded-full bg-stone-950 text-white text-[10px] font-bold dark:bg-white dark:text-stone-950">
+                              <Badge className="rounded-full bg-slate-950 text-white text-[10px] font-bold dark:bg-white dark:text-slate-950">
                                 na barra promocional
                               </Badge>
                             )}
                           </div>
-                          <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">
+                          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                             {c.percentOff !== null ? `${c.percentOff}% OFF` : `${currencyBRL(c.amountOff ?? 0)} OFF`}
                             {' · '}
                             {c.scope === 'SITE_WIDE' && 'site inteiro'}
@@ -1469,8 +1469,8 @@ export function AdminPanel() {
           <Card className="rounded-2xl">
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center gap-2">
-                <ShieldCheck aria-hidden className="h-5 w-5 text-amber-700 dark:text-amber-300" />
-                <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                <ShieldCheck aria-hidden className="h-5 w-5 text-blue-700 dark:text-blue-300" />
+                <h2 className="text-sm font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                   Autenticação em duas etapas (TOTP)
                 </h2>
               </div>
@@ -1479,7 +1479,7 @@ export function AdminPanel() {
                 <Skeleton className="mt-4 h-24 rounded-2xl" />
               ) : mfaEnabled ? (
                 <div className="mt-4 space-y-4">
-                  <div className="flex items-center gap-2 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/50 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+                  <div className="flex items-center gap-2 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/60 dark:bg-blue-950/50 px-4 py-3 text-sm text-blue-800 dark:text-blue-200">
                     <CheckCircle2 aria-hidden className="h-4 w-4 shrink-0" />
                     MFA <strong>ativo</strong> — todo login desta conta pede o código do app
                     autenticador. Sessões administrativas duram 12h.
@@ -1487,12 +1487,12 @@ export function AdminPanel() {
 
                   {/* Códigos de recuperação recém-gerados (exibição única) */}
                   {recoveryCodes && (
-                    <div className="rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/40 p-4">
-                      <div className="flex items-center gap-2 text-sm font-bold text-amber-800 dark:text-amber-200">
+                    <div className="rounded-xl border border-blue-300 dark:border-blue-800 bg-blue-50/80 dark:bg-blue-950/40 p-4">
+                      <div className="flex items-center gap-2 text-sm font-bold text-blue-800 dark:text-blue-200">
                         <KeyRound aria-hidden className="h-4 w-4 shrink-0" />
                         Guarde seus códigos de recuperação agora
                       </div>
-                      <p className="mt-1 text-xs leading-relaxed text-amber-700 dark:text-amber-300">
+                      <p className="mt-1 text-xs leading-relaxed text-blue-700 dark:text-blue-300">
                         Estes códigos só são exibidos <strong>uma única vez</strong>. Se perder o
                         app autenticador, use um deles na tela de login (cada código funciona uma
                         única vez).
@@ -1501,7 +1501,7 @@ export function AdminPanel() {
                         {recoveryCodes.map((code) => (
                           <code
                             key={code}
-                            className="rounded-lg border border-amber-200 dark:border-amber-900 bg-white dark:bg-stone-950/60 px-2 py-1.5 text-center font-mono text-xs font-bold tracking-wider text-stone-700 dark:text-stone-200"
+                            className="rounded-lg border border-blue-200 dark:border-blue-900 bg-white dark:bg-slate-950/60 px-2 py-1.5 text-center font-mono text-xs font-bold tracking-wider text-slate-700 dark:text-slate-200"
                           >
                             {code}
                           </code>
@@ -1533,9 +1533,9 @@ export function AdminPanel() {
                   )}
 
                   {/* Status dos códigos + regeneração */}
-                  <div className="rounded-xl border border-stone-200 dark:border-stone-800 p-4">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="text-sm text-stone-600 dark:text-stone-300">
+                      <div className="text-sm text-slate-600 dark:text-slate-300">
                         <span className="font-bold">
                           {recoveryRemaining ?? '—'} códigos de recuperação
                         </span>{' '}
@@ -1557,7 +1557,7 @@ export function AdminPanel() {
                       <div className="mt-3 max-w-sm">
                         <Label
                           htmlFor="mfa-regen-pass"
-                          className="text-xs font-semibold text-stone-600 dark:text-stone-300"
+                          className="text-xs font-semibold text-slate-600 dark:text-slate-300"
                         >
                           Confirme sua senha para gerar um lote novo (os antigos deixam de valer)
                         </Label>
@@ -1600,7 +1600,7 @@ export function AdminPanel() {
                   </div>
 
                   <div className="max-w-sm">
-                    <Label htmlFor="mfa-disable-pass" className="text-xs font-semibold text-stone-600 dark:text-stone-300">
+                    <Label htmlFor="mfa-disable-pass" className="text-xs font-semibold text-slate-600 dark:text-slate-300">
                       Desativar MFA (exige sua senha)
                     </Label>
                     <div className="mt-1.5 flex gap-2">
@@ -1627,11 +1627,11 @@ export function AdminPanel() {
               ) : mfaSetup ? (
                 <div className="mt-4 grid grid-cols-1 items-start gap-5 sm:grid-cols-2">
                   <div className="space-y-3">
-                    <p className="text-sm leading-relaxed text-stone-600 dark:text-stone-300">
+                    <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
                       <strong>1.</strong> Abra o app autenticador (Google Authenticator, Authy,
                       Microsoft Authenticator…) e escaneie o QR Code.
                     </p>
-                    <p className="text-sm leading-relaxed text-stone-600 dark:text-stone-300">
+                    <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
                       <strong>2.</strong> Digite o código de 6 dígitos que aparece no app para
                       confirmar e ativar.
                     </p>
@@ -1647,28 +1647,28 @@ export function AdminPanel() {
                       >
                         <InputOTPGroup>
                           {[0, 1, 2, 3, 4, 5].map((i) => (
-                            <InputOTPSlot key={i} index={i} className="h-12 w-11 rounded-lg border-stone-300 text-lg font-bold dark:border-stone-700" />
+                            <InputOTPSlot key={i} index={i} className="h-12 w-11 rounded-lg border-slate-300 text-lg font-bold dark:border-slate-700" />
                           ))}
                         </InputOTPGroup>
                       </InputOTP>
                     </div>
-                    {mfaBusy && <Loader2 className="h-4 w-4 animate-spin text-stone-400" aria-hidden />}
+                    {mfaBusy && <Loader2 className="h-4 w-4 animate-spin text-slate-400" aria-hidden />}
                     <button
                       type="button"
                       onClick={() => setMfaSetup(null)}
-                      className="block text-xs font-medium text-stone-400 underline-offset-2 hover:text-stone-600 hover:underline dark:text-stone-500"
+                      className="block text-xs font-medium text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline dark:text-slate-500"
                     >
                       Cancelar configuração
                     </button>
                   </div>
-                  <div className="flex flex-col items-center gap-2 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4">
+                  <div className="flex flex-col items-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
                     { }
                     <img src={mfaSetup.qrDataUrl} alt="QR Code de configuração do MFA" className="h-44 w-44" />
-                    <p className="text-[11px] leading-relaxed text-stone-400 dark:text-stone-500">
+                    <p className="text-[11px] leading-relaxed text-slate-400 dark:text-slate-500">
                       Não dá para escanear? Use a chave no app:
                     </p>
                     <div className="flex w-full items-center gap-1.5">
-                      <code className="min-w-0 flex-1 truncate rounded-md border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-950/60 px-2 py-1 font-mono text-[10px] text-stone-600 dark:text-stone-300">
+                      <code className="min-w-0 flex-1 truncate rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/60 px-2 py-1 font-mono text-[10px] text-slate-600 dark:text-slate-300">
                         {mfaSetup.secret}
                       </code>
                       <Button
@@ -1688,7 +1688,7 @@ export function AdminPanel() {
                 </div>
               ) : (
                 <div className="mt-4 space-y-4">
-                  <p className="max-w-xl text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+                  <p className="max-w-xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">
                     O MFA protege o painel que controla pagamentos e usuários: mesmo com a senha
                     vazada, o invasor precisaria do código do seu app autenticador. A ativação leva
                     menos de um minuto.
@@ -1707,7 +1707,7 @@ export function AdminPanel() {
         <TabsContent value="audit" className="mt-5">
           <Card className="rounded-2xl">
             <CardContent className="p-4 sm:p-5">
-              <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+              <h2 className="text-sm font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                 Trilha de auditoria {auditLogs ? `(${auditLogs.total})` : ''}
               </h2>
               {auditLoading ? (
@@ -1717,28 +1717,28 @@ export function AdminPanel() {
                   ))}
                 </div>
               ) : (
-                <ul className="mt-3 max-h-[28rem] divide-y divide-stone-100 overflow-y-auto pr-1 dark:divide-stone-800 [scrollbar-width:thin]">
+                <ul className="mt-3 max-h-[28rem] divide-y divide-slate-100 overflow-y-auto pr-1 dark:divide-slate-800 [scrollbar-width:thin]">
                   {auditLogs?.logs.map((l) => (
                     <li key={l.id} className="flex items-center gap-3 py-2.5">
-                      <span className="rounded-md bg-stone-100 px-2 py-0.5 font-mono text-[10px] font-bold text-stone-600 dark:bg-stone-800 dark:text-stone-300">
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                         {l.action}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-semibold text-stone-700 dark:text-stone-200">
+                        <p className="truncate text-xs font-semibold text-slate-700 dark:text-slate-200">
                           {l.actorName}
                         </p>
                         {l.meta && l.meta !== '{}' && (
-                          <p className="truncate text-[11px] text-stone-400 dark:text-stone-500">{l.meta}</p>
+                          <p className="truncate text-[11px] text-slate-400 dark:text-slate-500">{l.meta}</p>
                         )}
                       </div>
-                      <span className="shrink-0 text-[11px] text-stone-400 dark:text-stone-500">
+                      <span className="shrink-0 text-[11px] text-slate-400 dark:text-slate-500">
                         {new Date(l.createdAt).toLocaleDateString('pt-BR')}{' '}
                         {new Date(l.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </li>
                   ))}
                   {auditLogs?.logs.length === 0 && (
-                    <li className="py-8 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <li className="py-8 text-center text-sm text-slate-400 dark:text-slate-500">
                       Nenhuma ação registrada ainda.
                     </li>
                   )}
@@ -1753,14 +1753,14 @@ export function AdminPanel() {
           <Card className="rounded-2xl">
             <CardContent className="p-4 sm:p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                <h2 className="text-sm font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                   E-mails transacionais {emails ? `(${emails.total})` : ''}
                 </h2>
                 <span
                   className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
                     emails?.smtpConfigured
-                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
-                      : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
+                      : 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
                   }`}
                 >
                   {emails?.smtpConfigured ? 'SMTP configurado — entrega ativa' : 'Sem SMTP — modo fila (outbox)'}
@@ -1773,32 +1773,32 @@ export function AdminPanel() {
                   ))}
                 </div>
               ) : (
-                <ul className="mt-3 max-h-[28rem] divide-y divide-stone-100 overflow-y-auto pr-1 dark:divide-stone-800 [scrollbar-width:thin]">
+                <ul className="mt-3 max-h-[28rem] divide-y divide-slate-100 overflow-y-auto pr-1 dark:divide-slate-800 [scrollbar-width:thin]">
                   {emails?.emails.map((m) => (
                     <li key={m.id} className="flex items-center gap-3 py-2.5">
                       <span
                         className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold ${
                           m.status === 'SENT'
-                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
                             : m.status === 'LOGGED'
-                              ? 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300'
+                              ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                               : m.status === 'FAILED'
                                 ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
-                                : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                                : 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
                         }`}
                       >
                         {m.status}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-semibold text-stone-700 dark:text-stone-200">
+                        <p className="truncate text-xs font-semibold text-slate-700 dark:text-slate-200">
                           {m.subject}
                         </p>
-                        <p className="truncate text-[11px] text-stone-400 dark:text-stone-500">
+                        <p className="truncate text-[11px] text-slate-400 dark:text-slate-500">
                           {m.to} · {m.kind}
                           {m.error ? ` · ${m.error}` : ''}
                         </p>
                       </div>
-                      <span className="shrink-0 text-[11px] text-stone-400 dark:text-stone-500">
+                      <span className="shrink-0 text-[11px] text-slate-400 dark:text-slate-500">
                         {new Date(m.createdAt).toLocaleDateString('pt-BR')}{' '}
                         {new Date(m.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </span>
@@ -1808,7 +1808,7 @@ export function AdminPanel() {
                     </li>
                   ))}
                   {emails?.emails.length === 0 && (
-                    <li className="py-8 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <li className="py-8 text-center text-sm text-slate-400 dark:text-slate-500">
                       Nenhum e-mail na fila ainda.
                     </li>
                   )}
@@ -1825,26 +1825,26 @@ export function AdminPanel() {
             <Card className="rounded-2xl">
               <CardContent className="p-4 sm:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                  <h2 className="text-sm font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                     Persistência dos dados
                   </h2>
                   {persistence ? (
                     persistence.mode === 'turso' ? (
-                      <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
+                      <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[10px] font-bold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
                         Nuvem (Turso) — protege contra atualizações
                       </span>
                     ) : (
-                      <span className="rounded-full bg-stone-100 px-2.5 py-1 text-[10px] font-bold text-stone-600 dark:bg-stone-800 dark:text-stone-300">
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                         Arquivo local
                       </span>
                     )
                   ) : null}
                 </div>
-                <p className="mt-2 text-sm text-stone-600 dark:text-stone-300">
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
                   Camadas de proteção: snapshots automáticos do banco (boot + a cada 6h + antes de cada
                   mudança de schema), exportação JSON completa e opção de banco na nuvem (Turso). O
-                  <code className="mx-1 rounded bg-stone-100 px-1.5 py-0.5 text-xs dark:bg-stone-800">db:push</code>
-                  nunca mais roda com <code className="mx-1 rounded bg-stone-100 px-1.5 py-0.5 text-xs dark:bg-stone-800">--accept-data-loss</code> —
+                  <code className="mx-1 rounded bg-slate-100 px-1.5 py-0.5 text-xs dark:bg-slate-800">db:push</code>
+                  nunca mais roda com <code className="mx-1 rounded bg-slate-100 px-1.5 py-0.5 text-xs dark:bg-slate-800">--accept-data-loss</code> —
                   mudanças destrutivas falham com explicação em vez de apagar dados.
                 </p>
                 {persistenceLoading ? (
@@ -1854,36 +1854,36 @@ export function AdminPanel() {
                   </div>
                 ) : persistence ? (
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl border border-stone-200 p-4 dark:border-stone-800">
-                      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400">
+                    <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+                      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                         <HardDrive className="h-3.5 w-3.5" aria-hidden /> Banco atual
                       </p>
                       {persistence.mode === 'turso' ? (
-                        <p className="mt-1.5 text-sm font-semibold text-amber-700 dark:text-amber-400">
+                        <p className="mt-1.5 text-sm font-semibold text-blue-700 dark:text-blue-400">
                           Turso/libSQL na nuvem (TURSO_DATABASE_URL)
                         </p>
                       ) : (
                         <>
-                          <p className="mt-1.5 truncate text-sm font-semibold text-stone-800 dark:text-stone-100">
+                          <p className="mt-1.5 truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
                             {persistence.dbPath ?? 'db/custom.db'}
                           </p>
-                          <p className="text-xs text-stone-400 dark:text-stone-500">
+                          <p className="text-xs text-slate-400 dark:text-slate-500">
                             {formatBytes(persistence.dbSizeBytes)}
                           </p>
                         </>
                       )}
                     </div>
-                    <div className="rounded-xl border border-stone-200 p-4 dark:border-stone-800">
-                      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400">
+                    <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+                      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                         <Archive className="h-3.5 w-3.5" aria-hidden /> Snapshots
                       </p>
-                      <p className="mt-1.5 text-sm font-semibold text-stone-800 dark:text-stone-100">
+                      <p className="mt-1.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
                         {persistence.mode === 'turso'
                           ? 'Nuvem não precisa de snapshot de arquivo'
                           : `${persistence.backups.length} em /backups`}
                       </p>
                       {persistence.backups[0] ? (
-                        <p className="text-xs text-stone-400 dark:text-stone-500">
+                        <p className="text-xs text-slate-400 dark:text-slate-500">
                           Último: {persistence.backups[0].file.replace(/^db-|--\w+\.db$/g, '')} ·{' '}
                           {formatBytes(persistence.backups[0].sizeBytes)}
                         </p>
@@ -1894,14 +1894,14 @@ export function AdminPanel() {
 
                 {/* Caminho para a nuvem quando em modo local */}
                 {persistence?.mode === 'local' ? (
-                  <div className="mt-4 flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-900 dark:bg-amber-950/40 sm:flex-row sm:items-center">
-                    <CloudUpload className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
-                    <p className="min-w-0 flex-1 text-xs leading-relaxed text-amber-800 dark:text-amber-200">
+                  <div className="mt-4 flex flex-col gap-2 rounded-xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-900 dark:bg-blue-950/40 sm:flex-row sm:items-center">
+                    <CloudUpload className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
+                    <p className="min-w-0 flex-1 text-xs leading-relaxed text-blue-800 dark:text-blue-200">
                       <strong>Proteção máxima:</strong> crie um banco gratuito em turso.tech, defina{' '}
-                      <code className="rounded bg-white/70 px-1 dark:bg-stone-900/70">TURSO_DATABASE_URL</code> e{' '}
-                      <code className="rounded bg-white/70 px-1 dark:bg-stone-900/70">TURSO_AUTH_TOKEN</code> no
+                      <code className="rounded bg-white/70 px-1 dark:bg-slate-900/70">TURSO_DATABASE_URL</code> e{' '}
+                      <code className="rounded bg-white/70 px-1 dark:bg-slate-900/70">TURSO_AUTH_TOKEN</code> no
                       ambiente e rode{' '}
-                      <code className="rounded bg-white/70 px-1 dark:bg-stone-900/70">bun run db:to-turso</code>. Aí
+                      <code className="rounded bg-white/70 px-1 dark:bg-slate-900/70">bun run db:to-turso</code>. Aí
                       nem uma atualização de código apaga dados — eles vivem fora deste servidor.
                     </p>
                   </div>
@@ -1914,7 +1914,7 @@ export function AdminPanel() {
               <Card className="rounded-2xl">
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                    <h2 className="text-sm font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                       Backups do banco
                     </h2>
                     <Button
@@ -1932,24 +1932,24 @@ export function AdminPanel() {
                     </Button>
                   </div>
                   {persistence.backups.length === 0 ? (
-                    <p className="py-6 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <p className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">
                       Nenhum snapshot ainda — um é criado automaticamente a cada boot do servidor.
                     </p>
                   ) : (
-                    <ul className="mt-3 max-h-96 divide-y divide-stone-100 overflow-y-auto pr-1 dark:divide-stone-800 [scrollbar-width:thin]">
+                    <ul className="mt-3 max-h-96 divide-y divide-slate-100 overflow-y-auto pr-1 dark:divide-slate-800 [scrollbar-width:thin]">
                       {persistence.backups.map((b) => (
                         <li key={b.file} className="flex items-center gap-3 py-2.5">
-                          <Archive className="h-4 w-4 shrink-0 text-stone-300 dark:text-stone-600" aria-hidden />
+                          <Archive className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden />
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs font-semibold text-stone-700 dark:text-stone-200">
+                            <p className="truncate text-xs font-semibold text-slate-700 dark:text-slate-200">
                               {b.file}
                             </p>
-                            <p className="text-[11px] text-stone-400 dark:text-stone-500">
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500">
                               {formatBytes(b.sizeBytes)}
                               {b.reason ? ` · ${b.reason}` : ''}
                             </p>
                           </div>
-                          <span className="shrink-0 text-[11px] text-stone-400 dark:text-stone-500">
+                          <span className="shrink-0 text-[11px] text-slate-400 dark:text-slate-500">
                             {new Date(b.createdAt).toLocaleDateString('pt-BR')}{' '}
                             {new Date(b.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                           </span>
@@ -1975,10 +1975,10 @@ export function AdminPanel() {
               <CardContent className="p-4 sm:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                    <h2 className="text-sm font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                       Exportação completa (JSON)
                     </h2>
-                    <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                       Todas as tabelas (usuários, cursos, pedidos, gateway configurado...) em um arquivo
                       portátil — a cópia de segurança definitiva.
                     </p>
@@ -2014,7 +2014,7 @@ export function AdminPanel() {
                   : ''}
               </DialogDescription>
             </DialogHeader>
-            <div className="max-h-[55vh] overflow-y-auto rounded-xl border border-stone-200 dark:border-stone-800">
+            <div className="max-h-[55vh] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800">
               <iframe
                 title="Pré-visualização do e-mail"
                 srcDoc={emailPreview?.bodyHtml ?? ''}

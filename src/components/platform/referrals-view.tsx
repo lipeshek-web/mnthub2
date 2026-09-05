@@ -42,13 +42,13 @@ function StatTile({
   hint?: string
 }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4">
-      <div className="flex items-center gap-1.5 text-stone-500 dark:text-stone-400">
+    <div className="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+      <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
         <Icon className="size-3.5 shrink-0" aria-hidden />
         <span className="text-[11px] font-semibold uppercase tracking-wide">{label}</span>
       </div>
-      <p className="mt-2 text-2xl font-bold tabular-nums text-stone-900 dark:text-stone-50">{value}</p>
-      {hint ? <p className="mt-1 text-xs leading-snug text-stone-400 dark:text-stone-500">{hint}</p> : null}
+      <p className="mt-2 text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-50">{value}</p>
+      {hint ? <p className="mt-1 text-xs leading-snug text-slate-400 dark:text-slate-500">{hint}</p> : null}
     </div>
   )
 }
@@ -106,56 +106,56 @@ export function ReferralsView() {
       <Button
         variant="ghost"
         onClick={() => navigate({ name: 'home' })}
-        className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-50"
+        className="-ml-2 h-10 gap-1.5 rounded-full px-3 font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-50"
       >
         <ArrowLeft aria-hidden className="h-4 w-4" />
         Voltar
       </Button>
 
       {/* Hero: convite */}
-      <div className="relative mt-3 overflow-hidden rounded-3xl bg-amber-700 p-6 text-white sm:p-8">
+      <div className="relative mt-3 overflow-hidden rounded-3xl bg-blue-700 p-6 text-white sm:p-8">
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-amber-500/20 blur-2xl"
+          className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-blue-500/20 blur-2xl"
         />
         <div
           aria-hidden
           className="pointer-events-none absolute -bottom-14 -left-8 size-44 rounded-full bg-teal-400/10 blur-2xl"
         />
-        <Badge className="border border-amber-400/40 bg-amber-400/10 text-amber-100 hover:bg-amber-400/10">
+        <Badge className="border border-blue-400/40 bg-blue-400/10 text-blue-100 hover:bg-blue-400/10">
           <Gift aria-hidden className="h-3 w-3" />
           Programa de indicação
         </Badge>
         <h1 className="mt-3 text-2xl font-extrabold tracking-tight sm:text-3xl">
           Indique amigos, ganhe créditos 💚
         </h1>
-        <p className="mt-2 max-w-md text-sm leading-relaxed text-amber-50/90">
+        <p className="mt-2 max-w-md text-sm leading-relaxed text-blue-50/90">
           Compartilhe seu link: seu amigo entra com <strong>R$ 10 de crédito</strong> e você
           ganha <strong>R$ 20</strong> quando ele concluir a primeira compra.
         </p>
 
         {loading ? (
           <div className="mt-5 space-y-3" aria-busy="true">
-            <Skeleton className="h-12 w-full rounded-full bg-amber-900/60" />
-            <Skeleton className="h-10 w-40 rounded-full bg-amber-900/60" />
+            <Skeleton className="h-12 w-full rounded-full bg-blue-900/60" />
+            <Skeleton className="h-10 w-40 rounded-full bg-blue-900/60" />
             <span className="sr-only">Carregando seu convite…</span>
           </div>
         ) : error ? (
-          <p className="mt-5 text-sm font-medium text-amber-100">{error}</p>
+          <p className="mt-5 text-sm font-medium text-blue-100">{error}</p>
         ) : data ? (
           <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">
-            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-amber-900/60 py-1.5 pl-4 pr-1.5 ring-1 ring-amber-500/30">
+            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-blue-900/60 py-1.5 pl-4 pr-1.5 ring-1 ring-blue-500/30">
               <Input
                 readOnly
                 value={shareUrl}
                 onFocus={(e) => e.currentTarget.select()}
                 aria-label="Link de convite"
-                className="h-9 border-0 bg-transparent p-0 text-sm font-medium text-amber-50 shadow-none focus-visible:ring-0 dark:border-0 dark:bg-transparent"
+                className="h-9 border-0 bg-transparent p-0 text-sm font-medium text-blue-50 shadow-none focus-visible:ring-0 dark:border-0 dark:bg-transparent"
               />
               <Button
                 size="sm"
                 onClick={() => void copy(shareUrl, 'link')}
-                className="h-9 shrink-0 rounded-full bg-white px-4 font-bold text-amber-900 hover:bg-amber-100"
+                className="h-9 shrink-0 rounded-full bg-white px-4 font-bold text-blue-900 hover:bg-blue-100"
               >
                 {copied === 'link' ? <Check aria-hidden className="h-4 w-4" /> : <Copy aria-hidden className="h-4 w-4" />}
                 {copied === 'link' ? 'Copiado' : 'Copiar'}
@@ -163,7 +163,7 @@ export function ReferralsView() {
             </div>
             <Button
               asChild
-              className="h-12 shrink-0 rounded-full bg-amber-500 px-5 font-bold text-white hover:bg-amber-400 sm:h-12"
+              className="h-12 shrink-0 rounded-full bg-blue-500 px-5 font-bold text-white hover:bg-blue-400 sm:h-12"
             >
               <a
                 href={`https://wa.me/?text=${shareText}%20${encodeURIComponent(shareUrl)}`}
@@ -181,7 +181,7 @@ export function ReferralsView() {
           <button
             type="button"
             onClick={() => void copy(data.code, 'code')}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-900/40 px-3 py-1.5 text-xs font-semibold text-amber-100 ring-1 ring-amber-500/20 transition-colors hover:bg-amber-900/60"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-blue-900/40 px-3 py-1.5 text-xs font-semibold text-blue-100 ring-1 ring-blue-500/20 transition-colors hover:bg-blue-900/60"
           >
             {copied === 'code' ? <Check aria-hidden className="h-3.5 w-3.5" /> : <Copy aria-hidden className="h-3.5 w-3.5" />}
             Seu código: <span className="font-mono tracking-widest">{data.code}</span>
@@ -218,7 +218,7 @@ export function ReferralsView() {
           {/* Como funciona */}
           <Card className="mt-5 rounded-2xl">
             <CardContent className="p-5 sm:p-6">
-              <h2 className="text-base font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+              <h2 className="text-base font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
                 Como funciona
               </h2>
               <ol className="mt-3 grid gap-3 sm:grid-cols-3">
@@ -241,13 +241,13 @@ export function ReferralsView() {
                 ].map((step) => (
                   <li
                     key={step.n}
-                    className="rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-950/50 p-4"
+                    className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/50 p-4"
                   >
-                    <span className="flex size-7 items-center justify-center rounded-full bg-amber-700 text-xs font-bold text-white">
+                    <span className="flex size-7 items-center justify-center rounded-full bg-blue-700 text-xs font-bold text-white">
                       {step.n}
                     </span>
-                    <p className="mt-2 text-sm font-bold text-stone-900 dark:text-stone-50">{step.t}</p>
-                    <p className="mt-1 text-xs leading-relaxed text-stone-500 dark:text-stone-400">{step.d}</p>
+                    <p className="mt-2 text-sm font-bold text-slate-900 dark:text-slate-50">{step.t}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{step.d}</p>
                   </li>
                 ))}
               </ol>
@@ -257,22 +257,22 @@ export function ReferralsView() {
           {/* Lista de convidados */}
           <Card className="mt-5 rounded-2xl">
             <CardContent className="p-5 sm:p-6">
-              <h2 className="text-base font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+              <h2 className="text-base font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
                 Seus convidados
               </h2>
               {data.referrals.length === 0 ? (
-                <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+                <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
                   Ninguém ainda — compartilhe seu link e comece a acumular créditos!
                 </p>
               ) : (
-                <ul className="mt-3 divide-y divide-stone-100 dark:divide-stone-800">
+                <ul className="mt-3 divide-y divide-slate-100 dark:divide-slate-800">
                   {data.referrals.map((r) => (
                     <li key={r.id} className="flex items-center justify-between gap-3 py-3">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-stone-900 dark:text-stone-50">
+                        <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
                           {r.referredName}
                         </p>
-                        <p className="text-xs text-stone-400 dark:text-stone-500">
+                        <p className="text-xs text-slate-400 dark:text-slate-500">
                           entrou em {new Date(r.createdAt).toLocaleDateString('pt-BR')}
                         </p>
                       </div>
@@ -280,8 +280,8 @@ export function ReferralsView() {
                         className={cn(
                           'shrink-0 rounded-full',
                           r.status === 'REWARDED'
-                            ? 'border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/50'
-                            : 'border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/50'
+                            ? 'border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50'
+                            : 'border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50'
                         )}
                       >
                         {r.status === 'REWARDED' ? '+ R$ 20 creditados' : 'Aguardando 1ª compra'}
@@ -298,7 +298,7 @@ export function ReferralsView() {
       {error && !loading ? (
         <Card className="mt-5 rounded-2xl border-dashed">
           <CardContent className="flex flex-col items-center gap-2 p-8 text-center">
-            <p className="text-sm font-medium text-stone-700 dark:text-stone-300">{error}</p>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{error}</p>
             <Button variant="outline" className="rounded-full" onClick={() => window.location.reload()}>
               Tentar novamente
             </Button>
@@ -307,7 +307,7 @@ export function ReferralsView() {
       ) : null}
 
       {/* Rodapé informativo */}
-      <p className="mt-8 text-xs leading-relaxed text-stone-400 dark:text-stone-500">
+      <p className="mt-8 text-xs leading-relaxed text-slate-400 dark:text-slate-500">
         Créditos são aplicados automaticamente como desconto nos próximos checkouts e não são
         conversíveis em dinheiro.
       </p>

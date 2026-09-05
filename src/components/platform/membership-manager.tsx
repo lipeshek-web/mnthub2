@@ -163,7 +163,7 @@ export function MembershipManager({ userId }: { userId: string }) {
     <div className="flex min-w-0 flex-col gap-6">
       <section aria-labelledby="membership-title">
         <h2 id="membership-title" className="flex items-center gap-2 text-xl font-bold tracking-tight">
-          <CreditCard aria-hidden className="h-5 w-5 text-amber-700 dark:text-amber-300" />
+          <CreditCard aria-hidden className="h-5 w-5 text-blue-700 dark:text-blue-300" />
           Assinatura mensal
         </h2>
         <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
@@ -176,8 +176,8 @@ export function MembershipManager({ userId }: { userId: string }) {
       <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
         <Card className="gap-1 rounded-2xl py-4">
           <CardContent className="flex items-center gap-3 px-4">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950/50">
-              <Users aria-hidden className="h-4.5 w-4.5 text-amber-700 dark:text-amber-300" />
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950/50">
+              <Users aria-hidden className="h-4.5 w-4.5 text-blue-700 dark:text-blue-300" />
             </span>
             <div className="min-w-0">
               <p className="text-lg font-extrabold leading-none">{activeSubs.length}</p>
@@ -187,8 +187,8 @@ export function MembershipManager({ userId }: { userId: string }) {
         </Card>
         <Card className="gap-1 rounded-2xl py-4">
           <CardContent className="flex items-center gap-3 px-4">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950/50">
-              <Wallet aria-hidden className="h-4.5 w-4.5 text-amber-700 dark:text-amber-300" />
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950/50">
+              <Wallet aria-hidden className="h-4.5 w-4.5 text-blue-700 dark:text-blue-300" />
             </span>
             <div className="min-w-0">
               <p className="text-lg font-extrabold leading-none">{brl(mrr)}</p>
@@ -198,8 +198,8 @@ export function MembershipManager({ userId }: { userId: string }) {
         </Card>
         <Card className="gap-1 rounded-2xl py-4">
           <CardContent className="flex items-center gap-3 px-4">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950/50">
-              <Layers aria-hidden className="h-4.5 w-4.5 text-amber-700 dark:text-amber-300" />
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950/50">
+              <Layers aria-hidden className="h-4.5 w-4.5 text-blue-700 dark:text-blue-300" />
             </span>
             <div className="min-w-0">
               <p className="text-lg font-extrabold leading-none">{membership?.coursesCount ?? 0}</p>
@@ -337,11 +337,11 @@ export function MembershipManager({ userId }: { userId: string }) {
 
       {/* Prévia do que o aluno vê */}
       {title.trim() && (
-        <Card className="rounded-2xl border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/30">
+        <Card className="rounded-2xl border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/30">
           <CardContent className="grid gap-3 p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <Badge className="rounded-full border border-amber-200 dark:border-amber-900 bg-white dark:bg-stone-900 text-amber-700 dark:text-amber-300 hover:bg-white dark:hover:bg-stone-900">
+                <Badge className="rounded-full border border-blue-200 dark:border-blue-900 bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-300 hover:bg-white dark:hover:bg-slate-900">
                   <CreditCard aria-hidden className="h-3 w-3" /> Assinatura
                 </Badge>
                 {!isPublished && (
@@ -350,7 +350,7 @@ export function MembershipManager({ userId }: { userId: string }) {
                   </Badge>
                 )}
               </div>
-              <p className="text-lg font-extrabold text-amber-700 dark:text-amber-300">
+              <p className="text-lg font-extrabold text-blue-700 dark:text-blue-300">
                 {Number.isFinite(Number(price.replace(',', '.')))
                   ? `${brl(Number(price.replace(',', '.')))}/mês`
                   : '—'}
@@ -358,22 +358,22 @@ export function MembershipManager({ userId }: { userId: string }) {
             </div>
             <p className="text-base font-bold">{title}</p>
             {description.trim() && (
-              <p className="text-sm leading-relaxed text-stone-600 dark:text-stone-400">
+              <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
                 {description}
               </p>
             )}
-            <ul className="grid gap-1.5 text-sm text-stone-600 dark:text-stone-400">
+            <ul className="grid gap-1.5 text-sm text-slate-600 dark:text-slate-400">
               <li className="flex items-center gap-1.5">
-                <Layers aria-hidden className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                <Layers aria-hidden className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                 Todos os {membership?.coursesCount ?? 0} cursos publicados (e os próximos)
               </li>
               <li className="flex items-center gap-1.5">
-                <CalendarClock aria-hidden className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                <CalendarClock aria-hidden className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                 Sessão em grupo mensal ·{' '}
                 {groupSessionLabel(Number(sessionDay) || 0, sessionTime)}
               </li>
               <li className="flex items-center gap-1.5">
-                <ShieldCheck aria-hidden className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                <ShieldCheck aria-hidden className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                 Cancele quando quiser — acesso até o fim do ciclo pago
               </li>
             </ul>
@@ -412,11 +412,11 @@ export function MembershipManager({ userId }: { userId: string }) {
                   </p>
                 </div>
                 {s.status === 'ACTIVE' ? (
-                  <Badge className="rounded-full border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/50">
+                  <Badge className="rounded-full border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50">
                     Ativo
                   </Badge>
                 ) : s.status === 'EXPIRED' ? (
-                  <Badge variant="outline" className="rounded-full border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-400">
+                  <Badge variant="outline" className="rounded-full border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-400">
                     Expirada
                   </Badge>
                 ) : (

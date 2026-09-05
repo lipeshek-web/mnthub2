@@ -520,16 +520,16 @@ export function EventStage({ eventId, title }: { eventId: string; title: string 
     tileCount <= 1 ? 'grid-cols-1' : tileCount <= 4 ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-3'
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-950 dark:border-stone-800">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 dark:border-slate-800">
       {/* barra superior */}
-      <div className="flex items-center justify-between gap-3 border-b border-stone-800 px-4 py-2.5">
+      <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-2.5">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-600/20 text-amber-400">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600/20 text-blue-400">
             <Users className="h-4 w-4" />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-stone-50">{title}</p>
-            <p className="text-[11px] text-stone-400">
+            <p className="truncate text-sm font-bold text-slate-50">{title}</p>
+            <p className="text-[11px] text-slate-400">
               reunião da plataforma · até {capacity || '—'} participantes
             </p>
           </div>
@@ -537,20 +537,20 @@ export function EventStage({ eventId, title }: { eventId: string; title: string 
         <div className="flex shrink-0 items-center gap-2">
           {state === 'connected' ? (
             <>
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-400">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-blue-400">
                 <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-60" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-400" />
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-400" />
                 </span>
-                AO VIVO {elapsed > 0 && <span className="tabular-nums text-stone-400">· {fmt(elapsed)}</span>}
+                AO VIVO {elapsed > 0 && <span className="tabular-nums text-slate-400">· {fmt(elapsed)}</span>}
               </span>
             </>
           ) : (
-            <Badge variant="outline" className="border-stone-700 text-stone-300">
+            <Badge variant="outline" className="border-slate-700 text-slate-300">
               {statusMsg.slice(0, 38)}
             </Badge>
           )}
-          <Badge variant="outline" className="border-stone-700 text-stone-300">
+          <Badge variant="outline" className="border-slate-700 text-slate-300">
             👥 {peers.length + 1}
             {capacity ? `/${capacity}` : ''}
           </Badge>
@@ -561,9 +561,9 @@ export function EventStage({ eventId, title }: { eventId: string; title: string 
       <div className="relative aspect-video w-full sm:aspect-[16/8]">
         {mediaError === 'denied' ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
-            <CameraOff className="h-10 w-10 text-stone-500" />
-            <p className="text-sm font-semibold text-stone-200">Câmera e microfone bloqueados</p>
-            <p className="max-w-sm text-xs text-stone-400">
+            <CameraOff className="h-10 w-10 text-slate-500" />
+            <p className="text-sm font-semibold text-slate-200">Câmera e microfone bloqueados</p>
+            <p className="max-w-sm text-xs text-slate-400">
               Permita o acesso no navegador para participar com vídeo e áudio — a sala continua
               aberta para você tentar de novo pelos botões abaixo.
             </p>
@@ -571,7 +571,7 @@ export function EventStage({ eventId, title }: { eventId: string; title: string 
         ) : (
           <div className={`absolute inset-0 grid gap-1.5 p-1.5 ${gridCols}`}>
             {/* tile local */}
-            <div className="relative overflow-hidden rounded-xl border border-amber-500/40 bg-stone-900">
+            <div className="relative overflow-hidden rounded-xl border border-blue-500/40 bg-slate-900">
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -580,11 +580,11 @@ export function EventStage({ eventId, title }: { eventId: string; title: string 
                 className="h-full w-full scale-x-[-1] object-cover"
               />
               {!videoOn && localStreamRef.current && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-stone-900">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-stone-800 text-sm font-bold text-stone-300">
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-slate-900">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-800 text-sm font-bold text-slate-300">
                     eu
                   </span>
-                  <span className="text-[10px] font-semibold text-stone-400">câmera desligada</span>
+                  <span className="text-[10px] font-semibold text-slate-400">câmera desligada</span>
                 </div>
               )}
               <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1.5 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold text-white">
@@ -602,7 +602,7 @@ export function EventStage({ eventId, title }: { eventId: string; title: string 
             {peers.map((p) => (
               <div
                 key={p.uid}
-                className="relative overflow-hidden rounded-xl border border-stone-800 bg-stone-900"
+                className="relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900"
               >
                 <video
                   ref={(el) => {
@@ -617,9 +617,9 @@ export function EventStage({ eventId, title }: { eventId: string; title: string 
                   className="h-full w-full object-cover"
                 />
                 {(p.connecting || (!p.video && !p.screen)) && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-stone-900">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-slate-900">
                     <Avatar name={p.name} size="lg" />
-                    <span className="text-[10px] font-semibold text-stone-400">
+                    <span className="text-[10px] font-semibold text-slate-400">
                       {p.connecting ? 'conectando…' : 'câmera desligada'}
                     </span>
                   </div>
@@ -627,7 +627,7 @@ export function EventStage({ eventId, title }: { eventId: string; title: string 
                 <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1.5 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold text-white">
                   {p.name}
                   {p.role === 'HOST' && (
-                    <span className="rounded bg-amber-400/20 px-1 py-px text-[8px] font-extrabold tracking-wide text-amber-300">
+                    <span className="rounded bg-blue-400/20 px-1 py-px text-[8px] font-extrabold tracking-wide text-blue-300">
                       ANFITRIÃO
                     </span>
                   )}
@@ -646,7 +646,7 @@ export function EventStage({ eventId, title }: { eventId: string; title: string 
         {/* estado central (aguardando/falha) */}
         {(state === 'waiting' || state === 'failed' || state === 'preparing') &&
           mediaError !== 'denied' && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-stone-950/80 p-6 text-center backdrop-blur-sm">
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-slate-950/80 p-6 text-center backdrop-blur-sm">
               {state === 'failed' ? (
                 <>
                   <p className="text-sm font-bold text-rose-300">{statusMsg}</p>
@@ -656,9 +656,9 @@ export function EventStage({ eventId, title }: { eventId: string; title: string 
                 </>
               ) : (
                 <>
-                  <Loader2 className="h-8 w-8 animate-spin text-amber-400" />
-                  <p className="text-sm font-semibold text-stone-200">{statusMsg}</p>
-                  <p className="max-w-sm text-xs text-stone-400">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
+                  <p className="text-sm font-semibold text-slate-200">{statusMsg}</p>
+                  <p className="max-w-sm text-xs text-slate-400">
                     A reunião começa automaticamente quando os participantes entrarem. Convide mais
                     gente pela página do evento!
                   </p>
@@ -669,7 +669,7 @@ export function EventStage({ eventId, title }: { eventId: string; title: string 
       </div>
 
       {/* controles */}
-      <div className="flex items-center justify-center gap-2.5 border-t border-stone-800 px-4 py-3">
+      <div className="flex items-center justify-center gap-2.5 border-t border-slate-800 px-4 py-3">
         <Button
           size="sm"
           variant={audioOn ? 'secondary' : 'destructive'}
@@ -682,7 +682,7 @@ export function EventStage({ eventId, title }: { eventId: string; title: string 
         </Button>
         <Button
           size="sm"
-          className="h-11 gap-1.5 rounded-full bg-amber-600 hover:bg-amber-500"
+          className="h-11 gap-1.5 rounded-full bg-blue-600 hover:bg-blue-500"
           onClick={() => {
             leaveRoom()
             toast.success('Você saiu da reunião.')

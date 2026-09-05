@@ -311,7 +311,7 @@ export function LibraryManager({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 ring-1 ring-amber-100 dark:ring-amber-900/40">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 ring-1 ring-blue-100 dark:ring-blue-900/40">
             <Library className="size-4" aria-hidden />
           </span>
           Biblioteca
@@ -333,9 +333,9 @@ export function LibraryManager({
             <Skeleton className="h-24 rounded-lg" />
           </div>
         ) : items.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-stone-300 dark:border-stone-700 py-10 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 ring-1 ring-stone-200 dark:ring-stone-800">
-              <Library className="size-6 text-stone-300 dark:text-stone-600" aria-hidden />
+          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 py-10 text-center">
+            <div className="flex size-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-800">
+              <Library className="size-6 text-slate-300 dark:text-slate-600" aria-hidden />
             </div>
             <h3 className="mt-2 text-base font-semibold">Nenhum item na sua Biblioteca ainda</h3>
             <p className="max-w-sm text-sm text-muted-foreground">
@@ -346,18 +346,18 @@ export function LibraryManager({
             </Button>
           </div>
         ) : (
-          <div className="max-h-96 space-y-3 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-stone-100 dark:[&::-webkit-scrollbar-track]:bg-stone-800 [&::-webkit-scrollbar]:w-1.5">
+          <div className="max-h-96 space-y-3 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-track]:bg-slate-100 dark:[&::-webkit-scrollbar-track]:bg-slate-800 [&::-webkit-scrollbar]:w-1.5">
             {items.map((item) => (
               <div
                 key={item.id}
-                className="flex items-start justify-between gap-3 rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4"
+                className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4"
               >
                 {/* Thumb: capa ou gradiente determinístico + ícone do tipo */}
                 {item.coverUrl ? (
                   <img
                     src={item.coverUrl}
                     alt=""
-                    className="h-12 w-20 shrink-0 rounded-lg object-cover ring-1 ring-stone-200 dark:ring-stone-800"
+                    className="h-12 w-20 shrink-0 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-slate-800"
                   />
                 ) : (
                   <span
@@ -378,19 +378,19 @@ export function LibraryManager({
                       variant="outline"
                       className={cn(
                         item.kind === 'BOOK'
-                          ? 'border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300'
-                          : 'border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300'
+                          ? 'border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300'
+                          : 'border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300'
                       )}
                     >
                       {item.kind === 'BOOK' ? 'Livro' : 'Artigo'}
                     </Badge>
-                    <Badge variant="outline" className="border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300">
+                    <Badge variant="outline" className="border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
                       {item.category}
                     </Badge>
                     {item.isPublished ? (
-                      <Badge className="bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300">Publicado</Badge>
+                      <Badge className="bg-blue-100 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300">Publicado</Badge>
                     ) : (
-                      <Badge variant="secondary" className="bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
+                      <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                         Rascunho
                       </Badge>
                     )}
@@ -430,7 +430,7 @@ export function LibraryManager({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-stone-400 dark:text-stone-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 dark:hover:text-rose-400"
+                    className="text-slate-400 dark:text-slate-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 dark:hover:text-rose-400"
                     aria-label={`Excluir ${item.title}`}
                     onClick={() => setToDelete(item)}
                   >
@@ -474,14 +474,14 @@ export function LibraryManager({
                   className={cn(
                     'flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors',
                     kind === 'ARTICLE'
-                      ? 'border-amber-500 bg-amber-50/60 dark:bg-amber-950/50 ring-1 ring-amber-200 dark:ring-amber-900'
-                      : 'border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'
+                      ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/50 ring-1 ring-blue-200 dark:ring-blue-900'
+                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                   )}
                 >
                   <RadioGroupItem value="ARTICLE" id="lib-kind-article" className="mt-0.5" />
                   <span className="min-w-0">
-                    <span className="flex items-center gap-1.5 text-sm font-semibold text-stone-900 dark:text-stone-50">
-                      <BookOpen className="size-4 text-amber-600 dark:text-amber-400" aria-hidden /> Artigo
+                    <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-slate-50">
+                      <BookOpen className="size-4 text-blue-600 dark:text-blue-400" aria-hidden /> Artigo
                     </span>
                     <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
                       Texto escrito, PDF ou ambos.
@@ -493,14 +493,14 @@ export function LibraryManager({
                   className={cn(
                     'flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors',
                     kind === 'BOOK'
-                      ? 'border-amber-500 bg-amber-50/60 dark:bg-amber-950/50 ring-1 ring-amber-200 dark:ring-amber-900'
-                      : 'border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'
+                      ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/50 ring-1 ring-blue-200 dark:ring-blue-900'
+                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                   )}
                 >
                   <RadioGroupItem value="BOOK" id="lib-kind-book" className="mt-0.5" />
                   <span className="min-w-0">
-                    <span className="flex items-center gap-1.5 text-sm font-semibold text-stone-900 dark:text-stone-50">
-                      <BookMarked className="size-4 text-amber-600 dark:text-amber-400" aria-hidden /> Livro
+                    <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-slate-50">
+                      <BookMarked className="size-4 text-blue-600 dark:text-blue-400" aria-hidden /> Livro
                     </span>
                     <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
                       PDF completo para leitura e download.
@@ -594,13 +594,13 @@ export function LibraryManager({
             <div className="flex flex-col gap-2">
               <Label>Capa (opcional)</Label>
               {coverUrl ? (
-                <div className="h-24 w-full overflow-hidden rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-100 dark:bg-stone-800">
+                <div className="h-24 w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800">
                   <img src={coverUrl} alt="Capa do item" className="h-full w-full object-cover" />
                 </div>
               ) : (
-                <div className="flex h-24 w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-950/50">
-                  <ImagePlus className="size-5 text-stone-400 dark:text-stone-500" aria-hidden />
-                  <p className="text-xs text-stone-500 dark:text-stone-400">Capa recomendada para o card no Explorar</p>
+                <div className="flex h-24 w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/50">
+                  <ImagePlus className="size-5 text-slate-400 dark:text-slate-500" aria-hidden />
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Capa recomendada para o card no Explorar</p>
                 </div>
               )}
               <div className="flex flex-wrap items-center gap-2">
@@ -644,16 +644,16 @@ export function LibraryManager({
             <div className="flex flex-col gap-2">
               <Label>{isBook ? 'Arquivo PDF do livro' : 'Arquivo PDF'}</Label>
               {pdfUrl ? (
-                <div className="flex items-center gap-2 rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-3 py-2">
+                <div className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2">
                   <FileText className="size-4 shrink-0 text-rose-600 dark:text-rose-400" aria-hidden />
-                  <span className="min-w-0 flex-1 truncate text-sm text-stone-700 dark:text-stone-200">
+                  <span className="min-w-0 flex-1 truncate text-sm text-slate-700 dark:text-slate-200">
                     {pdfName || pdfNameFromUrl(pdfUrl)}
                   </span>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="size-8 text-stone-400 dark:text-stone-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 dark:hover:text-rose-400"
+                    className="size-8 text-slate-400 dark:text-slate-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 dark:hover:text-rose-400"
                     aria-label="Remover PDF"
                     disabled={uploadingPdf}
                     onClick={() => {

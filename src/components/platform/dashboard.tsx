@@ -100,7 +100,7 @@ function EmptyState({
   return (
     <Card className="p-6">
       <div className="flex flex-col items-center gap-2 py-8 text-center">
-        <div className="flex size-12 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500 ring-1 ring-stone-200 dark:ring-stone-800">
+        <div className="flex size-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 ring-1 ring-slate-200 dark:ring-slate-800">
           <Icon className="size-6" aria-hidden />
         </div>
         <h3 className="mt-2 text-base font-semibold">{title}</h3>
@@ -139,13 +139,13 @@ function PendingRequestRow({
   const when = relativeDayLabel(b.startsAt) ?? formatDayLabel(b.startsAt)
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-amber-200 dark:border-amber-900 bg-white dark:bg-stone-900 p-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-lg border border-blue-200 dark:border-blue-900 bg-white dark:bg-slate-900 p-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-start gap-3">
         <Avatar name={b.mentee.name} size="md" />
         <div className="min-w-0">
           <p className="truncate font-semibold leading-tight">{b.mentee.name}</p>
           <p className="truncate text-sm text-muted-foreground">{b.topic}</p>
-          <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             {when} · {formatTimeLabel(b.startsAt)}–{addMinutesToTime(b.startsAt, b.durationMin)} ·{' '}
             {b.durationMin} min · {currencyBRL(b.price)}
           </p>
@@ -234,7 +234,7 @@ function BookingCard({
   // Rótulos curtos para o selo do card (versão leve dos labels de STATUS_META)
   const statusMeta = SHORT_STATUS[b.status] ?? {
     label: b.status,
-    className: 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-800',
+    className: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800',
   }
 
   const [dialogAction, setDialogAction] = useState<ConfirmKind | null>(null)
@@ -312,14 +312,14 @@ function BookingCard({
                   className={cn(
                     'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
                     isMentorSide
-                      ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'
-                      : 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'
+                      ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300'
+                      : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
                   )}
                 >
                   {isMentorSide ? 'Mentor' : 'Aluno'}
                 </span>
               </div>
-              <p className="mt-0.5 truncate text-sm text-stone-500 dark:text-stone-400">{b.topic}</p>
+              <p className="mt-0.5 truncate text-sm text-slate-500 dark:text-slate-400">{b.topic}</p>
             </div>
           </div>
           <Badge variant="outline" className={cn('shrink-0', statusMeta.className)}>
@@ -328,18 +328,18 @@ function BookingCard({
         </div>
 
         {/* Meta em uma linha: quando · duração · valor · calendário */}
-        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-stone-500 dark:text-stone-400">
-          <span className="inline-flex items-center gap-1.5 font-medium text-stone-700 dark:text-stone-200">
-            <CalendarDays className="size-3.5 text-amber-600 dark:text-amber-400" aria-hidden />
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+          <span className="inline-flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-200">
+            <CalendarDays className="size-3.5 text-blue-600 dark:text-blue-400" aria-hidden />
             {when} · {formatTimeLabel(b.startsAt)}–{addMinutesToTime(b.startsAt, b.durationMin)}
             {tzHint && (
-              <span className="font-medium text-amber-700 dark:text-amber-300">({tzHint})</span>
+              <span className="font-medium text-blue-700 dark:text-blue-300">({tzHint})</span>
             )}
           </span>
-          <span aria-hidden className="text-stone-300 dark:text-stone-600">·</span>
+          <span aria-hidden className="text-slate-300 dark:text-slate-600">·</span>
           <span>{b.durationMin} min</span>
-          <span aria-hidden className="text-stone-300 dark:text-stone-600">·</span>
-          <span className="font-semibold text-stone-700 dark:text-stone-200">{currencyBRL(b.price)}</span>
+          <span aria-hidden className="text-slate-300 dark:text-slate-600">·</span>
+          <span className="font-semibold text-slate-700 dark:text-slate-200">{currencyBRL(b.price)}</span>
           {isUpcomingEvent ? (
             <a
               href={gcalUrl}
@@ -347,7 +347,7 @@ function BookingCard({
               rel="noopener noreferrer"
               aria-label={`Adicionar "${b.topic}" ao Google Calendar`}
               title="Adicionar ao Google Calendar"
-              className="ml-auto inline-flex size-7 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-amber-50 hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-amber-600 dark:text-stone-500 dark:hover:bg-amber-950/50 dark:hover:text-amber-300"
+              className="ml-auto inline-flex size-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/50 dark:hover:text-blue-300"
             >
               <ExternalLink className="size-3.5" aria-hidden />
             </a>
@@ -355,11 +355,11 @@ function BookingCard({
         </div>
 
         {b.notes ? (
-          <p className="line-clamp-1 text-xs text-stone-400 dark:text-stone-500">{b.notes}</p>
+          <p className="line-clamp-1 text-xs text-slate-400 dark:text-slate-500">{b.notes}</p>
         ) : null}
 
         {hasActions ? (
-          <div className="flex flex-wrap gap-2 border-t border-stone-100 pt-3 dark:border-stone-800">
+          <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
             {isMentorSide && b.status === 'PENDING' ? (
               <>
                 <Button size="sm" disabled={busy} onClick={() => onConfirm(b)}>
@@ -403,7 +403,7 @@ function BookingCard({
 
             {canReview ? (
               <Button size="sm" variant="outline" onClick={() => setReviewOpen(true)}>
-                <Star className="size-4 fill-amber-400 text-amber-400" aria-hidden /> Avaliar
+                <Star className="size-4 fill-yellow-400 text-blue-400" aria-hidden /> Avaliar
               </Button>
             ) : null}
           </div>
@@ -465,13 +465,13 @@ function BookingCard({
                     onClick={() => setRating(value)}
                     onMouseEnter={() => setHoverRating(value)}
                     onMouseLeave={() => setHoverRating(0)}
-                    className="rounded-full p-1 transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-amber-500"
+                    className="rounded-full p-1 transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-blue-500"
                   >
                     <Star
                       size={28}
                       className={cn(
                         'transition-colors',
-                        active ? 'fill-amber-400 text-amber-400' : 'fill-stone-200 dark:fill-stone-800 text-stone-300 dark:text-stone-600'
+                        active ? 'fill-yellow-400 text-blue-400' : 'fill-slate-200 dark:fill-slate-800 text-slate-300 dark:text-slate-600'
                       )}
                       aria-hidden
                     />
@@ -508,15 +508,15 @@ function BookingCard({
 const SHORT_STATUS: Record<string, { label: string; className: string }> = {
   PENDING: {
     label: 'Pendente',
-    className: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900',
+    className: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900',
   },
   CONFIRMED: {
     label: 'Confirmada',
-    className: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900',
+    className: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900',
   },
   COMPLETED: {
     label: 'Concluída',
-    className: 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-800',
+    className: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800',
   },
   CANCELLED: {
     label: 'Cancelada',
@@ -536,7 +536,7 @@ function XpJourneyCard({ stats, failed }: { stats: XpStatsDTO | null; failed: bo
     <div
       role="group"
       aria-label="Progresso de gamificação"
-      className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 shadow-sm tabular-nums"
+      className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm tabular-nums"
     >
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -546,7 +546,7 @@ function XpJourneyCard({ stats, failed }: { stats: XpStatsDTO | null; failed: bo
         >
           <Flame className="size-5" />
         </span>
-        <h2 className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+        <h2 className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
           Sua jornada de aprendizado
         </h2>
       </div>
@@ -556,43 +556,43 @@ function XpJourneyCard({ stats, failed }: { stats: XpStatsDTO | null; failed: bo
         <div className="mt-4 grid grid-cols-3 gap-3 sm:flex sm:gap-6">
           <div className="min-w-0 sm:flex-1">
             <div className="flex items-center gap-1.5">
-              <Zap className="size-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
-              <p className="text-xl font-extrabold text-stone-900 dark:text-stone-50 sm:text-2xl" aria-label={`${stats.xp} XP no total`}>
+              <Zap className="size-4 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
+              <p className="text-xl font-extrabold text-slate-900 dark:text-slate-50 sm:text-2xl" aria-label={`${stats.xp} XP no total`}>
                 {stats.xp}
               </p>
             </div>
-            <p className="mt-0.5 truncate text-xs text-stone-400 dark:text-stone-500">XP total</p>
+            <p className="mt-0.5 truncate text-xs text-slate-400 dark:text-slate-500">XP total</p>
           </div>
 
           <div className="min-w-0 sm:flex-1">
             <div className="flex items-center gap-1.5">
               <Flame
-                className={cn('size-4 shrink-0', stats.streak > 0 ? 'text-orange-500' : 'text-stone-300 dark:text-stone-600')}
+                className={cn('size-4 shrink-0', stats.streak > 0 ? 'text-orange-500' : 'text-slate-300 dark:text-slate-600')}
                 aria-hidden
               />
               <p
-                className="text-xl font-extrabold text-stone-900 dark:text-stone-50 sm:text-2xl"
+                className="text-xl font-extrabold text-slate-900 dark:text-slate-50 sm:text-2xl"
                 aria-label={`${stats.streak} ${stats.streak === 1 ? 'dia seguido' : 'dias seguidos'}`}
               >
                 {stats.streak}
               </p>
             </div>
-            <p className="mt-0.5 truncate text-xs text-stone-400 dark:text-stone-500">
+            <p className="mt-0.5 truncate text-xs text-slate-400 dark:text-slate-500">
               {stats.streak > 0 ? (stats.streak === 1 ? 'dia seguido' : 'dias seguidos') : 'estude hoje!'}
             </p>
           </div>
 
           <div className="min-w-0 sm:flex-1">
             <div className="flex items-center gap-1.5">
-              <Trophy className="size-4 shrink-0 text-amber-500" aria-hidden />
+              <Trophy className="size-4 shrink-0 text-blue-500" aria-hidden />
               <p
-                className="text-xl font-extrabold text-stone-900 dark:text-stone-50 sm:text-2xl"
+                className="text-xl font-extrabold text-slate-900 dark:text-slate-50 sm:text-2xl"
                 aria-label={`recorde de ${stats.longestStreak} ${stats.longestStreak === 1 ? 'dia seguido' : 'dias seguidos'}`}
               >
                 {stats.longestStreak}
               </p>
             </div>
-            <p className="mt-0.5 truncate text-xs text-stone-400 dark:text-stone-500">recorde</p>
+            <p className="mt-0.5 truncate text-xs text-slate-400 dark:text-slate-500">recorde</p>
           </div>
         </div>
       ) : (
@@ -609,7 +609,7 @@ function XpJourneyCard({ stats, failed }: { stats: XpStatsDTO | null; failed: bo
       {/* Nível atual e progresso até o próximo */}
       {lv ? (
         <div className="mt-5">
-          <p className="text-sm font-bold text-stone-900 dark:text-stone-50">Nível atual: {lv.level.label}</p>
+          <p className="text-sm font-bold text-slate-900 dark:text-slate-50">Nível atual: {lv.level.label}</p>
           {lv.next ? (
             <>
               <Progress
@@ -617,13 +617,13 @@ function XpJourneyCard({ stats, failed }: { stats: XpStatsDTO | null; failed: bo
                 aria-label={`${lv.progressPct}% do caminho para o nível ${lv.next.label}`}
                 className="mt-2 h-2"
               />
-              <p className="mt-1.5 text-xs text-stone-400 dark:text-stone-500">
-                Faltam <span className="font-semibold text-stone-500 dark:text-stone-400">{lv.xpToNext}</span> XP para{' '}
+              <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
+                Faltam <span className="font-semibold text-slate-500 dark:text-slate-400">{lv.xpToNext}</span> XP para{' '}
                 {lv.next.label}
               </p>
             </>
           ) : (
-            <p className="mt-2 text-xs font-semibold text-amber-600 dark:text-amber-400">Nível máximo alcançado! 🏆</p>
+            <p className="mt-2 text-xs font-semibold text-blue-600 dark:text-blue-400">Nível máximo alcançado! 🏆</p>
           )}
         </div>
       ) : (
@@ -635,7 +635,7 @@ function XpJourneyCard({ stats, failed }: { stats: XpStatsDTO | null; failed: bo
       )}
 
       {/* Micro-proof: como ganhar XP */}
-      <p className="mt-3 border-t border-stone-100 dark:border-stone-800 pt-3 text-xs text-stone-400 dark:text-stone-500">
+      <p className="mt-3 border-t border-slate-100 dark:border-slate-800 pt-3 text-xs text-slate-400 dark:text-slate-500">
         +10 XP por aula concluída · +5 por quiz acertado · +50 por curso completo
       </p>
     </div>
@@ -771,7 +771,7 @@ export default function DashboardView() {
       <div className="flex min-h-[70vh] items-center justify-center px-4 py-10">
         <Card className="w-full max-w-md p-6 text-center">
           <div className="flex flex-col items-center gap-3">
-            <div className="flex size-12 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 ring-1 ring-amber-200 dark:ring-amber-900">
+            <div className="flex size-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 ring-1 ring-blue-200 dark:ring-blue-900">
               <LogIn className="size-6" aria-hidden />
             </div>
             <h1 className="text-xl font-semibold">Você precisa entrar</h1>
@@ -908,12 +908,12 @@ export default function DashboardView() {
       )}
 
       {pendingRequests.length > 0 ? (
-        <Card className="border-amber-300 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/50">
+        <Card className="border-blue-300 dark:border-blue-800 bg-blue-50/70 dark:bg-blue-950/50">
           <CardContent className="flex flex-col gap-3 px-4 py-4 sm:px-5">
             <div className="flex items-center gap-2">
-              <Inbox className="size-4.5 text-amber-600 dark:text-amber-400" aria-hidden />
-              <h2 className="text-sm font-semibold text-amber-900 dark:text-amber-300">Solicitações recebidas</h2>
-              <Badge className="border-amber-200 dark:border-amber-900 bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300">
+              <Inbox className="size-4.5 text-blue-600 dark:text-blue-400" aria-hidden />
+              <h2 className="text-sm font-semibold text-blue-900 dark:text-blue-300">Solicitações recebidas</h2>
+              <Badge className="border-blue-200 dark:border-blue-900 bg-blue-100 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300">
                 {pendingRequests.length}
               </Badge>
             </div>
@@ -936,19 +936,19 @@ export default function DashboardView() {
         <TabsList className="h-auto w-full flex-wrap sm:w-auto">
           <TabsTrigger value="upcoming">
             Próximas
-            <CountPill n={upcoming.length} className="bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300" />
+            <CountPill n={upcoming.length} className="bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300" />
           </TabsTrigger>
           <TabsTrigger value="courses">
             Meus cursos
-            <CountPill n={enrollments.length} className="bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300" />
+            <CountPill n={enrollments.length} className="bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300" />
           </TabsTrigger>
           <TabsTrigger value="review">
             Para avaliar
-            <CountPill n={toReview.length} className="bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300" />
+            <CountPill n={toReview.length} className="bg-blue-100 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300" />
           </TabsTrigger>
           <TabsTrigger value="history">
             Histórico
-            <CountPill n={history.length} className="bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300" />
+            <CountPill n={history.length} className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300" />
           </TabsTrigger>
         </TabsList>
 
@@ -1079,9 +1079,9 @@ function EnrolledCourseCard({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate font-bold text-stone-900 dark:text-stone-50">{course.title}</p>
+            <p className="truncate font-bold text-slate-900 dark:text-slate-50">{course.title}</p>
             {isDone && (
-              <Badge className="border-amber-200 dark:border-amber-900 bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300">
+              <Badge className="border-blue-200 dark:border-blue-900 bg-blue-100 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300">
                 <CheckCircle2 className="size-3" aria-hidden /> Concluído
               </Badge>
             )}
@@ -1092,7 +1092,7 @@ function EnrolledCourseCard({
           </p>
           <div className="mt-2.5 flex items-center gap-3">
             <Progress value={pct} aria-label={`${pct}% do curso concluído`} className="h-2 max-w-64 flex-1" />
-            <span className="shrink-0 text-xs font-semibold text-stone-500 dark:text-stone-400">
+            <span className="shrink-0 text-xs font-semibold text-slate-500 dark:text-slate-400">
               {completed}/{course.lessonCount} aulas
             </span>
           </div>
@@ -1143,10 +1143,10 @@ function MyTrackCard({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate font-bold text-stone-900 dark:text-stone-50">{track.title}</p>
+            <p className="truncate font-bold text-slate-900 dark:text-slate-50">{track.title}</p>
             <Badge className="border-teal-200 dark:border-teal-900 bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300">{track.category}</Badge>
             {isDone && (
-              <Badge className="border-amber-200 dark:border-amber-900 bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300">
+              <Badge className="border-blue-200 dark:border-blue-900 bg-blue-100 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300">
                 <CheckCircle2 className="size-3" aria-hidden /> Trilha concluída 🎉
               </Badge>
             )}
@@ -1162,7 +1162,7 @@ function MyTrackCard({
               aria-label={`${track.percent}% da trilha concluído`}
               className="h-2 max-w-64 flex-1"
             />
-            <span className="shrink-0 text-xs font-semibold text-stone-500 dark:text-stone-400">
+            <span className="shrink-0 text-xs font-semibold text-slate-500 dark:text-slate-400">
               {track.percent}% concluído
             </span>
           </div>
