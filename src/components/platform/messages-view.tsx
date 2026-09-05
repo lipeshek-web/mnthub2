@@ -284,7 +284,7 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
                         className={cn(
                           'flex w-full items-center gap-3 px-3 py-3 text-left transition-colors',
                           active
-                            ? 'bg-emerald-50 dark:bg-emerald-900/25'
+                            ? 'bg-amber-50 dark:bg-amber-900/25'
                             : 'hover:bg-stone-50 dark:hover:bg-stone-800/60'
                         )}
                       >
@@ -311,7 +311,7 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
                               {t.lastBody}
                             </span>
                             {t.unread > 0 && (
-                              <span className="flex h-4.5 min-w-4.5 shrink-0 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold leading-none text-white">
+                              <span className="flex h-4.5 min-w-4.5 shrink-0 items-center justify-center rounded-full bg-amber-600 px-1 text-[10px] font-bold leading-none text-white">
                                 {t.unread > 99 ? '99+' : t.unread}
                               </span>
                             )}
@@ -336,8 +336,8 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
         >
           {!activePeerId ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-700/10 dark:bg-emerald-500/10">
-                <MessageCircle className="h-6 w-6 text-emerald-700 dark:text-emerald-400" aria-hidden />
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-700/10 dark:bg-amber-500/10">
+                <MessageCircle className="h-6 w-6 text-amber-700 dark:text-amber-400" aria-hidden />
               </span>
               <p className="text-sm font-semibold text-stone-700 dark:text-stone-200">
                 Selecione uma conversa
@@ -424,7 +424,7 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
                             className={cn(
                               'max-w-[78%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm',
                               m.mine
-                                ? 'rounded-br-md bg-emerald-700 text-white'
+                                ? 'rounded-br-md bg-amber-700 text-white'
                                 : 'rounded-bl-md border border-stone-200/70 bg-white text-stone-900 dark:border-stone-700/60 dark:bg-stone-800 dark:text-stone-100'
                             )}
                           >
@@ -432,7 +432,7 @@ export function MessagesView({ initialPeerId }: { initialPeerId?: string }) {
                             <p
                               className={cn(
                                 'mt-0.5 text-right text-[10px]',
-                                m.mine ? 'text-emerald-100/80' : 'text-stone-400 dark:text-stone-500',
+                                m.mine ? 'text-amber-100/80' : 'text-stone-400 dark:text-stone-500',
                                 grouped && 'sr-only'
                               )}
                             >

@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     // v1 mobile não implementa o desafio TOTP — contas com 2FA precisam do site
     if (user.mfaEnabled) {
       return v1Error(
-        'Esta conta usa verificação em duas etapas. Faça login pelo site do MentorHub.',
+        'Esta conta usa verificação em duas etapas. Faça login pelo site do Órbita.',
         403,
         'MFA_REQUIRED'
       )

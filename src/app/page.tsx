@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
-import { GraduationCap } from 'lucide-react'
+import { Orbit } from 'lucide-react'
 import { toast } from 'sonner'
 import { Navbar } from '@/components/platform/navbar'
 import { MobileTabbar } from '@/components/platform/mobile-tabbar'
@@ -33,8 +33,8 @@ const MarketplaceView = dynamic(
 function ViewLoading() {
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3" aria-busy="true">
-      <span className="flex h-12 w-12 animate-pulse items-center justify-center rounded-2xl bg-emerald-700/10 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
-        <GraduationCap className="h-6 w-6" />
+      <span className="flex h-12 w-12 animate-pulse items-center justify-center rounded-2xl bg-amber-600/10 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+        <Orbit className="h-6 w-6" />
       </span>
       <p className="text-sm font-medium text-stone-400 dark:text-stone-500">carregando…</p>
     </div>
@@ -121,28 +121,29 @@ type AppViewNames = 'dashboard' | 'onboarding' | 'checkout' | 'meeting' | 'messa
 /** Título da aba por view — renderizado como <title> hoisted no shell */
 function docTitleFor(viewName: string): string {
   const titles: Record<string, string> = {
-    home: 'MentorHub — Aprenda com quem vive o que ensina',
-    'for-mentors': 'MentorHub — Para mentores e criadores',
-    marketplace: 'Explorar — MentorHub',
-    mentor: 'Perfil do mentor — MentorHub',
-    course: 'Curso — MentorHub',
-    classroom: 'Sala de aula — MentorHub',
-    track: 'Trilha de aprendizado — MentorHub',
-    reader: 'Leitor — MentorHub',
-    dashboard: 'Minhas mentorias — MentorHub',
-    meeting: 'Sala de reunião — MentorHub',
-    events: 'Eventos & Reuniões — MentorHub',
-    event: 'Evento — MentorHub',
-    onboarding: 'Painel do mentor — MentorHub',
-    'mentor-lp': 'MentorHub',
-    checkout: 'Checkout — MentorHub',
-    certificate: 'Certificado — MentorHub',
-    messages: 'Mensagens — MentorHub',
-    referrals: 'Indique e ganhe — MentorHub',
-    admin: 'Administração — MentorHub',
-    auth: 'Entrar — MentorHub',
+    home: 'Órbita — Seu universo de aprendizado',
+    'for-mentors': 'Órbita — Para mentores e criadores',
+    marketplace: 'Explorar — Órbita',
+    mentor: 'Perfil do mentor — Órbita',
+    course: 'Curso — Órbita',
+    classroom: 'Sala de aula — Órbita',
+    track: 'Trilha de aprendizado — Órbita',
+    reader: 'Leitor — Órbita',
+    dashboard: 'Minhas mentorias — Órbita',
+    meeting: 'Sala de reunião — Órbita',
+    events: 'Eventos & Reuniões — Órbita',
+    event: 'Evento — Órbita',
+    onboarding: 'Painel do mentor — Órbita',
+    'mentor-lp': 'Órbita',
+    checkout: 'Checkout — Órbita',
+    certificate: 'Certificado — Órbita',
+    messages: 'Mensagens — Órbita',
+    referrals: 'Indique e ganhe — Órbita',
+    admin: 'Administração — Órbita',
+    auth: 'Entrar — Órbita',
+
   }
-  return titles[viewName] ?? 'MentorHub — Plataforma de Mentorias 1:1'
+  return titles[viewName] ?? 'Órbita — Seu universo de aprendizado'
 }
 
 /**
@@ -207,7 +208,7 @@ export default function Home() {
     } else if (resetToken) {
       navigate({ name: 'auth', mode: 'reset', resetToken })
     } else if (bookingId) {
-      // Convite da sala de reunião (MentorHub Live): cai direto na sessão
+      // Convite da sala de reunião (Órbita Live): cai direto na sessão
       navigate({ name: 'meeting', bookingId })
     } else if (eventId) {
       // Convite de um evento/reunião multi-participante
@@ -240,8 +241,8 @@ export default function Home() {
       toast.error('Sua sessão expirou. Entre novamente para continuar.')
       navigate({ name: 'auth', mode: 'login' })
     }
-    window.addEventListener('mentorhub:session-expired', onExpired)
-    return () => window.removeEventListener('mentorhub:session-expired', onExpired)
+    window.addEventListener('orbita:session-expired', onExpired)
+    return () => window.removeEventListener('orbita:session-expired', onExpired)
   }, [setUser, navigate])
 
   // #7 Lembretes automáticos: após carga/login bem-sucedido do usuário, dispara
@@ -298,7 +299,7 @@ export default function Home() {
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
       >
         {/* Wrapper interno garante o footer colado no fundo em páginas curtas */}
-        <div className="flex min-h-full flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+        <div className="flex min-h-full flex-col pb-[calc(5.75rem+env(safe-area-inset-bottom))] md:pb-0">
           {needsAuth ? (
             <AuthView />
           ) : (

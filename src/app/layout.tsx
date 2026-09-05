@@ -15,17 +15,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MentorHub — Plataforma de Mentorias 1:1",
+  title: "Órbita — Seu universo de aprendizado",
   description:
-    "Marketplace de mentorias: encontre especialistas, agende sessões na agenda real dos mentores e participe de reuniões por vídeo dentro da plataforma.",
-  keywords: ["mentoria", "mentor", "agendamento", "educação", "carreira", "MentorHub"],
-  authors: [{ name: "MentorHub" }],
+    "Mentorias 1:1, cursos, trilhas, biblioteca e eventos orbitando o seu crescimento. Encontre especialistas, agende sessões e participe de reuniões por vídeo dentro da plataforma.",
+  keywords: ["mentoria", "mentor", "cursos", "trilhas", "educação", "carreira", "Órbita"],
+  authors: [{ name: "Órbita" }],
   manifest: "/manifest.webmanifest",
-  applicationName: "MentorHub",
+  applicationName: "Órbita",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "MentorHub",
+    title: "Órbita",
   },
   icons: {
     icon: [
@@ -35,17 +35,17 @@ export const metadata: Metadata = {
     apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
-    title: "MentorHub — Aprenda com quem vive o que ensina",
-    description: "Mentores especialistas, agendamento simples e reuniões por vídeo integradas.",
-    siteName: "MentorHub",
+    title: "Órbita — Seu universo de aprendizado",
+    description: "Mentorias 1:1, cursos, trilhas e biblioteca — tudo orbitando o seu crescimento.",
+    siteName: "Órbita",
     type: "website",
   },
 };
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0c0a09" },
+    { media: "(prefers-color-scheme: light)", color: "#fafaf9" },
+    { media: "(prefers-color-scheme: dark)", color: "#1c1917" },
   ],
   width: "device-width",
   initialScale: 1,

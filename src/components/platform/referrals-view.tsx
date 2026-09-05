@@ -87,7 +87,7 @@ export function ReferralsView() {
 
   const shareUrl = data ? `${window.location.origin}/?ref=${data.code}` : ''
   const shareText = encodeURIComponent(
-    'Aprenda com quem vive o que ensina na MentorHub! Use meu convite e ganhe R$ 10 em créditos:'
+    'Aprenda com quem vive o que ensina na Órbita! Use meu convite e ganhe R$ 10 em créditos:'
   )
 
   const copy = async (value: string, what: 'link' | 'code') => {
@@ -113,49 +113,49 @@ export function ReferralsView() {
       </Button>
 
       {/* Hero: convite */}
-      <div className="relative mt-3 overflow-hidden rounded-3xl bg-emerald-700 p-6 text-white sm:p-8">
+      <div className="relative mt-3 overflow-hidden rounded-3xl bg-amber-700 p-6 text-white sm:p-8">
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-emerald-500/20 blur-2xl"
+          className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-amber-500/20 blur-2xl"
         />
         <div
           aria-hidden
           className="pointer-events-none absolute -bottom-14 -left-8 size-44 rounded-full bg-teal-400/10 blur-2xl"
         />
-        <Badge className="border border-emerald-400/40 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/10">
+        <Badge className="border border-amber-400/40 bg-amber-400/10 text-amber-100 hover:bg-amber-400/10">
           <Gift aria-hidden className="h-3 w-3" />
           Programa de indicação
         </Badge>
         <h1 className="mt-3 text-2xl font-extrabold tracking-tight sm:text-3xl">
           Indique amigos, ganhe créditos 💚
         </h1>
-        <p className="mt-2 max-w-md text-sm leading-relaxed text-emerald-50/90">
+        <p className="mt-2 max-w-md text-sm leading-relaxed text-amber-50/90">
           Compartilhe seu link: seu amigo entra com <strong>R$ 10 de crédito</strong> e você
           ganha <strong>R$ 20</strong> quando ele concluir a primeira compra.
         </p>
 
         {loading ? (
           <div className="mt-5 space-y-3" aria-busy="true">
-            <Skeleton className="h-12 w-full rounded-full bg-emerald-900/60" />
-            <Skeleton className="h-10 w-40 rounded-full bg-emerald-900/60" />
+            <Skeleton className="h-12 w-full rounded-full bg-amber-900/60" />
+            <Skeleton className="h-10 w-40 rounded-full bg-amber-900/60" />
             <span className="sr-only">Carregando seu convite…</span>
           </div>
         ) : error ? (
-          <p className="mt-5 text-sm font-medium text-emerald-100">{error}</p>
+          <p className="mt-5 text-sm font-medium text-amber-100">{error}</p>
         ) : data ? (
           <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">
-            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-emerald-900/60 py-1.5 pl-4 pr-1.5 ring-1 ring-emerald-500/30">
+            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-amber-900/60 py-1.5 pl-4 pr-1.5 ring-1 ring-amber-500/30">
               <Input
                 readOnly
                 value={shareUrl}
                 onFocus={(e) => e.currentTarget.select()}
                 aria-label="Link de convite"
-                className="h-9 border-0 bg-transparent p-0 text-sm font-medium text-emerald-50 shadow-none focus-visible:ring-0 dark:border-0 dark:bg-transparent"
+                className="h-9 border-0 bg-transparent p-0 text-sm font-medium text-amber-50 shadow-none focus-visible:ring-0 dark:border-0 dark:bg-transparent"
               />
               <Button
                 size="sm"
                 onClick={() => void copy(shareUrl, 'link')}
-                className="h-9 shrink-0 rounded-full bg-white px-4 font-bold text-emerald-900 hover:bg-emerald-100"
+                className="h-9 shrink-0 rounded-full bg-white px-4 font-bold text-amber-900 hover:bg-amber-100"
               >
                 {copied === 'link' ? <Check aria-hidden className="h-4 w-4" /> : <Copy aria-hidden className="h-4 w-4" />}
                 {copied === 'link' ? 'Copiado' : 'Copiar'}
@@ -163,7 +163,7 @@ export function ReferralsView() {
             </div>
             <Button
               asChild
-              className="h-12 shrink-0 rounded-full bg-emerald-500 px-5 font-bold text-white hover:bg-emerald-400 sm:h-12"
+              className="h-12 shrink-0 rounded-full bg-amber-500 px-5 font-bold text-white hover:bg-amber-400 sm:h-12"
             >
               <a
                 href={`https://wa.me/?text=${shareText}%20${encodeURIComponent(shareUrl)}`}
@@ -181,7 +181,7 @@ export function ReferralsView() {
           <button
             type="button"
             onClick={() => void copy(data.code, 'code')}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-900/40 px-3 py-1.5 text-xs font-semibold text-emerald-100 ring-1 ring-emerald-500/20 transition-colors hover:bg-emerald-900/60"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-900/40 px-3 py-1.5 text-xs font-semibold text-amber-100 ring-1 ring-amber-500/20 transition-colors hover:bg-amber-900/60"
           >
             {copied === 'code' ? <Check aria-hidden className="h-3.5 w-3.5" /> : <Copy aria-hidden className="h-3.5 w-3.5" />}
             Seu código: <span className="font-mono tracking-widest">{data.code}</span>
@@ -243,7 +243,7 @@ export function ReferralsView() {
                     key={step.n}
                     className="rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-950/50 p-4"
                   >
-                    <span className="flex size-7 items-center justify-center rounded-full bg-emerald-700 text-xs font-bold text-white">
+                    <span className="flex size-7 items-center justify-center rounded-full bg-amber-700 text-xs font-bold text-white">
                       {step.n}
                     </span>
                     <p className="mt-2 text-sm font-bold text-stone-900 dark:text-stone-50">{step.t}</p>
@@ -280,7 +280,7 @@ export function ReferralsView() {
                         className={cn(
                           'shrink-0 rounded-full',
                           r.status === 'REWARDED'
-                            ? 'border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
+                            ? 'border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/50'
                             : 'border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/50'
                         )}
                       >

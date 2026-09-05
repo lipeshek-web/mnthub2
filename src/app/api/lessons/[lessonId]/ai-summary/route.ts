@@ -111,7 +111,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ lessonId: 
 
     // 3) Chama o modelo
     const systemPrompt = [
-      'Você é o gerador de resumos de estudo do MentorHub, uma plataforma brasileira de cursos e mentorias.',
+      'Você é o gerador de resumos de estudo do Órbita, uma plataforma brasileira de cursos e mentorias.',
       'Gere resumos claros, objetivos e fiéis ao material — nunca invente conteúdo que não está lá.',
       'Responda SEMPRE apenas com JSON válido (sem markdown, sem texto fora do JSON) no formato:',
       '{"summary": "resumo em 2 a 4 frases em português do Brasil", "keyPoints": ["3 a 6 tópicos-chave curtos"]}',

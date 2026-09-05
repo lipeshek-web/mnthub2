@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
 
     const mentorName = course.mentor.user.name
     const systemPrompt = [
-      `Você é o Tutor IA do MentorHub, assistente de estudos do curso "${course.title}", do mentor ${mentorName}.`,
+      `Você é o Tutor IA do Órbita, assistente de estudos do curso "${course.title}", do mentor ${mentorName}.`,
       `Categoria: ${course.category} · Nível: ${course.level}. Público: alunos brasileiros.`,
       'Regras:',
       '1. Responda SEMPRE em português do Brasil, de forma clara, direta e encorajadora.',

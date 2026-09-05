@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Sala de reunião (MentorHub Live) — shell da sessão 1:1.
+ * Sala de reunião (Órbita Live) — shell da sessão 1:1.
  *
  * O vídeo vive em meeting-stage.tsx (WebRTC próprio + sinalização socket.io),
  * carregado sob demanda. O papel de anfitrião (mentor) é definido pelo BACKEND
@@ -60,7 +60,7 @@ const MeetingStage = dynamic(
     loading: () => (
       <div className="flex h-[46vh] min-h-[300px] items-center justify-center rounded-2xl border border-stone-800 bg-stone-950 sm:h-[56vh]">
         <div className="flex flex-col items-center gap-3">
-          <span className="flex h-12 w-12 animate-pulse items-center justify-center rounded-2xl bg-emerald-600/20 text-emerald-400">
+          <span className="flex h-12 w-12 animate-pulse items-center justify-center rounded-2xl bg-amber-600/20 text-amber-400">
             <Video className="h-6 w-6" />
           </span>
           <p className="text-sm text-stone-400">abrindo a sala…</p>
@@ -243,7 +243,7 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
     <div className="mx-auto max-w-7xl px-4 pb-10 pt-6 sm:px-6">
       <button
         onClick={() => navigate({ name: 'dashboard' })}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 transition-colors hover:text-emerald-700 dark:text-stone-400 dark:hover:text-emerald-300"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 transition-colors hover:text-amber-700 dark:text-stone-400 dark:hover:text-amber-300"
       >
         <ArrowLeft className="h-4 w-4" /> Voltar para minhas mentorias
       </button>
@@ -272,7 +272,7 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
         </div>
       )}
 
-      {/* ---------- SALA DE VÍDEO (MentorHub Live) ---------- */}
+      {/* ---------- SALA DE VÍDEO (Órbita Live) ---------- */}
       <section aria-label="Sala de reunião por vídeo" className="mt-5">
         {blocked ? (
           <div className="flex h-[56vh] flex-col items-center justify-center gap-3 rounded-2xl border border-stone-200 bg-stone-100 text-center dark:border-stone-800 dark:bg-stone-800">
@@ -308,15 +308,15 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
               <div className="flex items-center gap-3">
                 <Avatar name={booking.mentor.name} size="lg" />
                 <div>
-                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
                     Mentor
-                    <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
+                    <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-800 dark:bg-amber-900/60 dark:text-amber-200">
                       Anfitrião
                     </span>
                   </p>
                   <p className="font-bold text-stone-900 dark:text-stone-50">{booking.mentor.name}</p>
                   {isMentorSide && (
-                    <p className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
+                    <p className="text-[11px] font-medium text-amber-700 dark:text-amber-300">
                       (você — encerra a sessão ao terminar)
                     </p>
                   )}
@@ -397,15 +397,15 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
               </p>
               <ul className="space-y-2 text-sm text-stone-600 dark:text-stone-300">
                 <li className="flex gap-2">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                   Permita câmera e microfone quando o navegador pedir.
                 </li>
                 <li className="flex gap-2">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                   Use fones de ouvido para uma áudio melhor.
                 </li>
                 <li className="flex gap-2">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                   Compartilhe sua tela para revisar materiais juntos.
                 </li>
               </ul>
@@ -420,10 +420,10 @@ export function MeetingRoomView({ bookingId }: { bookingId: string }) {
           </Card>
 
           {isMentorSide && booking.status === 'CONFIRMED' && (
-            <Card className="border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/50">
+            <Card className="border-amber-200 bg-amber-50/60 dark:border-amber-900 dark:bg-amber-950/50">
               <CardContent className="p-4 sm:p-6">
-                <p className="font-bold text-emerald-900 dark:text-emerald-200">Sessão em andamento?</p>
-                <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-300">
+                <p className="font-bold text-amber-900 dark:text-amber-200">Sessão em andamento?</p>
+                <p className="mt-1 text-sm text-amber-800 dark:text-amber-300">
                   Como anfitrião, quando a reunião terminar marque-a como concluída para liberar a
                   avaliação do mentorado.
                 </p>

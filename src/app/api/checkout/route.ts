@@ -453,7 +453,7 @@ export async function POST(req: NextRequest) {
         customerId,
         billingType,
         value: finalAmount,
-        description: `MentorHub — ${item.kind === 'COURSE' ? 'Curso' : item.kind === 'TRACK' ? 'Trilha' : item.kind === 'BUNDLE' ? 'Pacote' : item.kind === 'BOOKING' ? 'Sessão 1:1' : 'Assinatura'}: ${item.title}`.replace(/[\n\r]+/g, ' '),
+        description: `Órbita — ${item.kind === 'COURSE' ? 'Curso' : item.kind === 'TRACK' ? 'Trilha' : item.kind === 'BUNDLE' ? 'Pacote' : item.kind === 'BOOKING' ? 'Sessão 1:1' : 'Assinatura'}: ${item.title}`.replace(/[\n\r]+/g, ' '),
         externalReference: order.id,
         callbackSuccessUrl: `${origin}/?checkout=obrigado`,
       })

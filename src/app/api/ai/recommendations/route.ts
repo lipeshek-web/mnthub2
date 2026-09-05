@@ -156,7 +156,7 @@ export async function GET(req: NextRequest) {
       }))
 
       const systemPrompt = [
-        'Você é o motor de recomendações do MentorHub, plataforma brasileira de cursos e mentorias.',
+        'Você é o motor de recomendações do Órbita, plataforma brasileira de cursos e mentorias.',
         'Dado o histórico do aluno e o catálogo disponível, escolha os 4 cursos com maior chance de engajá-lo.',
         'Responda SEMPRE apenas com JSON válido (sem markdown, sem texto fora do JSON):',
         '{"picks": [{"id": "<id do curso>", "reason": "motivo curto e pessoal, 1 frase, máx 90 caracteres"}]}',

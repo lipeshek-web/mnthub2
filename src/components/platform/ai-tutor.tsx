@@ -102,7 +102,7 @@ export function AiTutor(props: AiTutorProps) {
         onClick={() => setOpen(true)}
         aria-label="Abrir Tutor IA do curso"
         className={cn(
-          'fixed right-6 z-40 h-12 rounded-full bg-emerald-700 pl-4 pr-5 text-sm font-bold text-white shadow-2xl shadow-emerald-900/30 ring-1 ring-emerald-500/30 hover:bg-emerald-800 focus-visible:ring-2 focus-visible:ring-emerald-400',
+          'fixed right-6 z-40 h-12 rounded-full bg-amber-700 pl-4 pr-5 text-sm font-bold text-white shadow-2xl shadow-amber-900/30 ring-1 ring-amber-500/30 hover:bg-amber-800 focus-visible:ring-2 focus-visible:ring-amber-400',
           raised ? 'bottom-[8.5rem]' : 'bottom-[5.5rem]'
         )}
       >
@@ -138,7 +138,7 @@ export function AiTutor(props: AiTutorProps) {
               {/* Header */}
               <header className="flex shrink-0 items-start justify-between gap-3 border-b border-stone-100 px-4 py-3.5 dark:border-stone-800">
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-700 text-white shadow-sm dark:bg-emerald-600">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-700 text-white shadow-sm dark:bg-amber-600">
                     <Bot aria-hidden className="h-5 w-5" />
                   </span>
                   <div className="min-w-0">
@@ -168,9 +168,9 @@ export function AiTutor(props: AiTutorProps) {
                 aria-live="polite"
               >
                 {messages.length === 0 && (
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900 dark:bg-emerald-950/30">
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-900 dark:bg-amber-950/30">
                     <p className="text-sm font-semibold text-stone-800 dark:text-stone-100">
-                      Oi! 👋 Sou o Tutor IA de <span className="text-emerald-700 dark:text-emerald-300">{courseTitle}</span>.
+                      Oi! 👋 Sou o Tutor IA de <span className="text-amber-700 dark:text-amber-300">{courseTitle}</span>.
                     </p>
                     <p className="mt-1 text-xs leading-relaxed text-stone-600 dark:text-stone-300">
                       Tire dúvidas sobre o conteúdo das aulas — respondo com base no material do
@@ -184,7 +184,7 @@ export function AiTutor(props: AiTutorProps) {
                     <div
                       className={
                         m.role === 'user'
-                          ? 'max-w-[85%] rounded-2xl rounded-br-md bg-emerald-700 px-3.5 py-2.5 text-sm leading-relaxed text-white dark:bg-emerald-600'
+                          ? 'max-w-[85%] rounded-2xl rounded-br-md bg-amber-700 px-3.5 py-2.5 text-sm leading-relaxed text-white dark:bg-amber-600'
                           : 'max-w-[90%] whitespace-pre-line rounded-2xl rounded-bl-md border border-stone-200 bg-stone-50 px-3.5 py-2.5 text-sm leading-relaxed text-stone-700 dark:border-stone-800 dark:bg-stone-950 dark:text-stone-200'
                       }
                     >
@@ -199,7 +199,7 @@ export function AiTutor(props: AiTutorProps) {
                       {[0, 1, 2].map((i) => (
                         <span
                           key={i}
-                          className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-600 dark:bg-emerald-400"
+                          className="h-1.5 w-1.5 animate-bounce rounded-full bg-amber-600 dark:bg-amber-400"
                           style={{ animationDelay: `${i * 150}ms` }}
                         />
                       ))}
@@ -215,7 +215,7 @@ export function AiTutor(props: AiTutorProps) {
                         key={s}
                         type="button"
                         onClick={() => void send(s)}
-                        className="min-h-11 rounded-full border border-stone-200 bg-white px-3.5 py-2 text-left text-xs font-semibold text-stone-600 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 sm:min-h-0 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300"
+                        className="min-h-11 rounded-full border border-stone-200 bg-white px-3.5 py-2 text-left text-xs font-semibold text-stone-600 transition-colors hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800 sm:min-h-0 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300 dark:hover:border-amber-700 dark:hover:bg-amber-900/30 dark:hover:text-amber-300"
                       >
                         {s}
                       </button>
@@ -253,14 +253,14 @@ export function AiTutor(props: AiTutorProps) {
                       size="icon"
                       disabled={sending || draft.trim().length === 0}
                       aria-label="Enviar dúvida"
-                      className="h-11 w-11 shrink-0 rounded-xl bg-emerald-700 hover:bg-emerald-800"
+                      className="h-11 w-11 shrink-0 rounded-xl bg-amber-700 hover:bg-amber-800"
                     >
                       <Send aria-hidden className="h-4 w-4" />
                     </Button>
                   </form>
                 ) : (
                   <Button
-                    className="h-11 w-full rounded-xl bg-emerald-700 font-semibold hover:bg-emerald-800"
+                    className="h-11 w-full rounded-xl bg-amber-700 font-semibold hover:bg-amber-800"
                     onClick={onLogin}
                   >
                     <MessageCircleQuestion aria-hidden className="h-4 w-4" />

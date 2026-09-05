@@ -151,7 +151,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
     <div className="mx-auto max-w-7xl px-4 pb-16 pt-6">
       <button
         onClick={() => navigate({ name: 'marketplace' })}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 transition-colors hover:text-emerald-700 dark:text-stone-400 dark:hover:text-emerald-300"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 transition-colors hover:text-amber-700 dark:text-stone-400 dark:hover:text-amber-300"
       >
         <ArrowLeft className="h-4 w-4" /> Voltar para mentores
       </button>
@@ -159,7 +159,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
       {/* ---------- BANNER ---------- */}
       <section className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900" aria-label="Perfil do mentor">
         {/* Capa com altura generosa — mesma identidade da página pública do criador */}
-        <div className="relative h-52 w-full bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-800 sm:h-64 md:h-72">
+        <div className="relative h-52 w-full bg-gradient-to-r from-amber-950 via-amber-900 to-amber-800 sm:h-64 md:h-72">
           {mentor.coverUrl ? (
             <img
               src={mentor.coverUrl}
@@ -173,7 +173,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
           )}
           {/* Véu inferior: assenta o avatar e dá profundidade */}
           <div aria-hidden className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/35 via-black/10 to-transparent" />
-          <div aria-hidden className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-emerald-500/20 blur-2xl" />
+          <div aria-hidden className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-amber-500/20 blur-2xl" />
           <div aria-hidden className="absolute bottom-6 left-1/3 h-24 w-24 rounded-full bg-teal-400/10 blur-xl" />
         </div>
         <div className="px-6 pb-6 sm:px-8">
@@ -209,7 +209,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
             {mentor.categories.map((c) => (
-              <Badge key={c} className="bg-emerald-700 font-medium text-white">
+              <Badge key={c} className="bg-amber-700 font-medium text-white">
                 {c}
               </Badge>
             ))}
@@ -245,7 +245,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                     rel="noopener noreferrer"
                     aria-label={hint}
                     title={hint}
-                    className="flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-600 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300"
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-600 transition-colors hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300 dark:hover:border-amber-700 dark:hover:bg-amber-900/30 dark:hover:text-amber-300"
                   >
                     <Icon className="h-4.5 w-4.5" aria-hidden />
                   </a>
@@ -278,7 +278,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
               <Card>
                 <CardContent className="p-6">
                   <h2 className="flex items-center gap-2 text-lg font-bold" style={headingStyle}>
-                    <UserRound className="h-4.5 w-4.5 text-emerald-700 dark:text-emerald-300" /> Sobre a mentoria
+                    <UserRound className="h-4.5 w-4.5 text-amber-700 dark:text-amber-300" /> Sobre a mentoria
                   </h2>
                   <p
                     className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-stone-600 dark:text-stone-300"
@@ -309,8 +309,8 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                   { icon: CalendarCheck2, title: 'Agenda real', text: 'Horários atualizados pelo próprio mentor.' },
                   { icon: MessageSquareQuote, title: 'Método 1:1', text: 'Conversa focada nos seus objetivos.' },
                 ].map((f) => (
-                  <div key={f.title} className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 dark:border-emerald-900 dark:bg-emerald-950/50">
-                    <f.icon className="h-5 w-5 text-emerald-700 dark:text-emerald-300" />
+                  <div key={f.title} className="rounded-xl border border-amber-100 bg-amber-50/60 p-4 dark:border-amber-900 dark:bg-amber-950/50">
+                    <f.icon className="h-5 w-5 text-amber-700 dark:text-amber-300" />
                     <p className="mt-2 text-sm font-bold text-stone-800 dark:text-stone-200">{f.title}</p>
                     <p className="mt-0.5 text-xs leading-relaxed text-stone-500 dark:text-stone-400">{f.text}</p>
                   </div>
@@ -336,7 +336,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                     return (
                       <Card key={c.id} className="border-stone-200 transition-shadow hover:shadow-md dark:border-stone-800">
                         <CardContent className="flex gap-4 p-5">
-                          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
                             <Icon className="h-5.5 w-5.5" />
                           </span>
                           <div className="min-w-0 flex-1">
@@ -430,7 +430,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                         </p>
                         <div className="mt-auto flex items-center justify-between border-t border-stone-100 pt-3 dark:border-stone-800">
                           {course.price === 0 ? (
-                            <span className="text-sm font-extrabold text-emerald-700 dark:text-emerald-400">Grátis</span>
+                            <span className="text-sm font-extrabold text-amber-700 dark:text-amber-400">Grátis</span>
                           ) : (
                             <span className="text-sm font-extrabold text-stone-900 dark:text-stone-50">
                               {currencyBRL(course.price)}
@@ -475,7 +475,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                           {ranges.length > 0 ? (
                             <div className="flex flex-wrap gap-1.5">
                               {ranges.map((r) => (
-                                <Badge key={r.id} className="bg-emerald-50 font-medium text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                                <Badge key={r.id} className="bg-amber-50 font-medium text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
                                   {hourToLabel(r.startHour)} – {hourToLabel(r.endHour)}
                                 </Badge>
                               ))}
@@ -503,7 +503,7 @@ export function MentorProfileView({ mentorId }: { mentorId: string }) {
                 </Card>
               ) : (
                 <>
-                  <Card className="border-emerald-100 bg-emerald-50/50 dark:border-emerald-900 dark:bg-emerald-950/50">
+                  <Card className="border-amber-100 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/50">
                     <CardContent className="flex items-center gap-5 p-6">
                       <p className="text-4xl font-black text-stone-900 dark:text-stone-50" style={headingStyle}>
                         {mentor.rating.toFixed(1)}
@@ -646,7 +646,7 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
 
   if (isOwner) {
     return (
-      <Card className="border-emerald-200 dark:border-emerald-900">
+      <Card className="border-amber-200 dark:border-amber-900">
         <CardContent className="flex flex-col items-center gap-3 p-6 text-center">
           <Avatar name={mentor.name} size="lg" />
           <p className="font-bold">Este é o seu perfil público de mentor</p>
@@ -699,15 +699,15 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
                   className={cn(
                     'flex h-[62px] w-[52px] shrink-0 flex-col items-center justify-center rounded-xl border text-center transition-all',
                     active
-                      ? 'border-emerald-700 bg-emerald-700 text-white shadow-md'
-                      : 'border-stone-200 bg-white text-stone-600 hover:border-emerald-300 hover:bg-emerald-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/30'
+                      ? 'border-amber-700 bg-amber-700 text-white shadow-md'
+                      : 'border-stone-200 bg-white text-stone-600 hover:border-amber-300 hover:bg-amber-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300 dark:hover:border-amber-700 dark:hover:bg-amber-900/30'
                   )}
                 >
-                  <span className={cn('text-[10px] font-semibold uppercase', active ? 'text-emerald-200' : 'text-stone-400 dark:text-stone-500')}>
+                  <span className={cn('text-[10px] font-semibold uppercase', active ? 'text-amber-200' : 'text-stone-400 dark:text-stone-500')}>
                     {WEEKDAYS_PT[d.getDay()]}
                   </span>
                   <span className="text-lg font-extrabold leading-tight">{d.getDate()}</span>
-                  <span className={cn('text-[10px]', active ? 'text-emerald-200' : 'text-stone-400 dark:text-stone-500')}>
+                  <span className={cn('text-[10px]', active ? 'text-amber-200' : 'text-stone-400 dark:text-stone-500')}>
                     {MONTHS_PT[d.getMonth()]}
                   </span>
                 </button>
@@ -744,8 +744,8 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
                     className={cn(
                       'h-10 rounded-lg border text-sm font-semibold transition-all',
                       active
-                        ? 'border-emerald-700 bg-emerald-700 text-white shadow'
-                        : 'border-stone-200 bg-white text-stone-700 hover:border-emerald-400 hover:text-emerald-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-emerald-700 dark:hover:text-emerald-300'
+                        ? 'border-amber-700 bg-amber-700 text-white shadow'
+                        : 'border-stone-200 bg-white text-stone-700 hover:border-amber-400 hover:text-amber-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-amber-700 dark:hover:text-amber-300'
                     )}
                   >
                     {formatTimeLabel(s)}
@@ -758,9 +758,9 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
 
         {/* Resumo */}
         {selectedSlot && (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-sm dark:border-emerald-900 dark:bg-emerald-950/50">
-            <p className="font-bold text-emerald-900 dark:text-emerald-200">{formatDayLabelLong(selectedSlot)}</p>
-            <p className="mt-0.5 text-emerald-800 dark:text-emerald-300">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-sm dark:border-amber-900 dark:bg-amber-950/50">
+            <p className="font-bold text-amber-900 dark:text-amber-200">{formatDayLabelLong(selectedSlot)}</p>
+            <p className="mt-0.5 text-amber-800 dark:text-amber-300">
               {formatTimeLabel(selectedSlot)} → {addMinutesToTime(selectedSlot, 60)} · {currencyBRL(mentor.hourlyRate)}
             </p>
           </div>
@@ -838,7 +838,7 @@ function BookingWidget({ mentor }: { mentor: MentorDetailDTO }) {
             </div>
             <div className="flex justify-between gap-4 border-t border-stone-200 pt-2.5 dark:border-stone-800">
               <span className="text-muted-foreground">Valor</span>
-              <span className="font-extrabold text-emerald-700 dark:text-emerald-400">{currencyBRL(mentor.hourlyRate)}</span>
+              <span className="font-extrabold text-amber-700 dark:text-amber-400">{currencyBRL(mentor.hourlyRate)}</span>
             </div>
           </div>
           <DialogFooter>
@@ -915,15 +915,15 @@ function MembershipCard({
   }
 
   return (
-    <Card className="rounded-2xl border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/40">
+    <Card className="rounded-2xl border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/40">
       <CardContent className="grid gap-3 p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <Badge className="rounded-full border border-emerald-200 dark:border-emerald-900 bg-white dark:bg-stone-900 text-emerald-700 dark:text-emerald-300 hover:bg-white dark:hover:bg-stone-900">
+          <Badge className="rounded-full border border-amber-200 dark:border-amber-900 bg-white dark:bg-stone-900 text-amber-700 dark:text-amber-300 hover:bg-white dark:hover:bg-stone-900">
             <CreditCard aria-hidden className="h-3 w-3" /> Assinatura
           </Badge>
-          <p className="text-lg font-extrabold text-emerald-700 dark:text-emerald-300">
+          <p className="text-lg font-extrabold text-amber-700 dark:text-amber-300">
             {currencyBRL(membership.price)}
-            <span className="text-sm font-semibold text-emerald-700/70 dark:text-emerald-300/70">/mês</span>
+            <span className="text-sm font-semibold text-amber-700/70 dark:text-amber-300/70">/mês</span>
           </p>
         </div>
 
@@ -943,15 +943,15 @@ function MembershipCard({
 
         <ul className="grid gap-1.5 text-sm text-stone-600 dark:text-stone-300">
           <li className="flex items-center gap-1.5">
-            <BookOpenCheck aria-hidden className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
+            <BookOpenCheck aria-hidden className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
             Todos os {membership.coursesCount} cursos publicados (e os próximos)
           </li>
           <li className="flex items-center gap-1.5">
-            <CalendarCheck2 aria-hidden className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
+            <CalendarCheck2 aria-hidden className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
             Sessão em grupo mensal · {sessionLabel}
           </li>
           <li className="flex items-center gap-1.5">
-            <Sparkles aria-hidden className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
+            <Sparkles aria-hidden className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
             Cancele quando quiser — acesso até o fim do ciclo pago
           </li>
         </ul>
@@ -974,7 +974,7 @@ function MembershipCard({
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
-              <Badge className="rounded-full bg-emerald-700 text-white hover:bg-emerald-700">
+              <Badge className="rounded-full bg-amber-700 text-white hover:bg-amber-700">
                 Assinatura ativa{membership.renewsAt ? ` até ${new Date(membership.renewsAt).toLocaleDateString('pt-BR')}` : ''}
               </Badge>
               <Button
@@ -990,7 +990,7 @@ function MembershipCard({
         ) : (
           <Button
             onClick={() => navigate({ name: 'checkout', membershipId: membership.id })}
-            className="h-11 w-full rounded-full bg-emerald-700 font-bold hover:bg-emerald-800 sm:w-auto sm:px-8"
+            className="h-11 w-full rounded-full bg-amber-700 font-bold hover:bg-amber-800 sm:w-auto sm:px-8"
           >
             {membership.myStatus === 'CANCELLED' ? 'Reativar assinatura' : 'Assinar agora'}
           </Button>

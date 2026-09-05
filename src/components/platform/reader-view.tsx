@@ -24,8 +24,8 @@ import { cn } from '@/lib/utils'
 const KIND_META: Record<string, { label: string; badge: string; badgeDark: string }> = {
   ARTICLE: {
     label: 'Artigo',
-    badge: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-950/50',
-    badgeDark: 'border-emerald-300/25 bg-white/10 text-emerald-100 hover:bg-white/10',
+    badge: 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300 dark:hover:bg-amber-950/50',
+    badgeDark: 'border-amber-300/25 bg-white/10 text-amber-100 hover:bg-white/10',
   },
   BOOK: {
     label: 'Livro',
@@ -74,7 +74,7 @@ function ArticleBlocks({
             <ul key={i} className="space-y-2 py-2">
               {lines.map((l, j) => (
                 <li key={j} className="flex items-start gap-2.5">
-                  <span aria-hidden className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                  <span aria-hidden className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
                   <span className={cn(sizeClass, 'text-stone-700 dark:text-stone-200')}>{l.slice(2).trim()}</span>
                 </li>
               ))}
@@ -217,10 +217,10 @@ export function ReaderView({ itemId }: { itemId: string }) {
                 <button
                   key={course.id}
                   onClick={() => navigate({ name: 'course', courseId: course.id })}
-                  className="inline-flex max-w-full items-center gap-2 rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition-colors hover:border-emerald-300 hover:text-emerald-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-emerald-700 dark:hover:text-emerald-300"
+                  className="inline-flex max-w-full items-center gap-2 rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition-colors hover:border-amber-300 hover:text-amber-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-amber-700 dark:hover:text-amber-300"
                   aria-label={`Ver curso ${course.title}`}
                 >
-                  <BookOpen aria-hidden className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <BookOpen aria-hidden className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                   <span className="truncate">{course.title}</span>
                 </button>
               ))}
@@ -242,7 +242,7 @@ export function ReaderView({ itemId }: { itemId: string }) {
                     const view = useAppStore.getState().view
                     navigate({ name: 'reader', itemId: r.id, returnTo: view.name === 'reader' ? view.returnTo : undefined })
                   }}
-                  className="group flex min-w-0 items-center gap-3 rounded-2xl border border-stone-200 bg-white p-3 text-left transition-all hover:border-emerald-300 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700"
+                  className="group flex min-w-0 items-center gap-3 rounded-2xl border border-stone-200 bg-white p-3 text-left transition-all hover:border-amber-300 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-amber-700"
                   aria-label={`Ler ${r.title}`}
                 >
                   <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-stone-100 dark:bg-stone-800">
@@ -284,7 +284,7 @@ export function ReaderView({ itemId }: { itemId: string }) {
   return (
     <div className="flex h-full flex-col bg-stone-50 dark:bg-stone-950">
       {/* ---------- TOP BAR IMERSIVA ---------- */}
-      <header className="shrink-0 border-b border-emerald-400/15 bg-emerald-950 text-white">
+      <header className="shrink-0 border-b border-amber-400/15 bg-amber-950 text-white">
         <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-2 px-4 sm:gap-3 sm:px-6">
           <Button
             variant="ghost"
@@ -310,8 +310,8 @@ export function ReaderView({ itemId }: { itemId: string }) {
             )}
             <p className="truncate font-bold text-white">{item?.title ?? 'Carregando...'}</p>
             {item && (
-              <p className="hidden min-w-0 items-center gap-1 text-xs text-emerald-100/70 md:flex">
-                <span aria-hidden className="text-emerald-100/40">·</span>
+              <p className="hidden min-w-0 items-center gap-1 text-xs text-amber-100/70 md:flex">
+                <span aria-hidden className="text-amber-100/40">·</span>
                 <span className="truncate">
                   {firstName(item.author.name)} · {item.author.headline}
                 </span>
@@ -348,7 +348,7 @@ export function ReaderView({ itemId }: { itemId: string }) {
               </div>
             ) : null}
             {item && (
-              <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-emerald-100/70">
+              <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-amber-100/70">
                 <Clock aria-hidden className="h-3.5 w-3.5" />
                 {item.readingMin} min
               </span>
@@ -380,7 +380,7 @@ export function ReaderView({ itemId }: { itemId: string }) {
           <div aria-hidden className="h-1.5 w-full bg-white/10">
             <div
               ref={barRef}
-              className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-[width] duration-150 ease-linear"
+              className="h-full bg-gradient-to-r from-amber-600 to-amber-400 transition-[width] duration-150 ease-linear"
               style={{ width: '0%' }}
             />
           </div>
@@ -428,8 +428,8 @@ export function ReaderView({ itemId }: { itemId: string }) {
           /* Estado de bloqueio: conteúdo exclusivo de curso */
           <div className="flex h-full items-center justify-center p-6">
             <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-8 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900">
-              <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 ring-1 ring-emerald-100 dark:bg-emerald-950/50 dark:ring-emerald-900/40">
-                <Lock className="h-6 w-6 text-emerald-600 dark:text-emerald-400" aria-hidden />
+              <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 ring-1 ring-amber-100 dark:bg-amber-950/50 dark:ring-amber-900/40">
+                <Lock className="h-6 w-6 text-amber-600 dark:text-amber-400" aria-hidden />
               </span>
               <h2 className="mt-4 text-lg font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
                 Este conteúdo é exclusivo

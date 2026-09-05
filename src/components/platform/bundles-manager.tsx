@@ -206,7 +206,7 @@ function BundlesManager({ userId }: { userId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 ring-1 ring-amber-100 dark:ring-amber-900/40">
             <Layers className="size-4" aria-hidden />
           </span>
           Pacotes de cursos
@@ -255,7 +255,7 @@ function BundlesManager({ userId }: { userId: string }) {
                     <div className="flex flex-wrap items-center gap-1.5">
                       <p className="truncate font-bold text-stone-900 dark:text-stone-50">{b.title}</p>
                       {b.isPublished ? (
-                        <Badge className="rounded-full border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50">
+                        <Badge className="rounded-full border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/50">
                           Publicado
                         </Badge>
                       ) : (
@@ -306,7 +306,7 @@ function BundlesManager({ userId }: { userId: string }) {
                           className="h-5 w-5 shrink-0 rounded-full object-cover"
                         />
                       ) : (
-                        <BookOpen aria-hidden className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <BookOpen aria-hidden className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
                       )}
                       <span className="truncate">{c.title}</span>
                     </li>
@@ -403,7 +403,7 @@ function BundlesManager({ userId }: { userId: string }) {
                             className={cn(
                               'flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors',
                               checked
-                                ? 'border-emerald-700 bg-emerald-700 text-white'
+                                ? 'border-amber-700 bg-amber-700 text-white'
                                 : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900'
                             )}
                           >
@@ -465,7 +465,7 @@ function BundlesManager({ userId }: { userId: string }) {
                   <span
                     className={cn(
                       'inline-flex items-center gap-1 font-bold',
-                      discountPercent > 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-stone-400 dark:text-stone-500'
+                      discountPercent > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-stone-400 dark:text-stone-500'
                     )}
                   >
                     {discountPercent > 0 && <BadgePercent aria-hidden className="h-3.5 w-3.5" />}

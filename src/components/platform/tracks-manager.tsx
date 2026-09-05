@@ -478,7 +478,7 @@ export function TracksManager({
                       {LEVEL_LABELS[track.level] ?? track.level}
                     </Badge>
                     {track.isPublished ? (
-                      <Badge className="bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300">Publicado</Badge>
+                      <Badge className="bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300">Publicado</Badge>
                     ) : (
                       <Badge variant="secondary" className="bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
                         Rascunho

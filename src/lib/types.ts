@@ -1,4 +1,4 @@
-// Tipos compartilhados entre frontend e API da plataforma MentorHub
+// Tipos compartilhados entre frontend e API da plataforma Órbita
 
 export interface UserDTO {
   id: string

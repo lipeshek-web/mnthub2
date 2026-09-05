@@ -38,8 +38,8 @@ export function MobileTabbar() {
         aria-current={active ? 'page' : undefined}
         aria-label={label}
         className={cn(
-          'relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold transition-colors',
-          active ? 'text-emerald-700 dark:text-emerald-300' : 'text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300'
+          'relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-semibold transition-colors first:rounded-l-2xl last:rounded-r-2xl',
+          active ? 'text-amber-700 dark:text-amber-300' : 'text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300'
         )}
       >
         <span className="relative">
@@ -47,7 +47,7 @@ export function MobileTabbar() {
           {badgeCount > 0 && (
             <span
               aria-label={`${badgeCount} não lidas`}
-              className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[9px] font-bold text-white"
+              className="absolute -right-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-600 px-1 text-[9px] font-bold text-white ring-2 ring-white dark:ring-stone-900"
             >
               {badgeCount > 9 ? '9+' : badgeCount}
             </span>
@@ -67,9 +67,10 @@ export function MobileTabbar() {
   return (
     <nav
       aria-label="Navegação inferior"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200/80 bg-white/95 backdrop-blur md:hidden dark:border-stone-800 dark:bg-stone-950/95"
+      className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 md:hidden"
     >
-      <div className="mx-auto flex max-w-lg items-stretch pb-[env(safe-area-inset-bottom)]">
+      {/* Pílula flutuante estilo iOS: vidro fosco, canto suave, sombra discreta */}
+      <div className="mx-auto flex max-w-md items-stretch rounded-2xl border border-stone-200/70 bg-white/90 shadow-lg shadow-stone-900/[0.08] backdrop-blur-xl dark:border-stone-700/60 dark:bg-stone-900/90 dark:shadow-black/40">
         {tab({ name: 'marketplace' }, 'Explorar', <Compass className="h-5 w-5" />)}
         {user && tab({ name: 'events' }, 'Eventos', <Radio className="h-5 w-5" />)}
         {tab({ name: 'dashboard' }, 'Sessões', <CalendarDays className="h-5 w-5" />)}
@@ -81,7 +82,7 @@ export function MobileTabbar() {
             <DropdownMenuTrigger asChild>
               <button
                 aria-label="Abrir menu"
-                className="relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold text-stone-400 transition-colors hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
+                className="relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-r-2xl py-2.5 text-[10px] font-semibold text-stone-400 transition-colors hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
               >
                 <Avatar name={user.name} src={user.avatarUrl} size="sm" className="h-5 w-5 ring-1 ring-stone-200 dark:ring-stone-700" />
                 Menu

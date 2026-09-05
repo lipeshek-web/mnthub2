@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic'
  *  b) Aulas ao vivo (kind='LIVE') dos cursos em que o usuário está matriculado
  *
  * Datas: DATETIME FLOATING local (sem Z e sem TZID) derivado do naive
- * "YYYY-MM-DDTHH:mm" — respeita o modelo de datas sem timezone do MentorHub.
+ * "YYYY-MM-DDTHH:mm" — respeita o modelo de datas sem timezone do Órbita.
  */
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
@@ -131,9 +131,9 @@ export async function GET(req: NextRequest) {
     const lines = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//MentorHub//PT-BR',
+      'PRODID:-//Órbita//PT-BR',
       'CALSCALE:GREGORIAN',
-      'X-WR-CALNAME:MentorHub',
+      'X-WR-CALNAME:Órbita',
       ...selected.flatMap((e) => e.lines),
       'END:VCALENDAR',
     ]

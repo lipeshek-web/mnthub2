@@ -23,7 +23,7 @@ function BundleCard({ bundle }: { bundle: BundleDTO }) {
   const navigate = useAppStore((s) => s.navigate)
 
   return (
-    <article className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 transition-all hover:-translate-y-0.5 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-lg hover:shadow-emerald-950/5">
+    <article className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 transition-all hover:-translate-y-0.5 hover:border-amber-300 dark:hover:border-amber-700 hover:shadow-lg hover:shadow-amber-950/5">
       {/* Capa: mosaico das 2 primeiras capas dos cursos (ou gradiente) */}
       <button
         type="button"
@@ -69,7 +69,7 @@ function BundleCard({ bundle }: { bundle: BundleDTO }) {
 
       {/* Conteúdo */}
       <div className="flex min-w-0 flex-1 flex-col p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
           Pacote · {bundle.courses[0]?.category ?? bundle.mentor.headline.slice(0, 30)}
         </p>
         <button
@@ -77,7 +77,7 @@ function BundleCard({ bundle }: { bundle: BundleDTO }) {
           onClick={() => navigate({ name: 'checkout', bundleId: bundle.id })}
           className="mt-1 text-left"
         >
-          <h3 className="line-clamp-2 font-bold leading-snug text-stone-900 dark:text-stone-50 group-hover:text-emerald-800 dark:group-hover:text-emerald-300">
+          <h3 className="line-clamp-2 font-bold leading-snug text-stone-900 dark:text-stone-50 group-hover:text-amber-800 dark:group-hover:text-amber-300">
             {bundle.title}
           </h3>
         </button>
@@ -86,7 +86,7 @@ function BundleCard({ bundle }: { bundle: BundleDTO }) {
         <ul className="mt-2.5 space-y-1">
           {bundle.courses.slice(0, 3).map((c) => (
             <li key={c.id} className="flex min-w-0 items-center gap-1.5 text-xs text-stone-600 dark:text-stone-400">
-              <BookOpen aria-hidden className="h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <BookOpen aria-hidden className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" />
               <span className="truncate">{c.title}</span>
             </li>
           ))}

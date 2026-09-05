@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     await sendEmail({
       to: email,
       kind: 'password_reset',
-      subject: 'Redefinir sua senha — MentorHub',
+      subject: 'Redefinir sua senha — Órbita',
       html: brandedEmail({
         title: `Oi, ${user.name.split(' ')[0]}!`,
         lines: [

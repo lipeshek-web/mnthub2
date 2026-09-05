@@ -172,7 +172,7 @@ const TESTIMONIALS = [
 
 const FAQS = [
   {
-    q: 'O que eu encontro na MentorHub?',
+    q: 'O que eu encontro na Órbita?',
     a: 'Mentorias 1:1 por vídeo, cursos gravados, trilhas guiadas e uma biblioteca com artigos e livros dos mentores. Tudo em uma conta só, com IA de estudos, gamificação e certificados.',
   },
   {
@@ -192,7 +192,7 @@ const FAQS = [
     a: 'Sim — cada curso concluído gera um certificado com código de verificação único, pronto para compartilhar no LinkedIn ou anexar ao currículo.',
   },
   {
-    q: 'Como me tornar um mentor na MentorHub?',
+    q: 'Como me tornar um mentor na Órbita?',
     a: 'Clique em "Quero ensinar" no fim desta página, complete seu perfil com áreas, agenda e valores e publique mentorias, cursos, trilhas e conteúdos no mural.',
   },
 ]
@@ -454,7 +454,7 @@ export function LandingMenteeView() {
           <div className="grid grid-cols-1 items-center gap-14 lg:grid-cols-2 lg:gap-12">
             {/* Coluna esquerda: mensagem + busca + prova social — sem animação de entrada: LCP imediato */}
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+              <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
                 Mentorias, cursos, trilhas e biblioteca — tudo em um só lugar
               </p>
 
@@ -464,9 +464,9 @@ export function LandingMenteeView() {
               >
                 {user ? (
                   <>
-                    Olá, <span className="text-emerald-700 dark:text-emerald-300">{firstName(user.name)}</span>! Pronto
+                    Olá, <span className="text-amber-700 dark:text-amber-300">{firstName(user.name)}</span>! Pronto
                     para{' '}
-                    <span className="text-emerald-700 dark:text-emerald-300">
+                    <span className="text-amber-700 dark:text-amber-300">
                       continuar aprendendo
                     </span>
                     ?
@@ -474,7 +474,7 @@ export function LandingMenteeView() {
                 ) : (
                   <>
                     Aprenda com quem{' '}
-                    <span className="text-emerald-700 dark:text-emerald-300">
+                    <span className="text-amber-700 dark:text-amber-300">
                       vive o que ensina
                     </span>
                   </>
@@ -498,7 +498,7 @@ export function LandingMenteeView() {
                 <button
                   type="button"
                   onClick={handleVerCursos}
-                  className="inline-flex min-h-11 items-center gap-1 rounded-full text-base font-medium text-emerald-700 transition-colors hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-emerald-300 dark:hover:text-emerald-200"
+                  className="inline-flex min-h-11 items-center gap-1 rounded-full text-base font-medium text-amber-700 transition-colors hover:text-amber-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 dark:text-amber-300 dark:hover:text-amber-200"
                 >
                   Ver cursos
                   <ChevronRight aria-hidden className="h-4 w-4" />
@@ -573,15 +573,15 @@ export function LandingMenteeView() {
               <button
                 type="button"
                 onClick={handleVerCursos}
-                className="group flex h-full min-h-40 min-w-0 flex-col items-start justify-center gap-1.5 rounded-2xl border border-dashed border-stone-300 p-4 text-left transition hover:border-emerald-400 hover:bg-emerald-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-stone-700 dark:hover:border-emerald-500 dark:hover:bg-emerald-900/30"
+                className="group flex h-full min-h-40 min-w-0 flex-col items-start justify-center gap-1.5 rounded-2xl border border-dashed border-stone-300 p-4 text-left transition hover:border-amber-400 hover:bg-amber-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 dark:border-stone-700 dark:hover:border-amber-500 dark:hover:bg-amber-900/30"
               >
                 <span
                   aria-hidden
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-stone-500 transition group-hover:bg-emerald-100 group-hover:text-emerald-700 dark:bg-stone-800 dark:text-stone-400 dark:group-hover:bg-emerald-950/50 dark:group-hover:text-emerald-300"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-stone-500 transition group-hover:bg-amber-100 group-hover:text-amber-700 dark:bg-stone-800 dark:text-stone-400 dark:group-hover:bg-amber-950/50 dark:group-hover:text-amber-300"
                 >
                   <Library className="h-4 w-4" />
                 </span>
-                <span className="mt-1.5 inline-flex items-center gap-1.5 text-sm font-semibold text-stone-700 transition group-hover:text-emerald-800 dark:text-stone-200 dark:group-hover:text-emerald-300">
+                <span className="mt-1.5 inline-flex items-center gap-1.5 text-sm font-semibold text-stone-700 transition group-hover:text-amber-800 dark:text-stone-200 dark:group-hover:text-amber-300">
                   Explorar mais cursos
                   <ChevronRight
                     aria-hidden
@@ -610,7 +610,7 @@ export function LandingMenteeView() {
             <div className="flex flex-wrap items-center gap-2">
               <span
                 aria-hidden
-                className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-700 text-white"
+                className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-700 text-white"
               >
                 <Sparkles className="h-3.5 w-3.5" />
               </span>
@@ -621,7 +621,7 @@ export function LandingMenteeView() {
                 Feito para você
               </h2>
               {recsGenerated && (
-                <Badge className="rounded-full border-emerald-200 bg-emerald-50 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <Badge className="rounded-full border-amber-200 bg-amber-50 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
                   IA personalizada
                 </Badge>
               )}
@@ -648,7 +648,7 @@ export function LandingMenteeView() {
         className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-16 sm:py-24"
       >
         <div className="max-w-2xl">
-          <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+          <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
             Tudo em um só lugar
           </p>
           <h2
@@ -665,8 +665,8 @@ export function LandingMenteeView() {
         <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {FORMATS.map((format, i) => (
             <Reveal key={format.title} delay={i * 70} className="min-w-0">
-              <div className="group flex h-full flex-col rounded-2xl border border-stone-200 bg-white p-5 transition hover:border-emerald-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:group-hover:bg-emerald-900/30">
+              <div className="group flex h-full flex-col rounded-2xl border border-stone-200 bg-white p-5 transition hover:border-amber-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-amber-700">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-700 transition group-hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:group-hover:bg-amber-900/30">
                   <format.icon aria-hidden className="h-5 w-5" />
                 </span>
                 <p className="mt-4 text-[10px] font-semibold uppercase tracking-widest text-stone-400 dark:text-stone-500">
@@ -679,7 +679,7 @@ export function LandingMenteeView() {
                 <button
                   type="button"
                   onClick={() => handleFormatTab(format.tab)}
-                  className="mt-4 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-emerald-700 transition hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-emerald-300 dark:hover:text-emerald-200"
+                  className="mt-4 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-amber-700 transition hover:text-amber-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 dark:text-amber-300 dark:hover:text-amber-200"
                   aria-label={`${format.cta} — ${format.title}`}
                 >
                   {format.cta}
@@ -701,7 +701,7 @@ export function LandingMenteeView() {
         className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-4 pt-14 sm:pt-20"
       >
         <div className="max-w-2xl">
-          <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+          <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
             Como funciona
           </p>
             <h2
@@ -718,8 +718,8 @@ export function LandingMenteeView() {
                 <div className="relative z-10 flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-stone-950 text-sm font-semibold tracking-wide text-white ring-4 ring-white dark:bg-white dark:text-stone-950 dark:ring-stone-950">
                   {step.number}
                 </div>
-                <div className="mt-5 flex w-full min-w-0 flex-1 flex-col items-center rounded-2xl border border-stone-200 bg-white px-5 pb-6 pt-5 text-center transition hover:border-emerald-300 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                <div className="mt-5 flex w-full min-w-0 flex-1 flex-col items-center rounded-2xl border border-stone-200 bg-white px-5 pb-6 pt-5 text-center transition hover:border-amber-300 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-amber-700">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
                     <step.icon aria-hidden className="h-5 w-5" />
                   </span>
                   <h3 className="mt-3 font-semibold text-stone-900 dark:text-stone-50">{step.title}</h3>
@@ -749,7 +749,7 @@ export function LandingMenteeView() {
                   <button
                     type="button"
                     onClick={handleExploreArea}
-                    className="inline-flex min-h-11 items-center rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-stone-700 transition hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-emerald-500 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300"
+                    className="inline-flex min-h-11 items-center rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-stone-700 transition hover:border-amber-400 hover:bg-amber-50 hover:text-amber-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-amber-500 dark:hover:bg-amber-900/30 dark:hover:text-amber-300"
                   >
                     {cat}
                   </button>
@@ -768,7 +768,7 @@ export function LandingMenteeView() {
       >
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
               Aprenda ao vivo
             </p>
             <h2
@@ -784,7 +784,7 @@ export function LandingMenteeView() {
           <Button
             variant="link"
             onClick={() => navigate({ name: 'marketplace' })}
-            className="gap-1 px-0 font-semibold text-emerald-700 dark:text-emerald-300"
+            className="gap-1 px-0 font-semibold text-amber-700 dark:text-amber-300"
           >
             Ver todos
             <ChevronRight aria-hidden className="h-4 w-4" />
@@ -830,7 +830,7 @@ export function LandingMenteeView() {
           <Reveal className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+              <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
                 No seu ritmo
               </p>
               <h2
@@ -846,7 +846,7 @@ export function LandingMenteeView() {
             <Button
               variant="link"
               onClick={handleVerCursos}
-              className="gap-1 px-0 font-semibold text-emerald-700 dark:text-emerald-300"
+              className="gap-1 px-0 font-semibold text-amber-700 dark:text-amber-300"
             >
               Ver todos os cursos
               <ChevronRight aria-hidden className="h-4 w-4" />
@@ -886,7 +886,7 @@ export function LandingMenteeView() {
           <Reveal className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+              <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
                 Jornadas guiadas
               </p>
               <h2
@@ -902,7 +902,7 @@ export function LandingMenteeView() {
             <Button
               variant="link"
               onClick={handleVerTrilhas}
-              className="gap-1 px-0 font-semibold text-emerald-700 dark:text-emerald-300"
+              className="gap-1 px-0 font-semibold text-amber-700 dark:text-amber-300"
             >
               Ver todas as trilhas
               <ChevronRight aria-hidden className="h-4 w-4" />
@@ -942,7 +942,7 @@ export function LandingMenteeView() {
           <Reveal className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+              <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
                 Para ler e reler
               </p>
               <h2
@@ -958,7 +958,7 @@ export function LandingMenteeView() {
             <Button
               variant="link"
               onClick={handleVerBiblioteca}
-              className="gap-1 px-0 font-semibold text-emerald-700 dark:text-emerald-300"
+              className="gap-1 px-0 font-semibold text-amber-700 dark:text-amber-300"
             >
               Abrir biblioteca
               <ChevronRight aria-hidden className="h-4 w-4" />
@@ -983,24 +983,24 @@ export function LandingMenteeView() {
         </section>
       )}
 
-      {/* ---------- A PLATAFORMA EM NÚMEROS (faixa dark emerald-950) ---------- */}
+      {/* ---------- A PLATAFORMA EM NÚMEROS (faixa graphite com acentos âmbar) ---------- */}
       <section
         ref={statsSectionRef}
         aria-label="Números da plataforma"
         className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24"
       >
         <Reveal
-          className="relative overflow-hidden rounded-3xl bg-emerald-950 px-6 py-12 sm:px-12 sm:py-14"
+          className="relative overflow-hidden rounded-3xl bg-stone-900 px-6 py-12 sm:px-12 sm:py-14 dark:bg-stone-900"
         >
 
           <dl className="relative grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-4">
             <div className="flex flex-col">
-              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
+              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-amber-200/75 sm:text-xs">
                 mentores especialistas
               </dt>
               {loading ? (
                 <dd className="order-1">
-                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
+                  <Skeleton className="h-9 w-20 rounded-lg bg-amber-100/20" />
                 </dd>
               ) : (
                 <dd className="order-1 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
@@ -1009,12 +1009,12 @@ export function LandingMenteeView() {
               )}
             </div>
             <div className="flex flex-col">
-              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
+              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-amber-200/75 sm:text-xs">
                 cursos publicados
               </dt>
               {coursesLoading ? (
                 <dd className="order-1">
-                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
+                  <Skeleton className="h-9 w-20 rounded-lg bg-amber-100/20" />
                 </dd>
               ) : (
                 <dd className="order-1 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
@@ -1023,12 +1023,12 @@ export function LandingMenteeView() {
               )}
             </div>
             <div className="flex flex-col">
-              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
+              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-amber-200/75 sm:text-xs">
                 trilhas guiadas
               </dt>
               {tracksLoading ? (
                 <dd className="order-1">
-                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
+                  <Skeleton className="h-9 w-20 rounded-lg bg-amber-100/20" />
                 </dd>
               ) : (
                 <dd className="order-1 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
@@ -1037,12 +1037,12 @@ export function LandingMenteeView() {
               )}
             </div>
             <div className="flex flex-col">
-              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-emerald-200/75 sm:text-xs">
+              <dt className="order-2 mt-1.5 text-[11px] font-medium uppercase tracking-wider text-amber-200/75 sm:text-xs">
                 aulas disponíveis
               </dt>
               {coursesLoading ? (
                 <dd className="order-1">
-                  <Skeleton className="h-9 w-20 rounded-lg bg-emerald-100/20" />
+                  <Skeleton className="h-9 w-20 rounded-lg bg-amber-100/20" />
                 </dd>
               ) : (
                 <dd className="order-1 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
@@ -1062,7 +1062,7 @@ export function LandingMenteeView() {
       >
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-16 sm:py-20">
           <div className="max-w-2xl">
-            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
               E muito mais
             </p>
             <h2
@@ -1079,8 +1079,8 @@ export function LandingMenteeView() {
           <ul className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {EXTRAS.map((extra, i) => (
               <Reveal key={extra.title} tag="li" delay={(i % 3) * 70} className="min-w-0">
-                <div className="group flex h-full items-start gap-3.5 rounded-2xl border border-stone-200 bg-white p-4 transition hover:border-emerald-300 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700 sm:p-5">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:group-hover:bg-emerald-900/30">
+                <div className="group flex h-full items-start gap-3.5 rounded-2xl border border-stone-200 bg-white p-4 transition hover:border-amber-300 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-amber-700 sm:p-5">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 transition group-hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:group-hover:bg-amber-900/30">
                     <extra.icon aria-hidden className="h-4.5 w-4.5" />
                   </span>
                   <span className="min-w-0">
@@ -1102,7 +1102,7 @@ export function LandingMenteeView() {
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-24">
           <div className="max-w-2xl">
-            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
               Depoimentos
             </p>
             <h2
@@ -1160,7 +1160,7 @@ export function LandingMenteeView() {
       >
         <div className="mx-auto max-w-3xl">
           <div className="text-center">
-            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
               Perguntas frequentes
             </p>
             <h2
@@ -1200,10 +1200,10 @@ export function LandingMenteeView() {
       </Reveal>
 
       {/* ---------- ACESSIBILIDADE À EDUCAÇÃO (impacto social / ESG) ---------- */}
-      <section aria-labelledby="impacto-title" className="mt-4 bg-emerald-950 py-16 text-white sm:py-24">
+      <section aria-labelledby="impacto-title" className="mt-4 bg-stone-900 py-16 text-white sm:py-24 dark:bg-stone-900">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="max-w-2xl">
-            <p className="text-sm font-semibold text-emerald-300">
+            <p className="text-sm font-semibold text-amber-300">
               Acessibilidade à educação · Impacto social (ESG)
             </p>
             <h2
@@ -1212,7 +1212,7 @@ export function LandingMenteeView() {
             >
               Educação que alcança todo mundo
             </h2>
-            <p className="mt-3 text-base leading-relaxed text-emerald-100/85 sm:text-lg">
+            <p className="mt-3 text-base leading-relaxed text-stone-100/85 sm:text-lg">
               Levamos palestras sobre temas que importam — cyberbullying, crimes digitais, segurança
               online e outros — a escolas públicas e privadas, com mentores especialistas. Todo
               participante ganha bolsa parcial, e os alunos mais esforçados sem condições de pagar
@@ -1242,11 +1242,11 @@ export function LandingMenteeView() {
                 key={pillar.title}
                 className="rounded-2xl bg-white/5 p-6 ring-1 ring-white/10"
               >
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-emerald-300 ring-1 ring-white/15">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-amber-300 ring-1 ring-white/15">
                   <pillar.icon aria-hidden className="h-5 w-5" />
                 </span>
                 <h3 className="mt-4 text-lg font-semibold tracking-tight">{pillar.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-emerald-100/80">{pillar.text}</p>
+                <p className="mt-1.5 text-sm leading-relaxed text-stone-200/80">{pillar.text}</p>
               </div>
             ))}
           </div>
@@ -1254,19 +1254,19 @@ export function LandingMenteeView() {
           <div className="mt-10 flex flex-wrap items-end gap-x-10 gap-y-6">
             <div>
               <p className="text-4xl font-semibold tracking-tight sm:text-5xl">100%</p>
-              <p className="mt-1 text-sm text-emerald-200/75">
+              <p className="mt-1 text-sm text-amber-200/75">
                 dos participantes ganham bolsa parcial em projetos escolares
               </p>
             </div>
             <div>
               <p className="text-4xl font-semibold tracking-tight sm:text-5xl">Integrais</p>
-              <p className="mt-1 text-sm text-emerald-200/75">
+              <p className="mt-1 text-sm text-amber-200/75">
                 para os alunos mais esforçados sem condições de pagar — custo zero
               </p>
             </div>
             <div>
               <p className="text-4xl font-semibold tracking-tight sm:text-5xl">Sob medida</p>
-              <p className="mt-1 text-sm text-emerald-200/75">
+              <p className="mt-1 text-sm text-amber-200/75">
                 programas personalizados para colégios públicos e particulares
               </p>
             </div>
@@ -1274,13 +1274,13 @@ export function LandingMenteeView() {
 
           <div className="mt-10">
             <a
-              href="mailto:projetos@mentorhub.com.br?subject=Projeto%20educacional%20—%20MentorHub"
-              className="inline-flex min-h-12 items-center rounded-full bg-white px-7 text-base font-medium text-emerald-950 transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+              href="mailto:projetos@orbita.com.br?subject=Projeto%20educacional%20—%20Órbita"
+              className="inline-flex min-h-12 items-center rounded-full bg-white px-7 text-base font-medium text-stone-900 transition-colors hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
             >
               Quero um projeto na minha escola
               <ChevronRight aria-hidden className="ml-1 h-4 w-4" />
             </a>
-            <p className="mt-3 text-xs text-emerald-200/60">
+            <p className="mt-3 text-xs text-amber-200/60">
               Conte um pouco da sua instituição — respondemos com uma proposta.
             </p>
           </div>
@@ -1294,7 +1294,7 @@ export function LandingMenteeView() {
         className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-16 pt-2 sm:pb-24"
       >
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+          <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
             Comece agora
           </p>
           <h2
@@ -1310,7 +1310,7 @@ export function LandingMenteeView() {
 
         <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-2">
           {/* Card escuro: quero aprender */}
-          <div className="relative overflow-hidden rounded-3xl bg-emerald-950 p-8 text-white sm:p-10">
+          <div className="relative overflow-hidden rounded-3xl bg-stone-900 p-8 text-white sm:p-10 dark:bg-stone-900">
             <div className="relative flex h-full flex-col items-start">
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-white ring-1 ring-white/15">
                 <GraduationCap aria-hidden className="h-6 w-6" />
@@ -1318,13 +1318,13 @@ export function LandingMenteeView() {
               <h3 className="mt-5 text-2xl font-semibold tracking-tight sm:text-3xl">
                 Quero aprender
               </h3>
-              <p className="mt-2 max-w-md text-sm leading-relaxed text-emerald-100/85 sm:text-base">
+              <p className="mt-2 max-w-md text-sm leading-relaxed text-stone-100/85 sm:text-base">
                 Mentorias 1:1, cursos, trilhas e biblioteca — comece hoje pelo formato que combina
                 com você.
               </p>
               <Button
                 onClick={() => navigate({ name: 'marketplace' })}
-                className="mt-7 h-12 rounded-full bg-white px-7 font-semibold text-emerald-950 hover:bg-emerald-50"
+                className="mt-7 h-12 rounded-full bg-white px-7 font-semibold text-stone-900 hover:bg-stone-100"
               >
                 Explorar a plataforma
                 <ChevronRight aria-hidden className="ml-1 h-4 w-4" />
@@ -1335,7 +1335,7 @@ export function LandingMenteeView() {
           {/* Card claro: quero ensinar */}
           <div className="relative overflow-hidden rounded-3xl border border-stone-200 bg-white p-8 sm:p-10 dark:border-stone-800 dark:bg-stone-900">
             <div className="relative flex h-full flex-col items-start">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/40">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700 ring-1 ring-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900/40">
                 <Presentation aria-hidden className="h-6 w-6" />
               </span>
               <h3 className="mt-5 text-2xl font-semibold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50">
@@ -1348,7 +1348,7 @@ export function LandingMenteeView() {
               <Button
                 variant="outline"
                 onClick={() => navigate({ name: 'for-mentors' })}
-                className="mt-7 h-12 rounded-full border-stone-300 px-7 font-semibold text-stone-900 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-800 dark:border-stone-700 dark:text-stone-50 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300"
+                className="mt-7 h-12 rounded-full border-stone-300 px-7 font-semibold text-stone-900 hover:border-amber-500 hover:bg-amber-50 hover:text-amber-800 dark:border-stone-700 dark:text-stone-50 dark:hover:bg-amber-900/30 dark:hover:text-amber-300"
               >
                 Começar a ensinar
                 <ChevronRight aria-hidden className="ml-1 h-4 w-4" />
@@ -1361,7 +1361,7 @@ export function LandingMenteeView() {
         <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
           {FINAL_REASSURANCES.map((item) => (
             <li key={item} className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-500 dark:text-stone-400">
-              <Check aria-hidden className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <Check aria-hidden className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               {item}
             </li>
           ))}
@@ -1412,7 +1412,7 @@ function HeroRotator({
           {/* key={active} + animação CSS: troca de slide sem lib de animação */}
           <div key={active} className="mh-slide-in min-h-[17rem] sm:min-h-[16rem]">
               <div className="flex items-center gap-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 dark:ring-emerald-900">
+                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-700 ring-1 ring-amber-100 dark:bg-amber-950/60 dark:text-amber-300 dark:ring-amber-900">
                   <slide.icon aria-hidden className="h-5 w-5" />
                 </span>
                 <span className="text-xs font-semibold uppercase tracking-widest text-stone-400 dark:text-stone-500">
@@ -1459,10 +1459,10 @@ function HeroRotator({
                       <span className="text-stone-500 dark:text-stone-400">
                         Progresso salvo automaticamente
                       </span>
-                      <span className="font-semibold text-emerald-700 dark:text-emerald-300">57%</span>
+                      <span className="font-semibold text-amber-700 dark:text-amber-300">57%</span>
                     </div>
                     <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
-                      <div className="h-full w-[57%] rounded-full bg-emerald-500" />
+                      <div className="h-full w-[57%] rounded-full bg-amber-500" />
                     </div>
                   </div>
                 ) : active === 2 ? (
@@ -1473,7 +1473,7 @@ function HeroRotator({
                           className={cn(
                             'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold',
                             s <= 2
-                              ? 'bg-emerald-700 text-white'
+                              ? 'bg-amber-700 text-white'
                               : 'border border-stone-300 bg-white text-stone-400 dark:border-stone-600 dark:bg-stone-800'
                           )}
                         >
@@ -1484,7 +1484,7 @@ function HeroRotator({
                             className={cn(
                               'h-px flex-1',
                               s < 2
-                                ? 'bg-emerald-300 dark:bg-emerald-700'
+                                ? 'bg-amber-300 dark:bg-amber-700'
                                 : 'bg-stone-200 dark:bg-stone-700'
                             )}
                           />
@@ -1496,7 +1496,7 @@ function HeroRotator({
                   <div className="flex items-center gap-3">
                     <span
                       className="flex h-11 w-9 shrink-0 items-center justify-center rounded-md shadow-sm"
-                      style={avatarGradient('Biblioteca MentorHub')}
+                      style={avatarGradient('Biblioteca Órbita')}
                     >
                       <BookOpen aria-hidden className="h-4 w-4 text-white/90" />
                     </span>
@@ -1516,7 +1516,7 @@ function HeroRotator({
               <button
                 type="button"
                 onClick={() => onOpen(slide.tab)}
-                className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700 transition-all hover:gap-2.5 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-emerald-300 dark:hover:text-emerald-200"
+                className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-amber-700 transition-all hover:gap-2.5 hover:text-amber-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 dark:text-amber-300 dark:hover:text-amber-200"
               >
                 {slide.cta}
                 <ChevronRight aria-hidden className="h-4 w-4" />
@@ -1534,9 +1534,9 @@ function HeroRotator({
               aria-current={i === active ? 'true' : undefined}
               onClick={() => setActive(i)}
               className={cn(
-                'h-1.5 rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40',
+                'h-1.5 rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40',
                 i === active
-                  ? 'w-8 bg-emerald-600 dark:bg-emerald-400'
+                  ? 'w-8 bg-amber-600 dark:bg-amber-400'
                   : 'w-3 bg-stone-200 hover:bg-stone-300 dark:bg-stone-700 dark:hover:bg-stone-600'
               )}
             />
@@ -1551,7 +1551,7 @@ function FeaturedMentorCard({ mentor }: { mentor: MentorListItemDTO }) {
   const navigate = useAppStore((s) => s.navigate)
 
   return (
-    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:border-emerald-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
+    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:border-amber-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-amber-700">
       {/* Capa: gradiente determinístico do nome + avatar sobreposto */}
       <div aria-hidden className="relative h-14 w-full shrink-0" style={avatarGradient(mentor.name)}>
         <div className="absolute inset-0 bg-gradient-to-t from-black/15 to-white/10" />
@@ -1571,7 +1571,7 @@ function FeaturedMentorCard({ mentor }: { mentor: MentorListItemDTO }) {
           {mentor.rating >= 4.5 && mentor.reviewCount >= 3 && (
             <BadgeCheck
               aria-label="Mentor bem avaliado"
-              className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+              className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400"
             />
           )}
         </p>
@@ -1589,7 +1589,7 @@ function FeaturedMentorCard({ mentor }: { mentor: MentorListItemDTO }) {
 
         <div className="mt-3 flex flex-wrap gap-1.5">
           {mentor.categories.slice(0, 2).map((c) => (
-            <Badge key={c} className="bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+            <Badge key={c} className="bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
               {c}
             </Badge>
           ))}
@@ -1618,7 +1618,7 @@ function FeaturedCourseCard({ course }: { course: CourseListItemDTO }) {
   const navigate = useAppStore((s) => s.navigate)
 
   return (
-    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:border-emerald-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
+    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:border-amber-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-amber-700">
       {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
       <div className="relative h-36 w-full shrink-0 bg-stone-100 dark:bg-stone-800">
         {course.coverUrl ? (
@@ -1643,7 +1643,7 @@ function FeaturedCourseCard({ course }: { course: CourseListItemDTO }) {
 
       <div className="flex min-w-0 flex-1 flex-col p-5">
         <div className="flex flex-wrap gap-1.5">
-          <Badge className="rounded-full bg-emerald-50 text-[11px] text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+          <Badge className="rounded-full bg-amber-50 text-[11px] text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
             {course.category}
           </Badge>
           <Badge className="rounded-full bg-stone-100 text-[11px] text-stone-600 dark:bg-stone-800 dark:text-stone-300">
@@ -1675,7 +1675,7 @@ function FeaturedCourseCard({ course }: { course: CourseListItemDTO }) {
           <p
             className={cn(
               'text-sm font-semibold',
-              course.price === 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-stone-900 dark:text-stone-50'
+              course.price === 0 ? 'text-amber-700 dark:text-amber-300' : 'text-stone-900 dark:text-stone-50'
             )}
           >
             {course.price === 0 ? 'Grátis' : currencyBRL(course.price)}
@@ -1699,7 +1699,7 @@ function FeaturedTrackCard({ track }: { track: TrackListItemDTO }) {
 
   return (
     <article
-      className="group flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg hover:shadow-stone-900/5 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700"
+      className="group flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-lg hover:shadow-stone-900/5 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-amber-700"
       onClick={() => navigate({ name: 'track', trackId: track.id })}
     >
       {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
@@ -1770,7 +1770,7 @@ function FeaturedTrackCard({ track }: { track: TrackListItemDTO }) {
           <p
             className={cn(
               'text-sm font-semibold',
-              track.price === 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-stone-900 dark:text-stone-50'
+              track.price === 0 ? 'text-amber-700 dark:text-amber-300' : 'text-stone-900 dark:text-stone-50'
             )}
           >
             {track.price === 0 ? 'Grátis' : currencyBRL(track.price)}
@@ -1874,15 +1874,15 @@ function FeaturedArticleCard({ item }: { item: LibraryItemDTO }) {
           'relative flex aspect-[3/4] flex-col overflow-hidden rounded-lg border border-stone-200 bg-white p-3.5 sm:p-4',
           'shadow-[0_1px_2px_rgba(0,0,0,0.05),0_8px_20px_-12px_rgba(0,0,0,0.22)]',
           'transition-[box-shadow,transform,border-color] duration-300',
-          'group-hover:-translate-y-1 group-hover:border-emerald-300',
+          'group-hover:-translate-y-1 group-hover:border-amber-300',
           'group-hover:shadow-[0_2px_6px_rgba(0,0,0,0.07),0_18px_36px_-16px_rgba(0,0,0,0.30)]',
           'dark:border-stone-800 dark:bg-stone-900 dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_8px_20px_-12px_rgba(0,0,0,0.55)]',
-          'dark:group-hover:border-emerald-700'
+          'dark:group-hover:border-amber-700'
         )}
       >
         {/* Masthead: chip Artigo + categoria, hairline embaixo (cara de periódico) */}
         <div className="flex items-baseline justify-between gap-2 border-b border-stone-200 pb-2 dark:border-stone-800">
-          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">
+          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300">
             Artigo
           </span>
           <span className="truncate text-[10px] font-medium uppercase tracking-wider text-stone-400 dark:text-stone-500">
@@ -1938,7 +1938,7 @@ function ContinueCourseCard({ enrollment }: { enrollment: EnrolledCourseDTO }) {
   const isDone = completed >= course.lessonCount && course.lessonCount > 0
 
   return (
-    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:border-emerald-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
+    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:border-amber-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-amber-700">
       {/* Capa: foto quando disponível; gradiente determinístico como fallback (padrão FeaturedCourseCard) */}
       <div className="relative h-16 w-full shrink-0 bg-stone-100 dark:bg-stone-800">
         {course.coverUrl ? (
@@ -1963,7 +1963,7 @@ function ContinueCourseCard({ enrollment }: { enrollment: EnrolledCourseDTO }) {
             {course.title}
           </h3>
           {isDone && (
-            <Badge className="rounded-full border-emerald-200 bg-emerald-100 text-[11px] font-semibold text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300">
+            <Badge className="rounded-full border-amber-200 bg-amber-100 text-[11px] font-semibold text-amber-800 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300">
               <CheckCircle2 aria-hidden /> Concluído
             </Badge>
           )}
@@ -2003,7 +2003,7 @@ function RecommendationCard({ rec }: { rec: RecommendationDTO }) {
   const isFree = course.price <= 0
 
   return (
-    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:border-emerald-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700">
+    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition duration-200 hover:border-amber-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-amber-700">
       {/* Capa: foto quando disponível; gradiente determinístico como fallback */}
       <div className="relative h-16 w-full shrink-0 bg-stone-100 dark:bg-stone-800">
         {course.coverUrl ? (
@@ -2034,7 +2034,7 @@ function RecommendationCard({ rec }: { rec: RecommendationDTO }) {
         </p>
 
         {/* Motivo da recomendação (IA) */}
-        <p className="mt-3 flex items-start gap-1.5 rounded-xl bg-emerald-50/80 px-2.5 py-2 text-xs leading-snug text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+        <p className="mt-3 flex items-start gap-1.5 rounded-xl bg-amber-50/80 px-2.5 py-2 text-xs leading-snug text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
           <Sparkles aria-hidden className="mt-0.5 h-3 w-3 shrink-0" />
           <span className="line-clamp-2">{rec.reason}</span>
         </p>
@@ -2044,7 +2044,7 @@ function RecommendationCard({ rec }: { rec: RecommendationDTO }) {
             className={cn(
               'text-sm font-semibold',
               isFree
-                ? 'text-emerald-700 dark:text-emerald-300'
+                ? 'text-amber-700 dark:text-amber-300'
                 : 'text-stone-900 dark:text-stone-50'
             )}
           >
@@ -2053,7 +2053,7 @@ function RecommendationCard({ rec }: { rec: RecommendationDTO }) {
           <Button
             size="sm"
             variant="outline"
-            className="h-10 rounded-full border-emerald-200 px-4 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-900/30"
+            className="h-10 rounded-full border-amber-200 px-4 text-xs font-semibold text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-900/30"
             onClick={() => navigate({ name: 'course', courseId: course.id })}
             aria-label={`Ver curso ${course.title}`}
           >
@@ -2156,7 +2156,7 @@ function WeeklyGoalCard({ userId }: { userId: string }) {
             <div className="flex min-w-0 items-center gap-3">
               <span
                 aria-hidden
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"
               >
                 <Target className="h-5 w-5" />
               </span>
@@ -2168,7 +2168,7 @@ function WeeklyGoalCard({ userId }: { userId: string }) {
               </div>
             </div>
             {goal.goalAchieved && (
-              <Badge className="rounded-full border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300">
+              <Badge className="rounded-full border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300">
                 <Trophy aria-hidden className="h-3.5 w-3.5" />
                 Meta batida! 🎉
               </Badge>
@@ -2185,7 +2185,7 @@ function WeeklyGoalCard({ userId }: { userId: string }) {
             <div className="mt-1.5 flex items-center justify-between gap-3 text-xs">
               <span className="shrink-0 text-stone-400 dark:text-stone-500">{pct}% da meta</span>
               {goal.goalAchieved && (
-                <span className="text-right font-semibold text-emerald-700 dark:text-emerald-300">
+                <span className="text-right font-semibold text-amber-700 dark:text-amber-300">
                   Parabéns! Foram {completed}{' '}
                   {completed === 1 ? 'aula concluída' : 'aulas concluídas'} nesta semana. 🎉
                 </span>
@@ -2210,10 +2210,10 @@ function WeeklyGoalCard({ userId }: { userId: string }) {
                     aria-pressed={isActive}
                     aria-label={`Definir meta de ${chipTarget} ${chipTarget === 1 ? 'aula' : 'aulas'} por semana`}
                     className={cn(
-                      'flex h-11 w-11 items-center justify-center rounded-full border text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40',
+                      'flex h-11 w-11 items-center justify-center rounded-full border text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40',
                       isActive
-                        ? 'border-emerald-700 bg-emerald-700 text-white shadow-sm shadow-emerald-700/25 dark:border-emerald-500 dark:bg-emerald-600'
-                        : 'border-stone-200 bg-white text-stone-700 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-800 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-emerald-500 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300',
+                        ? 'border-amber-700 bg-amber-700 text-white shadow-sm shadow-amber-700/25 dark:border-amber-500 dark:bg-amber-600'
+                        : 'border-stone-200 bg-white text-stone-700 hover:border-amber-400 hover:bg-amber-50 hover:text-amber-800 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-amber-500 dark:hover:bg-amber-900/30 dark:hover:text-amber-300',
                       saving && 'cursor-wait opacity-70'
                     )}
                   >

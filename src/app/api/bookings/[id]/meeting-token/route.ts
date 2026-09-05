@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/bookings/[id]/meeting-token — credencial da sala de vídeo própria
- * (MentorHub Live, sinalização no meeting-service :3004).
+ * (Órbita Live, sinalização no meeting-service :3004).
  *
  * - Somente mentor ou mentorado da sessão (ADMIN também, p/ suporte) — identidade pela SESSÃO.
  * - Sessões CANCELLED/COMPLETED não têm sala ativa.

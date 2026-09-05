@@ -1,5 +1,5 @@
 /**
- * Fuso horário — o MentorHub armazena datas de sessão como naive local
+ * Fuso horário — o Órbita armazena datas de sessão como naive local
  * "YYYY-MM-DDTHH:mm" no fuso CANÔNICO da plataforma (America/Bahia, padrão
  * dos mentores brasileiros). Quem acessa de outro fuso vê a conversão
  * automática ao lado do horário original — sem mudar o modelo de dados.

@@ -379,7 +379,7 @@ export function LibraryManager({
                       className={cn(
                         item.kind === 'BOOK'
                           ? 'border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300'
-                          : 'border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300'
+                          : 'border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300'
                       )}
                     >
                       {item.kind === 'BOOK' ? 'Livro' : 'Artigo'}
@@ -388,7 +388,7 @@ export function LibraryManager({
                       {item.category}
                     </Badge>
                     {item.isPublished ? (
-                      <Badge className="bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300">Publicado</Badge>
+                      <Badge className="bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300">Publicado</Badge>
                     ) : (
                       <Badge variant="secondary" className="bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
                         Rascunho
@@ -474,14 +474,14 @@ export function LibraryManager({
                   className={cn(
                     'flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors',
                     kind === 'ARTICLE'
-                      ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/50 ring-1 ring-emerald-200 dark:ring-emerald-900'
+                      ? 'border-amber-500 bg-amber-50/60 dark:bg-amber-950/50 ring-1 ring-amber-200 dark:ring-amber-900'
                       : 'border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'
                   )}
                 >
                   <RadioGroupItem value="ARTICLE" id="lib-kind-article" className="mt-0.5" />
                   <span className="min-w-0">
                     <span className="flex items-center gap-1.5 text-sm font-semibold text-stone-900 dark:text-stone-50">
-                      <BookOpen className="size-4 text-emerald-600 dark:text-emerald-400" aria-hidden /> Artigo
+                      <BookOpen className="size-4 text-amber-600 dark:text-amber-400" aria-hidden /> Artigo
                     </span>
                     <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
                       Texto escrito, PDF ou ambos.

@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     await sendEmail({
       to: user.email,
       kind: 'password_changed',
-      subject: 'Sua senha foi alterada — MentorHub',
+      subject: 'Sua senha foi alterada — Órbita',
       html: brandedEmail({
         title: 'Senha alterada com sucesso',
         lines: [

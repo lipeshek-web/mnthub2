@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
+import { BrandMark } from '@/components/platform/brand'
 
 export function PlatformFooter() {
   // Seletores atômicos: footer re-renderiza só quando user ou navigate mudarem
@@ -55,19 +56,17 @@ export function PlatformFooter() {
           {/* Marca */}
           <div className="flex flex-col items-start gap-3">
             <button
-              className="flex items-center gap-2.5"
+              className="group flex items-center gap-2.5"
               onClick={() => navigate({ name: 'home' })}
-              aria-label="Ir para a página inicial"
+              aria-label="Órbita — ir para a página inicial"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-700 text-white">
-                <GraduationCap className="h-5 w-5" />
-              </span>
+              <BrandMark className="h-9 w-9 transition-transform duration-200 group-hover:scale-[1.04]" />
               <span className="text-lg font-semibold tracking-tight text-stone-900 dark:text-stone-50">
-                Mentor<span className="text-emerald-700">Hub</span>
+                Órbita
               </span>
             </button>
             <p className="max-w-xs text-sm leading-relaxed text-stone-500 dark:text-stone-400">
-              Aprenda com quem vive o que ensina — mentorias 1:1, cursos, trilhas guiadas e uma
+              Seu universo de aprendizado — mentorias 1:1, cursos, trilhas guiadas e uma
               biblioteca de artigos e livros em um só lugar.
             </p>
           </div>
@@ -82,7 +81,7 @@ export function PlatformFooter() {
                 <li key={link.label}>
                   <button
                     onClick={link.onClick}
-                    className="inline-flex items-center gap-2 rounded-md py-1.5 text-sm font-medium text-stone-600 transition-colors hover:text-emerald-700 dark:text-stone-300 dark:hover:text-emerald-300"
+                    className="inline-flex items-center gap-2 rounded-md py-1.5 text-sm font-medium text-stone-600 transition-colors hover:text-amber-700 dark:text-stone-300 dark:hover:text-amber-300"
                   >
                     <span className="text-stone-400 dark:text-stone-500">{link.icon}</span>
                     {link.label}
@@ -102,7 +101,7 @@ export function PlatformFooter() {
                 <li key={link.label}>
                   <button
                     onClick={link.onClick}
-                    className="inline-flex items-center gap-2 rounded-md py-1.5 text-sm font-medium text-stone-600 transition-colors hover:text-emerald-700 dark:text-stone-300 dark:hover:text-emerald-300"
+                    className="inline-flex items-center gap-2 rounded-md py-1.5 text-sm font-medium text-stone-600 transition-colors hover:text-amber-700 dark:text-stone-300 dark:hover:text-amber-300"
                   >
                     <span className="text-stone-400 dark:text-stone-500">{link.icon}</span>
                     {link.label}
@@ -114,8 +113,8 @@ export function PlatformFooter() {
         </div>
 
         <div className="mt-10 flex flex-col items-start justify-between gap-2 border-t border-stone-200 pt-5 sm:flex-row sm:items-center dark:border-stone-800">
-          <p className="text-xs text-stone-400 dark:text-stone-500">© {year} MentorHub · Todos os direitos reservados</p>
-          <p className="text-xs text-stone-400 dark:text-stone-500">Feito com dedicação para quem ensina e aprende 💚</p>
+          <p className="text-xs text-stone-400 dark:text-stone-500">© {year} Órbita · Todos os direitos reservados</p>
+          <p className="text-xs text-stone-400 dark:text-stone-500">Feito com dedicação para quem ensina e aprende 🧡</p>
         </div>
       </div>
     </footer>

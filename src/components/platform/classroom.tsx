@@ -328,7 +328,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
   if (loading) {
     return (
       <div className="flex h-full min-h-0 flex-col" aria-busy="true">
-        <div className="flex items-center gap-3 border-b border-emerald-400/15 bg-emerald-950 px-4 py-3 sm:px-6">
+        <div className="flex items-center gap-3 border-b border-amber-400/15 bg-amber-950 px-4 py-3 sm:px-6">
           <Skeleton className="h-9 w-9 rounded-full bg-white/10" />
           <Skeleton className="h-5 w-48 bg-white/10" />
           <Skeleton className="ml-auto h-6 w-28 rounded-full bg-white/10" />
@@ -401,7 +401,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
   return (
     <div className="flex h-full min-h-0 flex-col bg-stone-50 dark:bg-stone-950" aria-label={`Sala de aula: ${course.title}`}>
       {/* ---------- BARRA SUPERIOR IMERSIVA ---------- */}
-      <div className="flex shrink-0 items-center gap-1 border-b border-emerald-400/15 bg-emerald-950 px-3 py-2.5 text-white sm:gap-2.5 sm:px-6">
+      <div className="flex shrink-0 items-center gap-1 border-b border-amber-400/15 bg-amber-950 px-3 py-2.5 text-white sm:gap-2.5 sm:px-6">
         <Button
           variant="ghost"
           size="icon"
@@ -415,7 +415,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
           <p className="truncate text-sm font-extrabold tracking-tight text-white sm:text-base">
             {course.title}
           </p>
-          <p className="hidden text-xs text-emerald-100/70 sm:block">
+          <p className="hidden text-xs text-amber-100/70 sm:block">
             {orderedLessons.length} {orderedLessons.length === 1 ? 'aula' : 'aulas'} ·{' '}
             {formatTotalDuration(course.totalDurationMin)}
           </p>
@@ -423,7 +423,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 shrink-0 rounded-full text-emerald-100 hover:bg-white/10 hover:text-white lg:hidden"
+          className="h-9 w-9 shrink-0 rounded-full text-amber-100 hover:bg-white/10 hover:text-white lg:hidden"
           aria-label="Ver conteúdos do curso"
           onClick={() => setContentsOpen(true)}
         >
@@ -432,7 +432,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 shrink-0 rounded-full text-emerald-100 hover:bg-white/10 hover:text-white"
+          className="h-9 w-9 shrink-0 rounded-full text-amber-100 hover:bg-white/10 hover:text-white"
           aria-label={focusMode ? 'Sair do modo foco' : 'Ativar modo foco'}
           title={focusMode ? 'Sair do modo foco' : 'Ativar modo foco'}
           onClick={() => setFocusMode((v) => !v)}
@@ -450,7 +450,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
             size="sm"
             className="h-6 w-6 text-[10px]"
           />
-          <span className="max-w-36 truncate text-xs font-semibold text-emerald-100/70">
+          <span className="max-w-36 truncate text-xs font-semibold text-amber-100/70">
             {course.mentor.name}
           </span>
         </div>
@@ -464,11 +464,11 @@ export function ClassroomView({ courseId }: { courseId: string }) {
             className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-white/20"
           >
             <div
-              className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-500"
+              className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-500"
               style={{ width: `${percent}%` }}
             />
           </div>
-          <span className="w-9 shrink-0 text-right text-xs font-bold tabular-nums text-emerald-100">
+          <span className="w-9 shrink-0 text-right text-xs font-bold tabular-nums text-amber-100">
             {percent}%
           </span>
         </div>
@@ -546,7 +546,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                 ) : currentLesson.kind === 'READING' ? (
                   <ReadingMaterial lesson={currentLesson} courseId={courseId} />
                 ) : currentLesson.kind === 'RECORDED' && currentLesson.videoUrl ? (
-                  <div className="rounded-3xl bg-gradient-to-b from-emerald-50/70 to-transparent p-2 sm:p-3 dark:from-emerald-950/25 dark:to-transparent">
+                  <div className="rounded-3xl bg-gradient-to-b from-amber-50/70 to-transparent p-2 sm:p-3 dark:from-amber-950/25 dark:to-transparent">
                     <div className="overflow-hidden rounded-2xl bg-black shadow-2xl shadow-stone-950/25 ring-1 ring-stone-200 dark:ring-stone-800">
                       <LessonPlayer lesson={currentLesson} />
                     </div>
@@ -566,7 +566,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                       <Button
                         variant="outline"
                         onClick={() => navigate({ name: 'certificate', code: certificateCode })}
-                        className="h-11 rounded-full border-emerald-300 bg-white px-6 font-bold text-emerald-800 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-900 dark:border-emerald-700 dark:bg-stone-900 dark:text-emerald-300 dark:hover:border-emerald-600 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-200"
+                        className="h-11 rounded-full border-amber-300 bg-white px-6 font-bold text-amber-800 hover:border-amber-400 hover:bg-amber-50 hover:text-amber-900 dark:border-amber-700 dark:bg-stone-900 dark:text-amber-300 dark:hover:border-amber-600 dark:hover:bg-amber-900/30 dark:hover:text-amber-200"
                         aria-label="Ver meu certificado de conclusão"
                       >
                         <GraduationCap aria-hidden className="h-4 w-4" /> Ver meu certificado
@@ -575,7 +575,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                       <Button
                         onClick={() => void handleIssueCertificate()}
                         disabled={issuing}
-                        className="h-11 rounded-full bg-emerald-700 px-6 font-bold text-white hover:bg-emerald-800"
+                        className="h-11 rounded-full bg-amber-700 px-6 font-bold text-white hover:bg-amber-800"
                         aria-label="Emitir certificado de conclusão"
                       >
                         <GraduationCap aria-hidden className="h-4 w-4" />{' '}
@@ -615,7 +615,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                     </Badge>
                   ) : null}
                   {completedIds.includes(currentLesson.id) && (
-                    <Badge className="border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                    <Badge className="border-transparent bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
                       <Check aria-hidden className="h-3 w-3" /> Concluída
                     </Badge>
                   )}
@@ -640,12 +640,12 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                         download
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-stone-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300"
+                        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-stone-700 transition-colors hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-amber-700 dark:hover:bg-amber-900/30 dark:hover:text-amber-300"
                         aria-label={`Baixar anexo ${att.name}`}
                       >
                         <Paperclip aria-hidden className="h-3.5 w-3.5 text-stone-400 dark:text-stone-500" />
                         <span className="max-w-52 truncate">{att.name}</span>
-                        <Download aria-hidden className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <Download aria-hidden className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                       </a>
                     ))}
                   </div>
@@ -780,7 +780,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                   className={cn(
                     'h-11 min-w-0 rounded-full font-semibold',
                     completedIds.includes(currentLesson.id) &&
-                      'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300'
+                      'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300 dark:hover:bg-amber-900/30 dark:hover:text-amber-300'
                   )}
                 >
                   {toggling ? (
@@ -833,7 +833,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
             <p className="text-xs font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">
               Conteúdos do curso
             </p>
-            <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+            <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">
               {completedIds.length}/{orderedLessons.length}
             </span>
           </div>
@@ -863,7 +863,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-9 rounded-full text-xs font-semibold text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-900/30"
+                className="h-9 rounded-full text-xs font-semibold text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-900/30"
                 onClick={() => navigate({ name: 'mentor', mentorId: course.mentor.id })}
                 aria-label={`Ver perfil de ${course.mentor.name}`}
               >
@@ -881,7 +881,7 @@ export function ClassroomView({ courseId }: { courseId: string }) {
           type="button"
           onClick={() => setFocusMode(false)}
           aria-label="Sair do modo foco"
-          className="fixed bottom-20 right-6 z-50 h-11 rounded-full bg-emerald-950 px-5 text-sm font-bold text-white shadow-2xl shadow-emerald-950/40 ring-1 ring-emerald-400/25 hover:bg-emerald-900"
+          className="fixed bottom-20 right-6 z-50 h-11 rounded-full bg-amber-950 px-5 text-sm font-bold text-white shadow-2xl shadow-amber-950/40 ring-1 ring-amber-400/25 hover:bg-amber-900"
         >
           <Minimize2 aria-hidden className="h-4 w-4" />
           Sair do modo foco
@@ -985,7 +985,7 @@ function ContentsNav({
                   <ChevronDown aria-hidden className="h-4 w-4 shrink-0 text-stone-400 dark:text-stone-500" />
                 )}
                 {group.theme ? (
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[11px] font-bold text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
                     {themeList.findIndex((t) => t.id === group.key) + 1}
                   </span>
                 ) : (
@@ -1002,9 +1002,9 @@ function ContentsNav({
                 <Progress
                   value={groupTotal > 0 ? Math.round((groupDone / groupTotal) * 100) : 0}
                   aria-label={`Progresso da seção ${group.title}`}
-                  className="h-1.5 w-10 shrink-0 [&_[data-slot=progress-indicator]]:bg-emerald-500"
+                  className="h-1.5 w-10 shrink-0 [&_[data-slot=progress-indicator]]:bg-amber-500"
                 />
-                <span className="w-9 shrink-0 text-right text-[10px] font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
+                <span className="w-9 shrink-0 text-right text-[10px] font-bold tabular-nums text-amber-700 dark:text-amber-300">
                   {groupDone}/{groupTotal}
                 </span>
               </button>
@@ -1023,7 +1023,7 @@ function ContentsNav({
                     className={cn(
                       'flex min-h-14 w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors',
                       isCurrent
-                        ? 'border-emerald-300 bg-emerald-50/80 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.15)] dark:border-emerald-700 dark:bg-emerald-950/50'
+                        ? 'border-amber-300 bg-amber-50/80 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.15)] dark:border-amber-700 dark:bg-amber-950/50'
                         : 'border-transparent hover:bg-stone-50 dark:hover:bg-stone-800/70'
                     )}
                   >
@@ -1031,13 +1031,13 @@ function ContentsNav({
                       aria-hidden
                       className={cn(
                         'w-[3px] shrink-0 self-stretch rounded-full transition-colors',
-                        isCurrent ? 'bg-emerald-600' : 'bg-transparent'
+                        isCurrent ? 'bg-amber-600' : 'bg-transparent'
                       )}
                     />
                     <span
                       className={cn(
                         'w-4 shrink-0 text-center text-xs font-bold',
-                        isCurrent ? 'text-emerald-700 dark:text-emerald-300' : 'text-stone-400 dark:text-stone-500'
+                        isCurrent ? 'text-amber-700 dark:text-amber-300' : 'text-stone-400 dark:text-stone-500'
                       )}
                     >
                       {lesson.order}
@@ -1049,7 +1049,7 @@ function ContentsNav({
                           isCompleted
                             ? 'text-stone-400 line-through decoration-stone-300 dark:text-stone-500 dark:decoration-stone-600'
                             : isCurrent
-                              ? 'text-emerald-900 dark:text-emerald-200'
+                              ? 'text-amber-900 dark:text-amber-200'
                               : 'text-stone-700 dark:text-stone-200'
                         )}
                       >
@@ -1096,10 +1096,10 @@ function ContentsNav({
                     {isCompleted ? (
                       <CheckCircle2
                         aria-label="Aula concluída"
-                        className="h-5 w-5 shrink-0 fill-emerald-600 text-white"
+                        className="h-5 w-5 shrink-0 fill-amber-600 text-white"
                       />
                     ) : isCurrent ? (
-                      <PlayCircle aria-hidden className="h-5 w-5 shrink-0 text-emerald-600" />
+                      <PlayCircle aria-hidden className="h-5 w-5 shrink-0 text-amber-600" />
                     ) : live ? (
                       <Radio aria-hidden className="h-4 w-4 shrink-0 text-rose-400" />
                     ) : reading ? (
@@ -1218,7 +1218,7 @@ function ReadingMaterial({
                   para.trim().startsWith('## ') ? (
                     <h3
                       key={i}
-                      className="pt-2 text-lg font-bold tracking-tight text-emerald-900 dark:text-emerald-200"
+                      className="pt-2 text-lg font-bold tracking-tight text-amber-900 dark:text-amber-200"
                     >
                       {para.trim().slice(3)}
                     </h3>
@@ -1509,11 +1509,11 @@ function LessonQuestions({
               </div>
 
               {q.answer ? (
-                <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/70 p-3.5 dark:border-emerald-900 dark:bg-emerald-950/50">
-                  <p className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50/70 p-3.5 dark:border-amber-900 dark:bg-amber-950/50">
+                  <p className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-amber-700 dark:text-amber-300">
                     <Users aria-hidden className="h-3 w-3" /> Resposta de {mentorName}
                   </p>
-                  <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-emerald-900 dark:text-emerald-200">
+                  <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-amber-900 dark:text-amber-200">
                     {q.answer}
                   </p>
                 </div>
@@ -1640,7 +1640,7 @@ function LessonNotes({
       return
     }
     const blob = new Blob(
-      [`Anotações — ${lessonTitle}\nMentorHub · ${new Date().toLocaleString('pt-BR')}\n\n${text}\n`],
+      [`Anotações — ${lessonTitle}\nÓrbita · ${new Date().toLocaleString('pt-BR')}\n\n${text}\n`],
       { type: 'text/plain;charset=utf-8' }
     )
     const url = URL.createObjectURL(blob)
@@ -1670,14 +1670,14 @@ function LessonNotes({
           className={cn(
             'inline-flex items-center gap-1.5 text-xs font-semibold',
             saveState === 'saving' || saveState === 'saved'
-              ? 'text-emerald-600 dark:text-emerald-400'
+              ? 'text-amber-600 dark:text-amber-400'
               : 'text-stone-400 dark:text-stone-500'
           )}
           aria-live="polite"
         >
           {saveState === 'saving' ? (
             <>
-              <span aria-hidden className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+              <span aria-hidden className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
               Salvando…
             </>
           ) : saveState === 'saved' ? (
@@ -1890,7 +1890,7 @@ function LessonQuiz({
                 </div>
                 {persisted !== null ? (
                   persisted.correct ? (
-                    <Badge className="shrink-0 border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                    <Badge className="shrink-0 border-transparent bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
                       <CheckCircle2 aria-hidden className="h-3 w-3" /> Você acertou
                     </Badge>
                   ) : (
@@ -1927,14 +1927,14 @@ function LessonQuiz({
                         'h-auto min-h-11 w-full justify-start gap-3 whitespace-normal rounded-xl px-3 py-2.5 text-left',
                         locked && 'pointer-events-none',
                         isCorrectReveal
-                          ? 'border-emerald-500 bg-emerald-50 text-emerald-900 hover:bg-emerald-50 dark:bg-emerald-950/50 dark:text-emerald-200 dark:hover:bg-emerald-950/50'
+                          ? 'border-amber-500 bg-amber-50 text-amber-900 hover:bg-amber-50 dark:bg-amber-950/50 dark:text-amber-200 dark:hover:bg-amber-950/50'
                           : isWrongReveal
                             ? 'border-rose-300 bg-rose-50 text-rose-900 hover:bg-rose-50 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-200 dark:hover:bg-rose-950/50'
                             : isSelected
-                              ? 'border-emerald-600 bg-emerald-50/60 text-stone-900 dark:bg-emerald-950/50 dark:text-stone-50'
+                              ? 'border-amber-600 bg-amber-50/60 text-stone-900 dark:bg-amber-950/50 dark:text-stone-50'
                               : locked
                                 ? 'border-stone-200 bg-stone-50/40 text-stone-500 dark:border-stone-800 dark:bg-stone-950/40 dark:text-stone-400'
-                                : 'text-stone-700 hover:border-emerald-300 hover:bg-emerald-50/40 dark:text-stone-200 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/40'
+                                : 'text-stone-700 hover:border-amber-300 hover:bg-amber-50/40 dark:text-stone-200 dark:hover:border-amber-700 dark:hover:bg-amber-900/40'
                       )}
                     >
                       <span
@@ -1942,11 +1942,11 @@ function LessonQuiz({
                         className={cn(
                           'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold',
                           isCorrectReveal
-                            ? 'bg-emerald-600 text-white'
+                            ? 'bg-amber-600 text-white'
                             : isWrongReveal
                               ? 'bg-rose-400 text-white'
                               : isSelected
-                                ? 'bg-emerald-700 text-white'
+                                ? 'bg-amber-700 text-white'
                                 : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300'
                         )}
                       >
@@ -1954,7 +1954,7 @@ function LessonQuiz({
                       </span>
                       <span className="min-w-0 flex-1 text-sm leading-relaxed">{opt}</span>
                       {isCorrectReveal ? (
-                        <Check aria-hidden className="h-4 w-4 shrink-0 text-emerald-600" />
+                        <Check aria-hidden className="h-4 w-4 shrink-0 text-amber-600" />
                       ) : isWrongReveal ? (
                         <XCircle aria-hidden className="h-4 w-4 shrink-0 text-rose-400" />
                       ) : null}
@@ -1967,7 +1967,7 @@ function LessonQuiz({
               {!locked ? (
                 <div className="mt-3 flex justify-end">
                   <Button
-                    className="h-10 rounded-full bg-emerald-700 font-bold text-white hover:bg-emerald-800"
+                    className="h-10 rounded-full bg-amber-700 font-bold text-white hover:bg-amber-800"
                     onClick={() => void answer(quiz)}
                     disabled={selected[quiz.id] === undefined || sendingId === quiz.id}
                   >

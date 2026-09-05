@@ -1,4 +1,4 @@
-# MentorHub — API v1 (mobile)
+# Órbita — API v1 (mobile)
 
 API REST pública para consumo pelo app mobile (alunos). Todas as rotas ficam sob
 `/api/v1`, retornam JSON e usam **JWT Bearer** para autenticação.
@@ -109,7 +109,7 @@ Aula:
 
 ### `POST /api/v1/courses/:id/enroll` *(Bearer)*
 `200` → `{ "ok": true, "alreadyEnrolled": false }`
-`402` → `{ "error": "Este curso é pago. A compra é feita pelo site do MentorHub.", "price": 189 }`
+`402` → `{ "error": "Este curso é pago. A compra é feita pelo site do Órbita.", "price": 189 }`
 
 ### `PATCH /api/v1/courses/:id/enroll` *(Bearer)* — toggle de conclusão de aula
 Body: `{ "lessonId": "cmf..." }`

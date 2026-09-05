@@ -71,7 +71,7 @@ function SectionHeading({
   return (
     <Rise className={align === 'center' ? 'text-center' : undefined}>
       {eyebrow ? (
-        <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">{eyebrow}</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">{eyebrow}</p>
       ) : null}
       <h2
         id={id}
@@ -201,7 +201,7 @@ export default function LandingMentor() {
               </span>
               <h1 className="mt-5 text-4xl font-extrabold leading-[1.08] tracking-tight text-stone-900 sm:text-5xl dark:text-stone-50">
                 Transforme sua experiência em{' '}
-                <span className="text-emerald-700 dark:text-emerald-300">renda e impacto</span>
+                <span className="text-amber-700 dark:text-amber-300">renda e impacto</span>
               </h1>
               <p className="mt-5 text-lg text-stone-600 dark:text-stone-300">
                 Crie seu perfil, defina seus horários e receba alunos prontos para aprender com
@@ -210,8 +210,8 @@ export default function LandingMentor() {
               <ul className="mt-6 space-y-3">
                 {HERO_BULLETS.map((bullet) => (
                   <li key={bullet} className="flex items-start gap-3 text-sm text-stone-700 sm:text-base dark:text-stone-200">
-                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/50">
-                      <Check size={13} className="text-emerald-700 dark:text-emerald-300" aria-hidden="true" />
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950/50">
+                      <Check size={13} className="text-amber-700 dark:text-amber-300" aria-hidden="true" />
                     </span>
                     {bullet}
                   </li>
@@ -266,7 +266,7 @@ export default function LandingMentor() {
                     type="button"
                     tabIndex={-1}
                     aria-hidden="true"
-                    className="rounded-full bg-emerald-700 px-4 py-1.5 text-xs font-semibold text-white"
+                    className="rounded-full bg-amber-700 px-4 py-1.5 text-xs font-semibold text-white"
                   >
                     Aceitar
                   </button>
@@ -287,13 +287,13 @@ export default function LandingMentor() {
                 transition={{ repeat: Infinity, duration: 5, ease: 'easeInOut' }}
               >
                 <span className="flex items-center gap-2 text-sm font-bold text-stone-900 dark:text-stone-50">
-                  <TrendingUp size={16} className="text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                  <TrendingUp size={16} className="text-amber-600 dark:text-amber-400" aria-hidden="true" />
                   R$ 2.450 este mês
                 </span>
               </motion.div>
               <div className="absolute -bottom-5 left-0 -rotate-2 rounded-xl border border-stone-200 bg-white px-4 py-2.5 shadow-lg dark:border-stone-800 dark:bg-stone-900">
                 <span className="flex items-center gap-2 text-sm font-bold text-stone-900 dark:text-stone-50">
-                  <CalendarCheck size={16} className="text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                  <CalendarCheck size={16} className="text-amber-600 dark:text-amber-400" aria-hidden="true" />
                   Novo agendamento
                 </span>
               </div>
@@ -310,7 +310,7 @@ export default function LandingMentor() {
               id="calculadora-title"
               eyebrow="Calculadora"
               title="Quanto você pode ganhar?"
-              copy="Ajuste suas horas e o valor da sua hora para estimar o retorno mensal mentorando no MentorHub."
+              copy="Ajuste suas horas e o valor da sua hora para estimar o retorno mensal mentorando no Órbita."
             />
             <div className="mt-8 grid gap-8 sm:grid-cols-2">
               <div className="space-y-8">
@@ -358,7 +358,7 @@ export default function LandingMentor() {
               </div>
               <div className="flex flex-col justify-center rounded-2xl border border-stone-100 bg-stone-50 p-6 dark:border-stone-800 dark:bg-stone-950/50">
                 <p className="text-xs uppercase tracking-wider text-stone-500 dark:text-stone-400">Estimativa mensal</p>
-                <p className="mt-2 text-4xl font-extrabold text-emerald-700 dark:text-emerald-300">
+                <p className="mt-2 text-4xl font-extrabold text-amber-700 dark:text-amber-300">
                   {currencyBRL(monthly)}
                 </p>
                 <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
@@ -383,8 +383,8 @@ export default function LandingMentor() {
           />
           <Rise className="mt-10 grid gap-10 sm:grid-cols-3">
             {STEPS.map((step) => (
-              <div key={step.number} className="border-t-2 border-emerald-700 pt-6">
-                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">{step.number}</p>
+              <div key={step.number} className="border-t-2 border-amber-700 pt-6">
+                <p className="text-xs font-bold text-amber-700 dark:text-amber-300">{step.number}</p>
                 <h3 className="mt-3 text-lg font-bold text-stone-900 dark:text-stone-50">{step.title}</h3>
                 <p className="mt-2 text-sm text-stone-600 dark:text-stone-300">{step.text}</p>
               </div>
@@ -404,7 +404,7 @@ export default function LandingMentor() {
           <Rise className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {BENEFITS.map((benefit) => (
               <div key={benefit.title} className="rounded-2xl border border-stone-200 p-6 dark:border-stone-800">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
                   <benefit.icon size={20} aria-hidden="true" />
                 </span>
                 <h3 className="mt-4 font-bold text-stone-900 dark:text-stone-50">{benefit.title}</h3>
@@ -422,7 +422,7 @@ export default function LandingMentor() {
             <h2 id="depoimento-title" className="sr-only">
               Depoimento de mentor
             </h2>
-            <Quote size={28} className="mx-auto text-emerald-700 dark:text-emerald-300" aria-hidden="true" />
+            <Quote size={28} className="mx-auto text-amber-700 dark:text-amber-300" aria-hidden="true" />
             <blockquote className="mt-5 text-xl font-medium tracking-tight text-stone-900 sm:text-2xl dark:text-stone-50">
               Em três semanas minha agenda estava cheia. A mentoria virou uma renda mensal
               consistente — e ensinar o que eu uso todos os dias é a parte mais gratificante da
@@ -466,13 +466,13 @@ export default function LandingMentor() {
       {/* ============ 7. CTA final ============ */}
       <section aria-labelledby="cta-final-title" className="py-14 sm:py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <Rise className="relative overflow-hidden rounded-3xl bg-emerald-950 px-6 py-14 text-center text-white sm:py-16">
+          <Rise className="relative overflow-hidden rounded-3xl bg-amber-950 px-6 py-14 text-center text-white sm:py-16">
             <div
-              className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-emerald-500/20 blur-3xl"
+              className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-amber-500/20 blur-3xl"
               aria-hidden="true"
             />
             <div
-              className="pointer-events-none absolute -bottom-32 -left-16 h-64 w-64 rounded-full bg-emerald-400/10 blur-3xl"
+              className="pointer-events-none absolute -bottom-32 -left-16 h-64 w-64 rounded-full bg-amber-400/10 blur-3xl"
               aria-hidden="true"
             />
             <div className="relative">
@@ -482,12 +482,12 @@ export default function LandingMentor() {
               >
                 Comece a mentorar esta semana
               </h2>
-              <p className="mx-auto mt-4 max-w-xl text-base text-emerald-100/90 sm:text-lg">
+              <p className="mx-auto mt-4 max-w-xl text-base text-amber-100/90 sm:text-lg">
                 Crie seu perfil em minutos, defina sua disponibilidade e receba as primeiras
                 solicitações de alunos.
               </p>
               <Button
-                className="mt-8 h-12 rounded-full bg-white px-8 font-bold text-emerald-950 hover:bg-emerald-50"
+                className="mt-8 h-12 rounded-full bg-white px-8 font-bold text-amber-950 hover:bg-amber-50"
                 onClick={() => navigate({ name: 'onboarding' })}
               >
                 Criar meu perfil de mentor

@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
       }
       const payload = {
         _meta: {
-          app: 'MentorHub',
+          app: 'Órbita',
           kind: 'full-export',
           exportedAt: new Date().toISOString(),
           mode: isTursoConfigured() ? 'turso' : 'local',

@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
           userId,
           kind: 'welcome',
           refId: 'welcome',
-          title: 'Bem-vindo ao MentorHub! 🎉',
+          title: 'Bem-vindo ao Órbita! 🎉',
           body: 'Complete seu primeiro passo: explore cursos e conclua sua primeira aula hoje.',
         })
         if (isNew) {

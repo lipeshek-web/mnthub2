@@ -29,7 +29,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (course.price > 0) {
       return v1Json(
         {
-          error: 'Este curso é pago. A compra é feita pelo site do MentorHub.',
+          error: 'Este curso é pago. A compra é feita pelo site do Órbita.',
           code: 'PAID_COURSE',
           price: course.price,
         },

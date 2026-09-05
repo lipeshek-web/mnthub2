@@ -118,7 +118,7 @@ function clearSession() {
   if (typeof window === 'undefined') return
   try {
     window.localStorage.removeItem('mentorhub-session')
-    window.dispatchEvent(new CustomEvent('mentorhub:session-expired'))
+    window.dispatchEvent(new CustomEvent('orbita:session-expired'))
   } catch {
     /* ignora */
   }
@@ -253,7 +253,7 @@ export const api = {
       mentee: { id: string; name: string }
     }>(`/api/bookings/${id}`),
 
-  // Credencial da sala de vídeo própria (MentorHub Live): token HMAC assinado
+  // Credencial da sala de vídeo própria (Órbita Live): token HMAC assinado
   // pelo backend com papel (HOST = mentor) — o cliente nunca se autodeclara.
   getMeetingToken: (id: string) =>
     request<{

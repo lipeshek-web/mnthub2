@@ -109,7 +109,7 @@ export async function expireDueSubscriptions(): Promise<number> {
       await sendEmail({
         to: sub.user.email,
         kind: 'membership_expired',
-        subject: `Sua assinatura "${sub.membership.title}" expirou — MentorHub`,
+        subject: `Sua assinatura "${sub.membership.title}" expirou — Órbita`,
         html: brandedEmail({
           title: 'Assinatura expirada',
           lines: [

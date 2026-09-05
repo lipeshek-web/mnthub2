@@ -108,7 +108,7 @@ export function PromoBar() {
               aria-label={`Copiar cupom ${current.code}`}
               className={cn(
                 'inline-flex min-h-7 shrink-0 items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-wide transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50',
-                copied && 'border-emerald-400/60 bg-emerald-500/20 text-emerald-300'
+                copied && 'border-amber-400/60 bg-amber-500/20 text-amber-300'
               )}
             >
               {copied ? <Check aria-hidden className="h-3 w-3" /> : <Copy aria-hidden className="h-3 w-3" />}

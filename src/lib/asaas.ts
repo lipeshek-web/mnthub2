@@ -92,7 +92,7 @@ async function asaasFetch<T>(
     headers: {
       'Content-Type': 'application/json',
       access_token: config.apiKey,
-      'User-Agent': 'MentorHub/1.0',
+      'User-Agent': 'Órbita/1.0',
     },
     body: init?.body ? JSON.stringify(init.body) : undefined,
     cache: 'no-store',
@@ -250,7 +250,7 @@ export async function createPaymentWebhook(
   const webhook = await asaasFetch<{ id: string }>(config, '/webhooks', {
     method: 'POST',
     body: {
-      name: 'MentorHub — pagamentos',
+      name: 'Órbita — pagamentos',
       url: targetUrl,
       email,
       enabled: true,

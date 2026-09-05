@@ -1,13 +1,13 @@
 {
-  "name": "MentorHub — Plataforma de Mentorias 1:1",
-  "short_name": "MentorHub",
-  "description": "Marketplace de mentorias: mentores especialistas, cursos, trilhas e agendamento simples.",
+  "name": "Órbita — Seu universo de aprendizado",
+  "short_name": "Órbita",
+  "description": "Mentorias 1:1, cursos, trilhas, biblioteca e eventos em um só lugar.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#ffffff",
-  "theme_color": "#047857",
+  "theme_color": "#b45309",
   "lang": "pt-BR",
   "categories": ["education", "productivity"],
   "icons": [

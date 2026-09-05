@@ -1,5 +1,5 @@
 /**
- * MentorHub service worker — PWA instalável.
+ * Órbita service worker — PWA instalável.
  *
  * Estratégias:
  *  - ?cache=0 (dev): NÃO serve nada do cache — o app sempre vai à rede
@@ -9,7 +9,7 @@
  *      · Estáticos imutáveis (/_next/static, /icons, imagens): cache-first.
  *      · Demais GET same-origin (API etc.): network-only.
  */
-const VERSION = 'mentorhub-v1'
+const VERSION = 'orbita-v1'
 const CACHEABLE = ['/_next/static/', '/icons/', '/logo.svg']
 
 self.addEventListener('install', (event) => {

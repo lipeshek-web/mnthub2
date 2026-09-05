@@ -81,7 +81,7 @@ function SocialButton({
       rel="noopener noreferrer"
       aria-label={`${label} de ${mentorName}: ${display} (abre em nova aba)`}
       title={display}
-      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-500 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-400 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300"
+      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-500 transition-colors hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-400 dark:hover:border-amber-700 dark:hover:bg-amber-900/30 dark:hover:text-amber-300"
     >
       <Icon aria-hidden className="h-[18px] w-[18px]" />
     </a>
@@ -103,7 +103,7 @@ function LpStat({
       <p className="text-2xl font-extrabold tracking-tight sm:text-3xl" style={headingStyle}>
         {value}
       </p>
-      <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-emerald-200/80">
+      <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-amber-200/80">
         {label}
       </p>
     </div>
@@ -127,7 +127,7 @@ function LpCourseCard({
   return (
     <article
       onClick={() => onOpen(course)}
-      className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition-all hover:border-emerald-300 hover:shadow-md focus-within:border-emerald-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-700 dark:focus-within:border-emerald-700"
+      className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition-all hover:border-amber-300 hover:shadow-md focus-within:border-amber-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-amber-700 dark:focus-within:border-amber-700"
     >
       {course.coverUrl ? (
         <img
@@ -148,7 +148,7 @@ function LpCourseCard({
 
       <div className="flex flex-1 flex-col p-5">
         <div className="flex flex-wrap items-center gap-1.5">
-          <Badge className="rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-950/50">
+          <Badge className="rounded-full border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300 dark:hover:bg-amber-950/50">
             {course.category}
           </Badge>
           <Badge variant="outline" className="rounded-full border-stone-300 text-stone-600 dark:border-stone-700 dark:text-stone-300">
@@ -180,7 +180,7 @@ function LpCourseCard({
 
         <div className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-4 dark:border-stone-800">
           {course.price === 0 ? (
-            <span className="text-base font-extrabold text-emerald-700 dark:text-emerald-300">Grátis</span>
+            <span className="text-base font-extrabold text-amber-700 dark:text-amber-300">Grátis</span>
           ) : (
             <span className="text-base font-extrabold text-stone-900 dark:text-stone-50">
               {currencyBRL(course.price)}
@@ -397,10 +397,10 @@ export function MentorLpView({ slug }: { slug: string }) {
             name={mentor.name}
             src={mentor.avatarUrl}
             size="xl"
-            className="-mt-12 h-24 w-24 shadow-lg ring-4 ring-emerald-500/70"
+            className="-mt-12 h-24 w-24 shadow-lg ring-4 ring-amber-500/70"
           />
           <div className="mt-3">
-            <Badge className="gap-1 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-950/50">
+            <Badge className="gap-1 rounded-full border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300 dark:hover:bg-amber-950/50">
               <BadgeCheck aria-hidden className="h-3.5 w-3.5" />
               Mentor verificado
             </Badge>
@@ -432,15 +432,15 @@ export function MentorLpView({ slug }: { slug: string }) {
               </span>
             )}
             <span className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
-              <CalendarCheck2 aria-hidden className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
+              <CalendarCheck2 aria-hidden className="h-4 w-4 text-amber-700 dark:text-amber-300" />
               {mentor.totalSessions}+ sessões
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
-              <Clock3 aria-hidden className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
+              <Clock3 aria-hidden className="h-4 w-4 text-amber-700 dark:text-amber-300" />
               {mentor.experienceYears} anos de experiência
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
-              <Globe aria-hidden className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
+              <Globe aria-hidden className="h-4 w-4 text-amber-700 dark:text-amber-300" />
               {mentor.languages}
             </span>
           </div>
@@ -458,7 +458,7 @@ export function MentorLpView({ slug }: { slug: string }) {
       {/* ============ BARRA DE PROVA SOCIAL ============ */}
       <section
         aria-label="Números do mentor"
-        className="mt-6 grid grid-cols-2 gap-y-6 rounded-2xl bg-emerald-950 px-6 py-7 text-white sm:grid-cols-4 sm:px-8"
+        className="mt-6 grid grid-cols-2 gap-y-6 rounded-2xl bg-amber-950 px-6 py-7 text-white sm:grid-cols-4 sm:px-8"
       >
         <LpStat value={String(studentCount)} label={studentCount === 1 ? 'aluno matriculado' : 'alunos matriculados'} headingStyle={headingStyle} />
         <LpStat
@@ -530,7 +530,7 @@ export function MentorLpView({ slug }: { slug: string }) {
           {mentor.categories.map((c) => (
             <Badge
               key={c}
-              className="rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+              className="rounded-full border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300 dark:hover:bg-amber-950/50"
             >
               {c}
             </Badge>
@@ -615,9 +615,9 @@ export function MentorLpView({ slug }: { slug: string }) {
       {/* ============ CTA FINAL ============ */}
       <section
         aria-labelledby="lp-cta-title"
-        className="relative mt-12 overflow-hidden rounded-3xl bg-emerald-950 px-6 py-10 text-center text-white sm:px-10 sm:py-12"
+        className="relative mt-12 overflow-hidden rounded-3xl bg-amber-950 px-6 py-10 text-center text-white sm:px-10 sm:py-12"
       >
-        <div aria-hidden className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl" />
+        <div aria-hidden className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-amber-500/20 blur-3xl" />
         <div aria-hidden className="absolute -bottom-20 -left-10 h-48 w-48 rounded-full bg-teal-400/10 blur-2xl" />
         <div className="relative">
           <h2
@@ -627,13 +627,13 @@ export function MentorLpView({ slug }: { slug: string }) {
           >
             Aprenda com {fname} de perto
           </h2>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-emerald-100/85" style={bodyStyle}>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-amber-100/85" style={bodyStyle}>
             Agende uma mentoria 1:1 ou continue aprendendo nos cursos, no seu ritmo.
           </p>
           <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button
               onClick={handleSchedule}
-              className="h-12 w-full rounded-full bg-white px-8 font-bold text-emerald-950 hover:bg-emerald-50 sm:w-auto"
+              className="h-12 w-full rounded-full bg-white px-8 font-bold text-amber-950 hover:bg-amber-50 sm:w-auto"
             >
               <CalendarCheck2 aria-hidden className="h-4.5 w-4.5" />
               Agendar uma mentoria
@@ -654,9 +654,9 @@ export function MentorLpView({ slug }: { slug: string }) {
         Página oficial de {mentor.name} na plataforma{' '}
         <button
           onClick={() => navigate({ name: 'home' })}
-          className="font-bold text-stone-500 underline-offset-2 transition-colors hover:text-emerald-700 hover:underline dark:text-stone-400 dark:hover:text-emerald-300"
+          className="font-bold text-stone-500 underline-offset-2 transition-colors hover:text-amber-700 hover:underline dark:text-stone-400 dark:hover:text-amber-300"
         >
-          MentorHub
+          Órbita
         </button>
       </footer>
     </div>

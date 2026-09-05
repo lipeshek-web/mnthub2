@@ -237,7 +237,7 @@ export function TrackView({ trackId }: { trackId: string }) {
         )}
         <div className="relative">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge className="rounded-full border-transparent bg-white/95 text-emerald-900 hover:bg-white/95">
+            <Badge className="rounded-full border-transparent bg-white/95 text-amber-900 hover:bg-white/95">
               <Route aria-hidden className="h-3 w-3" />
               Trilha
             </Badge>
@@ -289,8 +289,8 @@ export function TrackView({ trackId }: { trackId: string }) {
               Como a trilha funciona
             </h2>
             {track.myEnrollment ? (
-              <div className="mt-4 rounded-xl border border-emerald-100 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/50 p-4">
-                <div className="flex items-center justify-between gap-2 text-sm font-bold text-emerald-900 dark:text-emerald-200">
+              <div className="mt-4 rounded-xl border border-amber-100 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/50 p-4">
+                <div className="flex items-center justify-between gap-2 text-sm font-bold text-amber-900 dark:text-amber-200">
                   <span>Seu progresso na trilha</span>
                   <span>{overallPercent}%</span>
                 </div>
@@ -299,7 +299,7 @@ export function TrackView({ trackId }: { trackId: string }) {
                   className="mt-2 h-2"
                   aria-label={`${overallPercent}% da trilha concluída`}
                 />
-                <p className="mt-2 text-xs font-medium text-emerald-800/80 dark:text-emerald-300/80">
+                <p className="mt-2 text-xs font-medium text-amber-800/80 dark:text-amber-300/80">
                   {overallCompleted} de {overallTotal} aulas concluídas · {overallPercent}%
                 </p>
               </div>
@@ -331,7 +331,7 @@ export function TrackView({ trackId }: { trackId: string }) {
                       aria-hidden
                       className={cn(
                         'flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white',
-                        item.type === 'COURSE' ? 'bg-emerald-700' : 'bg-amber-600'
+                        item.type === 'COURSE' ? 'bg-amber-700' : 'bg-amber-600'
                       )}
                     >
                       {index + 1}
@@ -404,12 +404,12 @@ export function TrackView({ trackId }: { trackId: string }) {
         {/* ---------- SIDEBAR DE INSCRIÇÃO ---------- */}
         <Card className="self-start rounded-2xl border-stone-200 dark:border-stone-800 p-6 shadow-none lg:sticky lg:top-6">
           {track.myEnrollment ? (
-            <div className="mb-4 rounded-xl border border-emerald-100 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/50 p-3.5">
-              <Badge className="bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-950/50">
+            <div className="mb-4 rounded-xl border border-amber-100 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/50 p-3.5">
+              <Badge className="bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/50">
                 <CheckCircle2 aria-hidden className="h-3 w-3" />
                 Você está inscrito
               </Badge>
-              <p className="mt-1.5 text-xs font-medium text-emerald-800/80 dark:text-emerald-300/80">
+              <p className="mt-1.5 text-xs font-medium text-amber-800/80 dark:text-amber-300/80">
                 Inscrito em {formatDayLabel(track.myEnrollment.createdAt)}
               </p>
             </div>
@@ -418,7 +418,7 @@ export function TrackView({ trackId }: { trackId: string }) {
           <p
             className={cn(
               'text-3xl font-extrabold tracking-tight',
-              track.price === 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-stone-900 dark:text-stone-50'
+              track.price === 0 ? 'text-amber-700 dark:text-amber-300' : 'text-stone-900 dark:text-stone-50'
             )}
           >
             {track.price === 0 ? 'Grátis' : currencyBRL(track.price)}
@@ -444,22 +444,22 @@ export function TrackView({ trackId }: { trackId: string }) {
 
           <ul className="mt-5 space-y-2.5 border-t border-stone-100 dark:border-stone-800 pt-5 text-sm text-stone-600 dark:text-stone-300">
             <li className="flex items-start gap-2">
-              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
               {track.courseCount} {track.courseCount === 1 ? 'curso completo' : 'cursos completos'}
             </li>
             <li className="flex items-start gap-2">
-              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
               {track.mentorshipSessions}{' '}
               {track.mentorshipSessions === 1
                 ? 'sessão de mentoria 1:1'
                 : 'sessões de mentoria 1:1'}
             </li>
             <li className="flex items-start gap-2">
-              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
               Progresso salvo automaticamente
             </li>
             <li className="flex items-start gap-2">
-              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
               Certificado de conclusão da trilha
             </li>
           </ul>
@@ -495,7 +495,7 @@ function CourseItemCard({
           onOpenCourse?.()
         }
       }}
-      className="group flex cursor-pointer flex-col gap-4 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 transition-colors hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-emerald-50/40 dark:hover:bg-emerald-900/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/40 sm:flex-row"
+      className="group flex cursor-pointer flex-col gap-4 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 transition-colors hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/40 dark:hover:bg-amber-900/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600/40 sm:flex-row"
     >
       <div
         className="h-28 w-full shrink-0 overflow-hidden rounded-xl sm:w-44"
@@ -518,7 +518,7 @@ function CourseItemCard({
         <Badge variant="outline" className="border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-400">
           Curso
         </Badge>
-        <h3 className="mt-2 font-bold leading-snug text-stone-900 dark:text-stone-50 group-hover:text-emerald-900 dark:group-hover:text-emerald-300">
+        <h3 className="mt-2 font-bold leading-snug text-stone-900 dark:text-stone-50 group-hover:text-amber-900 dark:group-hover:text-amber-300">
           {item.title}
         </h3>
         {item.description ? (
@@ -540,7 +540,7 @@ function CourseItemCard({
             </span>
           ) : null}
           {item.mentorshipCount > 0 ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 font-semibold text-emerald-700 dark:text-emerald-300">
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 font-semibold text-amber-700 dark:text-amber-300">
               <Users aria-hidden className="h-3 w-3" />
               Inclui {item.mentorshipCount}{' '}
               {item.mentorshipCount === 1 ? 'mentoria' : 'mentorias'}
@@ -592,12 +592,12 @@ function MentorshipItemCard({
   return (
     <article
       aria-label={`Etapa: bloco de mentoria ${item.title}`}
-      className="rounded-2xl border border-emerald-100 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/50 p-4 sm:p-5"
+      className="rounded-2xl border border-amber-100 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/50 p-4 sm:p-5"
     >
       <div className="flex items-start gap-3">
         <span
           aria-hidden
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300"
+          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300"
         >
           <Users className="h-5 w-5" />
         </span>
@@ -606,7 +606,7 @@ function MentorshipItemCard({
           {item.description ? (
             <p className="mt-1 text-sm leading-relaxed text-stone-600 dark:text-stone-300">{item.description}</p>
           ) : null}
-          <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-white dark:bg-stone-950/50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-900">
+          <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-white dark:bg-stone-950/50 px-2.5 py-0.5 text-[11px] font-bold text-amber-800 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-900">
             <CalendarCheck aria-hidden className="h-3 w-3" />
             {item.sessionCount} {item.sessionCount === 1 ? 'sessão' : 'sessões'} de 60min
           </span>
@@ -614,7 +614,7 @@ function MentorshipItemCard({
       </div>
       <Button
         size="sm"
-        className="mt-4 h-10 w-full rounded-full bg-emerald-700 font-semibold text-white hover:bg-emerald-800 sm:w-auto sm:px-5"
+        className="mt-4 h-10 w-full rounded-full bg-amber-700 font-semibold text-white hover:bg-amber-800 sm:w-auto sm:px-5"
         onClick={onSchedule}
         aria-label={`Agendar mentoria "${item.title}" com ${mentorName}`}
       >

@@ -91,7 +91,7 @@ import { cn } from '@/lib/utils'
 
 const PAYMENT_STATUS_META: Record<string, { label: string; cls: string }> = {
   PENDING: { label: 'Pendente', cls: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-900' },
-  RECEIVED: { label: 'Recebido', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-900' },
+  RECEIVED: { label: 'Recebido', cls: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-900' },
   CONFIRMED: { label: 'Confirmado', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-900' },
   OVERDUE: { label: 'Vencido', cls: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-900' },
   REFUNDED: { label: 'Estornado', cls: 'bg-stone-100 text-stone-600 border-stone-200 dark:bg-stone-900 dark:text-stone-300 dark:border-stone-800' },
@@ -627,7 +627,7 @@ export function AdminPanel() {
     <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
       {/* Cabeçalho */}
       <div className="flex flex-wrap items-center gap-3">
-        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-950 text-emerald-300 dark:bg-emerald-950/60">
+        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-950 text-amber-300 dark:bg-amber-950/60">
           <ShieldCheck className="h-5.5 w-5.5" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
@@ -741,7 +741,7 @@ export function AdminPanel() {
                       Gateway de pagamentos
                     </h2>
                     {stats.asaas.configured ? (
-                      <Badge className="rounded-full bg-emerald-100 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300">
+                      <Badge className="rounded-full bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300">
                         Asaas · {stats.asaas.env === 'production' ? 'PRODUÇÃO' : 'SANDBOX'}
                       </Badge>
                     ) : (
@@ -803,7 +803,7 @@ export function AdminPanel() {
                   Configuração do Asaas
                 </h2>
                 {asaas?.configured && (
-                  <Badge className="rounded-full bg-emerald-100 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300">
+                  <Badge className="rounded-full bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300">
                     {asaas.env === 'production' ? 'PRODUÇÃO' : 'SANDBOX'} · {asaas.maskedKey}
                   </Badge>
                 )}
@@ -1096,7 +1096,7 @@ export function AdminPanel() {
                             {u.name}
                           </p>
                           {u.role === 'ADMIN' && (
-                            <Badge className="rounded-full bg-stone-950 text-emerald-300 hover:bg-stone-950 dark:bg-emerald-950/60 dark:text-emerald-300">
+                            <Badge className="rounded-full bg-stone-950 text-amber-300 hover:bg-stone-950 dark:bg-amber-950/60 dark:text-amber-300">
                               ADMIN
                             </Badge>
                           )}
@@ -1322,7 +1322,7 @@ export function AdminPanel() {
                     type="checkbox"
                     checked={cpPromoBar}
                     onChange={(e) => setCpPromoBar(e.target.checked)}
-                    className="h-4 w-4 accent-emerald-700"
+                    className="h-4 w-4 accent-amber-700"
                   />
                   <span className="text-sm font-semibold text-stone-700 dark:text-stone-200">
                     Mostrar na barra promocional rotativa (topo do site)
@@ -1393,7 +1393,7 @@ export function AdminPanel() {
                         ? { label: 'Expirado', cls: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-900' }
                         : exhausted
                           ? { label: 'Esgotado', cls: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-900' }
-                          : { label: 'Ativo', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-900' }
+                          : { label: 'Ativo', cls: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-900' }
                     return (
                       <li
                         key={c.id}
@@ -1469,7 +1469,7 @@ export function AdminPanel() {
           <Card className="rounded-2xl">
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center gap-2">
-                <ShieldCheck aria-hidden className="h-5 w-5 text-emerald-700 dark:text-emerald-300" />
+                <ShieldCheck aria-hidden className="h-5 w-5 text-amber-700 dark:text-amber-300" />
                 <h2 className="text-sm font-extrabold uppercase tracking-widest text-stone-500 dark:text-stone-400">
                   Autenticação em duas etapas (TOTP)
                 </h2>
@@ -1479,7 +1479,7 @@ export function AdminPanel() {
                 <Skeleton className="mt-4 h-24 rounded-2xl" />
               ) : mfaEnabled ? (
                 <div className="mt-4 space-y-4">
-                  <div className="flex items-center gap-2 rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/50 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200">
+                  <div className="flex items-center gap-2 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/50 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
                     <CheckCircle2 aria-hidden className="h-4 w-4 shrink-0" />
                     MFA <strong>ativo</strong> — todo login desta conta pede o código do app
                     autenticador. Sessões administrativas duram 12h.
@@ -1759,7 +1759,7 @@ export function AdminPanel() {
                 <span
                   className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
                     emails?.smtpConfigured
-                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
                       : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
                   }`}
                 >
@@ -1779,7 +1779,7 @@ export function AdminPanel() {
                       <span
                         className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold ${
                           m.status === 'SENT'
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
                             : m.status === 'LOGGED'
                               ? 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300'
                               : m.status === 'FAILED'
@@ -1830,7 +1830,7 @@ export function AdminPanel() {
                   </h2>
                   {persistence ? (
                     persistence.mode === 'turso' ? (
-                      <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                      <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
                         Nuvem (Turso) — protege contra atualizações
                       </span>
                     ) : (
@@ -1859,7 +1859,7 @@ export function AdminPanel() {
                         <HardDrive className="h-3.5 w-3.5" aria-hidden /> Banco atual
                       </p>
                       {persistence.mode === 'turso' ? (
-                        <p className="mt-1.5 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                        <p className="mt-1.5 text-sm font-semibold text-amber-700 dark:text-amber-400">
                           Turso/libSQL na nuvem (TURSO_DATABASE_URL)
                         </p>
                       ) : (
@@ -1894,9 +1894,9 @@ export function AdminPanel() {
 
                 {/* Caminho para a nuvem quando em modo local */}
                 {persistence?.mode === 'local' ? (
-                  <div className="mt-4 flex flex-col gap-2 rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900 dark:bg-emerald-950/40 sm:flex-row sm:items-center">
-                    <CloudUpload className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
-                    <p className="min-w-0 flex-1 text-xs leading-relaxed text-emerald-800 dark:text-emerald-200">
+                  <div className="mt-4 flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-900 dark:bg-amber-950/40 sm:flex-row sm:items-center">
+                    <CloudUpload className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+                    <p className="min-w-0 flex-1 text-xs leading-relaxed text-amber-800 dark:text-amber-200">
                       <strong>Proteção máxima:</strong> crie um banco gratuito em turso.tech, defina{' '}
                       <code className="rounded bg-white/70 px-1 dark:bg-stone-900/70">TURSO_DATABASE_URL</code> e{' '}
                       <code className="rounded bg-white/70 px-1 dark:bg-stone-900/70">TURSO_AUTH_TOKEN</code> no

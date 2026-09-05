@@ -1,0 +1,734 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+     4→     4→import {
+     5→     5→  Bell,
+     6→     6→  BellOff,
+     7→     7→  CalendarCheck,
+     8→     8→  CalendarClock,
+     9→     9→  CalendarDays,
+    10→    10→  CalendarX,
+    11→    11→  CheckCircle2,
+    12→    12→  Compass,
+    13→    13→  Gift,
+    14→    14→  GraduationCap,
+    15→    15→  LayoutDashboard,
+    16→    16→  ListVideo,
+    17→    17→  LogIn,
+    18→    18→  LogOut,
+    19→    19→  MessageCircle,
+    20→    20→  MessageSquareQuote,
+    21→    21→  Moon,
+    22→    22→  PlusCircle,
+    23→    23→  Search,
+    24→    24→  ShieldCheck,
+    25→    25→  ShoppingBag,
+    26→    26→  Star,
+    27→    27→  Sun,
+    28→    28→  UserPlus,
+    29→    29→  UserRoundPlus,
+    30→    30→  X,
+    31→    31→} from 'lucide-react'
+    32→    32→import type { LucideIcon } from 'lucide-react'
+    33→    33→import { toast } from 'sonner'
+    34→    34→import { useTheme } from 'next-themes'
+    35→    35→import { api } from '@/lib/api'
+    36→    36→import type { NotificationDTO } from '@/lib/types'
+    37→    37→import { Badge } from '@/components/ui/badge'
+    38→    38→import { Button } from '@/components/ui/button'
+    39→    39→import { Avatar } from '@/components/platform/avatar'
+    40→    40→import { useAppStore, type AppView } from '@/lib/store'
+    41→    41→import { firstName } from '@/lib/helpers'
+    42→    42→import { cn } from '@/lib/utils'
+    43→    43→import {
+    44→    44→  DropdownMenu,
+    45→    45→  DropdownMenuContent,
+    46→    46→  DropdownMenuItem,
+    47→    47→  DropdownMenuLabel,
+    48→    48→  DropdownMenuSeparator,
+    49→    49→  DropdownMenuTrigger,
+    50→    50→} from '@/components/ui/dropdown-menu'
+    51→    51→
+    52→    52→// ==================== Sino de notificações in-app ====================
+    53→    53→
+    54→    54→type NotificationChip = { icon: LucideIcon; chipClass: string }
+    55→    55→
+    56→    56→/** Chip de ícone por tipo de notificação (paleta stone/emerald + acentos por kind) */
+    57→    57→const NOTIFICATION_KINDS: Record<string, NotificationChip> = {
+    58→    58→  booking_new: { icon: CalendarClock, chipClass: 'bg-amber-100 text-amber-600' },
+    59→    59→  booking_confirmed: { icon: CalendarCheck, chipClass: 'bg-emerald-100 text-emerald-700' },
+    60→    60→  booking_cancelled: { icon: CalendarX, chipClass: 'bg-rose-100 text-rose-600' },
+    61→    61→  booking_completed: { icon: CheckCircle2, chipClass: 'bg-emerald-100 text-emerald-700' },
+    62→    62→  review_new: { icon: Star, chipClass: 'bg-amber-100 text-amber-600' },
+    63→    63→  lesson_new: { icon: ListVideo, chipClass: 'bg-violet-100 text-violet-600' },
+    64→    64→  enrollment_new: { icon: UserPlus, chipClass: 'bg-emerald-100 text-emerald-700' },
+    65→    65→  course_review_new: { icon: MessageSquareQuote, chipClass: 'bg-violet-100 text-violet-600' },
+    66→    66→  purchase_new: { icon: ShoppingBag, chipClass: 'bg-emerald-100 text-emerald-700' },
+    67→    67→  message_new: { icon: MessageCircle, chipClass: 'bg-teal-100 text-teal-700' },
+    68→    68→}
+    69→    69→const DEFAULT_KIND: NotificationChip = { icon: Bell, chipClass: 'bg-stone-100 text-stone-500' }
+    70→    70→
+    71→    71→/** Tempo relativo compacto: "agora", "há 5 min", "há 2 h", "há 3 d" (data p/ antigos) */
+    72→    72→function relativeTime(iso: string) {
+    73→    73→  const diffMin = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60_000))
+    74→    74→  if (diffMin < 1) return 'agora'
+    75→    75→  if (diffMin < 60) return `há ${diffMin} min`
+    76→    76→  const hours = Math.floor(diffMin / 60)
+    77→    77→  if (hours < 24) return `há ${hours} h`
+    78→    78→  const days = Math.floor(hours / 24)
+    79→    79→  if (days < 30) return `há ${days} d`
+    80→    80→  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+    81→    81→}
+    82→    82→
+    83→    83→// ==================== Contadores do header (1 poll para os 2 sininhos) ====================
+    84→    84→
+    85→    85→/**
+    86→    86→ * Badge único: mensagens + notificações não lidas em UM request autenticado
+    87→    87→ * (antes eram 2 polls — messages/unread 45s + notifications 60s). Pausa com a
+    88→    88→ * aba oculta e atualiza ao voltar o foco. `refresh()` força revalidação depois
+    89→    89→ * de ações locais (ex.: marcar tudo como lido). Compartilhado com a tab bar mobile.
+    90→    90→ */
+    91→    91→export function useBadges() {
+    92→    92→  const userId = useAppStore((s) => s.user?.id)
+    93→    93→  const [badges, setBadges] = useState({ messages: 0, notifications: 0 })
+    94→    94→  const aliveRef = useRef(true)
+    95→    95→  const reqIdRef = useRef(0)
+    96→    96→
+    97→    97→  const refresh = useCallback(() => {
+    98→    98→    if (!userId) return
+    99→    99→    const reqId = ++reqIdRef.current
+   100→   100→    api
+   101→   101→      .badges()
+   102→   102→      .then((res) => {
+   103→   103→        if (!aliveRef.current || reqId !== reqIdRef.current) return
+   104→   104→        setBadges((prev) =>
+   105→   105→          prev.messages === res.messages && prev.notifications === res.notifications
+   106→   106→            ? prev
+   107→   107→            : { messages: res.messages, notifications: res.notifications }
+   108→   108→        )
+   109→   109→      })
+   110→   110→      .catch(() => {
+   111→   111→        /* silencioso */
+   112→   112→      })
+   113→   113→  }, [userId])
+   114→   114→
+   115→   115→  useEffect(() => {
+   116→   116→    if (!userId) return
+   117→   117→    aliveRef.current = true
+   118→   118→    refresh()
+   119→   119→    const timer = setInterval(() => {
+   120→   120→      if (document.hidden) return // economia: aba em segundo plano não faz polling
+   121→   121→      refresh()
+   122→   122→    }, 45_000)
+   123→   123→    const onVisible = () => {
+   124→   124→      if (!document.hidden) refresh()
+   125→   125→    }
+   126→   126→    document.addEventListener('visibilitychange', onVisible)
+   127→   127→    window.addEventListener('focus', onVisible)
+   128→   128→    return () => {
+   129→   129→      aliveRef.current = false
+   130→   130→      clearInterval(timer)
+   131→   131→      document.removeEventListener('visibilitychange', onVisible)
+   132→   132→      window.removeEventListener('focus', onVisible)
+   133→   133→    }
+   134→   134→  }, [userId, refresh])
+   135→   135→
+   136→   136→  // Sem login os badges são sempre zero (derivado — sem setState em efeito)
+   137→   137→  const shown = userId ? badges : { messages: 0, notifications: 0 }
+   138→   138→  return { ...shown, refresh }
+   139→   139→}
+   140→   140→
+   141→   141→// ==================== Mensagens diretas (chat) ====================
+   142→   142→
+   143→   143→/** Ícone de mensagens com badge de não lidas (alimenta-se do badge único do header) */
+   144→   144→function MessagesButton({ unread }: { unread: number }) {
+   145→   145→  const user = useAppStore((s) => s.user)
+   146→   146→  const navigate = useAppStore((s) => s.navigate)
+   147→   147→
+   148→   148→  if (!user) return null
+   149→   149→
+   150→   150→  return (
+   151→   151→    <button
+   152→   152→      type="button"
+   153→   153→      onClick={() => navigate({ name: 'messages' })}
+   154→   154→      aria-label={
+   155→   155→        unread > 0 ? `Mensagens, ${unread} não lida${unread === 1 ? '' : 's'}` : 'Mensagens'
+   156→   156→      }
+   157→   157→      title="Mensagens"
+   158→   158→      className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
+   159→   159→    >
+   160→   160→      <MessageCircle className="h-4.5 w-4.5" />
+   161→   161→      {unread > 0 && (
+   162→   162→        <span
+   163→   163→          aria-live="polite"
+   164→   164→          className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold leading-none text-white"
+   165→   165→        >
+   166→   166→          {unread > 99 ? '99+' : unread}
+   167→   167→        </span>
+   168→   168→      )}
+   169→   169→    </button>
+   170→   170→  )
+   171→   171→}
+   172→   172→
+   173→   173→// ==================== Alternador de tema (claro/escuro) ====================
+   174→   174→
+   175→   175→function ThemeToggle() {
+   176→   176→  const { resolvedTheme, setTheme } = useTheme()
+   177→   177→  // next-themes só sabe o tema no cliente — evita mismatch de hidratação
+   178→   178→  // (useSyncExternalStore em vez de setState em effect: sem render cascata)
+   179→   179→  const emptySubscribe = useCallback(() => () => {}, [])
+   180→   180→  const mounted = useSyncExternalStore(
+   181→   181→    emptySubscribe,
+   182→   182→    () => true,
+   183→   183→    () => false
+   184→   184→  )
+   185→   185→
+   186→   186→  const isDark = mounted && resolvedTheme === 'dark'
+   187→   187→  return (
+   188→   188→    <button
+   189→   189→      type="button"
+   190→   190→      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+   191→   191→      aria-label={isDark ? 'Mudar para o tema claro' : 'Mudar para o tema escuro'}
+   192→   192→      title={isDark ? 'Tema claro' : 'Tema escuro'}
+   193→   193→      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
+   194→   194→    >
+   195→   195→      {mounted ? (
+   196→   196→        isDark ? (
+   197→   197→          <Sun className="h-4.5 w-4.5" />
+   198→   198→        ) : (
+   199→   199→          <Moon className="h-4.5 w-4.5" />
+   200→   200→        )
+   201→   201→      ) : (
+   202→   202→        <span className="h-4.5 w-4.5" aria-hidden />
+   203→   203→      )}
+   204→   204→    </button>
+   205→   205→  )
+   206→   206→}
+   207→   207→
+   208→   208→function NotificationsBell({
+   209→   209→  badgeCount,
+   210→   210→  refreshBadges,
+   211→   211→}: {
+   212→   212→  badgeCount: number
+   213→   213→  refreshBadges: () => void
+   214→   214→}) {
+   215→   215→  const user = useAppStore((s) => s.user)
+   216→   216→  const navigate = useAppStore((s) => s.navigate)
+   217→   217→
+   218→   218→  const [open, setOpen] = useState(false)
+   219→   219→  const [items, setItems] = useState<NotificationDTO[]>([])
+   220→   220→  // Contador exibido = sobrescrita otimista local ?? badge do header (poll 45s).
+   221→   221→  // Sem setState em efeito: o badge chega como prop e a otimização vence até o
+   222→   222→  // servidor confirmar.
+   223→   223→  const [localOverride, setLocalOverride] = useState<number | null>(null)
+   224→   224→  const unreadCount = localOverride ?? badgeCount
+   225→   225→
+   226→   226→  // Guard `alive` + contador de requisição: evita setState de respostas
+   227→   227→  // obsoletas (unmount, troca de usuário ou fetch sobreposto)
+   228→   228→  const aliveRef = useRef(true)
+   229→   229→  const reqIdRef = useRef(0)
+   230→   230→
+   231→   231→  const loadNotifications = useCallback(async (userId: string) => {
+   232→   232→    const reqId = ++reqIdRef.current
+   233→   233→    try {
+   234→   234→      const res = await api.listNotifications(userId)
+   235→   235→      if (!aliveRef.current || reqId !== reqIdRef.current) return
+   236→   236→      setItems(res.items)
+   237→   237→      setLocalOverride(res.unreadCount)
+   238→   238→    } catch {
+   239→   239→      // Erro silencioso: badge apenas não aparece (sem toast)
+   240→   240→    }
+   241→   241→  }, [])
+   242→   242→
+   243→   243→  const userId = user?.id
+   244→   244→  // Itens do dropdown: carregados ao ABRIR o painel (sem poll e sem fetch no
+   245→   245→  // mount — o contador vem do badge único; a lista só importa ao abrir)
+   246→   246→  useEffect(() => {
+   247→   247→    aliveRef.current = true
+   248→   248→    return () => {
+   249→   249→      aliveRef.current = false
+   250→   250→    }
+   251→   251→  }, [])
+   252→   252→
+   253→   253→  const handleOpenChange = (next: boolean) => {
+   254→   254→    setOpen(next)
+   255→   255→    if (next && userId) loadNotifications(userId) // refetch ao abrir o dropdown
+   256→   256→  }
+   257→   257→  const handleItemClick = (item: NotificationDTO) => {
+   258→   258→    // Marca como lida de forma otimista (badge/zumbido atualizam na hora)
+   259→   259→    if (!item.read) {
+   260→   260→      setItems((prev) => prev.map((n) => (n.id === item.id ? { ...n, read: true } : n)))
+   261→   261→      setLocalOverride((count) => Math.max(0, unreadCount - 1))
+   262→   262→      if (userId) api.markNotificationsRead(userId, [item.id]).catch(() => {})
+   263→   263→      refreshBadges()
+   264→   264→    }
+   265→   265→    // Navega conforme o destino sugerido pela notificação
+   266→   266→    if (item.linkView === 'dashboard') navigate({ name: 'dashboard' })
+   267→   267→    else if (item.linkView === 'course' && item.refId) navigate({ name: 'course', courseId: item.refId })
+   268→   268→    else if (item.linkView === 'onboarding') navigate({ name: 'onboarding' })
+   269→   269→    else if (item.linkView === 'messages') navigate({ name: 'messages', peerId: item.refId ?? undefined })
+   270→   270→    else if (item.linkView === 'referrals') navigate({ name: 'referrals' })
+   271→   271→    setOpen(false)
+   272→   272→  }
+   273→   273→
+   274→   274→  const handleMarkAll = () => {
+   275→   275→    if (!userId || unreadCount === 0) return
+   276→   276→    const prevItems = items
+   277→   277→    setItems((prev) => prev.map((n) => ({ ...n, read: true })))
+   278→   278→    setLocalOverride(0)
+   279→   279→    api.markNotificationsRead(userId).catch(() => {
+   280→   280→      // Falhou: restaura o estado anterior
+   281→   281→      setItems(prevItems)
+   282→   282→      setLocalOverride(prevItems.filter((n) => !n.read).length)
+   283→   283→    })
+   284→   284→    refreshBadges()
+   285→   285→  }
+   286→   286→
+   287→   287→  if (!user) return null
+   288→   288→
+   289→   289→  return (
+   290→   290→    <DropdownMenu open={open} onOpenChange={handleOpenChange}>
+   291→   291→      <DropdownMenuTrigger asChild>
+   292→   292→        <button
+   293→   293→          type="button"
+   294→   294→          aria-label={
+   295→   295→            unreadCount > 0
+   296→   296→              ? `Notificações, ${unreadCount} não lida${unreadCount === 1 ? '' : 's'}`
+   297→   297→              : 'Notificações'
+   298→   298→          }
+   299→   299→          title="Notificações"
+   300→   300→          className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+   301→   301→        >
+   302→   302→          <Bell className="h-4.5 w-4.5" />
+   303→   303→          {unreadCount > 0 && (
+   304→   304→            <span
+   305→   305→              aria-live="polite"
+   306→   306→              className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white"
+   307→   307→            >
+   308→   308→              {unreadCount > 99 ? '99+' : unreadCount}
+   309→   309→            </span>
+   310→   310→          )}
+   311→   311→        </button>
+   312→   312→      </DropdownMenuTrigger>
+   313→   313→
+   314→   314→      <DropdownMenuContent align="end" sideOffset={8} className="w-88 overflow-hidden p-0 sm:w-96">
+   315→   315→        {/* Cabeçalho do painel */}
+   316→   316→        <div className="flex items-center justify-between gap-2 border-b border-stone-100 px-4 py-2.5 dark:border-stone-800">
+   317→   317→          <DropdownMenuLabel className="p-0 font-semibold text-stone-900 dark:text-stone-100">
+   318→   318→            Notificações
+   319→   319→          </DropdownMenuLabel>
+   320→   320→          <button
+   321→   321→            type="button"
+   322→   322→            onClick={handleMarkAll}
+   323→   323→            disabled={unreadCount === 0}
+   324→   324→            className="rounded text-xs font-semibold text-emerald-700 transition-colors hover:text-emerald-900 disabled:pointer-events-none disabled:text-stone-300 dark:text-emerald-400 dark:hover:text-emerald-300 dark:disabled:text-stone-600"
+   325→   325→          >
+   326→   326→            Marcar todas como lidas
+   327→   327→          </button>
+   328→   328→        </div>
+   329→   329→
+   330→   330→        {items.length === 0 ? (
+   331→   331→          /* Empty state */
+   332→   332→          <div className="flex flex-col items-center gap-2 px-6 py-8 text-center">
+   333→   333→            <BellOff className="h-8 w-8 text-stone-300 dark:text-stone-600" aria-hidden />
+   334→   334→            <p className="text-sm text-stone-500 dark:text-stone-400">Você está em dia! Nenhuma notificação.</p>
+   335→   335→          </div>
+   336→   336→        ) : (
+   337→   337→          <div
+   338→   338→            role="list"
+   339→   339→            aria-label="Lista de notificações"
+   340→   340→            className="max-h-[380px] overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-200 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent"
+   341→   341→          >
+   342→   342→            {items.map((item) => {
+   343→   343→              const chip = NOTIFICATION_KINDS[item.kind] ?? DEFAULT_KIND
+   344→   344→              const Icon = chip.icon
+   345→   345→              return (
+   346→   346→                <div key={item.id} role="listitem">
+   347→   347→                  <button
+   348→   348→                    type="button"
+   349→   349→                    onClick={() => handleItemClick(item)}
+   350→   350→                    className={cn(
+   351→   351→                      'relative flex w-full items-start gap-3 px-4 py-3 text-left transition-colors focus-visible:outline-none',
+   352→   352→                      item.read
+   353→   353→                        ? 'hover:bg-stone-50 focus-visible:bg-stone-50 dark:hover:bg-stone-800/60 dark:focus-visible:bg-stone-800/60'
+   354→   354→                        : 'bg-emerald-50/50 hover:bg-emerald-50 focus-visible:bg-emerald-50 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/30 dark:focus-visible:bg-emerald-900/30'
+   355→   355→                    )}
+   356→   356→                  >
+   357→   357→                    {!item.read && (
+   358→   358→                      <span
+   359→   359→                        aria-hidden
+   360→   360→                        className="absolute left-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-emerald-500"
+   361→   361→                      />
+   362→   362→                    )}
+   363→   363→                    <span
+   364→   364→                      className={cn(
+   365→   365→                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+   366→   366→                        chip.chipClass
+   367→   367→                      )}
+   368→   368→                    >
+   369→   369→                      <Icon className="h-4 w-4" aria-hidden />
+   370→   370→                    </span>
+   371→   371→                    <span className="min-w-0 flex-1">
+   372→   372→                      <span className="flex items-baseline justify-between gap-2">
+   373→   373→                        <span
+   374→   374→                          className={cn(
+   375→   375→                            'truncate text-sm font-semibold',
+   376→   376→                            item.read ? 'text-stone-500' : 'text-stone-900'
+   377→   377→                          )}
+   378→   378→                        >
+   379→   379→                          {item.title}
+   380→   380→                        </span>
+   381→   381→                        <span className="shrink-0 text-[11px] text-stone-400 dark:text-stone-500">
+   382→   382→                          {relativeTime(item.createdAt)}
+   383→   383→                        </span>
+   384→   384→                      </span>
+   385→   385→                      {item.body && (
+   386→   386→                        <span className="mt-0.5 block text-xs leading-snug text-stone-500 line-clamp-2 dark:text-stone-400">
+   387→   387→                          {item.body}
+   388→   388→                        </span>
+   389→   389→                      )}
+   390→   390→                    </span>
+   391→   391→                  </button>
+   392→   392→                </div>
+   393→   393→              )
+   394→   394→            })}
+   395→   395→          </div>
+   396→   396→        )}
+   397→   397→      </DropdownMenuContent>
+   398→   398→    </DropdownMenu>
+   399→   399→  )
+   400→   400→}
+   401→   401→
+   402→   402→export function Navbar() {
+   403→   403→  // Seletores atômicos (não destruturar a store inteira: Navbar re-renderizaria
+   404→   404→  // a cada commit de qualquer campo, incluindo a cada digitação da busca)
+   405→   405→  const user = useAppStore((s) => s.user)
+   406→   406→  const view = useAppStore((s) => s.view)
+   407→   407→  const setUser = useAppStore((s) => s.setUser)
+   408→   408→  const navigate = useAppStore((s) => s.navigate)
+   409→   409→  const badges = useBadges()
+   410→   410→
+   411→   411→  // ---------- Busca global do header (a busca principal, sempre visível) ----------
+   412→   412→  const [query, setQuery] = useState('')
+   413→   413→  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+   414→   414→  const desktopSearchRef = useRef<HTMLInputElement>(null)
+   415→   415→  const mobileSearchRef = useRef<HTMLInputElement>(null)
+   416→   416→  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+   417→   417→  // O texto do campo acompanha o termo ativo em qualquer tela (ex.: busca feita
+   418→   418→  // em outra aba/session) — a busca é uma só, centralizada no header.
+   419→   419→  const externalQuery = useAppStore((s) => s.exploreQuery)
+   420→   420→
+   421→   421→  useEffect(() => {
+   422→   422→    setQuery(externalQuery)
+   423→   423→  }, [externalQuery])
+   424→   424→
+   425→   425→  useEffect(() => {
+   426→   426→    return () => {
+   427→   427→      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+   428→   428→    }
+   429→   429→  }, [])
+   430→   430→
+   431→   431→  /** Aplica o termo na store e leva o usuário ao Explorar (modo resultados) */
+   432→   432→  const applySearch = (value: string) => {
+   433→   433→    const q = value.trim()
+   434→   434→    const state = useAppStore.getState()
+   435→   435→    state.setExploreQuery(q)
+   436→   436→    if (q && state.view.name !== 'marketplace') {
+   437→   437→      state.setExploreTab('all')
+   438→   438→      state.navigate({ name: 'marketplace' })
+   439→   439→    }
+   440→   440→  }
+   441→   441→
+   442→   442→  /** Digitação ao vivo: navega e filtra com debounce — o corpo vira só resultados */
+   443→   443→  const onSearchInput = (value: string) => {
+   444→   444→    setQuery(value)
+   445→   445→    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+   446→   446→    const trimmed = value.trim()
+   447→   447→    if (!trimmed) {
+   448→   448→      useAppStore.getState().setExploreQuery('')
+   449→   449→      if (useAppStore.getState().view.name === 'marketplace') setMobileSearchOpen(false)
+   450→   450→      return
+   451→   451→    }
+   452→   452→    searchDebounceRef.current = setTimeout(() => {
+   453→   453→      const wasOnMarketplace = useAppStore.getState().view.name === 'marketplace'
+   454→   454→      applySearch(value)
+   455→   455→      if (!wasOnMarketplace) setMobileSearchOpen(false)
+   456→   456→    }, 250)
+   457→   457→  }
+   458→   458→
+   459→   459→  const submitSearch = (value: string) => {
+   460→   460→    const q = value.trim()
+   461→   461→    if (!q) return
+   462→   462→    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+   463→   463→    useAppStore.getState().setExploreQuery(q)
+   464→   464→    useAppStore.getState().setExploreTab('all')
+   465→   465→    navigate({ name: 'marketplace' })
+   466→   466→    setMobileSearchOpen(false)
+   467→   467→  }
+   468→   468→
+   469→   469→  // Atalho "/" foca a busca principal do header (sensação de app nativo)
+   470→   470→  useEffect(() => {
+   471→   471→    const onKey = (e: KeyboardEvent) => {
+   472→   472→      const target = e.target as HTMLElement | null
+   473→   473→      const typing =
+   474→   474→        target instanceof HTMLInputElement ||
+   475→   475→        target instanceof HTMLTextAreaElement ||
+   476→   476→        target?.isContentEditable
+   477→   477→      if (e.key === '/' && !typing) {
+   478→   478→        e.preventDefault()
+   479→   479→        if (window.matchMedia('(min-width: 768px)').matches) {
+   480→   480→          desktopSearchRef.current?.focus()
+   481→   481→        } else {
+   482→   482→          setMobileSearchOpen(true)
+   483→   483→          setTimeout(() => mobileSearchRef.current?.focus(), 60)
+   484→   484→        }
+   485→   485→      }
+   486→   486→    }
+   487→   487→    window.addEventListener('keydown', onKey)
+   488→   488→    return () => window.removeEventListener('keydown', onKey)
+   489→   489→  }, [])
+   490→   490→
+   491→   491→  const searchField = (isMobile: boolean) => {
+   492→   492→    const value = query
+   493→   493→    return (
+   494→   494→      <form
+   495→   495→        role="search"
+   496→   496→        onSubmit={(e) => {
+   497→   497→          e.preventDefault()
+   498→   498→          submitSearch(value)
+   499→   499→        }}
+   500→   500→        className="relative w-full"
+   501→   501→      >
+   502→   502→        <Search
+   503→   503→          aria-hidden
+   504→   504→          className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400"
+   505→   505→        />
+   506→   506→        <input
+   507→   507→          ref={isMobile ? mobileSearchRef : desktopSearchRef}
+   508→   508→          type="search"
+   509→   509→          value={value}
+   510→   510→          onChange={(e) => onSearchInput(e.target.value)}
+   511→   511→          placeholder="Buscar mentores, cursos, trilhas e leituras..."
+   512→   512→          aria-label="Buscar na plataforma"
+   513→   513→          className={cn(
+   514→   514→            'h-9 w-full rounded-full border border-transparent bg-stone-100 pl-10 pr-9 text-sm text-stone-900 outline-none transition-all placeholder:text-stone-400',
+   515→   515→            'focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100',
+   516→   516→            'dark:bg-stone-800/70 dark:text-stone-100 dark:placeholder:text-stone-500',
+   517→   517→            'dark:focus:border-emerald-700 dark:focus:bg-stone-900 dark:focus:ring-emerald-900/40',
+   518→   518→            '[&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden'
+   519→   519→          )}
+   520→   520→        />
+   521→   521→        {value ? (
+   522→   522→          <button
+   523→   523→            type="button"
+   524→   524→            onClick={() => onSearchInput('')}
+   525→   525→            aria-label="Limpar busca"
+   526→   526→            className="absolute right-2.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-200 hover:text-stone-700 dark:hover:bg-stone-700 dark:hover:text-stone-200"
+   527→   527→          >
+   528→   528→            <X className="h-3.5 w-3.5" />
+   529→   529→          </button>
+   530→   530→        ) : (
+   531→   531→          !isMobile && (
+   532→   532→            <kbd className="pointer-events-none absolute right-3 top-1/2 hidden h-5 -translate-y-1/2 items-center rounded border border-stone-200 bg-white px-1 font-mono text-[10px] font-medium text-stone-400 md:inline-flex dark:border-stone-700 dark:bg-stone-900">
+   533→   533→              /
+   534→   534→            </kbd>
+   535→   535→          )
+   536→   536→        )}
+   537→   537→      </form>
+   538→   538→    )
+   539→   539→  }
+   540→   540→
+   541→   541→  const navItem = (target: AppView, label: string, icon: React.ReactNode) => {
+   542→   542→    const active = view.name === target.name
+   543→   543→    return (
+   544→   544→      <button
+   545→   545→        key={label}
+   546→   546→        onClick={() => navigate(target)}
+   547→   547→        aria-current={active ? 'page' : undefined}
+   548→   548→        aria-label={label}
+   549→   549→        title={label}
+   550→   550→        className={cn(
+   551→   551→          'relative flex h-9 items-center gap-2 rounded-full px-3.5 text-sm font-medium transition-colors',
+   552→   552→          active ? 'text-emerald-800 dark:text-emerald-300' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800/70 dark:hover:text-stone-100'
+   553→   553→        )}
+   554→   554→      >
+   555→   555→        {active && (
+   556→   556→          <span
+   557→   557→            aria-hidden
+   558→   558→            className="absolute inset-0 -z-10 rounded-full bg-emerald-50 dark:bg-emerald-900/30"
+   559→   559→          />
+   560→   560→        )}
+   561→   561→        {icon}
+   562→   562→        <span className="hidden md:inline">{label}</span>
+   563→   563→      </button>
+   564→   564→    )
+   565→   565→  }
+   566→   566→
+   567→   567→  const handleLogout = () => {
+   568→   568→    setUser(null)
+   569→   569→    toast.info('Você saiu da sua conta. Até logo!')
+   570→   570→    navigate({ name: 'home' })
+   571→   571→  }
+   572→   572→
+   573→   573→  return (
+   574→   574→    /* Estático no topo do shell (fora do container de rolagem): o corpo da
+   575→   575→       página rola no <main> e NUNCA passa por baixo do header. */
+   576→   576→    <header className="shrink-0 border-b border-stone-200/70 bg-white dark:border-stone-800 dark:bg-stone-950">
+   577→   577→      <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-4 sm:px-6">
+   578→   578→        <button
+   579→   579→          className="flex items-center gap-2.5"
+   580→   580→          onClick={() => navigate({ name: 'home' })}
+   581→   581→          aria-label="Ir para a página inicial"
+   582→   582→        >
+   583→   583→          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-700 text-white transition-transform duration-200 hover:scale-[1.02]">
+   584→   584→            <GraduationCap className="h-4.5 w-4.5" />
+   585→   585→          </span>
+   586→   586→          <span className="text-base font-semibold tracking-tight text-stone-900 dark:text-stone-50">
+   587→   587→            Mentor<span className="text-emerald-700 dark:text-emerald-400">Hub</span>
+   588→   588→          </span>
+   589→   589→        </button>
+   590→   590→
+   591→   591→        <nav aria-label="Navegação principal" className="ml-4 hidden items-center gap-1 sm:flex">
+   592→   592→          {navItem({ name: 'marketplace' }, 'Explorar', <Compass className="h-4 w-4" />)}
+   593→   593→          {/* "Minhas mentorias" só faz sentido para quem está logado — some para visitantes */}
+   594→   594→          {user && navItem({ name: 'dashboard' }, 'Minhas mentorias', <CalendarDays className="h-4 w-4" />)}
+   595→   595→        </nav>
+   596→   596→
+   597→   597→        {/* Busca principal (desktop): sempre visível, centralizada no header */}
+   598→   598→        <div className="mx-auto hidden w-full max-w-xs md:block lg:max-w-sm">
+   599→   599→          {searchField(false)}
+   600→   600→        </div>
+   601→   601→
+   602→   602→        <div className={cn('flex items-center gap-2', 'md:ml-0 ml-auto')}>
+   603→   603→          {/* Tema claro/escuro (todos) + mensagens e sino (apenas logado) */}
+   604→   604→          <ThemeToggle />
+   605→   605→          {user && <MessagesButton unread={badges.messages} />}
+   606→   606→          {user && (
+   607→   607→            <NotificationsBell badgeCount={badges.notifications} refreshBadges={badges.refresh} />
+   608→   608→          )}
+   609→   609→
+   610→   610→          {/* Busca (mobile): ícone que expande a linha de busca abaixo do header */}
+   611→   611→          <button
+   612→   612→            onClick={() => {
+   613→   613→              setMobileSearchOpen((open) => !open)
+   614→   614→              setTimeout(() => mobileSearchRef.current?.focus(), 60)
+   615→   615→            }}
+   616→   616→            aria-expanded={mobileSearchOpen}
+   617→   617→            aria-label={mobileSearchOpen ? 'Fechar busca' : 'Abrir busca'}
+   618→   618→            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 md:hidden dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
+   619→   619→          >
+   620→   620→            {mobileSearchOpen ? <X className="h-4.5 w-4.5" /> : <Search className="h-4.5 w-4.5" />}
+   621→   621→          </button>
+   622→   622→
+   623→   623→          {user ? (
+   624→   624→            <DropdownMenu>
+   625→   625→              <DropdownMenuTrigger asChild>
+   626→   626→                <button
+   627→   627→                  className="flex items-center gap-2.5 rounded-full border border-stone-200 bg-white py-1 pl-1 pr-3 transition-colors hover:border-emerald-300 hover:bg-emerald-50 dark:border-stone-700/80 dark:bg-stone-900 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/50"
+   628→   628→                  aria-label="Menu do usuário"
+   629→   629→                >
+   630→   630→                  <Avatar name={user.name} src={user.avatarUrl} size="sm" className="ring-transparent" />
+   631→   631→                  <span className="hidden max-w-28 truncate text-sm font-semibold text-stone-700 sm:inline dark:text-stone-200">
+   632→   632→                    {firstName(user.name)}
+   633→   633→                  </span>
+   634→   634→                </button>
+   635→   635→              </DropdownMenuTrigger>
+   636→   636→              <DropdownMenuContent align="end" className="w-64">
+   637→   637→                <DropdownMenuLabel>
+   638→   638→                  <div className="flex items-center gap-2.5">
+   639→   639→                    <Avatar name={user.name} src={user.avatarUrl} size="md" className="ring-0" />
+   640→   640→                    <div className="min-w-0">
+   641→   641→                      <div className="flex items-center gap-1.5">
+   642→   642→                        <p className="truncate font-semibold">{user.name}</p>
+   643→   643→                        {user.isMentor && (
+   644→   644→                          <Badge variant="secondary" className="shrink-0 text-[10px]">
+   645→   645→                            Mentor
+   646→   646→                          </Badge>
+   647→   647→                        )}
+   648→   648→                      </div>
+   649→   649→                      <p className="truncate text-xs font-normal text-muted-foreground">
+   650→   650→                        {user.email}
+   651→   651→                      </p>
+   652→   652→                    </div>
+   653→   653→                  </div>
+   654→   654→                </DropdownMenuLabel>
+   655→   655→                <DropdownMenuSeparator />
+   656→   656→                <DropdownMenuItem onClick={() => navigate({ name: 'dashboard' })}>
+   657→   657→                  <CalendarDays className="h-4 w-4" /> Minhas mentorias
+   658→   658→                </DropdownMenuItem>
+   659→   659→                <DropdownMenuItem onClick={() => navigate({ name: 'messages' })}>
+   660→   660→                  <MessageCircle className="h-4 w-4" /> Mensagens
+   661→   661→                </DropdownMenuItem>
+   662→   662→                <DropdownMenuItem onClick={() => navigate({ name: 'marketplace' })}>
+   663→   663→                  <Compass className="h-4 w-4" /> Explorar
+   664→   664→                </DropdownMenuItem>
+   665→   665→                <DropdownMenuItem onClick={() => navigate({ name: 'referrals' })}>
+   666→   666→                  <Gift className="h-4 w-4" /> Indicar amigos
+   667→   667→                </DropdownMenuItem>
+   668→   668→                {user.isMentor ? (
+   669→   669→                  <DropdownMenuItem onClick={() => navigate({ name: 'onboarding' })}>
+   670→   670→                    <LayoutDashboard className="h-4 w-4" /> Painel do mentor
+   671→   671→                  </DropdownMenuItem>
+   672→   672→                ) : (
+   673→   673→                  <DropdownMenuItem onClick={() => navigate({ name: 'onboarding' })}>
+   674→   674→                    <PlusCircle className="h-4 w-4" /> Criar perfil de mentor
+   675→   675→                  </DropdownMenuItem>
+   676→   676→                )}
+   677→   677→                {user.role === 'ADMIN' && (
+   678→   678→                  <DropdownMenuItem onClick={() => navigate({ name: 'admin' })}>
+   679→   679→                    <ShieldCheck className="h-4 w-4" /> Administração
+   680→   680→                  </DropdownMenuItem>
+   681→   681→                )}
+   682→   682→                <DropdownMenuSeparator />
+   683→   683→                <DropdownMenuItem
+   684→   684→                  onClick={handleLogout}
+   685→   685→                  className="text-rose-600 focus:text-rose-600"
+   686→   686→                >
+   687→   687→                  <LogOut className="h-4 w-4" /> Sair
+   688→   688→                </DropdownMenuItem>
+   689→   689→              </DropdownMenuContent>
+   690→   690→            </DropdownMenu>
+   691→   691→          ) : (
+   692→   692→            <>
+   693→   693→              {/* Mobile (<sm): apenas o botão primário "Entrar" */}
+   694→   694→              <Button
+   695→   695→                size="sm"
+   696→   696→                className="h-9 rounded-full px-3.5 font-semibold sm:hidden"
+   697→   697→                onClick={() => navigate({ name: 'auth', mode: 'login' })}
+   698→   698→                aria-label="Entrar na plataforma"
+   699→   699→              >
+   700→   700→                <LogIn className="h-4 w-4" /> Entrar
+   701→   701→              </Button>
+   702→   702→
+   703→   703→              {/* Desktop (sm+): "Entrar" (ghost) + "Criar conta" (primário) */}
+   704→   704→              <div className="hidden items-center gap-1.5 sm:flex">
+   705→   705→                <Button
+   706→   706→                  variant="ghost"
+   707→   707→                  className="h-9 rounded-full px-3.5 text-sm font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+   708→   708→                  onClick={() => navigate({ name: 'auth', mode: 'login' })}
+   709→   709→                >
+   710→   710→                  Entrar
+   711→   711→                </Button>
+   712→   712→                <Button
+   713→   713→                  size="sm"
+   714→   714→                  className="h-9 rounded-full px-3.5 font-semibold"
+   715→   715→                  onClick={() => navigate({ name: 'auth', mode: 'register' })}
+   716→   716→                >
+   717→   717→                  <UserRoundPlus className="h-4 w-4" /> Criar conta
+   718→   718→                </Button>
+   719→   719→              </div>
+   720→   720→            </>
+   721→   721→          )}
+   722→   722→        </div>
+   723→   723→      </div>
+   724→   724→
+   725→   725→      {/* Linha de busca mobile expansível (animação CSS, sem lib) */}
+   726→   726→      {mobileSearchOpen && (
+   727→   727→        <div className="mh-slide-down overflow-hidden border-t border-stone-100 bg-white md:hidden dark:border-stone-800 dark:bg-stone-950">
+   728→   728→          <div className="px-4 py-2.5">{searchField(true)}</div>
+   729→   729→        </div>
+   730→   730→      )}
+   731→   731→    </header>
+   732→   732→  )
+   733→   733→}
+   734→   734→

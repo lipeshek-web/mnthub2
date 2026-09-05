@@ -69,8 +69,8 @@ export function LessonAiSummary({
 
   if (!user) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/60 px-6 py-10 text-center dark:border-emerald-900 dark:bg-emerald-950/30">
-        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-700/10 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50/60 px-6 py-10 text-center dark:border-amber-900 dark:bg-amber-950/30">
+        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-700/10 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
           <Sparkles aria-hidden className="h-5 w-5" />
         </span>
         <p className="max-w-sm text-sm text-stone-600 dark:text-stone-300">
@@ -79,7 +79,7 @@ export function LessonAiSummary({
         </p>
         <Button
           size="sm"
-          className="h-10 rounded-full bg-emerald-700 px-5 font-semibold hover:bg-emerald-800"
+          className="h-10 rounded-full bg-amber-700 px-5 font-semibold hover:bg-amber-800"
           onClick={onLogin}
         >
           Entrar
@@ -92,7 +92,7 @@ export function LessonAiSummary({
     return (
       <div aria-busy="true" className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6 dark:border-stone-800 dark:bg-stone-900">
         <div className="mb-4 flex items-center gap-2">
-          <Sparkles aria-hidden className="h-4 w-4 animate-pulse text-emerald-600 dark:text-emerald-400" />
+          <Sparkles aria-hidden className="h-4 w-4 animate-pulse text-amber-600 dark:text-amber-400" />
           <p className="text-sm font-semibold text-stone-700 dark:text-stone-200">
             Gerando o resumo desta aula com IA…
           </p>
@@ -140,10 +140,10 @@ export function LessonAiSummary({
   if (!data) return null
 
   return (
-    <article className="rounded-2xl border border-emerald-200 bg-gradient-to-b from-emerald-50/80 to-white p-5 sm:p-6 dark:border-emerald-900 dark:from-emerald-950/30 dark:to-stone-900">
+    <article className="rounded-2xl border border-amber-200 bg-gradient-to-b from-amber-50/80 to-white p-5 sm:p-6 dark:border-amber-900 dark:from-amber-950/30 dark:to-stone-900">
       <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-700 text-white shadow-sm dark:bg-emerald-600">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-700 text-white shadow-sm dark:bg-amber-600">
             <Sparkles aria-hidden className="h-4 w-4" />
           </span>
           <div>
@@ -164,7 +164,7 @@ export function LessonAiSummary({
         >
           {copied ? (
             <>
-              <Check aria-hidden className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              <Check aria-hidden className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
               Copiado
             </>
           ) : (
@@ -191,7 +191,7 @@ export function LessonAiSummary({
                 key={i}
                 className="flex items-start gap-2.5 rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-sm text-stone-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200"
               >
-                <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                 <span className="leading-snug">{point}</span>
               </li>
             ))}

@@ -10,7 +10,6 @@ import {Bell,
   CheckCircle2,
   Compass,
   Gift,
-  GraduationCap,
   LayoutDashboard,
   ListVideo,
   LogIn,
@@ -37,6 +36,7 @@ import type { NotificationDTO } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/platform/avatar'
+import { BrandMark } from '@/components/platform/brand'
 import { useAppStore, type AppView } from '@/lib/store'
 import { firstName } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
@@ -53,7 +53,7 @@ import {
 
 type NotificationChip = { icon: LucideIcon; chipClass: string }
 
-/** Chip de ícone por tipo de notificação (paleta stone/emerald + acentos por kind) */
+/** Chip de ícone por tipo de notificação (neutros stone + destaque âmbar, verde p/ sucesso) */
 const NOTIFICATION_KINDS: Record<string, NotificationChip> = {
   booking_new: { icon: CalendarClock, chipClass: 'bg-amber-100 text-amber-600' },
   booking_confirmed: { icon: CalendarCheck, chipClass: 'bg-emerald-100 text-emerald-700' },
@@ -61,9 +61,9 @@ const NOTIFICATION_KINDS: Record<string, NotificationChip> = {
   booking_completed: { icon: CheckCircle2, chipClass: 'bg-emerald-100 text-emerald-700' },
   review_new: { icon: Star, chipClass: 'bg-amber-100 text-amber-600' },
   lesson_new: { icon: ListVideo, chipClass: 'bg-violet-100 text-violet-600' },
-  enrollment_new: { icon: UserPlus, chipClass: 'bg-emerald-100 text-emerald-700' },
+  enrollment_new: { icon: UserPlus, chipClass: 'bg-amber-100 text-amber-700' },
   course_review_new: { icon: MessageSquareQuote, chipClass: 'bg-violet-100 text-violet-600' },
-  purchase_new: { icon: ShoppingBag, chipClass: 'bg-emerald-100 text-emerald-700' },
+  purchase_new: { icon: ShoppingBag, chipClass: 'bg-amber-100 text-amber-700' },
   message_new: { icon: MessageCircle, chipClass: 'bg-teal-100 text-teal-700' },
 }
 const DEFAULT_KIND: NotificationChip = { icon: Bell, chipClass: 'bg-stone-100 text-stone-500' }
@@ -161,7 +161,7 @@ function MessagesButton({ unread }: { unread: number }) {
       {unread > 0 && (
         <span
           aria-live="polite"
-          className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold leading-none text-white"
+          className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-600 px-1 text-[10px] font-bold leading-none text-white"
         >
           {unread > 99 ? '99+' : unread}
         </span>
@@ -321,7 +321,7 @@ function NotificationsBell({
             type="button"
             onClick={handleMarkAll}
             disabled={unreadCount === 0}
-            className="rounded text-xs font-semibold text-emerald-700 transition-colors hover:text-emerald-900 disabled:pointer-events-none disabled:text-stone-300 dark:text-emerald-400 dark:hover:text-emerald-300 dark:disabled:text-stone-600"
+            className="rounded text-xs font-semibold text-amber-700 transition-colors hover:text-amber-900 disabled:pointer-events-none disabled:text-stone-300 dark:text-amber-400 dark:hover:text-amber-300 dark:disabled:text-stone-600"
           >
             Marcar todas como lidas
           </button>
@@ -351,13 +351,13 @@ function NotificationsBell({
                       'relative flex w-full items-start gap-3 px-4 py-3 text-left transition-colors focus-visible:outline-none',
                       item.read
                         ? 'hover:bg-stone-50 focus-visible:bg-stone-50 dark:hover:bg-stone-800/60 dark:focus-visible:bg-stone-800/60'
-                        : 'bg-emerald-50/50 hover:bg-emerald-50 focus-visible:bg-emerald-50 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/30 dark:focus-visible:bg-emerald-900/30'
+                        : 'bg-amber-50/50 hover:bg-amber-50 focus-visible:bg-amber-50 dark:bg-amber-950/40 dark:hover:bg-amber-900/30 dark:focus-visible:bg-amber-900/30'
                     )}
                   >
                     {!item.read && (
                       <span
                         aria-hidden
-                        className="absolute left-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-emerald-500"
+                        className="absolute left-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-amber-500"
                       />
                     )}
                     <span
@@ -512,9 +512,9 @@ export function Navbar() {
           aria-label="Buscar na plataforma"
           className={cn(
             'h-9 w-full rounded-full border border-transparent bg-stone-100 pl-10 pr-9 text-sm text-stone-900 outline-none transition-all placeholder:text-stone-400',
-            'focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100',
+            'focus:border-amber-300 focus:bg-white focus:ring-4 focus:ring-amber-500/15',
             'dark:bg-stone-800/70 dark:text-stone-100 dark:placeholder:text-stone-500',
-            'dark:focus:border-emerald-700 dark:focus:bg-stone-900 dark:focus:ring-emerald-900/40',
+            'dark:focus:border-amber-700 dark:focus:bg-stone-900 dark:focus:ring-amber-500/20',
             '[&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden'
           )}
         />
@@ -549,13 +549,13 @@ export function Navbar() {
         title={label}
         className={cn(
           'relative flex h-9 items-center gap-2 rounded-full px-3.5 text-sm font-medium transition-colors',
-          active ? 'text-emerald-800 dark:text-emerald-300' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800/70 dark:hover:text-stone-100'
+          active ? 'text-amber-800 dark:text-amber-300' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800/70 dark:hover:text-stone-100'
         )}
       >
         {active && (
           <span
             aria-hidden
-            className="absolute inset-0 -z-10 rounded-full bg-emerald-50 dark:bg-emerald-900/30"
+            className="absolute inset-0 -z-10 rounded-full bg-amber-50 dark:bg-amber-900/30"
           />
         )}
         {icon}
@@ -576,15 +576,13 @@ export function Navbar() {
     <header className="shrink-0 border-b border-stone-200/70 bg-white dark:border-stone-800 dark:bg-stone-950">
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-4 sm:px-6">
         <button
-          className="flex items-center gap-2.5"
+          className="group flex items-center gap-2.5"
           onClick={() => navigate({ name: 'home' })}
-          aria-label="Ir para a página inicial"
+          aria-label="Órbita — ir para a página inicial"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-700 text-white transition-transform duration-200 hover:scale-[1.02]">
-            <GraduationCap className="h-4.5 w-4.5" />
-          </span>
+          <BrandMark className="h-8 w-8 rounded-[0.7rem] transition-transform duration-200 group-hover:scale-[1.04]" iconClassName="h-4.5 w-4.5" />
           <span className="text-base font-semibold tracking-tight text-stone-900 dark:text-stone-50">
-            Mentor<span className="text-emerald-700 dark:text-emerald-400">Hub</span>
+            Órbita
           </span>
         </button>
 
@@ -625,7 +623,7 @@ export function Navbar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="flex items-center gap-2.5 rounded-full border border-stone-200 bg-white py-1 pl-1 pr-3 transition-colors hover:border-emerald-300 hover:bg-emerald-50 dark:border-stone-700/80 dark:bg-stone-900 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/50"
+                  className="flex items-center gap-2.5 rounded-full border border-stone-200 bg-white py-1 pl-1 pr-3 transition-colors hover:border-amber-300 hover:bg-amber-50 dark:border-stone-700/80 dark:bg-stone-900 dark:hover:border-amber-700 dark:hover:bg-amber-950/50"
                   aria-label="Menu do usuário"
                 >
                   <Avatar name={user.name} src={user.avatarUrl} size="sm" className="ring-transparent" />

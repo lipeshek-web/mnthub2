@@ -226,7 +226,7 @@ function BookingCard({
       action: 'TEMPLATE',
       text: `Mentoria: ${b.topic}`,
       dates: `${fmt(start)}/${fmt(end)}`,
-      details: `Sessão de mentoria no MentorHub com ${otherName}.`,
+      details: `Sessão de mentoria no Órbita com ${otherName}.`,
       location: b.meetingRoom,
     })
     return `https://calendar.google.com/calendar/render?${params.toString()}`
@@ -312,7 +312,7 @@ function BookingCard({
                   className={cn(
                     'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
                     isMentorSide
-                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                      ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'
                       : 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'
                   )}
                 >
@@ -330,7 +330,7 @@ function BookingCard({
         {/* Meta em uma linha: quando · duração · valor · calendário */}
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-stone-500 dark:text-stone-400">
           <span className="inline-flex items-center gap-1.5 font-medium text-stone-700 dark:text-stone-200">
-            <CalendarDays className="size-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden />
+            <CalendarDays className="size-3.5 text-amber-600 dark:text-amber-400" aria-hidden />
             {when} · {formatTimeLabel(b.startsAt)}–{addMinutesToTime(b.startsAt, b.durationMin)}
             {tzHint && (
               <span className="font-medium text-amber-700 dark:text-amber-300">({tzHint})</span>
@@ -347,7 +347,7 @@ function BookingCard({
               rel="noopener noreferrer"
               aria-label={`Adicionar "${b.topic}" ao Google Calendar`}
               title="Adicionar ao Google Calendar"
-              className="ml-auto inline-flex size-7 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-emerald-50 hover:text-emerald-700 focus-visible:outline-2 focus-visible:outline-emerald-600 dark:text-stone-500 dark:hover:bg-emerald-950/50 dark:hover:text-emerald-300"
+              className="ml-auto inline-flex size-7 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-amber-50 hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-amber-600 dark:text-stone-500 dark:hover:bg-amber-950/50 dark:hover:text-amber-300"
             >
               <ExternalLink className="size-3.5" aria-hidden />
             </a>
@@ -512,7 +512,7 @@ const SHORT_STATUS: Record<string, { label: string; className: string }> = {
   },
   CONFIRMED: {
     label: 'Confirmada',
-    className: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900',
+    className: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900',
   },
   COMPLETED: {
     label: 'Concluída',
@@ -556,7 +556,7 @@ function XpJourneyCard({ stats, failed }: { stats: XpStatsDTO | null; failed: bo
         <div className="mt-4 grid grid-cols-3 gap-3 sm:flex sm:gap-6">
           <div className="min-w-0 sm:flex-1">
             <div className="flex items-center gap-1.5">
-              <Zap className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+              <Zap className="size-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
               <p className="text-xl font-extrabold text-stone-900 dark:text-stone-50 sm:text-2xl" aria-label={`${stats.xp} XP no total`}>
                 {stats.xp}
               </p>
@@ -771,7 +771,7 @@ export default function DashboardView() {
       <div className="flex min-h-[70vh] items-center justify-center px-4 py-10">
         <Card className="w-full max-w-md p-6 text-center">
           <div className="flex flex-col items-center gap-3">
-            <div className="flex size-12 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-200 dark:ring-emerald-900">
+            <div className="flex size-12 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 ring-1 ring-amber-200 dark:ring-amber-900">
               <LogIn className="size-6" aria-hidden />
             </div>
             <h1 className="text-xl font-semibold">Você precisa entrar</h1>
@@ -936,11 +936,11 @@ export default function DashboardView() {
         <TabsList className="h-auto w-full flex-wrap sm:w-auto">
           <TabsTrigger value="upcoming">
             Próximas
-            <CountPill n={upcoming.length} className="bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300" />
+            <CountPill n={upcoming.length} className="bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300" />
           </TabsTrigger>
           <TabsTrigger value="courses">
             Meus cursos
-            <CountPill n={enrollments.length} className="bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300" />
+            <CountPill n={enrollments.length} className="bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300" />
           </TabsTrigger>
           <TabsTrigger value="review">
             Para avaliar
@@ -1081,7 +1081,7 @@ function EnrolledCourseCard({
           <div className="flex flex-wrap items-center gap-2">
             <p className="truncate font-bold text-stone-900 dark:text-stone-50">{course.title}</p>
             {isDone && (
-              <Badge className="border-emerald-200 dark:border-emerald-900 bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300">
+              <Badge className="border-amber-200 dark:border-amber-900 bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300">
                 <CheckCircle2 className="size-3" aria-hidden /> Concluído
               </Badge>
             )}
@@ -1146,7 +1146,7 @@ function MyTrackCard({
             <p className="truncate font-bold text-stone-900 dark:text-stone-50">{track.title}</p>
             <Badge className="border-teal-200 dark:border-teal-900 bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300">{track.category}</Badge>
             {isDone && (
-              <Badge className="border-emerald-200 dark:border-emerald-900 bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300">
+              <Badge className="border-amber-200 dark:border-amber-900 bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300">
                 <CheckCircle2 className="size-3" aria-hidden /> Trilha concluída 🎉
               </Badge>
             )}

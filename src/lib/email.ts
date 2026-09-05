@@ -1,7 +1,7 @@
 import { db } from '@/lib/db'
 
 /**
- * E-mail transacional do MentorHub.
+ * E-mail transacional do Órbita.
  *
  * Todo e-mail passa pela fila (EmailOutbox): com SMTP configurado
  * (SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS/SMTP_FROM) é entregue via
@@ -15,7 +15,7 @@ export const SMTP_CONFIGURED = Boolean(
   process.env.SMTP_HOST && process.env.SMTP_PORT
 )
 
-/** Template HTML com a marca MentorHub (tabelas p/ compatibilidade com clientes de e-mail) */
+/** Template HTML com a marca Órbita (tabelas p/ compatibilidade com clientes de e-mail) */
 export function brandedEmail(opts: {
   title: string
   lines: string[]
@@ -40,7 +40,7 @@ export function brandedEmail(opts: {
     ${body}
     ${cta}
     <tr><td style="padding:14px 28px 22px;font-size:12px;color:#a8a29e;border-top:1px solid #f5f5f4;">
-      ${opts.footer ?? 'Você recebeu este e-mail porque tem uma conta no MentorHub.'}
+      ${opts.footer ?? 'Você recebeu este e-mail porque tem uma conta no Órbita.'}
     </td></tr>
   </table>
 </body></html>`
@@ -93,7 +93,7 @@ export async function sendEmail(input: {
           : undefined,
     })
     await transport.sendMail({
-      from: process.env.SMTP_FROM || 'MentorHub <no-reply@mentorhub.app>',
+      from: process.env.SMTP_FROM || 'Órbita <no-reply@mentorhub.app>',
       to: input.to,
       subject: input.subject,
       html: input.html,

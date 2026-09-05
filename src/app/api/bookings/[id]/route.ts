@@ -99,7 +99,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       await sendEmail({
         to: booking.mentee.email,
         kind: 'booking_confirmed',
-        subject: `Sessão confirmada com ${booking.mentor.user.name} — MentorHub`,
+        subject: `Sessão confirmada com ${booking.mentor.user.name} — Órbita`,
         html: brandedEmail({
           title: 'Sua sessão foi confirmada!',
           lines: [
@@ -122,7 +122,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
         sendEmail({
           to,
           kind: 'booking_cancelled',
-          subject: `Sessão cancelada — MentorHub`,
+          subject: `Sessão cancelada — Órbita`,
           html: brandedEmail({
             title: 'Uma sessão foi cancelada',
             lines: [
@@ -171,7 +171,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       await sendEmail({
         to: booking.mentee.email,
         kind: 'booking_completed',
-        subject: 'Como foi sua sessão? — MentorHub',
+        subject: 'Como foi sua sessão? — Órbita',
         html: brandedEmail({
           title: 'Sessão concluída ⭐',
           lines: [

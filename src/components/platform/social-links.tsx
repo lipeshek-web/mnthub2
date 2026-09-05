@@ -31,7 +31,7 @@ function hashString(value: string): number {
 
 /** Classes base de um cartão-âncora (claro) com foco visível em esmeralda */
 const CARD_BASE =
-  'group flex flex-col rounded-2xl border border-stone-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-emerald-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600'
+  'group flex flex-col rounded-2xl border border-stone-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-amber-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600'
 
 /** Rodapé padrão dos cartões claros: ação + seta */
 function CardFooter({ label, dark = false }: { label: string; dark?: boolean }) {
@@ -45,7 +45,7 @@ function CardFooter({ label, dark = false }: { label: string; dark?: boolean }) 
       <span
         className={cn(
           'text-[11px] font-bold',
-          dark ? 'text-white/70' : 'text-stone-600 group-hover:text-emerald-700'
+          dark ? 'text-white/70' : 'text-stone-600 group-hover:text-amber-700'
         )}
       >
         {label}
@@ -143,7 +143,7 @@ function GitHubCard({ handle, mentorName }: { handle: string; mentorName: string
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`GitHub de ${mentorName} — @${clean} (abre em nova aba)`}
-      className="group flex w-full flex-col rounded-2xl border border-stone-800 bg-stone-900 p-4 text-left shadow-sm transition-colors hover:border-emerald-400/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 sm:w-72"
+      className="group flex w-full flex-col rounded-2xl border border-stone-800 bg-stone-900 p-4 text-left shadow-sm transition-colors hover:border-amber-400/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 sm:w-72"
     >
       <div className="flex items-center gap-2.5">
         <span
@@ -200,7 +200,7 @@ function WebsiteCard({ value, mentorName }: { value: string; mentorName: string 
       <div className="flex items-center gap-3">
         <span
           aria-hidden
-          className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
+          className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 ring-1 ring-amber-100"
         >
           <Globe2 className="h-5 w-5" />
         </span>

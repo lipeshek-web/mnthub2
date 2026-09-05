@@ -297,7 +297,7 @@ export async function fulfillOrder(orderId: string): Promise<FulfillResult> {
   await sendEmail({
     to: order.student.email,
     kind: 'order_paid',
-    subject: `Compra confirmada: ${itemLabel} — MentorHub`,
+    subject: `Compra confirmada: ${itemLabel} — Órbita`,
     html: brandedEmail({
       title: 'Pagamento confirmado! 🎉',
       lines: [
@@ -451,7 +451,7 @@ export async function revokeOrderAccess(orderId: string): Promise<RevokeResult> 
     await sendEmail({
       to: order.student.email,
       kind: 'order_refunded',
-      subject: 'Seu pagamento foi estornado — MentorHub',
+      subject: 'Seu pagamento foi estornado — Órbita',
       html: brandedEmail({
         title: 'Estorno processado',
         lines: [

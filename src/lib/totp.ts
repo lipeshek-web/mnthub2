@@ -84,6 +84,6 @@ export function currentTotp(secretB32: string): string {
 
 /** URI otpauth:// para apps autenticadores */
 export function otpauthUri(secretB32: string, account: string): string {
-  const label = encodeURIComponent(`MentorHub:${account}`)
-  return `otpauth://totp/${label}?secret=${secretB32}&issuer=MentorHub&algorithm=SHA1&digits=6&period=30`
+  const label = encodeURIComponent(`Órbita:${account}`)
+  return `otpauth://totp/${label}?secret=${secretB32}&issuer=Órbita&algorithm=SHA1&digits=6&period=30`
 }

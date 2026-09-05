@@ -5,10 +5,10 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
-  GraduationCap,
   KeyRound,
   Library,
   Loader2,
+  Orbit,
   ShieldCheck,
   Users,
   Video,
@@ -363,22 +363,25 @@ export function AuthView({
     <div className="grid min-h-full bg-stone-50 dark:bg-stone-950 lg:grid-cols-2">
       {/* ---------- Painel esquerdo (header compacto no mobile, completo no lg+) ---------- */}
       <section
-        aria-label="Sobre o MentorHub"
-        className="relative flex flex-col gap-10 overflow-hidden bg-gradient-to-br from-emerald-800 via-emerald-700 to-teal-700 p-6 text-white lg:justify-between lg:gap-12 lg:p-10 xl:p-14"
+        aria-label="Sobre o Órbita"
+        className="relative flex flex-col gap-10 overflow-hidden bg-gradient-to-br from-stone-900 via-stone-900 to-amber-950 p-6 text-white lg:justify-between lg:gap-12 lg:p-10 xl:p-14"
       >
-        {/* Blobs decorativos */}
+        {/* Blobs decorativos (brilho quente sobre graphite) */}
         <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div className="absolute -left-28 -top-28 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
-          <div className="absolute -right-24 top-1/3 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
-          <div className="absolute -bottom-32 left-1/4 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+          <div className="absolute -left-28 -top-28 h-80 w-80 rounded-full bg-amber-500/20 blur-3xl" />
+          <div className="absolute -right-24 top-1/3 h-96 w-96 rounded-full bg-white/[0.07] blur-3xl" />
+          <div className="absolute -bottom-32 left-1/4 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
+          {/* Anel orbital decorativo */}
+          <div className="absolute -right-40 -top-40 h-[28rem] w-[28rem] rounded-full border border-white/10" />
+          <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full border border-white/10" />
         </div>
 
         {/* Logo */}
         <div className="relative flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
-            <GraduationCap className="h-5 w-5" aria-hidden />
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 backdrop-blur">
+            <Orbit className="h-5 w-5" aria-hidden />
           </span>
-          <span className="text-lg font-extrabold tracking-tight">MentorHub</span>
+          <span className="text-lg font-extrabold tracking-tight">Órbita</span>
         </div>
 
         {/* Headline + bullets */}
@@ -386,17 +389,17 @@ export function AuthView({
           <h1 className="max-w-lg text-2xl font-extrabold leading-tight tracking-tight lg:text-4xl lg:leading-[1.1]">
             Aprenda com quem vive o que ensina.
           </h1>
-          <p className="mt-3 max-w-md text-sm text-emerald-100/80 lg:mt-4 lg:text-base">
+          <p className="mt-3 max-w-md text-sm text-stone-300 lg:mt-4 lg:text-base">
             Cursos ao vivo, mentorias 1:1 e biblioteca — tudo o que você precisa para evoluir de
             verdade, em um só lugar.
           </p>
           <ul className="mt-8 hidden space-y-4 lg:block">
             {PANEL_BULLETS.map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-center gap-3.5">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10">
-                  <Icon className="h-5 w-5" aria-hidden />
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/10">
+                  <Icon className="h-5 w-5 text-amber-300" aria-hidden />
                 </span>
-                <span className="text-sm text-emerald-50/90">{text}</span>
+                <span className="text-sm text-stone-100/90">{text}</span>
               </li>
             ))}
           </ul>
@@ -404,9 +407,9 @@ export function AuthView({
 
         {/* Prova social (rodapé do painel) */}
         <div className="relative hidden lg:block">
-          <div className="max-w-md rounded-2xl border border-white/15 bg-white/10 p-4">
+          <div className="max-w-md rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
             <Stars rating={5} size={16} />
-            <p className="mt-2 text-sm text-emerald-50/90">
+            <p className="mt-2 text-sm text-stone-100/90">
               4,9 de média · +2.400 alunos aprendendo todos os dias
             </p>
           </div>
@@ -430,7 +433,7 @@ export function AuthView({
 
               {resetDone ? (
                 <div className="space-y-4">
-                  <div className="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200">
+                  <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
                     <p>Senha alterada com sucesso! Faça login com a nova senha.</p>
                   </div>
@@ -519,7 +522,7 @@ export function AuthView({
             <TabsContent value="login" className="mt-6">
               {mfaTicket ? (
                 <div className="flex flex-col items-center text-center">
-                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
                     <ShieldCheck className="h-7 w-7" aria-hidden />
                   </span>
                   <h2 className="mt-4 text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
@@ -708,7 +711,7 @@ export function AuthView({
                   <button
                     type="button"
                     onClick={handleForgotPassword}
-                    className="text-xs font-medium text-emerald-700 underline-offset-2 transition-colors hover:text-emerald-800 hover:underline dark:text-emerald-300 dark:hover:text-emerald-300"
+                    className="text-xs font-medium text-amber-700 underline-offset-2 transition-colors hover:text-amber-800 hover:underline dark:text-amber-300 dark:hover:text-amber-300"
                   >
                     Esqueceu a senha?
                   </button>
@@ -898,13 +901,13 @@ export function AuthView({
                       onClick={() => handleDemoLogin(u)}
                       disabled={demoBusyId !== null}
                       aria-label={`Entrar como ${u.name}`}
-                      className="flex h-11 items-center gap-2 rounded-full border border-stone-200 bg-white pl-1.5 pr-4 text-xs font-semibold text-stone-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300 disabled:cursor-wait disabled:opacity-60"
+                      className="flex h-11 items-center gap-2 rounded-full border border-stone-200 bg-white pl-1.5 pr-4 text-xs font-semibold text-stone-700 transition-colors hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-amber-700 dark:hover:bg-amber-900/30 dark:hover:text-amber-300 disabled:cursor-wait disabled:opacity-60"
                     >
                       <Avatar name={u.name} src={u.avatarUrl} size="sm" className="ring-0" />
                       <span className="max-w-36 truncate">{u.name}</span>
                       {demoBusyId === u.id && (
                         <Loader2
-                          className="h-3.5 w-3.5 animate-spin text-emerald-700 dark:text-emerald-300"
+                          className="h-3.5 w-3.5 animate-spin text-amber-700 dark:text-amber-300"
                           aria-hidden
                         />
                       )}
@@ -929,7 +932,7 @@ export function AuthView({
 
               {forgotResult ? (
                 <div className="space-y-4">
-                  <div className="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200">
+                  <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
                     <p>
                       {forgotResult.delivery === 'email'

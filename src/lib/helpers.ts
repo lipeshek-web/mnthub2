@@ -121,7 +121,7 @@ export const STATUS_META: Record<string, { label: string; className: string }> =
 
 // ---------- Conteúdos do mural ----------
 export const CONTENT_TYPE_META: Record<string, { label: string; className: string }> = {
-  ARTICLE: { label: 'Artigo', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  ARTICLE: { label: 'Artigo', className: 'bg-amber-50 text-amber-700 border-amber-200' },
   VIDEO: { label: 'Vídeo', className: 'bg-orange-50 text-orange-700 border-orange-200' },
   WORKSHOP: { label: 'Workshop', className: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200' },
   TRAIL: { label: 'Trilha', className: 'bg-teal-50 text-teal-700 border-teal-200' },

@@ -224,14 +224,14 @@ function FontOptionCard({
       aria-pressed={active}
       aria-label={`Selecionar fonte ${font.label}${activeHeading ? ' (em uso nos títulos)' : ''}${activeBody ? ' (em uso nos textos)' : ''}`}
       className={cn(
-        'group relative flex flex-col items-start gap-1.5 rounded-xl border bg-white dark:bg-stone-900 p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+        'group relative flex flex-col items-start gap-1.5 rounded-xl border bg-white dark:bg-stone-900 p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500',
         active
-          ? 'border-emerald-400 ring-2 ring-emerald-500/30'
-          : 'border-stone-200 dark:border-stone-800 hover:-translate-y-0.5 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-sm',
+          ? 'border-amber-400 ring-2 ring-amber-500/30'
+          : 'border-stone-200 dark:border-stone-800 hover:-translate-y-0.5 hover:border-amber-300 dark:hover:border-amber-700 hover:shadow-sm',
       )}
     >
       {(activeHeading || activeBody) && (
-        <span className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-emerald-600 text-white">
+        <span className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-amber-600 text-white">
           <Check className="size-3" aria-hidden />
         </span>
       )}
@@ -250,7 +250,7 @@ function FontOptionCard({
       </span>
       <span className="flex flex-wrap gap-1">
         {activeHeading && (
-          <Badge className="rounded-full border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0 text-[9px] font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30">
+          <Badge className="rounded-full border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 px-1.5 py-0 text-[9px] font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/30">
             {FONT_SLOT_LABELS.heading}
           </Badge>
         )}
@@ -296,7 +296,7 @@ function FontPicker({
     <div className="flex flex-col gap-4">
       <div>
         <p className="flex items-center gap-1.5 text-sm font-semibold text-stone-900 dark:text-stone-50">
-          <Type className="size-4 text-emerald-700 dark:text-emerald-300" aria-hidden /> Tipografia da sua página
+          <Type className="size-4 text-amber-700 dark:text-amber-300" aria-hidden /> Tipografia da sua página
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Escolha a fonte do seu nome e títulos e a fonte das descrições — dá identidade à sua
@@ -311,7 +311,7 @@ function FontPicker({
       >
         <div className="h-14 w-full" style={avatarGradient(mentorName)} aria-hidden />
         <div className="px-4 pb-4 pt-3">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Prévia</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">Prévia</p>
           <p
             className="mt-1 text-xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50"
             style={headingFontStyle(heading)}
@@ -351,8 +351,8 @@ function FontPicker({
             aria-checked={slot === s}
             onClick={() => setSlot(s)}
             className={cn(
-              'flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
-              slot === s ? 'bg-emerald-950 text-white shadow-sm' : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-50',
+              'flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500',
+              slot === s ? 'bg-amber-950 text-white shadow-sm' : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-50',
             )}
           >
             {FONT_SLOT_LABELS[s]}
@@ -369,10 +369,10 @@ function FontPicker({
             aria-pressed={category === c.value}
             onClick={() => setCategory(c.value)}
             className={cn(
-              'rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+              'rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500',
               category === c.value
-                ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300'
-                : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-500 dark:text-stone-400 hover:border-emerald-200 dark:hover:border-emerald-900 hover:text-emerald-700 dark:hover:text-emerald-300',
+                ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300'
+                : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-500 dark:text-stone-400 hover:border-amber-200 dark:hover:border-amber-900 hover:text-amber-700 dark:hover:text-amber-300',
             )}
           >
             {c.label}
@@ -393,14 +393,14 @@ function FontPicker({
           aria-pressed={activeId === null}
           aria-label="Selecionar fonte padrão da plataforma"
           className={cn(
-            'relative flex flex-col items-start justify-center gap-1 rounded-xl border p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+            'relative flex flex-col items-start justify-center gap-1 rounded-xl border p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500',
             activeId === null
-              ? 'border-emerald-400 bg-emerald-50/40 dark:bg-emerald-950/50 ring-2 ring-emerald-500/30'
-              : 'border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/50 hover:border-emerald-300 dark:hover:border-emerald-700',
+              ? 'border-amber-400 bg-amber-50/40 dark:bg-amber-950/50 ring-2 ring-amber-500/30'
+              : 'border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/50 hover:border-amber-300 dark:hover:border-amber-700',
           )}
         >
           {activeId === null && (
-            <span className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-emerald-600 text-white">
+            <span className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-amber-600 text-white">
               <Check className="size-3" aria-hidden />
             </span>
           )}
@@ -573,7 +573,7 @@ function MentorProfileForm({
       <div className="flex flex-col gap-4">
         <div>
           <p className="flex items-center gap-1.5 text-sm font-semibold text-stone-900 dark:text-stone-50">
-            <Camera className="size-4 text-emerald-700 dark:text-emerald-300" aria-hidden /> Fotos do perfil
+            <Camera className="size-4 text-amber-700 dark:text-amber-300" aria-hidden /> Fotos do perfil
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Sua foto aparece no Explorar, nos cursos e na navbar. A capa aparece no topo do seu perfil
@@ -735,10 +735,10 @@ function MentorProfileForm({
                 aria-pressed={selected}
                 onClick={() => toggleCategory(category)}
                 className={cn(
-                  'rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-emerald-600',
+                  'rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-amber-600',
                   selected
-                    ? 'border-emerald-600 bg-emerald-600 text-white'
-                    : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-200 hover:border-emerald-400 dark:hover:border-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-300'
+                    ? 'border-amber-600 bg-amber-600 text-white'
+                    : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-200 hover:border-amber-400 dark:hover:border-amber-500 hover:text-amber-700 dark:hover:text-amber-300'
                 )}
               >
                 {category}
@@ -812,7 +812,7 @@ function MentorProfileForm({
       <div className="flex flex-col gap-4 border-t border-stone-100 dark:border-stone-800 pt-5">
         <div>
           <p className="flex items-center gap-1.5 text-sm font-semibold text-stone-900 dark:text-stone-50">
-            <AtSign className="size-4 text-emerald-700 dark:text-emerald-300" aria-hidden /> Redes sociais e portfólio
+            <AtSign className="size-4 text-amber-700 dark:text-amber-300" aria-hidden /> Redes sociais e portfólio
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Aparecem como cartões de prévia no seu perfil público.
@@ -957,7 +957,7 @@ function AvailabilityEditor({
                       <Badge
                         key={`${s.weekday}-${s.startHour}-${s.endHour}`}
                         variant="outline"
-                        className="gap-1 border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/50 py-1 text-emerald-800 dark:text-emerald-300"
+                        className="gap-1 border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 py-1 text-amber-800 dark:text-amber-300"
                       >
                         {hourToLabel(s.startHour)} – {hourToLabel(s.endHour)}
                         <button
@@ -966,7 +966,7 @@ function AvailabilityEditor({
                             s.endHour
                           )} na ${day.toLowerCase()}`}
                           onClick={() => removeSlot(s.weekday, s.startHour, s.endHour)}
-                          className="rounded-full p-0.5 transition-colors hover:bg-emerald-200/70 dark:hover:bg-emerald-900/40 focus-visible:outline-2 focus-visible:outline-emerald-600"
+                          className="rounded-full p-0.5 transition-colors hover:bg-amber-200/70 dark:hover:bg-amber-900/40 focus-visible:outline-2 focus-visible:outline-amber-600"
                         >
                           <X className="size-3" aria-hidden />
                         </button>
@@ -1132,7 +1132,7 @@ function ContentsManager({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 ring-1 ring-amber-100 dark:ring-amber-900/40">
             <Newspaper className="size-4" aria-hidden />
           </span>
           Mural de conteúdos
@@ -1573,7 +1573,7 @@ function CoursesManager({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 ring-1 ring-amber-100 dark:ring-amber-900/40">
             <GraduationCap className="size-4" aria-hidden />
           </span>
           Meus cursos
@@ -1626,7 +1626,7 @@ function CoursesManager({
                       {LEVEL_LABELS[course.level] ?? course.level}
                     </Badge>
                     {course.isPublished ? (
-                      <Badge className="bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300">Publicado</Badge>
+                      <Badge className="bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300">Publicado</Badge>
                     ) : (
                       <Badge variant="secondary" className="bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
                         Rascunho
@@ -2276,7 +2276,7 @@ function LessonsManagerDialog({
                         >
                           Sem tema
                           {lesson.themeId === null ? (
-                            <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                            <Check className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
                           ) : null}
                         </button>
                         {themes.map((t) => (
@@ -2289,7 +2289,7 @@ function LessonsManagerDialog({
                           >
                             <span className="truncate">{t.title}</span>
                             {lesson.themeId === t.id ? (
-                              <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                              <Check className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
                             ) : null}
                           </button>
                         ))}
@@ -2308,7 +2308,7 @@ function LessonsManagerDialog({
                   >
                     <ListChecks className="size-3.5" aria-hidden />
                     {lesson.quizCount > 0 ? (
-                      <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold leading-none text-white">
+                      <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-600 px-1 text-[10px] font-bold leading-none text-white">
                         {lesson.quizCount}
                       </span>
                     ) : null}
@@ -2416,7 +2416,7 @@ function LessonsManagerDialog({
                       className={cn(
                         'flex min-h-11 items-center justify-center gap-1.5 rounded-lg border text-sm font-semibold transition-colors',
                         kind === opt.value
-                          ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300'
+                          ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300'
                           : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
                       )}
                     >
@@ -2932,14 +2932,14 @@ function QuizManagerDialog({
                             className={cn(
                               'flex items-center gap-2 rounded-xl border px-3 py-2 text-sm',
                               correct
-                                ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 font-medium text-emerald-900 dark:text-emerald-300'
+                                ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/50 font-medium text-amber-900 dark:text-amber-300'
                                 : 'border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/50 text-stone-700 dark:text-stone-200'
                             )}
                           >
                             <span
                               className={cn(
                                 'flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold',
-                                correct ? 'bg-emerald-600 text-white' : 'bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
+                                correct ? 'bg-amber-600 text-white' : 'bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
                               )}
                             >
                               {QUIZ_OPTION_LETTERS[i] ?? i + 1}
@@ -2947,7 +2947,7 @@ function QuizManagerDialog({
                             <span className="min-w-0 flex-1 break-words">{option}</span>
                             {correct ? (
                               <Check
-                                className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+                                className="size-4 shrink-0 text-amber-600 dark:text-amber-400"
                                 aria-label="Alternativa correta"
                               />
                             ) : null}
@@ -3005,7 +3005,7 @@ function QuizManagerDialog({
                           <RadioGroupItem
                             value={String(i)}
                             aria-label={`Marcar alternativa ${QUIZ_OPTION_LETTERS[i]} como correta`}
-                            className="shrink-0 border-stone-300 dark:border-stone-700 text-emerald-600 dark:text-emerald-400"
+                            className="shrink-0 border-stone-300 dark:border-stone-700 text-amber-600 dark:text-amber-400"
                           />
                           <Input
                             value={option}
@@ -3072,7 +3072,7 @@ function QuizManagerDialog({
                       type="submit"
                       size="sm"
                       disabled={saving}
-                      className="bg-emerald-700 hover:bg-emerald-800"
+                      className="bg-amber-700 hover:bg-amber-800"
                     >
                       {saving ? 'Salvando...' : 'Salvar pergunta'}
                     </Button>
@@ -3221,7 +3221,7 @@ function TrafficLinksSection({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 ring-1 ring-amber-100 dark:ring-amber-900/40">
             <TrendingUp className="size-4" aria-hidden />
           </span>
           Link público e tráfego pago
@@ -3340,7 +3340,7 @@ function TrafficLinksSection({
               id="boost-link-title"
               className="flex items-center gap-1.5 text-sm font-semibold text-stone-900 dark:text-stone-50"
             >
-              <Megaphone className="size-4 text-emerald-700 dark:text-emerald-300" aria-hidden /> Gerador de link de
+              <Megaphone className="size-4 text-amber-700 dark:text-amber-300" aria-hidden /> Gerador de link de
               impulsionamento
             </p>
             <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">
@@ -3448,7 +3448,7 @@ function TrafficKpiTile({
         className={cn(
           'flex size-8 items-center justify-center rounded-lg',
           accent
-            ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-100 dark:ring-emerald-900/40'
+            ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 ring-1 ring-amber-100 dark:ring-amber-900/40'
             : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
         )}
       >
@@ -3505,7 +3505,7 @@ function TrafficPanel({ userId }: { userId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 ring-1 ring-amber-100 dark:ring-amber-900/40">
             <BarChart3 className="size-4" aria-hidden />
           </span>
           Desempenho de tráfego
@@ -3585,7 +3585,7 @@ function TrafficPanel({ userId }: { userId: string }) {
                           title={`${day.pageviews} ${day.pageviews === 1 ? 'visita' : 'visitas'} · ${day.purchases} ${day.purchases === 1 ? 'venda' : 'vendas'}`}
                           className={cn(
                             'flex-1 rounded-t-sm',
-                            day.purchases > 0 ? 'bg-emerald-600' : 'bg-emerald-200 dark:bg-emerald-800'
+                            day.purchases > 0 ? 'bg-amber-600' : 'bg-amber-200 dark:bg-amber-800'
                           )}
                           style={{
                             height: `${Math.max(6, Math.round((day.pageviews / maxDailyPageviews) * 100))}%`,
@@ -3595,10 +3595,10 @@ function TrafficPanel({ userId }: { userId: string }) {
                     </div>
                     <div className="flex flex-wrap items-center gap-4 text-xs text-stone-500 dark:text-stone-400">
                       <span className="flex items-center gap-1.5">
-                        <span className="size-2.5 rounded-sm bg-emerald-200 dark:bg-emerald-800" aria-hidden /> Visitas
+                        <span className="size-2.5 rounded-sm bg-amber-200 dark:bg-amber-800" aria-hidden /> Visitas
                       </span>
                       <span className="flex items-center gap-1.5">
-                        <span className="size-2.5 rounded-sm bg-emerald-600" aria-hidden /> Dia com venda
+                        <span className="size-2.5 rounded-sm bg-amber-600" aria-hidden /> Dia com venda
                       </span>
                     </div>
                   </div>
@@ -3622,7 +3622,7 @@ function TrafficPanel({ userId }: { userId: string }) {
                               </p>
                             </div>
                             <div className="shrink-0 text-right">
-                              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                              <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
                                 {channel.purchases} {channel.purchases === 1 ? 'venda' : 'vendas'}
                               </p>
                               <p className="text-xs text-stone-500 dark:text-stone-400">{currencyBRL(channel.revenue)}</p>
@@ -3653,7 +3653,7 @@ function TrafficPanel({ userId }: { userId: string }) {
                               </p>
                             </div>
                             <div className="shrink-0 text-right">
-                              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                              <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
                                 {source.purchases} {source.purchases === 1 ? 'venda' : 'vendas'}
                               </p>
                               <p className="text-xs text-stone-500 dark:text-stone-400">{currencyBRL(source.revenue)}</p>
@@ -3675,7 +3675,7 @@ function TrafficPanel({ userId }: { userId: string }) {
                               {course.title}
                             </p>
                             <div className="shrink-0 text-right">
-                              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                              <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
                                 {course.purchases} {course.purchases === 1 ? 'venda' : 'vendas'}
                               </p>
                               <p className="text-xs text-stone-500 dark:text-stone-400">{currencyBRL(course.revenue)}</p>
@@ -3700,7 +3700,7 @@ function TrafficPanel({ userId }: { userId: string }) {
 function BenefitCard({ icon: Icon, title, text }: { icon: LucideIcon; title: string; text: string }) {
   return (
     <Card className="p-6 text-left">
-      <div className="flex size-10 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
+      <div className="flex size-10 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 ring-1 ring-amber-100 dark:ring-amber-900/40">
         <Icon className="size-5" aria-hidden />
       </div>
       <h3 className="mt-3 font-semibold">{title}</h3>
@@ -3809,14 +3809,14 @@ function QuestionsInbox({
           className={cn(
             'min-w-0 rounded-2xl border p-4 text-left transition-colors',
             status === 'answered'
-              ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50/70 dark:bg-emerald-950/40'
-              : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 hover:border-emerald-200 dark:hover:border-emerald-800'
+              ? 'border-amber-300 dark:border-amber-700 bg-amber-50/70 dark:bg-amber-950/40'
+              : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 hover:border-amber-200 dark:hover:border-amber-800'
           )}
         >
           <span className="text-[11px] font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
             Respondidas
           </span>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+          <p className="mt-1 text-2xl font-bold tabular-nums text-amber-700 dark:text-amber-400">
             {counts.answered}
           </p>
         </button>
@@ -3827,8 +3827,8 @@ function QuestionsInbox({
           className={cn(
             'min-w-0 rounded-2xl border p-4 text-left transition-colors',
             status === 'all'
-              ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50/70 dark:bg-emerald-950/40'
-              : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 hover:border-emerald-200 dark:hover:border-emerald-800'
+              ? 'border-amber-300 dark:border-amber-700 bg-amber-50/70 dark:bg-amber-950/40'
+              : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 hover:border-amber-200 dark:hover:border-amber-800'
           )}
         >
           <span className="text-[11px] font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
@@ -3903,7 +3903,7 @@ function QuestionsInbox({
                   <button
                     type="button"
                     onClick={() => navigate({ name: 'course', courseId: q.course.id })}
-                    className="mt-0.5 flex max-w-full items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline dark:text-emerald-400"
+                    className="mt-0.5 flex max-w-full items-center gap-1 text-xs font-semibold text-amber-700 hover:underline dark:text-amber-400"
                     aria-label={`Abrir o curso ${q.course.title}`}
                   >
                     <BookOpen className="size-3 shrink-0" aria-hidden />
@@ -3965,16 +3965,16 @@ function QuestionsInbox({
                   </div>
                 </div>
               ) : (
-                <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/70 p-3.5 dark:border-emerald-900 dark:bg-emerald-950/50">
+                <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50/70 p-3.5 dark:border-amber-900 dark:bg-amber-950/50">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                    <p className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-amber-700 dark:text-amber-300">
                       <Check className="size-3" aria-hidden />
                       {q.answeredAt ? `Respondida em ${shortWhen(q.answeredAt)}` : 'Respondida'}
                     </p>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 rounded-full px-2.5 text-xs text-emerald-700 hover:bg-emerald-100 dark:text-emerald-300 dark:hover:bg-emerald-900"
+                      className="h-7 rounded-full px-2.5 text-xs text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900"
                       onClick={() => {
                         setEditingId(q.id)
                         setAnswerDraft((prev) => ({ ...prev, [q.id]: q.answer ?? '' }))
@@ -3983,7 +3983,7 @@ function QuestionsInbox({
                       <Pencil className="size-3" aria-hidden /> Editar resposta
                     </Button>
                   </div>
-                  <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-emerald-900 dark:text-emerald-200">
+                  <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-amber-900 dark:text-amber-200">
                     {q.answer}
                   </p>
                 </div>
@@ -4119,7 +4119,7 @@ function OverviewKpi({
         type="button"
         onClick={onClick}
         aria-label={`Ir para a aba ${label}`}
-        className="min-w-0 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 text-left transition-colors hover:border-emerald-300 dark:hover:border-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+        className="min-w-0 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 text-left transition-colors hover:border-amber-300 dark:hover:border-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"
       >
         {body}
       </button>
@@ -4223,7 +4223,7 @@ function FinancePanel({ userId }: { userId: string }) {
         <OverviewKpi
           icon={Wallet}
           label="Receita total"
-          value={<span className="text-emerald-700 dark:text-emerald-300">{formatBRL(data.totalRevenue)}</span>}
+          value={<span className="text-amber-700 dark:text-amber-300">{formatBRL(data.totalRevenue)}</span>}
           footer={`${formatBRL(data.productsRevenue)} em produtos · ${formatBRL(data.sessionsRevenue)} em sessões`}
         />
         <OverviewKpi
@@ -4275,7 +4275,7 @@ function FinancePanel({ userId }: { userId: string }) {
                       role="img"
                       aria-label={`${month.label}: ${formatBRL(month.revenue)}`}
                       title={`${month.label}: ${formatBRL(month.revenue)}`}
-                      className="w-full rounded-t-md bg-emerald-600/85"
+                      className="w-full rounded-t-md bg-amber-600/85"
                       style={{ height: `${heightPct}%` }}
                     />
                   </div>
@@ -4474,7 +4474,7 @@ function CouponsManager({ userId }: { userId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 ring-1 ring-amber-100 dark:ring-amber-900/40">
             <Ticket className="size-4" aria-hidden />
           </span>
           Cupons de desconto
@@ -4556,7 +4556,7 @@ function CouponsManager({ userId }: { userId: string }) {
             </p>
           ) : null}
           <div className="sm:col-span-2">
-            <Button type="submit" disabled={creating} className="rounded-full bg-emerald-700 hover:bg-emerald-800">
+            <Button type="submit" disabled={creating} className="rounded-full bg-amber-700 hover:bg-amber-800">
               {creating ? (
                 <>
                   <Loader2 className="size-4 animate-spin" aria-hidden /> Criando...
@@ -4608,7 +4608,7 @@ function CouponsManager({ userId }: { userId: string }) {
                       <Copy className="size-4" aria-hidden />
                     </Button>
                     {coupon.isActive ? (
-                      <Badge className="bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300">Ativo</Badge>
+                      <Badge className="bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300">Ativo</Badge>
                     ) : (
                       <Badge variant="secondary" className="bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
                         Pausado
@@ -4814,7 +4814,7 @@ export default function OnboardingView() {
       <div className="flex min-h-[70vh] items-center justify-center px-4 py-10">
         <Card className="w-full max-w-md p-6 text-center">
           <div className="flex flex-col items-center gap-3">
-            <div className="flex size-12 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-200 dark:ring-emerald-900">
+            <div className="flex size-12 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 ring-1 ring-amber-200 dark:ring-amber-900">
               <LogIn className="size-6" aria-hidden />
             </div>
             <h1 className="text-xl font-semibold">Entre para configurar seu perfil de mentor</h1>
@@ -4854,11 +4854,11 @@ export default function OnboardingView() {
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-8 sm:px-6">
         <section className="text-center" aria-labelledby="onboarding-hero-title">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/20">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-amber-600 text-white shadow-lg shadow-amber-600/20">
             <Sparkles className="size-7" aria-hidden />
           </div>
           <h1 id="onboarding-hero-title" className="mt-4 text-3xl font-bold tracking-tight">
-            Torne-se um mentor no MentorHub
+            Torne-se um mentor no Órbita
           </h1>
           <p className="mx-auto mt-2 max-w-xl text-muted-foreground">
             Compartilhe sua experiência com quem está começando, construa sua reputação e seja remunerado por
@@ -4924,7 +4924,7 @@ export default function OnboardingView() {
               <TabsTrigger
                 key={id}
                 value={id}
-                className="min-h-11 flex-none justify-start gap-2 rounded-xl px-3 hover:bg-stone-100 dark:hover:bg-stone-800 data-[state=active]:bg-emerald-700 data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:hover:bg-emerald-700"
+                className="min-h-11 flex-none justify-start gap-2 rounded-xl px-3 hover:bg-stone-100 dark:hover:bg-stone-800 data-[state=active]:bg-amber-700 data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:hover:bg-amber-700"
               >
                 <Icon className="size-4" aria-hidden />
                 {label}
@@ -5002,9 +5002,9 @@ export default function OnboardingView() {
                         type="button"
                         aria-label={`Ir para a aba ${label}`}
                         onClick={() => setTab(id)}
-                        className="group flex min-h-11 w-full min-w-0 items-center gap-3 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 text-left transition-colors hover:border-emerald-300 dark:hover:border-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+                        className="group flex min-h-11 w-full min-w-0 items-center gap-3 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 text-left transition-colors hover:border-amber-300 dark:hover:border-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"
                       >
-                        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 ring-1 ring-amber-100 dark:ring-amber-900/40">
                           <Icon className="size-5" aria-hidden />
                         </span>
                         <span className="min-w-0 flex-1">
@@ -5012,7 +5012,7 @@ export default function OnboardingView() {
                           <span className="mt-0.5 block text-xs leading-snug text-stone-500 dark:text-stone-400">{description}</span>
                         </span>
                         <ChevronRight
-                          className="size-4 shrink-0 text-stone-300 dark:text-stone-600 transition-all group-hover:translate-x-0.5 group-hover:text-emerald-600 dark:group-hover:text-emerald-400"
+                          className="size-4 shrink-0 text-stone-300 dark:text-stone-600 transition-all group-hover:translate-x-0.5 group-hover:text-amber-600 dark:group-hover:text-amber-400"
                           aria-hidden
                         />
                       </button>
@@ -5026,7 +5026,7 @@ export default function OnboardingView() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 ring-1 ring-amber-100 dark:ring-amber-900/40">
                       <UserRound className="size-4" aria-hidden />
                     </span>
                     Perfil público
@@ -5084,7 +5084,7 @@ export default function OnboardingView() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 ring-1 ring-amber-100 dark:ring-amber-900/40">
                       <CalendarClock className="size-4" aria-hidden />
                     </span>
                     Disponibilidade semanal
@@ -5111,7 +5111,7 @@ export default function OnboardingView() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 ring-1 ring-amber-100 dark:ring-amber-900/40">
                       <MessageCircleQuestion className="size-4" aria-hidden />
                     </span>
                     Perguntas dos alunos
