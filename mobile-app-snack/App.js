@@ -33,6 +33,7 @@
  *                       │   vivo DENTRO do app (WebView → /live.html)
  *                       ├─ Evento (params: { id }) — reunião MULTI-participante
  *                       │   (WebView → /room.html, malha WebRTC)
+ *                       ├─ Ranking (ranking de XP da semana — gamificação)
  *                       ├─ Perfil (aberto pelo ícone da conta na Home)
  *                       ├─ Busca  (busca global: cursos + livros + mentores)
  *                       └─ Salvos (favoritos locais do aparelho)
@@ -108,6 +109,7 @@ import CheckoutScreen from "./src/screens/CheckoutScreen";
 import MensagensScreen, { MessagesTabPage } from "./src/screens/MensagensScreen";
 import SalaScreen from "./src/screens/SalaScreen";
 import EventoScreen from "./src/screens/EventoScreen";
+import RankingScreen from "./src/screens/RankingScreen";
 import { unreadStore } from "./src/lib/unread";
 
 /* ----------------------------- Tema de navegação ---------------------------- */
@@ -322,6 +324,7 @@ function RootNavigator() {
       <Stack.Screen name="Conversa" component={MensagensScreen} />
       <Stack.Screen name="Sala" component={SalaScreen} />
       <Stack.Screen name="Evento" component={EventoScreen} />
+      <Stack.Screen name="Ranking" component={RankingScreen} />
       <Stack.Screen name="Perfil" component={PerfilScreen} />
       <Stack.Screen name="Busca" component={BuscaScreen} />
       <Stack.Screen name="Salvos" component={SalvosScreen} />

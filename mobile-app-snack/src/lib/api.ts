@@ -980,3 +980,71 @@ export async function getEventMeetingToken(eventId: string): Promise<EventMeetin
     `/events/${encodeURIComponent(eventId)}/meeting-token`
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Gamificação v2 — missões diárias, ranking semanal e heatmap          */
+/* ------------------------------------------------------------------ */
+
+/** Missão diária do usuário (progresso computado no servidor, coleta idempotente). */
+export interface DailyMission {
+  id: string;
+  title: string;
+  description: string;
+  target: number;
+  xp: number;
+  progress: number;
+  claimed: boolean;
+  claimable: boolean;
+}
+
+export interface HeatmapDay {
+  date: string;
+  xp: number;
+}
+
+export interface GamificationDaily {
+  day: string;
+  streak: number;
+  missions: DailyMission[];
+  heatmap: { start: string; days: HeatmapDay[]; activeDays: number };
+}
+
+export interface ClaimMissionResult {
+  awarded: number;
+  day: string;
+  xpTotal: number;
+  streak: number;
+}
+
+export interface LeaderboardEntry {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  weekXp: number;
+  levelLabel: string;
+}
+
+export interface LeaderboardResponse {
+  weekStart: string;
+  items: LeaderboardEntry[];
+  totalActive: number;
+  me: { rank: number; weekXp: number } | null;
+}
+
+/** Missões de hoje (progresso + coletadas). Falha em servidor antigo → 404 (oculta a seção). */
+export async function getGamificationDaily(): Promise<GamificationDaily> {
+  return request<GamificationDaily>(`/gamification/daily`);
+}
+
+/** Coleta a recompensa de uma missão de hoje (o servidor revalida o progresso). */
+export async function claimMission(missionId: string): Promise<ClaimMissionResult> {
+  return request<ClaimMissionResult>(`/gamification/claim`, {
+    method: "POST",
+    body: { missionId },
+  });
+}
+
+/** Ranking da semana por XP ganho desde a segunda-feira (com a minha posição). */
+export async function getWeeklyLeaderboard(): Promise<LeaderboardResponse> {
+  return request<LeaderboardResponse>(`/gamification/leaderboard`);
+}

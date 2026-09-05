@@ -10,6 +10,7 @@
  * Header e rodapé fixos: só o corpo rola (com folga para o dock flutuante).
  */
 import React, { useCallback, useEffect, useState } from "react";
+import type { ComponentProps } from "react";
 import {
   FlatList,
   RefreshControl,
@@ -23,14 +24,18 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import {
+  claimMission,
   errMessage,
   getDashboard,
+  getGamificationDaily,
   getHome,
   isMissingEndpoint,
   type Booking,
   type CourseItem,
+  type DailyMission,
   type DashboardEnrolledCourse,
   type DashboardResponse,
+  type GamificationDaily,
   listEvents,
   type EventItem,
 } from "../lib/api";
@@ -53,12 +58,32 @@ import { StatusPill } from "../components/StatusPill";
 
 import { clearPendingCheckout, readPendingCheckout } from "../lib/pendingCheckout";
 
-/** Atalhos da seção "Explorar" — trocam de aba sem navegar no stack. */
-const EXPLORAR = [
+/** Nome de ícone Ionicons tipado (o `name` do componente aceita só literais). */
+type IoniconName = NonNullable<ComponentProps<typeof Ionicons>["name"]>;
+
+/** Atalhos da seção "Explorar" — abas trocam de pager; telas empilham no stack. */
+interface ExplorarTile {
+  icon: IoniconName;
+  title: string;
+  sub: string;
+  tab?: string;
+  screen?: string;
+}
+const EXPLORAR: ExplorarTile[] = [
   { tab: "Cursos", icon: "play-circle-outline", title: "Cursos", sub: "Aulas no seu ritmo" },
   { tab: "Livros", icon: "book-outline", title: "Biblioteca", sub: "Livros e artigos" },
   { tab: "Mentorias", icon: "people-outline", title: "Mentores", sub: "Sessões 1:1" },
-] as const;
+  { screen: "Ranking", icon: "trophy-outline", title: "Ranking", sub: "Top da semana" },
+];
+
+/** Ícone por missão diária (o servidor manda só o id). */
+const MISSION_ICONS: Record<string, IoniconName> = {
+  aula: "play-circle-outline",
+  quiz: "bulb-outline",
+  evento: "videocam-outline",
+  mensagem: "chatbubble-outline",
+  anotacao: "create-outline",
+};
 
 export default function HomeScreen() {
   const styles = makeStyles();
@@ -80,10 +105,21 @@ export default function HomeScreen() {
   const { mode, toggle } = useThemeMode();
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [missions, setMissions] = useState<GamificationDaily | null>(null);
+  const [claimingId, setClaimingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+
+  // Missões diárias (gamificação) — falha silenciosa: servidor antigo esconde a seção.
+  const loadMissions = useCallback(async () => {
+    try {
+      setMissions(await getGamificationDaily());
+    } catch {
+      setMissions(null);
+    }
+  }, []);
 
   const load = useCallback(
     async (loadMode: "initial" | "refresh") => {
@@ -97,6 +133,7 @@ export default function HomeScreen() {
       } catch {
         setEvents([]);
       }
+      void loadMissions();
       try {
         // Bootstrap: usuário + badges + dashboard em UMA chamada (servidor novo).
         // Em servidor antigo (rota /home inexistente) cai para o dashboard normal.
@@ -128,7 +165,35 @@ export default function HomeScreen() {
         setRefreshing(false);
       }
     },
-    [updateUser]
+    [updateUser, loadMissions]
+  );
+
+  /** Coleta o XP de uma missão concluída (servidor revalida e devolve o total). */
+  const handleClaim = useCallback(
+    async (mission: DailyMission) => {
+      setClaimingId(mission.id);
+      try {
+        const res = await claimMission(mission.id);
+        if (user) updateUser({ ...user, xp: res.xpTotal });
+        setMissions((prev) =>
+          prev
+            ? {
+                ...prev,
+                streak: res.streak,
+                missions: prev.missions.map((m) =>
+                  m.id === mission.id ? { ...m, claimed: true, claimable: false } : m
+                ),
+              }
+            : prev
+        );
+      } catch {
+        // Missão já coletada ou progresso desatualizado → recarrega a verdade.
+        await loadMissions();
+      } finally {
+        setClaimingId(null);
+      }
+    },
+    [user, updateUser, loadMissions]
   );
 
   useEffect(() => {
@@ -274,6 +339,70 @@ export default function HomeScreen() {
             />
           )}
 
+          {/* Missões de hoje — hábito diário estilo Duolingo (coleta de XP) */}
+          {missions && missions.missions.length > 0 ? (
+            <>
+              <SectionTitle title="Missões de hoje" />
+              <View style={styles.missionsCard}>
+                {missions.missions.map((mission) => {
+                  const pct = Math.min(100, Math.round((mission.progress / mission.target) * 100));
+                  return (
+                    <View key={mission.id} style={styles.missionRow}>
+                      <View
+                        style={[
+                          styles.missionIcon,
+                          mission.claimed ? styles.missionIconDone : null,
+                        ]}
+                      >
+                        <Ionicons
+                          name={mission.claimed ? "checkmark" : (MISSION_ICONS[mission.id] ?? "flash-outline")}
+                          size={18}
+                          color={mission.claimed ? theme.colors.white : theme.colors.accent}
+                        />
+                      </View>
+                      <View style={styles.missionInfo}>
+                        <Text style={styles.missionTitle} numberOfLines={1}>
+                          {mission.title}
+                        </Text>
+                        <Text style={styles.missionDesc} numberOfLines={2}>
+                          {mission.description}
+                        </Text>
+                        {mission.progress < mission.target ? (
+                          <View style={styles.missionProgress}>
+                            <ProgressBar pct={pct} height={4} />
+                            <Text style={styles.missionProgressText}>
+                              {mission.progress}/{mission.target}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      {mission.claimed ? (
+                        <Text style={styles.missionClaimed}>Coletada</Text>
+                      ) : mission.claimable ? (
+                        <TouchableOpacity
+                          style={styles.missionClaimBtn}
+                          onPress={() => void handleClaim(mission)}
+                          disabled={claimingId === mission.id}
+                          activeOpacity={0.8}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Coletar +${mission.xp} XP da missão ${mission.title}`}
+                        >
+                          <Text style={styles.missionClaimBtnText}>
+                            {claimingId === mission.id ? "..." : `+${mission.xp}`}
+                          </Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <View style={styles.missionXpPill}>
+                          <Text style={styles.missionXpPillText}>+{mission.xp}</Text>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            </>
+          ) : null}
+
           {/* Meus cursos — o resto dos cursos inscritos, em carrossel compacto */}
           {myOtherCourses.length > 0 ? (
             <>
@@ -322,9 +451,11 @@ export default function HomeScreen() {
           <View style={styles.explorarRow}>
             {EXPLORAR.map((tile) => (
               <TouchableOpacity
-                key={tile.tab}
+                key={tile.title}
                 style={styles.explorarTile}
-                onPress={() => setTab(tile.tab)}
+                onPress={() =>
+                  tile.screen ? navigation.navigate(tile.screen) : tile.tab ? setTab(tile.tab) : undefined
+                }
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel={`Explorar ${tile.title}`}
@@ -593,13 +724,14 @@ const makeStyles = () =>
     },
     myCoursePct: { color: theme.colors.textFaint, fontSize: 10.5, fontWeight: "700" },
 
-    /* Explorar — 3 atalhos grandes */
+    /* Explorar — grade 2×2 de atalhos grandes (Cursos · Biblioteca · Mentores · Ranking) */
     explorarRow: {
       flexDirection: "row",
+      flexWrap: "wrap",
       gap: theme.spacing.sm,
     },
     explorarTile: {
-      flex: 1,
+      width: "47.5%",
       gap: 4,
       padding: theme.spacing.md,
       backgroundColor: theme.colors.surface,
@@ -620,6 +752,65 @@ const makeStyles = () =>
     },
     explorarTitle: { color: theme.colors.text, fontSize: 13.5, fontWeight: "800" },
     explorarSub: { color: theme.colors.textFaint, fontSize: 10.5, fontWeight: "600" },
+
+    /* Missões de hoje */
+    missionsCard: {
+      gap: theme.spacing.sm,
+      padding: theme.spacing.md,
+      backgroundColor: theme.colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.lg,
+    },
+    missionRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.md,
+    },
+    missionIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.accentSoft,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.accentBorder,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    missionIconDone: {
+      backgroundColor: theme.colors.accent,
+    },
+    missionInfo: { flex: 1, gap: 2 },
+    missionTitle: { color: theme.colors.text, fontSize: 13.5, fontWeight: "800" },
+    missionDesc: { color: theme.colors.textMuted, fontSize: 11.5, fontWeight: "500", lineHeight: 15 },
+    missionProgress: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
+    missionProgressText: { color: theme.colors.textFaint, fontSize: 10, fontWeight: "700" },
+    missionClaimBtn: {
+      paddingHorizontal: 12,
+      height: 34,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: theme.colors.accent,
+      shadowOpacity: 0.35,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 5,
+    },
+    missionClaimBtnText: { color: theme.colors.white, fontSize: 12.5, fontWeight: "800" },
+    missionClaimed: { color: theme.colors.accent, fontSize: 11, fontWeight: "800" },
+    missionXpPill: {
+      paddingHorizontal: 10,
+      height: 26,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.warningSoft,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.warningBorder,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    missionXpPillText: { color: theme.colors.warning, fontSize: 11, fontWeight: "800" },
 
     /* Próximas mentorias */
     bookingCard: {

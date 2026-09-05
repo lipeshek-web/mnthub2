@@ -2,11 +2,11 @@
 
 App do aluno do MentorHub, publicado e testado de ponta a ponta. Dois jeitos de abrir:
 
-1. **Expo Snack (link direto):** **https://snack.expo.dev/o9HnZJaSceRiGeOEdjwd6**
+1. **Expo Snack (link direto):** **https://snack.expo.dev/vUOTh1bNSHXrYh9tgquax**
    - No preview **Web** (painel direito) ou no celular com o app **Expo Go** escaneando o QR Code ("My Device").
-   - Publicado via API oficial (`exp.host/--/api/v2/snack/save`) com código (57 arquivos) + 12 dependências — abrindo o link, já está tudo lá (nada de copiar/colar). SEM expo-clipboard (não resolve no Snack web): copiar PIX usa o clipboard do navegador + código selecionável.
+   - Publicado via API oficial (`exp.host/--/api/v2/snack/save`) com código (58 arquivos) + 12 dependências — abrindo o link, já está tudo lá (nada de copiar/colar). SEM expo-clipboard (não resolve no Snack web): copiar PIX usa o clipboard do navegador + código selecionável.
    - ⚠️ **NÃO republique pelo painel de dependências do editor**: uma republicação por cima já salvou o snack SEM o `react-native-webview` e o app inteiro morria com "Unable to resolve module 'module://react-native-webview.js'". A `SalaScreen` agora é resiliente (require tardio + fallback "Abrir sala no navegador"), mas o correto é publicar pelo script (`bun mobile-app-snack/scripts/publish-snack.js`) com as 12 dependências.
-   - **Novidades desta versão (EVENTOS — o diferencial):** REUNIÕES MULTI-PARTICIPANTE DENTRO DA PLATAFORMA — sem YouTube e sem links externos: eventos com sala de vídeo em malha WebRTC (2–12 participantes) servida pela `/room.html` do próprio servidor, com grid de vídeos, badges de mic/câmera por participante, timer e controles (mic/câmera/sair). Home ganhou a seção "Eventos ao vivo & reuniões" (carrossel, AO VIVO em destaque); tela do evento com capa, participantes confirmados, participar/sair e "Entrar na sala ao vivo" (abre 15 min antes). TAMBÉM NESTA VERSÃO: conteúdo turbinado — 6 cursos novos (incl. MANUAL DO TCC: do Tema à Defesa, 12 aulas), +12 aulas nos cursos rasos, ebook "Guia Prático do TCC" e 4 artigos acadêmicos. Mantém o design enxuto: login minimalista, home como explorar, biblioteca em grade, dock flutuante e cabeçalhos contextuais Apple.
+   - **Novidades desta versão (GAMIFICAÇÃO v2):** MISSÕES DIÁRIAS na Home ("Missões de hoje" — 2 fixas + 1 rotativa por dia da semana, progresso ao vivo e botão de coleta de XP; renovam à meia-noite) e RANKING DA SEMANA (tela nova no stack + 4º atalho na grade "Explorar" — top por XP ganho desde a segunda-feira, com pódio colorido, posição do usuário sempre visível e recomeço semanal). TAMBÉM NESTA VERSÃO (site): heatmap de consistência estilo GitHub no dashboard web. Mantém tudo do design enxuto: login minimalista, home como explorar, biblioteca em grade, dock flutuante, cabeçalhos contextuais Apple, eventos multi-participante e checkout no app.
 2. **Web app no site:** **https://mentorhub.space-z.ai/app-mobile/** — o mesmo código exportado (`expo export --platform web`) e servido junto do site (atualizado a cada publish).
 
 Mesma API (`/api/v1`, JWT Bearer 30 dias), mesmo visual, mesmos dados do Turso em produção.
@@ -30,7 +30,8 @@ navegando e aprendendo normalmente, e compra/mensagens mostram um aviso claro
 ## 📱 O que tem no app (tudo verificado em E2E com browser real)
 
 - **Login** — minimalista: marca + e-mail + senha + "Entrar" (servidor padrão embutido; sessão salva no aparelho)
-- **Início (enxuta)** — card destaque "Continuar" com gradiente, "Meus cursos" (carrossel), atalhos "Explorar" (Cursos · Biblioteca · Mentores), "Em alta agora" e próximas mentorias; busca global pelo ícone no header
+- **Início (enxuta)** — card destaque "Continuar" com gradiente, **"Missões de hoje"** (gamificação diária: 2 missões fixas + 1 rotativa, coleta de XP com um toque), "Meus cursos" (carrossel), atalhos "Explorar" em grade 2×2 (Cursos · Biblioteca · Mentores · **Ranking**), "Em alta agora" e próximas mentorias; busca global pelo ícone no header
+- **Ranking da semana** — tela nova (atalho na Home): top de XP ganho desde a segunda-feira com pódio colorido (ouro/prata/bronze), nível de cada membro, sua posição sempre visível no rodapé e recomeço semanal
 - **Livros** — biblioteca em GRADE de estante (capas grandes + chips de tipo e categoria) com busca e **LEITOR DE PDF NATIVO**: pager página a página (sem WebView e sem browser), zoom por dois toques, modo noturno, barra de progresso arrastável e retomada da leitura. As páginas dos 5 livros do catálogo vêm embutidas no app (abertura instantânea) e também são servidas por `GET /api/v1/library/:id/reader` (URLs absolutas de `/library-pages/<id>/p<N>.png`) — livros novos respondem 404 com mensagem amigável até terem páginas renderizadas
 - **Cursos — CONTENT-FIRST:** curso inscrito abre DIRETO na aula atual com o conteúdo em foco (vídeo em destaque com capa + play, texto completo já renderizado, materiais, concluir +XP, anterior/próxima). O índice completo do curso fica atrás do botão **"Índice"** (header ou faixa de progresso) que abre um modal com todas as aulas por tema. Catálogo com preços e **CHECKOUT COMPLETO NO APP** para cursos pagos (PIX com QR Code + copia-e-cola, cartão, boleto, cupom de desconto, polling automático de confirmação — sem sair do app)
 - **Mentorias** — buscar mentores, ver horários livres, agendar, **pagar a sessão 1:1 no app** (botão "Pagar agora" nas pendentes), acompanhar e cancelar sessões
@@ -73,7 +74,7 @@ bunx expo export --platform web   # gera dist/ (vai para public/app-mobile no pu
 
 ## 📦 ZIP (backup)
 
-`https://mentorhub.space-z.ai/mentorhub-mobile-snack-v14.zip` — código com páginas embutidas como data URI (as versões antigas v13/v12/v11 estão obsoletas).
+`https://mentorhub.space-z.ai/mentorhub-mobile-snack-v15.zip` — código com páginas embutidas como data URI (as versões antigas v14/v13/v12 estão obsoletas).
 
 > 🎥 **Sala de reunião (infra do lado do servidor):** a página `public/live.html` (estática, servida pelo site) + `public/vendor/socket.io.min.js` + rotas `GET /api/bookings/[id]/meeting-token` (web) e `GET /api/v1/bookings/[id]/meeting-token` (app) + mini-serviço `mini-services/meeting-service` (:3004, sinalização 1:1 + malha multi-participante). **Publique o site na plataforma** para a sala no app funcionar contra a produção.
 

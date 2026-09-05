@@ -57,6 +57,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Avatar } from '@/components/platform/avatar'
+import { DailyMissionsCard, WeeklyRankingCard } from '@/components/platform/gamification-widgets'
 import { api } from '@/lib/api'
 import {
   LEVEL_LABELS,
@@ -887,6 +888,11 @@ export default function DashboardView() {
       </header>
 
       <XpJourneyCard stats={xpStats} failed={xpFailed} />
+
+      {/* Gamificação v2: missões diárias (com heatmap de consistência) e ranking
+          semanal — falham em silêncio, nunca derrubam o dashboard */}
+      <DailyMissionsCard />
+      <WeeklyRankingCard />
 
       {profileFailed && (
         <Card className="border-rose-200 dark:border-rose-900 bg-rose-50/60 dark:bg-rose-950/40">

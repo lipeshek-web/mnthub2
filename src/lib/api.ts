@@ -50,6 +50,9 @@ import type {
   QuizDTO,
   RecommendationsDTO,
   XpStatsDTO,
+  DailyMissionsDTO,
+  ClaimMissionDTO,
+  LeaderboardDTO,
   MentorDetailDTO,
   MentorListItemDTO,
   MentorLpDTO,
@@ -473,6 +476,15 @@ export const api = {
 
   // Gamificação: XP e ofensiva de estudos
   xpStats: (userId: string) => request<XpStatsDTO>(`/api/xp${qs({ userId })}`),
+
+  // Gamificação v2: missões diárias, ranking semanal e heatmap de consistência
+  dailyMissions: () => request<DailyMissionsDTO>('/api/gamification/daily'),
+  claimMission: (missionId: string) =>
+    request<ClaimMissionDTO>('/api/gamification/claim', {
+      method: 'POST',
+      body: JSON.stringify({ missionId }),
+    }),
+  weeklyLeaderboard: () => request<LeaderboardDTO>('/api/gamification/leaderboard'),
 
   // Matrículas do usuário
   listMyEnrollments: (userId: string) =>

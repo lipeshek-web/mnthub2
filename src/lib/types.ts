@@ -240,6 +240,57 @@ export interface XpStatsDTO {
   today: string
 }
 
+// ---------- Gamificação v2 (missões diárias · ranking · heatmap) ----------
+
+export interface MissionDTO {
+  id: string
+  title: string
+  description: string
+  target: number
+  xp: number
+  progress: number
+  claimed: boolean
+  claimable: boolean
+}
+
+export interface HeatmapDayDTO {
+  date: string
+  xp: number
+}
+
+export interface DailyMissionsDTO {
+  day: string
+  streak: number
+  missions: MissionDTO[]
+  heatmap: {
+    start: string
+    days: HeatmapDayDTO[]
+    activeDays: number
+  }
+}
+
+export interface ClaimMissionDTO {
+  awarded: number
+  day: string
+  xpTotal: number
+  streak: number
+}
+
+export interface LeaderboardEntryDTO {
+  userId: string
+  name: string
+  avatarUrl: string | null
+  weekXp: number
+  levelLabel: string
+}
+
+export interface LeaderboardDTO {
+  weekStart: string
+  items: LeaderboardEntryDTO[]
+  totalActive: number
+  me: { rank: number; weekXp: number } | null
+}
+
 export interface LessonQuestionDTO {
   id: string
   body: string

@@ -24,6 +24,9 @@ export function activeStreak(studyStreak: number, lastStudyDate: string | null):
   return 0
 }
 
+/** Tipos de evento do ledger de XP — MISSION = missão diária coletada */
+export type XpKind = 'LESSON' | 'QUIZ' | 'COURSE' | 'MISSION'
+
 /**
  * Concede XP a um usuário de forma anti-farm (ledger XpEvent: 1 evento por
  * usuário/tipo/referência) e atualiza a ofensiva de estudos.
@@ -31,7 +34,7 @@ export function activeStreak(studyStreak: number, lastStudyDate: string | null):
  */
 export async function awardXp(
   userId: string,
-  kind: 'LESSON' | 'QUIZ' | 'COURSE',
+  kind: XpKind,
   refId: string,
   amount: number
 ): Promise<number> {
