@@ -10,6 +10,11 @@
  *   nativo do Android (com confirmação).
  * - No navegador (web), o WebView não existe → abre a sala numa aba nova
  *   (mesmo caminho do "ver fatura" do checkout).
+ *
+ * O react-native-webview é carregado TARDIAMENTE e só no nativo: se a
+ * dependência faltar no painel do Snack (já aconteceu — o app inteiro
+ * morria no import estático com "Unable to resolve module"), o app continua
+ * rodando e a sala mostra um fallback com "Abrir sala no navegador".
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -27,7 +32,6 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
 import { errMessage, getMeetingToken, getServerUrl, type MeetingTokenResponse } from "../lib/api";
 import { useSafeBack, useBackStage } from "../lib/navigation";
@@ -50,6 +54,23 @@ interface SalaParams {
 
 type Stage = "pre" | "room";
 
+/* Tipos locais (evitam importar tipos do react-native-webview em tempo de
+ * execução — `import type` é apagado, mas aqui nem dependemos do pacote). */
+type WebViewMessageEvent = { nativeEvent?: { data?: string | null } };
+type WebViewLike = { injectJavaScript: (script: string) => void };
+
+/* require tardio do webview — só no nativo e com proteção: faltando o
+ * pacote, RNWebView fica null e a sala cai no fallback do navegador. */
+let RNWebView: { WebView: React.ComponentType<any> } | null = null;
+if (Platform.OS !== "web") {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    RNWebView = require("react-native-webview");
+  } catch {
+    RNWebView = null;
+  }
+}
+
 export default function SalaScreen() {
   const styles = makeStyles();
   const navigation = useNavigation<any>();
@@ -71,7 +92,7 @@ export default function SalaScreen() {
   const [reloadKey, setReloadKey] = useState(0);
   const [serverBase, setServerBase] = useState("");
 
-  const webViewRef = useRef<WebView | null>(null);
+  const webViewRef = useRef<WebViewLike | null>(null);
   const leftRef = useRef(false);
   const leavingRef = useRef(false);
 
@@ -407,8 +428,8 @@ export default function SalaScreen() {
       </View>
 
       <View style={[styles.webViewWrap, { paddingBottom: Math.max(insets.bottom, 4) }]}>
-        {roomUrl ? (
-          <WebView
+        {roomUrl && RNWebView?.WebView ? (
+          <RNWebView.WebView
             key={reloadKey}
             ref={webViewRef}
             source={{ uri: roomUrl }}
@@ -440,6 +461,28 @@ export default function SalaScreen() {
               </View>
             )}
           />
+        ) : roomUrl ? (
+          /* webview indisponível nesta build — a sala ainda abre no navegador */
+          <View style={styles.webFallback}>
+            <View style={styles.webFallbackIcon}>
+              <Ionicons name="videocam" size={26} color={theme.colors.accent} />
+            </View>
+            <Text style={styles.webFallbackTitle}>Sala pronta</Text>
+            <Text style={styles.webFallbackText}>
+              O vídeo não pôde ser aberto dentro desta build do app, mas a sala
+              funciona no navegador.
+            </Text>
+            <TouchableOpacity
+              style={styles.cta}
+              onPress={() => {
+                if (roomUrl) void Linking.openURL(roomUrl);
+              }}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="open-outline" size={17} color={theme.colors.onAccent} />
+              <Text style={styles.ctaText}>Abrir sala no navegador</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <View style={styles.webFallback}>
             <ActivityIndicator size="small" color={theme.colors.accent} />
