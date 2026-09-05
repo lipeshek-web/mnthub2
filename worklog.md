@@ -2615,3 +2615,23 @@ Stage Summary:
 - App Expo mais resiliente: timeout+retry, bootstrap no Início, fallback para servidor antigo
 - SNACK OFICIAL NOVO: https://snack.expo.dev/qRbv33YlMqOPNehr7x0hq · fallback web /app-mobile/ · zip v10
 - CHIP: republicar o site na plataforma (ativa imagens novas + páginas de leitor dos livros novos + API melhorada em produção); no app basta abrir o Snack novo
+
+---
+Task ID: R
+Agent: main (Z.ai Code)
+Task: Corrigir o app Expo com erro "Unable to resolve module 'react-native-webview.js'" após o republish do usuário
+
+Work Log:
+- DIAGNÓSTICO: o snack oficial qRbv33YlMqOPNehr7x0hq (GET exp.host/--/api/v2/snack/… com Snack-Api-Version 9 + Snack-Sdk-Version 54) estava SEM o react-native-webview nas dependências e COM o expo-clipboard (~8.0.8) + @react-navigation pinados (^7.3.18/^7.10.24) — ou seja, o republish do usuário pela UI do editor salvou por cima com um painel de dependências antigo; o import estático da SalaScreen derrubava o app INTEIRO na avaliação (mesmo padrão do expo-clipboard documentado no publish script)
+- APP (SalaScreen.tsx): import estático do react-native-webview removido → require TARDIO só no nativo (Platform.OS !== "web") com try/catch; tipos locais WebViewMessageEvent/WebViewLike; se o módulo não carregar, a sala mostra fallback grácil "Sala pronta → Abrir sala no navegador" (Linking) em vez de crashar o app; typecheck 0 erros no arquivo (restante pré-existente)
+- PUBLISH SCRIPT: comentário atualizado (12 deps, versão 13.15.0 = bundledNativeModules do SDK 54, probe Yw8dgMfMUJbZ6lxc3Er6L provou que resolve); novo: resolve o UUID interno do snack anterior e tenta update in-place (id+hashId no payload) — aprendido: a API snack/save SEMPRE devolve hashId novo; aviso explícito para NUNCA republicar pelo painel de dependências do editor
+- PUBLICAÇÃO: bun scripts/publish-snack.js → 56 arq CODE 2.95MB, 12 deps (react-native-webview 13.15.0 ✓, sem expo-clipboard ✓) → NOVO SNACK OFICIAL https://snack.expo.dev/fN2ZJ1P270o1c0WkrN8o- (2 saves: TzKZUqjbyXFHU0M817K9S e fN2ZJ1P270o1c0WkrN8o- com conteúdo idêntico; oficial = último)
+- E2E BROWSER (agent-browser no editor do Snack): status "No errors, 582 warnings"; preview WEB rodou — login renderiza → login ana@demo.com/demo123 contra a PRODUÇÃO → Home completa (145 XP, ofensiva, Continuar estudando, Novos na biblioteca com os livros do povoamento, Recomendados) → aba Mentorias com ordenação global nova (Sofia/Carlos/Beatriz) → Minhas sessões (5 reais) → ENTRAR NA SALA DE REUNIÃO (a tela que crashava) → pré-entrada com papel CONVIDADO do servidor → "Entrar na reunião" → fallback web "Sala pronta/Abrir sala no navegador" → "Sair" voltou para Minhas sessões; console SEM "unable to resolve"; 3 page errors vazios são ruído do editor (também ocorrem com snack antigo)
+- ARTIFACTS: expo export web refeito → public/app-mobile (bundle index-dc4e8a0b…) + mentorhub-mobile-snack-v11.zip (51 arq, v10 removido); README atualizado (link novo + aviso sobre republish pelo editor + zip v11)
+- Push: 34374c1..409a2b9 main; db/custom.db revertido
+
+Stage Summary:
+- CAUSA RAIZ: republish pela UI do Snack salvou sem o react-native-webview (painel de deps antigo) → import estático derrubava o app inteiro
+- FIX DUPLO: dependência restaurada (13.15.0, versão do SDK 54) + SalaScreen à prova de deps faltando (require tardio com fallback "Abrir sala no navegador")
+- SNACK OFICIAL NOVO: https://snack.expo.dev/fN2ZJ1P270o1c0WkrN8o- · fallback web /app-mobile/ (vai ao ar no próximo publish do site) · zip v11
+- Para o usuário: abrir o link novo no Expo Go (QR) ou no preview web — nada mais mudou; se for editar no editor, NÃO mexer no painel de dependências
