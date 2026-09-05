@@ -1,10 +1,10 @@
 'use client'
 
 /**
- * MentorHub Reunião — sala de vídeo MULTI-PARTICIPANTE (WebRTC em malha).
+ * Órbita Reunião — sala de vídeo MULTI-PARTICIPANTE (WebRTC em malha).
  *
  * O diferencial da plataforma: reuniões com vários membros DENTRO do
- * MentorHub — sem YouTube, sem Meet externo. Cada participante tem um
+ * Órbita — sem YouTube, sem Meet externo. Cada participante tem um
  * RTCPeerConnection com cada outro participante (mesh), sinalização
  * ponto a ponto pelo meeting-service (`to`/`from` com userId).
  *
@@ -524,7 +524,7 @@ export function EventStage({ eventId, title }: { eventId: string; title: string 
       {/* barra superior */}
       <div className="flex items-center justify-between gap-3 border-b border-stone-800 px-4 py-2.5">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600/20 text-emerald-400">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-600/20 text-amber-400">
             <Users className="h-4 w-4" />
           </span>
           <div className="min-w-0">
@@ -537,10 +537,10 @@ export function EventStage({ eventId, title }: { eventId: string; title: string 
         <div className="flex shrink-0 items-center gap-2">
           {state === 'connected' ? (
             <>
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-400">
                 <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-400" />
                 </span>
                 AO VIVO {elapsed > 0 && <span className="tabular-nums text-stone-400">· {fmt(elapsed)}</span>}
               </span>
@@ -571,7 +571,7 @@ export function EventStage({ eventId, title }: { eventId: string; title: string 
         ) : (
           <div className={`absolute inset-0 grid gap-1.5 p-1.5 ${gridCols}`}>
             {/* tile local */}
-            <div className="relative overflow-hidden rounded-xl border border-emerald-500/40 bg-stone-900">
+            <div className="relative overflow-hidden rounded-xl border border-amber-500/40 bg-stone-900">
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -656,7 +656,7 @@ export function EventStage({ eventId, title }: { eventId: string; title: string 
                 </>
               ) : (
                 <>
-                  <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
+                  <Loader2 className="h-8 w-8 animate-spin text-amber-400" />
                   <p className="text-sm font-semibold text-stone-200">{statusMsg}</p>
                   <p className="max-w-sm text-xs text-stone-400">
                     A reunião começa automaticamente quando os participantes entrarem. Convide mais
@@ -682,7 +682,7 @@ export function EventStage({ eventId, title }: { eventId: string; title: string 
         </Button>
         <Button
           size="sm"
-          className="h-11 gap-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500"
+          className="h-11 gap-1.5 rounded-full bg-amber-600 hover:bg-amber-500"
           onClick={() => {
             leaveRoom()
             toast.success('Você saiu da reunião.')

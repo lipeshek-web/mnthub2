@@ -2,7 +2,7 @@
 
 /**
  * Eventos & Reuniões — o diferencial da plataforma: reuniões com vários
- * membros DENTRO do MentorHub (WebRTC em malha própria), sem YouTube e sem
+ * membros DENTRO do Órbita (WebRTC em malha própria), sem YouTube e sem
  * links externos. Qualquer membro cria um evento e a sala multi-participante
  * abre na hora — círculo de estudos, plantão de dúvidas, defesa simulada…
  */
@@ -58,7 +58,7 @@ import { toast } from 'sonner'
 /** Gradiente por categoria (eventos sem capa ficam bonitos mesmo assim) */
 const CATEGORY_STYLES: Record<string, string> = {
   Acadêmico: 'from-amber-500/80 to-orange-600/80',
-  Tecnologia: 'from-emerald-500/80 to-teal-600/80',
+  Tecnologia: 'from-amber-500/80 to-teal-600/80',
   Carreira: 'from-rose-500/80 to-pink-600/80',
   Negócios: 'from-sky-500/80 to-cyan-600/80',
   Geral: 'from-stone-600/80 to-stone-700/80',
@@ -134,7 +134,7 @@ function EventCard({
       </button>
       <CardContent className="space-y-2.5 p-4">
         <button onClick={onOpen} className="block w-full text-left">
-          <p className="line-clamp-2 font-bold leading-snug tracking-tight transition-colors group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
+          <p className="line-clamp-2 font-bold leading-snug tracking-tight transition-colors group-hover:text-amber-700 dark:group-hover:text-amber-300">
             {ev.title}
           </p>
         </button>
@@ -168,7 +168,7 @@ function EventCard({
               </Button>
             ) : (
               <div className="flex gap-1.5">
-                <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-500" onClick={onOpen}>
+                <Button size="sm" className="h-8 bg-amber-600 hover:bg-amber-500" onClick={onOpen}>
                   Detalhes
                 </Button>
                 <Button size="sm" variant="ghost" className="h-8 text-muted-foreground" disabled={busy} onClick={leave}>
@@ -181,7 +181,7 @@ function EventCard({
           ) : (
             <Button
               size="sm"
-              className="h-8 bg-emerald-600 hover:bg-emerald-500"
+              className="h-8 bg-amber-600 hover:bg-amber-500"
               disabled={busy || full}
               onClick={join}
             >
@@ -238,7 +238,7 @@ function CreateEventDialog({ onCreated }: { onCreated: (ev: EventDTO) => void })
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-emerald-600 hover:bg-emerald-500">
+        <Button className="bg-amber-600 hover:bg-amber-500">
           <CalendarPlus className="h-4 w-4" /> Criar evento
         </Button>
       </DialogTrigger>
@@ -329,7 +329,7 @@ function CreateEventDialog({ onCreated }: { onCreated: (ev: EventDTO) => void })
             Cancelar
           </Button>
           <Button
-            className="bg-emerald-600 hover:bg-emerald-500"
+            className="bg-amber-600 hover:bg-amber-500"
             disabled={busy || title.trim().length < 3}
             onClick={() => void submit()}
           >
@@ -378,11 +378,11 @@ export function EventsView() {
   return (
     <div className="mx-auto max-w-7xl px-4 pb-10 pt-6 sm:px-6">
       {/* hero */}
-      <div className="overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white p-6 dark:border-emerald-900 dark:from-emerald-950/40 dark:via-stone-950 dark:to-stone-950 sm:p-8">
+      <div className="overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-white p-6 dark:border-amber-900 dark:from-amber-950/40 dark:via-stone-950 dark:to-stone-950 sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-2xl">
-            <Badge className="mb-3 border-none bg-emerald-600 text-white">
-              <Radio className="mr-1 h-3 w-3" /> Diferencial MentorHub
+            <Badge className="mb-3 border-none bg-amber-600 text-white">
+              <Radio className="mr-1 h-3 w-3" /> Diferencial Órbita
             </Badge>
             <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
               Eventos & Reuniões ao vivo
@@ -591,7 +591,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
     <div className="mx-auto max-w-5xl px-4 pb-10 pt-6 sm:px-6">
       <button
         onClick={() => navigate({ name: 'events' })}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 transition-colors hover:text-emerald-700 dark:text-stone-400 dark:hover:text-emerald-300"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 transition-colors hover:text-amber-700 dark:text-stone-400 dark:hover:text-amber-300"
       >
         <ArrowLeft className="h-4 w-4" /> Voltar para eventos
       </button>
@@ -655,7 +655,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
                 inRoom ? null : (
                   <Button
                     size="lg"
-                    className="bg-emerald-600 hover:bg-emerald-500"
+                    className="bg-amber-600 hover:bg-amber-500"
                     onClick={() => setInRoom(true)}
                   >
                     <Video className="h-4 w-4" /> Entrar na sala ao vivo
@@ -677,7 +677,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
         ) : (
           <Button
             size="lg"
-            className="bg-emerald-600 hover:bg-emerald-500"
+            className="bg-amber-600 hover:bg-amber-500"
             disabled={busy || full}
             onClick={join}
           >
@@ -716,7 +716,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
         <Card className="sm:col-span-2">
           <CardContent className="p-4 sm:p-6">
             <p className="flex items-center gap-1.5 text-sm font-bold">
-              <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <Users className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               Participantes confirmados
               <span className="font-normal text-muted-foreground">
                 ({ev.joinedCount}/{ev.capacity})
@@ -774,7 +774,7 @@ const EventStage = dynamic(
     ssr: false,
     loading: () => (
       <div className="flex h-[46vh] min-h-[300px] items-center justify-center rounded-2xl border border-stone-800 bg-stone-950">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-amber-400" />
       </div>
     ),
   }

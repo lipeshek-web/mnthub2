@@ -87,7 +87,7 @@ export function DailyMissionsCard() {
       <div className="flex items-center gap-3">
         <span
           aria-hidden
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400"
+          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400"
         >
           <Target className="size-5" />
         </span>
@@ -125,7 +125,7 @@ export function DailyMissionsCard() {
                 className={cn(
                   'flex flex-wrap items-center gap-3 rounded-xl border p-3 sm:flex-nowrap',
                   mission.claimed
-                    ? 'border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/30'
+                    ? 'border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/30'
                     : 'border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/40'
                 )}
               >
@@ -134,8 +134,8 @@ export function DailyMissionsCard() {
                   className={cn(
                     'flex size-10 shrink-0 items-center justify-center rounded-full',
                     mission.claimed
-                      ? 'bg-emerald-600 dark:bg-emerald-500 text-white'
-                      : 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400'
+                      ? 'bg-amber-600 dark:bg-amber-500 text-white'
+                      : 'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400'
                   )}
                 >
                   {mission.claimed ? <Check className="size-5" /> : <Icon className="size-5" />}
@@ -168,7 +168,7 @@ export function DailyMissionsCard() {
                 </div>
 
                 {mission.claimed ? (
-                  <span className="shrink-0 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                  <span className="shrink-0 text-xs font-bold text-amber-700 dark:text-amber-400">
                     Coletada ✓
                   </span>
                 ) : mission.claimable ? (
@@ -200,10 +200,10 @@ export function DailyMissionsCard() {
 /** Escala de cor do heatmap (0 → 4 níveis de esmeralda). */
 function heatClass(xp: number): string {
   if (xp <= 0) return 'bg-stone-100 dark:bg-stone-800'
-  if (xp < 10) return 'bg-emerald-200 dark:bg-emerald-900'
-  if (xp < 20) return 'bg-emerald-400 dark:bg-emerald-700'
-  if (xp < 40) return 'bg-emerald-500 dark:bg-emerald-600'
-  return 'bg-emerald-700 dark:bg-emerald-400'
+  if (xp < 10) return 'bg-amber-200 dark:bg-amber-900'
+  if (xp < 20) return 'bg-amber-400 dark:bg-amber-700'
+  if (xp < 40) return 'bg-amber-500 dark:bg-amber-600'
+  return 'bg-amber-700 dark:bg-amber-400'
 }
 
 function ConsistencyHeatmap({ daily }: { daily: DailyMissionsDTO }) {
@@ -363,7 +363,7 @@ export function WeeklyRankingCard() {
                   {entry.levelLabel}
                 </p>
               </div>
-              <span className="flex shrink-0 items-center gap-1 text-sm font-extrabold text-emerald-700 dark:text-emerald-400">
+              <span className="flex shrink-0 items-center gap-1 text-sm font-extrabold text-amber-700 dark:text-amber-400">
                 <Zap className="size-3.5" aria-hidden />+{entry.weekXp}
               </span>
             </li>

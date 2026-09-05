@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 /**
  * Eventos & Reuniões multi-participante (o diferencial da plataforma):
  * qualquer membro cria um evento (círculo de estudos, plantão de dúvidas,
- * defesa simulada de TCC...) e a sala de vídeo roda DENTRO do MentorHub —
+ * defesa simulada de TCC...) e a sala de vídeo roda DENTRO do Órbita —
  * WebRTC em malha pelo meeting-service, sem YouTube/Meet externo.
  */
 
