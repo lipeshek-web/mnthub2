@@ -2704,3 +2704,28 @@ Stage Summary:
 - CONTEÚDO: 34 cursos · ~64 aulas novas no total · Biblioteca com 26 itens (13 livros, 13 artigos) — TCC/acadêmico agora é linha de destaque (curso 12 aulas + livro + 4 artigos + 2 eventos)
 - SNACK OFICIAL NOVO: https://snack.expo.dev/o9HnZJaSceRiGeOEdjwd6 · fallback web /app-mobile/ · zip v14
 - CHIP: PUBLICAR O SITE na plataforma — ativa /api/events* + /api/v1/events* + room.html + imagens/páginas novas na produção; aí a seção Eventos acende no app automaticamente (hoje ela se oculta com elegância no servidor antigo)
+
+---
+Task ID: U
+Agent: main (Z.ai Code)
+Task: Redesign completo de UI/UX da plataforma web — novo nome (Órbita), cores neutras com destaque âmbar, linguagem Apple OS
+
+Work Log:
+- DESIGN SYSTEM (globals.css): primária esmeralda → âmbar/caramelo (light: amber-700 c/ texto branco; dark: amber-400 c/ texto escuro estilo Apple), acentos/hover stone neutro quente, --radius 0.625rem→0.75rem, ring âmbar-600/500, ::selection âmbar, chart-1/5 ajustados; dark mode manteve stone quente
+- MIGRAÇÃO DE COR: 1616 classes emerald-* → amber-* (sed em 33 arquivos) + restauração cirúrgica do VERDE apenas para semântica de sucesso: STATUS_META.CONFIRMED, chips de notificação booking_confirmed/completed, celebração de curso concluído e quiz correto (classroom), pagamento confirmado/acesso liberado (checkout), webhook configurado + status CONFIRMED (admin) — 42 matches de emerald restantes são todos sucesso
+- NOVO NOME: MentorHub → Órbita ("Seu universo de aprendizado") em ~90 ocorrências (UI, docTitle por view, metadata/openGraph, e-mails transacionais, prompts de IA, Asaas, ICS, otpauth issuer, manifest, sw.js VERSION orbita-v1, live.html display; identificadores internos mentorhub-* preservados de propósito)
+- MARCA VISUAL: novo componente src/components/platform/brand.tsx (BRAND_NAME/TAGLINE + BrandMark/BrandLogo com ícone Orbit âmbar em gradiente); ícones PWA regenerados via sharp (scripts/tmp/gen-icons.ts: planeta âmbar + anel orbital sobre stone escuro, 1024/512/192/180)
+- NAVBAR: logo Órbita, hover scale sutil, focus ring âmbar suave na busca
+- TAB BAR MOBILE: vira pílula flutuante estilo iOS (inset-x-3, bottom c/ safe-area, rounded-2xl, vidro fosco bg-white/90 backdrop-blur-xl, sombra discreta); folga do conteúdo pb 4rem→5.75rem
+- LOGIN: painel esquerdo amber/teal → graphite (stone-900→amber-950) com glow âmbar + anéis orbitais decorativos, bullets com ícone âmbar
+- LANDING: profundidade mantida (hero, formatos, como funciona, áreas, destaques, números, extras, depoimentos, FAQ, ESG, CTA duplo); faixas escuras amber-950 → graphite stone-900 com acentos âmbar (números, impacto social, card "Quero aprender"); mailto projetos@orbita.com.br
+- CERTIFICADO: emblema GraduationCap → Orbit em gradiente âmbar
+- BANCO LOCAL: cupom BEMVINDO10 e 4 notificações "Bem-vindo" renomeados via scripts Prisma (scripts/tmp/)
+- REBASE: remote tinha 5 commits novos (gamificação v2, eventos multi-participante + TCC, app mobile) — 3 conflitos resolvidos (v1 login MFA_REQUIRED + Órbita; v1 enroll PAID_COURSE + Órbita; page.tsx docTitles com events/event) e re-migração marca/cor nos arquivos novos (event-stage, events-view, gamification-widgets, api/events)
+- E2E BROWSER: landing completa, login ana@demo.com, dashboard (XP/jornada/ranking), explorar + busca "cyber" (2 resultados), página de curso, para-mentores, admin visão geral (login admin local), dark mode, mobile 390px com tabbar flutuante e folga do footer — tudo sem erros de console
+- LINT 0/0; Push: 7d1f0b3..b8f479f main (2 commits: rebrand + pós-rebase); db/custom.db revertido antes dos commits
+
+Stage Summary:
+- PLATAFORMA REBRANDADA: Órbita — neutros stone quentes + destaque âmbar/caramelo, linguagem Apple (pílula flutuante, vidro fosco, grafite nas faixas profundas), profundidade da landing e organização de settings/admin/busca preservadas
+- Verde reservado para sucesso; âmbar é a cor da marca em toda a experiência (light/dark, desktop/mobile)
+- SUGESTÃO de follow-up: regenerar capas dos cursos/livros (hoje verdes, estilo isométrico antigo) para a paleta âmbar/grafite quando for conteúdo again
