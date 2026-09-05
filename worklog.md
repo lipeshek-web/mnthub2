@@ -2635,3 +2635,24 @@ Stage Summary:
 - FIX DUPLO: dependência restaurada (13.15.0, versão do SDK 54) + SalaScreen à prova de deps faltando (require tardio com fallback "Abrir sala no navegador")
 - SNACK OFICIAL NOVO: https://snack.expo.dev/fN2ZJ1P270o1c0WkrN8o- · fallback web /app-mobile/ (vai ao ar no próximo publish do site) · zip v11
 - Para o usuário: abrir o link novo no Expo Go (QR) ou no preview web — nada mais mudou; se for editar no editor, NÃO mexer no painel de dependências
+
+---
+Task ID: S
+Agent: main (Z.ai Code)
+Task: App Expo ainda mais minimalista — espelho Duolingo/Apple: dock flutuante, tela dedicada de Mensagens, cabeçalhos contextuais e scroll só no corpo
+
+Work Log:
+- DOCK FLUTUANTE (App.js): tab bar colada no rodapé → pill FLUTUANTE (position absolute, left/right 18, bottom = safeArea+8, altura 62, raio 22, sombra elevation 14/shadowRadius 18) com 5 abas; item ativo ganha pill accentSoft + ícone/label esmeralda; badge global de não lidas na aba Mensagens via useSyncExternalStore(unreadStore) — o store pré-existente (lib/unread) voltou a ser usado
+- MENSAGENS = ABA (tabs.tsx TAB_NAMES + App.js TABS): MensagensScreen.tsx reescrito em duas partes — MessagesTabPage (lista de threads como página do pager: título grande + contador, polling de 8s SÓ com a aba visível via useIsFocused, pull-refresh, empty state amigável com setTab("Mentorias"), unreadStore.set a cada load) e ConversaScreen default (tela do stack renomeada "Mensagens"→"Conversa"; params {peerId, peerName}; polling de 4s só em foco; back desempilha direto — useBackStage de lista removido). MentorScreen "Falar com o mentor" → navigate("Conversa"); PerfilScreen row Mensagens → setTab("Mensagens")+goBack (revela o pager na aba)
+- HEADERS CONTEXTUAIS (ScreenHeader v2): subtítulo opcional + hairline inferior + fundo do tema; voltar vira chevron esmeralda ghost (40px); título centralizado 17/700 -0.3. Contextos: Mentor = nome do mentor + "Mentor" · Livro = título do item + "Livro"/"Artigo" · Curso = título do curso + "Curso" · Perfil = nome do usuário + "Meu perfil" · Conversa = nome do par + "Mentor"/"Conversa" (peerBar sobreposto removido) · Checkout = "Checkout" + subtítulo do item (curso/sessão); chat da conversa limpo sem hacks de overlay
+- HOME MINIMALISTA: logo removido do corpo → saudação GRANDE ("Olá, Ana" 26/800 -0.6 + "Bem-vinda de volta 👋" 12.5), busca em PÍLULA (raio full, h44), stats SEM BORDA (surfaceAlt, raio lg, valores 14/800) com margem inferior própria; continua com gradiente, carrosséis e mentorias
+- SCROLL SÓ NO CORPO: DOCK_CLEARANCE=108 (tabs.tsx) aplicado como paddingBottom nos 5 conteúdos de aba (Home bottomSpacer, Livros/Cursos content, Mentorias listContent, Mensagens listContent) — cabeçalho e dock fixos, conteúdo rola por baixo sem nascer sob a pill; stack screens seguem com header fixo
+- FIX LATENTE: CursoScreen modalSheet usava theme.radius.xl (inexistente → undefined) → 24px fixo; typecheck dos arquivos tocados 0 erros (restante pré-existente de ambiente)
+- E2E BROWSER (export web :3026, 430px, CONTRA A PRODUÇÃO, ana): Home minimalista (saudação grande, pílula, stats leves, dock 5 abas com Início ativo); Mensagens: título grande + 2 conversas reais; conversa do Gustavo com header "Gustavo Novaes Cruz · Mentor"; mensagem ENVIADA ("Top! Vou começar o módulo de redes hoje 🔥" · lida) e lista atualizada ("Você: ..."); badge some quando tudo lido; Mentorias → mentor card → header "Sofia Santos · Mentor"; (toque acidental validou Livro: "Métodos de Estudo Científicos · Livro"); Perfil "Ana Souza · Meu perfil" → row Mensagens revelou o pager NA ABA Mensagens; Cursos com 28 cursos e dock destacado; TEMA CLARO também validado (dock branco com sombra); console 0 erros, 0 page errors
+- PUBLICAÇÃO: bun scripts/publish-snack.js → NOVO SNACK OFICIAL https://snack.expo.dev/O8xAobeAWBQAstwwkUo5c (56 arq CODE, 12 deps: webview 13.15.0 ✓ sem clipboard ✓, verificado por GET); public/app-mobile reexportado (bundle index-456e1c9a…) + mentorhub-mobile-snack-v12.zip (51 arq, v11 removido); README atualizado (link novo + novidades + zip v12); script default → hash novo
+- Push: a4018d3..8284e3c main; db/custom.db revertido
+
+Stage Summary:
+- App com cara nova: dock flutuante solto no rodapé (Duolingo), Mensagens com tela própria (sempre a um toque, com badge), cabeçalhos que dizem onde você está (Apple), home limpa com saudação grande — e nada de "tudo rolável": só o corpo rola, entre header fixo e dock flutuante
+- SNACK OFICIAL: https://snack.expo.dev/O8xAobeAWBQAstwwkUo5c · fallback web /app-mobile/ (vai ao ar no próximo publish do site) · zip v12
+- Nada mudou na API; o site continua funcionando igual — mudança 100% no app Expo
