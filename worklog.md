@@ -2656,3 +2656,25 @@ Stage Summary:
 - App com cara nova: dock flutuante solto no rodapé (Duolingo), Mensagens com tela própria (sempre a um toque, com badge), cabeçalhos que dizem onde você está (Apple), home limpa com saudação grande — e nada de "tudo rolável": só o corpo rola, entre header fixo e dock flutuante
 - SNACK OFICIAL: https://snack.expo.dev/O8xAobeAWBQAstwwkUo5c · fallback web /app-mobile/ (vai ao ar no próximo publish do site) · zip v12
 - Nada mudou na API; o site continua funcionando igual — mudança 100% no app Expo
+
+---
+Task ID: T
+Agent: main (Z.ai Code)
+Task: Refino do design ("ta ruim ainda") — login sem servidor/conta-demo, home enxuta como explorar, biblioteca e cursos com trabalho top
+
+Work Log:
+- LOGIN minimalista (LoginScreen.tsx reescrito): REMOVIDOS o toggle "Servidor personalizado", o campo de URL, a dica "Conta demo: ana@demo.com · senha demo123" e o rodapé "MentorHub · API v1"; hero com badge de marca (school icon em vidro 64x64) + wordmark + tagline (cores via onAccent — contraste correto nos 2 temas); card com título "Acesse sua conta" + "Continue de onde parou."; campos h54 raio lg, botão h54 com sombra esmeralda; api.ts: setServerUrl não é mais chamado no login (DEFAULT_SERVER_URL embutido; mensagens de erro sem referência ao campo removido)
+- HOME ENXUTA (HomeScreen.tsx reescrito): saíram stats (XP/ofensiva/meta), pílula de busca e carrossel "Novos na biblioteca"; busca global virou ÍCONE no header (Busca continua acessível); ordem nova = card destaque "Continuar" (com kicker CONTINUAR) → carrossel "Meus cursos" (os outros inscritos, capa+barra+%) → 3 atalhos grandes "Explorar" (Cursos/Biblioteca/Mentores com setTab) → "Em alta agora" (recomendados) → "Mentorias" (próximas, máx 3)
+- BIBLIOTECA com trabalho top (LivrosScreen.tsx reescrito + BookCard variant "grid"): grade 2 colunas com capas grandes em pé (168px, lombra+beirada preservadas, coração no canto) via FlatList numColumns=2 + columnWrapperStyle gap; chips de CATEGORIA (horizontal, derivadas dos itens carregados, filtro SERVER-SIDE via listLibrary({category})) além dos chips de tipo; título 26/800; contagem "N itens"; reset automático de categoria inexistente
+- CURSOS em grade (CursosScreen.tsx reescrito): mesma receita — numColumns=2 com célula flex:1 (gridCell) envolvendo CourseCard variant "reco" (fix de overflow: o card reco não tem largura própria e estourava a linha), chips de categoria server-side (listCourses({category})), bottomRowReco com flexWrap no CourseCard (preço não estoura em célula estreita)
+- Robustez TS: BookCover width aceita DimensionValue ("100%"); PdfReader pct tipado DimensionValue (erros pré-existentes); api.ts LibraryQuery/CoursesQuery/MentorsQuery viram type aliases (assignáveis a Record); tsconfig.json LOCAL no mobile-app-snack (typecheck escopado, sem pegar o tsconfig raiz) — bun run typecheck = 0 erros
+- PUBLICAÇÃO: bun scripts/publish-snack.js → NOVO SNACK OFICIAL https://snack.expo.dev/zMAgG5tdRrZOIKd7PJc06 (56 arq CODE ~2.96MB, 12 deps; 1º publish laOP89Ke7SCgk92xeIK2p revelou overflow da grade de cursos → corrigido → republish); script default → hash novo
+- E2E BROWSER (agent-browser no editor): "No errors, 599 warnings"; login renderiza SEM servidor/demo e faz login ana@demo.com ✓; Home enxuta (Continuar/Meus cursos/Explorar/Em alta/Mentorias) ✓; Biblioteca: grade de estante + filtro Tecnologia ("5 itens") ✓; Cursos: grade 2 colunas com preço/categoria ✓; Mensagens: lista de threads ✓; Conversa: header contextual "Gustavo Novaes Cruz · Mentor" + voltar ✓; Perfil do mentor: header contextual "Carlos Ferreira · Mentor" ✓; dock flutuante em todas as abas ✓
+- ARTIFACTS: expo export web → public/app-mobile (bundle index-18b02232…) + mentorhub-mobile-snack-v13.zip (v12 removido); README atualizado (link zMAgG5tdRrZOIKd7PJc06 + novidades + zip v13)
+- Push: ae26f17..9a897ab main; db/custom.db revertido
+
+Stage Summary:
+- App com cara nova e consistente: login de 3 elementos, home que É a exploração (Continuar/Meus cursos/Explorar/Em alta/Mentorias), Biblioteca como estante em grade, Cursos como grade de cards verticais — sempre com dock flutuante, headers contextuais Apple e scroll só no corpo
+- SNACK OFICIAL: https://snack.expo.dev/zMAgG5tdRrZOIKd7PJc06 (o hash muda a cada publish — sempre atualizar README/worklog)
+- Padrão técnico novo: grades 2 colunas = FlatList numColumns=2 + columnWrapperStyle {gap} + célula flex:1 (cards sem largura própria PRECISAM da célula); categorias derivadas dos itens carregados com filtro ?category= no servidor
+- Pendentes: população de conteúdo em massa (cursos TI+não-TI, ebooks, artigos com capas reais → Turso) + melhorias de sistema/API mobile
