@@ -59,3 +59,4 @@ server.log
 
 # Snapshots locais do banco (nunca versionar)
 /backups
+tool-results/
