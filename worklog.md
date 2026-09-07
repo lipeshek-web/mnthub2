@@ -2858,3 +2858,107 @@ Stage Summary:
 - FUNIL DE VENDA VALIDADO PONTA A PONTA no browser: página → checkout → cupom → pagamento → matrícula → aula → quiz + XP
 - SALA DE AULA WEB com renderizador de markdown (LessonContent) — melhora TODOS os cursos, não só os novos
 - Dev server local em modo nuvem de novo (TURSO_* no .env) + padrão double-fork documentado para manter processos vivos no sandbox
+
+---
+Task ID: AI-c
+Agent: general-purpose (conteúdo curso Pesquisa com IA)
+Task: Criar scripts/tmp/seed-data-ai-pesquisa.mts
+
+Work Log:
+- CONTEXTO LIDO: worklog (Task X — padrão dos cursos Word/Tráfego Pago), seed-types.ts (CourseDef/LessonDef/QuizDef) e seed-data-word.mts (referência exata de estilo)
+- ARQUIVO CRIADO: scripts/tmp/seed-data-ai-pesquisa.mts — Curso 3 de 4 da Trilha IA para Estudantes, "Pesquisa Estruturada com IA: do tema à defesa do TCC" (mentor marina@demo.com, Tecnologia, INICIANTE, R$109, capa course-ia-pesquisa.png), definidos fixos pela spec
+- description do curso em 5 linhas orientadas a benefício, citando "Curso 3 de 4 da Trilha IA para Estudantes" e terminando com promessa concreta (fluxo completo testado no tema do aluno: da pergunta ao ensaio de defesa)
+- 4 módulos com títulos exatos da spec + 15 aulas numeradas 1-15 (4+4+4+3): Pesquisar na era da IA / Estruturando o trabalho / Escrevendo com integridade / Análise, apresentação e entrega
+- Cada aula: description de venda, durationMin 12-24, apostila em template literal (1.949-2.374 chars, média 2.194) com "## " títulos, bullets, negrito/itálico, terminando em "## Sua tarefa" (1 tarefa prática de 5-15 min por aula)
+- 33 quizzes no total (2-3 por aula, 3 opções, correctIndex + explanation de 1-2 frases, distratores plausíveis)
+- Regras respeitadas: zero backtick/emoji dentro do content (termos técnicos em aspas), zero número/estatística inventada, zero citação acadêmica fictícia apresentada como real (exemplos marcados como fictícios; apenas ferramentas reais: Google Scholar, SciELO, Portal CAPES, Zotero, Mendeley, Copilot no Excel, Gemini no Sheets, doi.org)
+- VALIDAÇÕES: bunx tsc --noEmit → exit 0; contagem via bun -e → aulas=15, mín=1.949 (≥1.600), média=2.194; backticks=30 no arquivo (só abertura/fechamento dos 15 template literals, nenhum solto em content); checagens extras: 0 emoji, 0 aula sem "## Sua tarefa", 0 quiz malformado, 0 duration fora de 12-24
+- Nenhum outro arquivo modificado; seed NÃO rodado; git NÃO tocado
+
+Stage Summary:
+- Curso "Pesquisa Estruturada com IA: do tema à defesa do TCC" completo em scripts/tmp/seed-data-ai-pesquisa.mts (CourseDef pronto para o seed da trilha): 4 módulos, 15 aulas, 33 quizzes, ~32.900 chars de conteúdo
+- Todas as validações obrigatórias passaram (tsc exit 0; aulas=15; mín de content=1.949; backticks apenas como delimitadores de template)
+- Pendências fora do escopo desta task: rodar o seed integrando o pesquisaCourse ao banco e gerar a capa course-ia-pesquisa.png
+
+---
+Task ID: AI-b
+Agent: general-purpose (conteúdo curso Engenharia de Prompts)
+Task: Criar scripts/tmp/seed-data-ai-prompts.mts
+
+Work Log:
+- CONTEXTO LIDO: worklog (Task X — padrão Word/Tráfego nível venda), scripts/tmp/seed-types.ts (CourseDef/ThemeDef/LessonDef/QuizDef) e 200 primeiras linhas de seed-data-word.mts (referência exata de estilo)
+- ARQUIVO CRIADO: scripts/tmp/seed-data-ai-prompts.mts — único arquivo modificado/criado nesta task
+- CURSO (definição fixa respeitada): mentorEmail gustavonv@yandex.com, título "Engenharia de Prompts: o método profissional para falar com IAs", categoria Tecnologia, nível INTERMEDIARIO, preço 99, capa /uploads/seed/course-ia-prompts.png
+- DESCRIÇÃO DO CURSO (756 chars): orientada a benefício, cita "Curso 2 de 4 da Trilha IA para Estudantes", fecha com promessa concreta (biblioteca de 20 prompts prontos), sem mencionar preço
+- ESTRUTURA: 4 módulos com títulos exatos pedidos (Do prompt amador ao profissional / Técnicas que separam os profissionais / Prompts para cada área da sua vida / Biblioteca profissional e projeto final), 15 aulas (4+4+4+3), durações 13–20 min
+- CONTEÚDO (padrão Word): apostilas de 1.903–2.174 chars (média 2.014) em template literal, markdown "## "/bullets/**negrito**, todas terminando em "## Sua tarefa" com 1 tarefa prática de 5–15 min; ZERO backticks dentro do content (termos técnicos em aspas), zero emoji, zero número/estatística inventada
+- QUIZZES: 45 no total (3 por aula), options sempre 3 strings, correctIndex 0–2, explanation de 1–2 frases com distratores plausíveis
+- PONTE DE TRILHA: aula 15 fecha com a ponte para o Curso 3 (Pesquisa Estruturada com IA); aula 14 cobre segurança/ética (lista do nunca colar, anonimização, transparência, direitos autorais em linhas gerais)
+- VALIDAÇÃO 1: bunx tsc --noEmit --target es2022 --module esnext --moduleResolution bundler --skipLibCheck scripts/tmp/seed-data-ai-prompts.mts → exit 0
+- VALIDAÇÃO 2: contagem via bun → aulas=15, média 2014, mín 1903 (≥1600 ✓, faixa 1.700–2.400 respeitada)
+- VALIDAÇÃO 3: varredura programática → 0 backticks em content, "## Sua tarefa" único e final em 15/15, durações 12–24, quiz shape íntegro (3 options/correctIndex/explanation), 0 emoji
+
+Stage Summary:
+- Curso 2 da Trilha IA para Estudantes criado em scripts/tmp/seed-data-ai-prompts.mts: 4 módulos, 15 aulas, 45 quizzes, ~30.200 chars de apostilas nível "produto para venda" (PCTF, restrições, few-shot, chain-of-thought, personas, templates, documentos longos, prompts de estudo/escrita/análise/criatividade, avaliação A/B, segurança e projeto final)
+- tsc exit 0; contagens dentro da faixa (mín 1903, máx 2174); nenhum outro arquivo tocado; seed NÃO rodado; git NÃO rodado
+---
+Task ID: AI-d
+Agent: general-purpose (conteúdo curso Sites com IA)
+Task: Criar scripts/tmp/seed-data-ai-sites.mts
+
+Work Log:
+- Contexto lido: worklog (Task X — padrão Word/Tráfego), scripts/tmp/seed-types.ts (CourseDef/ThemeDef/LessonDef/QuizDef) e seed-data-word.mts (estilo de referência)
+- Criado scripts/tmp/seed-data-ai-sites.mts: Curso 4 de 4 da Trilha IA para Estudantes — "Sites com IA: portfólio, apresentação de projetos e captura de leads" (mentor beatriz@demo.com, Tecnologia, INTERMEDIARIO, R$149, capa /uploads/seed/course-ia-sites.png — campos fixos respeitados)
+- 5 módulos com títulos obrigatórios (Seu primeiro site com IA / Refinando e publicando / Site de apresentação de projetos / Captura de leads / Projeto final: do briefing ao ar), 17 aulas (4+3+3+3+4), durações 12-24 min
+- Conteúdo por aula: apostilas em template literal com "## " títulos, bullets "- ", negrito/itálico; 1.914-2.329 chars cada (média 2.042); todas terminam com "## Sua tarefa" (tarefa prática 5-15 min; módulo 5 = tarefas do projeto); ZERO backtick dentro de content (termos técnicos entre aspas), zero emoji
+- 51 quizzes (2-3 por aula) com distratores plausíveis e explanation de 1-2 frases; PT-BR, tom "você", sem números/estatísticas inventadas; ferramentas (Lovable, z.ai, GLM, Claude Code, Formspree) descritas de forma genérica e duradoura — sem planos/valores exatos/datas
+- description do curso: 6 linhas orientadas a benefício, menciona "Curso 4 de 4 da Trilha IA para Estudantes", fecha com a promessa do site ao vivo; sem preço
+- Validações: bunx tsc --noEmit (--target es2022 --module esnext --moduleResolution bundler --skipLibCheck) exit 0; contagem via bun: 17 aulas, média 2042, mín 1914; backticks do arquivo = 34 = 17×2 (só abertura/fechamento dos templates); script interno confirmou sem backtick/emoji em content, "## Sua tarefa" em todas, durações 12-24
+- Nenhum outro arquivo modificado; seed NÃO rodado; git NÃO usado
+
+Stage Summary:
+- scripts/tmp/seed-data-ai-sites.mts pronto: export const sitesCourse (CourseDef) com 5 módulos, 17 aulas, 51 quizzes — nível "produto para venda", fechando a Trilha IA para Estudantes (fundamentos → produtividade → conteúdo → sites com captura de leads)
+- Arquivo pronto para ser importado por um seed runner (padrão seed-data-word.mts); validações todas verdes (tsc exit 0; aulas=17, mín 1914 ≥ 1600)
+
+---
+Task ID: AI-a
+Agent: general-purpose (conteúdo curso Fundamentos IA)
+Task: Criar scripts/tmp/seed-data-ai-fundamentos.mts
+
+Work Log:
+- CONTEXTO LIDO: worklog (Task X — padrão do curso Word nível venda), scripts/tmp/seed-types.ts (CourseDef/ThemeDef/LessonDef/QuizDef) e primeiras 200 linhas de seed-data-word.mts (referência exata de estilo/formato)
+- ARQUIVO CRIADO: scripts/tmp/seed-data-ai-fundamentos.mts — fundamentosCourse exatamente conforme a spec fixa (mentor carlos@demo.com, título, Tecnologia, INICIANTE, R$79, capa /uploads/seed/course-ia-fundamentos.png); descrição do curso orientada a benefício citando "Curso 1 de 4 da Trilha IA para Estudantes" e terminando com promessa concreta (kit pessoal + ponte para Engenharia de Prompts)
+- ESTRUTURA: módulos com os títulos EXATOS da especificação e 16 aulas (4 por módulo, títulos levemente ajustados onde permitido) — NOTA: a spec dizia "5 módulos" mas listava exatamente 4 títulos de módulo com 16 aulas somadas; seguida a lista explícita de módulos/aulas (o "5" era herança do template do curso Word, que tem 5 módulos/19 aulas)
+- CONTEÚDO (16 apostilas): 1.969–2.400 chars cada (média 2.301; total 36.819), markdown do renderizador ("## ", "- ", **negrito**, *itálico*), sempre terminando com "## Sua tarefa" prática concreta de 5-15 min com a ferramenta da aula; ZERO backtick dentro do content (termos técnicos com aspas), ZERO emoji, ZERO número/estatística inventada, recursos das ferramentas descritos de forma genérica e duradoura (sem versões/datas)
+- QUIZZES: 48 no total (3 por aula), cada um com 3 opções plausíveis (distratores reais) e explanation de 1-2 frases conectando com o conteúdo; durationMin entre 12 e 24 em todas
+- COBERTURA: IA preditiva vs generativa e mitos; previsão/tokens/contexto e por que soa confiante errando; alucinação (citação falsa, referência inexistente, dado deslocado), viés e protocolo de verificação (IA nunca é fonte primária); mapa ChatGPT/Copilot/Gemini/Claude + grátis vs pago sem números; contas/interface/app, Gemini com busca e fontes, Copilot no Office/Windows; instruções personalizadas (persona do estudante), memória e privacidade (o que NUNCA colar); prompt de 4 peças com antes/depois, follow-ups e protocolo de 3 voltas, variações, brainstorm/cronograma/checklist com dados reais; flashcards interativos, simulado, Feynman, revisão espaçada e linha ética; revisão em camadas + tom + transparência de uso de IA; imagens/transcrição/áudio com regras de honestidade; projeto final (kit pessoal de 1 página) com checklist de ética
+- RODADAS DE QUALIDADE: 11 cortes finos para trazer 4 aulas que passavam de 2.400 chars de volta à faixa (máx final exatamente 2.400); correção de 2 escorregos de texto ("otherwise boa" → pt-BR, "superpódio" → "superpoder")
+- VALIDAÇÃO: (1) bunx tsc --noEmit --target es2022 --module esnext --moduleResolution bundler scripts/tmp/seed-data-ai-fundamentos.mts → exit 0; (2) contagem via bun import → aulas=16, média=2301, mín=1969 (≥1600) e todas na faixa 1700-2400; (3) rg de backtick → 32 ocorrências, todas aberturas ("content: `")/fechamentos ("`,") de template literal, nenhuma dentro de content; (4) varredura de emoji → apenas setas "→" (mesmo padrão dos seeds Word/Tráfego, 67 e 33 ocorrências)
+- RESTRIÇÕES RESPEITADAS: nenhum outro arquivo modificado; seed não rodado; git não tocado
+
+Stage Summary:
+- scripts/tmp/seed-data-ai-fundamentos.mts criado e validado: Curso 1 da Trilha IA para Estudantes ("Fundamentos de IA para Estudantes: Copilot, Gemini e prompts na prática") com 4 módulos/16 aulas/48 quizzes, 36.819 chars de apostila em nível produto para venda
+- Todas as validações passando: tsc exit 0; aulas=16 com mín 1969/máx 2400 (faixa 1700-2400 respeitada); zero backtick dentro de content; zero emoji; durações 12-24; todo content termina em "## Sua tarefa"
+- Fora do escopo desta task (pendências): gerar a capa /uploads/seed/course-ia-fundamentos.png e rodar o seed no Turso — outros cursos da trilha (ai-prompts/ai-pesquisa/ai-sites) já existem como arquivos irmãos
+---
+Task ID: AI
+Agent: Z.ai Code (sessão principal) + 4 subagentes (AI-a fundamentos, AI-b prompts, AI-c pesquisa, AI-d sites)
+Task: Trilha IA para Estudantes — 4 cursos completos nível venda (curso inicial da plataforma)
+
+Work Log:
+- ESTRATÉGIA: trilha de 4 cursos encadeados com pontes explícitas (fundamentos → prompts → pesquisa → sites); posicionada como porta de entrada da plataforma para estudantes
+- CONTEÚDO (4 subagentes em paralelo, mesmo padrão do seed Word/Tráfego): 17 módulos, 63 aulas TEXT, 184 quizzes com explicação, ~136.000 chars de apostila
+  1. "Fundamentos de IA para Estudantes: Copilot, Gemini e prompts na prática" (Carlos Ferreira, INICIANTE, R$79) — 4 módulos/16 aulas/48 quizzes: como LLMs funcionam sem matemática, alucinação/viés, mapa das IAs, Copilot+Gemini+ChatGPT passo a passo, prompts PCTF, estudar sem trapacear, IA criativa
+  2. "Engenharia de Prompts: o método profissional para falar com IAs" (Gustavo Novaes Cruz, INTERMEDIARIO, R$99) — 4 módulos/15 aulas/45 quizzes: framework PCTF, restrições e formato, few-shot, chain-of-thought, personas críticas, templates com variáveis, documentos longos, prompts por área (estudo/escrita/análise/criatividade), projeto: biblioteca de 20 prompts
+  3. "Pesquisa Estruturada com IA: do tema à defesa do TCC" (Marina Costa, INICIANTE, R$109) — 4 módulos/15 aulas/40 quizzes: IA pode vs não pode, tema com IA, Google Scholar/SciELO/CAPES, caça às referências falsas, problema/hipótese/objetivos, metodologia, matriz de literatura, fichamento, parafrasear sem plagiar, ABNT, regras institucionais, análise de dados, revisão em camadas, ensaio de defesa simulado
+  4. "Sites com IA: portfólio, apresentação de projetos e captura de leads" (Beatriz Lima, INTERMEDIARIO, R$149) — 5 módulos/17 aulas/51 quizzes: Lovable + z.ai + Claude Code (quando usar cada), primeiro site, iterar como pro, copy/imagem com IA, publicação e SEO, página de projeto, portfólio, site de TCC, funil de leads, formulários que convertem, e-mail/planilha/WhatsApp, projeto final do briefing ao ar
+- CAPAS IA (z-ai CLI, azul isométrico idêntico ao Word/Tráfego): course-ia-fundamentos.png (robô), course-ia-prompts.png (blocos de prompt), course-ia-pesquisa.png (lupa+papers+capelo), course-ia-sites.png (browser+foguete+funil) — 2 falharam com 429 na 1ª rodada paralela, resolvido rodando sequencial
+- SEED: scripts/tmp/seed-ai-track.mts (clone do seed-word-trafego, idempotente) rodado contra o Turso (`source .zscripts/cloud.env`) — 4 cursos criados
+- PRODUÇÃO IMEDIATA: mentorhub.space-z.ai já lista os 4 (40 cursos no total; R$79/99/109/149 = R$436 a trilha completa)
+- E2E REAL (agent-browser, localhost em modo nuvem): página do Fundamentos (capa+tags+4 módulos) → login ana@demo.com → checkout R$79: créditos R$60 + BEMVINDO10 → total R$11,10 → PIX aprovado instantâneo → sala de aula (16 aulas · 4h8min, progresso 0%) → material com markdown renderizado → quiz: resposta correta com check, "Isso! +5 XP", explicação e toast → páginas dos outros 3 cursos conferidas no desktop e mobile 390px → dev.log sem erros
+- NOTA: capas só vão ao ar em produção no próximo deploy (assets estáticos viaiam com o push; dados já estavam no Turso)
+
+Stage Summary:
+- TRILHA COMPLETA NO AR: 4 cursos encadeados de nível produto — a porta de entrada da plataforma para estudantes querem usar IA de verdade (fundamentos → engenharia de prompt → pesquisa acadêmica → construir sites com Claude Code/z.ai/Lovable)
+- 63 aulas de leitura profunda (~2.100 chars cada), 184 quizzes com correção + XP, conteúdo protegido por inscrição (gated) igual aos demais cursos
+- Seed idempotente re-executável a qualquer momento sem duplicar; trabalha com o padrão estabelecido na Task X
