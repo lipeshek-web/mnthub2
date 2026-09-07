@@ -2,12 +2,13 @@
 
 App do aluno da **Órbita** ("Seu universo de aprendizado" — antes MentorHub), publicado e testado de ponta a ponta. Dois jeitos de abrir:
 
-1. **Expo Snack (link direto):** **https://snack.expo.dev/6OATQfZcOmw7oKxGN0Nuf**
+1. **Expo Snack (link direto):** **https://snack.expo.dev/XohSNWn7WJf18kBXrfjSc**
    - No preview **Web** (painel direito) ou no celular com o app **Expo Go** escaneando o QR Code ("My Device").
    - Publicado via API oficial (`exp.host/--/api/v2/snack/save`) com código (59 arquivos) + 12 dependências — abrindo o link, já está tudo lá (nada de copiar/colar). SEM expo-clipboard (não resolve no Snack web): copiar PIX usa o clipboard do navegador + código selecionável.
    - ⚠️ **NÃO republique pelo painel de dependências do editor**: uma republicação por cima já salvou o snack SEM o `react-native-webview` e o app inteiro morria com "Unable to resolve module 'module://react-native-webview.js'". A `SalaScreen` é resiliente (require tardio + fallback "Abrir sala no navegador"), mas o correto é publicar pelo script (`bun mobile-app-snack/scripts/publish-snack.js`) com as 12 dependências.
-   - **Novidades desta versão (REBRAND ÓRBITA v2.0):** plataforma renomeada MentorHub → **Órbita** com identidade AZUL (blue-600 claro / azul-noite escuro, neutros slate — mesma família do site), **novo ícone** (planeta com anel orbital em degradê azul), **navegação minimalista nativa**: 4 abas apenas (Início · Explorar · Mensagens · Perfil) com **tab bar nativa estilo iOS** no rodapé (nada de dock flutuante), e a aba nova **EXPLORAR** com segmented control iOS reunindo **Cursos · Livros · Mentorias** em um só lugar (3 abas antigas viraram segmentos). Perfil agora é aba, com listas agrupadas iOS (Aprendizado/Preferências/Conta), login minimalista com a marca desenhada em Views e telas recalibradas no visual Apple. Mantém TUDO do funcional: leitor de PDF nativo, checkout no app, mensagens, eventos multi-participante, gamificação (missões + ranking) e sala ao vivo.
-2. **Web app no site:** **https://mentorhub.space-z.ai/app-mobile/** — o mesmo código exportado (`expo export --platform web`) e servido junto do site (atualizado a cada publish).
+   - **Novidades desta versão (v2.1 — polimento de UI/UX):** correção crítica do fallback web — a fonte de ícones (Ionicons) dava 404 fora da raiz (`/assets/...` absoluto); agora o `app.json` usa `experiments.baseUrl: "/app-mobile"` e TODOS os ícones aparecem na web. Cards revisados que estavam quebrando por falta de delimitação de espaço: progresso dos cards do Início (barra flex + % inteiro), linha de métricas do card de mentor (experiência trunca com "…" em vez de quebrar feio ao lado do preço), card de curso (nível virou texto na linha de métricas; preço sempre alinhado à direita com `marginLeft auto`), card de sessão em LINHA (avatar à esquerda) e busca global com respiro lateral. Sombra no título da capa do curso para leitura sobre capas claras.
+   - **v2.0 (rebrand Órbita):** identidade AZUL (blue-600 claro / azul-noite escuro, neutros slate), **novo ícone** (planeta com anel orbital em degradê azul), **navegação minimalista nativa**: 4 abas apenas (Início · Explorar · Mensagens · Perfil) com **tab bar nativa estilo iOS**, e a aba **EXPLORAR** com segmented control iOS reunindo **Cursos · Livros · Mentorias** (3 abas antigas viraram segmentos). Perfil é aba com listas agrupadas iOS; login minimalista com a marca desenhada em Views. Mantém TUDO do funcional: leitor de PDF nativo, checkout no app, mensagens, eventos multi-participante, gamificação (missões + ranking) e sala ao vivo.
+2. **Web app no site:** **https://mentorhub.space-z.ai/app-mobile/** — o mesmo código exportado (`expo export --platform web`, com `experiments.baseUrl` apontando para `/app-mobile` — sem isso os assets/fontes 404) e servido junto do site (atualizado a cada publish).
 
 Mesma API (`/api/v1`, JWT Bearer 30 dias), mesmo visual, mesmos dados do Turso em produção.
 
@@ -74,7 +75,7 @@ bunx expo export --platform web   # gera dist/ (vai para public/app-mobile no pu
 
 ## 📦 ZIP (backup)
 
-`https://mentorhub.space-z.ai/orbita-mobile-snack-v16.zip` — código com páginas embutidas como data URI (as versões antigas v15/v14 estão obsoletas).
+`https://mentorhub.space-z.ai/orbita-mobile-snack-v17.zip` — código com páginas embutidas como data URI (as versões antigas v16/v15 estão obsoletas).
 
 > 🎥 **Sala de reunião (infra do lado do servidor):** a página `public/live.html` (estática, servida pelo site) + `public/vendor/socket.io.min.js` + rotas `GET /api/bookings/[id]/meeting-token` (web) e `GET /api/v1/bookings/[id]/meeting-token` (app) + mini-serviço `mini-services/meeting-service` (:3004, sinalização 1:1 + malha multi-participante). **Publique o site na plataforma** para a sala no app funcionar contra a produção.
 

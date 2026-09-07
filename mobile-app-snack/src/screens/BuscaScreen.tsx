@@ -334,6 +334,7 @@ const makeStyles = () =>
   StyleSheet.create({
     flex: { flex: 1 },
     content: {
+      paddingHorizontal: theme.spacing.lg,
       paddingBottom: theme.spacing.xxl,
     },
     center: {

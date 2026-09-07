@@ -22,6 +22,9 @@
       "output": "single",
       "bundler": "metro",
       "favicon": "./assets/favicon.png"
+    },
+    "experiments": {
+      "baseUrl": "/app-mobile"
     }
   }
 }

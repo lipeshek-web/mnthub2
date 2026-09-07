@@ -360,7 +360,9 @@ export default function HomeScreen() {
                       {item.title}
                     </Text>
                     <View style={styles.courseProgress}>
-                      <ProgressBar pct={item.progressPct} height={5} />
+                      <View style={styles.progressTrack}>
+                        <ProgressBar pct={item.progressPct} height={5} />
+                      </View>
                       <Text style={styles.coursePct}>{item.progressPct}%</Text>
                     </View>
                   </TouchableOpacity>
@@ -570,7 +572,9 @@ export default function HomeScreen() {
                         </Text>
                         {mission.progress < mission.target ? (
                           <View style={styles.missionProgress}>
-                            <ProgressBar pct={pct} height={4} />
+                            <View style={styles.progressTrack}>
+                              <ProgressBar pct={pct} height={4} />
+                            </View>
                             <Text style={styles.missionProgressText}>
                               {mission.progress}/{mission.target}
                             </Text>
@@ -749,6 +753,9 @@ const makeStyles = () =>
       alignItems: "center",
       gap: 6,
     },
+    /* A barra encolhe (flex 1) e o % fica inteiro na borda — a barra nunca
+       empurra o rótulo para fora do card. */
+    progressTrack: { flex: 1, minWidth: 0 },
     coursePct: { color: theme.colors.accent, fontSize: 10.5, fontWeight: "700" },
 
     /* Chips de atalho discretos */

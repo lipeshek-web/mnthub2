@@ -60,3 +60,4 @@ server.log
 # Snapshots locais do banco (nunca versionar)
 /backups
 tool-results/
+mobile-app-snack/orbita-mobile-snack-v17.zip

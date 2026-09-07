@@ -33,7 +33,12 @@ export function MentorCard({ mentor, onPress }: MentorCardProps) {
           <Text style={styles.meta}>{(mentor.rating ?? 0).toFixed(1)}</Text>
           <Text style={styles.metaFaint}>({mentor.reviewCount ?? 0})</Text>
           {mentor.experienceYears > 0 ? (
-            <Text style={styles.meta}> · {mentor.experienceYears} anos de experiência</Text>
+            <>
+              <Text style={styles.metaFaint}>·</Text>
+              <Text style={styles.metaExperience} numberOfLines={1}>
+                {mentor.experienceYears} anos de experiência
+              </Text>
+            </>
           ) : null}
         </View>
         {(mentor.categories ?? []).length > 0 ? (
@@ -68,11 +73,19 @@ const makeStyles = () =>
   info: { flex: 1, gap: 4 },
   name: { color: theme.colors.text, fontSize: 15, fontWeight: "600" },
   headline: { color: theme.colors.textMuted, fontSize: 12, lineHeight: 17 },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
+  /* Linha de métricas numa linha só: o texto de experiência trunca (…) em
+     vez de quebrar feio ao lado do preço — e o preço nunca encolhe. */
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2, minWidth: 0 },
   meta: { color: theme.colors.textMuted, fontSize: 12, fontWeight: "600" },
   metaFaint: { color: theme.colors.textFaint, fontSize: 11 },
+  metaExperience: {
+    color: theme.colors.textMuted,
+    fontSize: 12,
+    fontWeight: "600",
+    flexShrink: 1,
+  },
   chipsRow: { flexDirection: "row", gap: 6, flexWrap: "wrap", marginTop: 4 },
-  priceWrap: { alignItems: "flex-end", gap: 1 },
+  priceWrap: { alignItems: "flex-end", gap: 1, flexShrink: 0, alignSelf: "center" },
   price: { color: theme.colors.text, fontSize: 14, fontWeight: "700" },
   free: { color: theme.colors.accent, fontSize: 13, fontWeight: "700" },
   priceUnit: { color: theme.colors.textFaint, fontSize: 11 },

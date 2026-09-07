@@ -489,7 +489,12 @@ const makeStyles = () =>
   },
   header: { gap: theme.spacing.md, marginBottom: theme.spacing.md },
   banner: { marginTop: -2 },
+  /* Card em LINHA (avatar à esquerda, conteúdo à direita) — alinhado com os
+     outros cards do app; o conteúdo acompanha o topo do avatar. */
   bookingCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: theme.spacing.md,
     padding: theme.spacing.md,
     backgroundColor: theme.colors.surface,
     borderWidth: StyleSheet.hairlineWidth,
@@ -545,7 +550,7 @@ const makeStyles = () =>
     marginTop: 2,
   },
   joinButtonText: { color: theme.colors.accent, fontSize: 13, fontWeight: "700" },
-  bookingInfo: { flex: 1, gap: 4, marginTop: theme.spacing.sm },
+  bookingInfo: { flex: 1, gap: 4, minWidth: 0 },
   bookingTopRow: {
     flexDirection: "row",
     alignItems: "center",

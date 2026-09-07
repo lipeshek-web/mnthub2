@@ -2812,3 +2812,26 @@ Stage Summary:
 - APP REFEITO: Órbita (novo nome/ícone/tema azul) com navegação minimalista NATIVA — 4 abas + tab bar iOS, 3 telas a menos (Explorar unifica Cursos/Livros/Mentorias), Perfil como aba com listas agrupadas, login de um card
 - SNACK OFICIAL NOVO: https://snack.expo.dev/6OATQfZcOmw7oKxGN0Nuf · fallback /app-mobile/ (index.html com caminhos relativos) · zip v16
 - PENDENTE (conteúdo, não código): aulas citam "MentorHub" no TEXTO (ex.: print("Olá, MentorHub!") na aula 1 de Python) — batch de conteúdo no Turso; capas dos cursos ainda verdes (linha isométrica antiga)
+
+---
+Task ID: W
+Agent: Z.ai Code (sessão principal)
+Task: Melhorar o app Expo — corrigir cards quebrados por falta de delimitação de espaço + melhorias que simplificam/corrigem a UI/UX
+
+Work Log:
+- AUDITORIA VISUAL COM BROWSER REAL (app-mobile v16 em produção, viewport 390×844 e zoom 2×): login → Home (carrosséis, missões, em alta) → Explorar (3 segmentos) → Minhas sessões → Busca → Curso (hero + conteúdo + modal Conteúdos) → Perfil → Mensagens → dark mode
+- BUG CRÍTICO DESCOBERTO (fallback web): a fonte Ionicons dava 404 (`GET /assets/node_modules/.../Ionicons.ttf` — path absoluto do Metro) e TODOS os ícones do app ficavam INVISÍVEIS na web (círculos vazios nas missões, corações sumidos, tab bar só com texto). Root cause: `expo export` gera URLs de asset absolutas sem o prefixo /app-mobile (mesma família do bug /_expo antigo, mas no bundle JS, não no index.html)
+- FIX: `app.json` ganhou `experiments.baseUrl: "/app-mobile"` → re-export emite index.html + asset modules com o prefixo certo; verificado no DOM (`document.fonts` ionicons "loaded") e visualmente (todos os ícones renderizam)
+- CARD CORRIGIDO — BuscaScreen: `content` estava SEM paddingHorizontal → cursos/livros/mentores e títulos de seção colados nas bordas da tela
+- CARD CORRIGIDO — MentorCard: "12 anos de experiência" quebrava feio dentro da metaRow ao lado do preço → agora trunca com "…" (flexShrink 1 + numberOfLines 1), preço com flexShrink 0 e metaRow com minWidth 0
+- CARD CORRIGIDO — CourseCard (row): nível saiu da bottomRow (menos pílulas = mais minimalista) e virou texto na metaRow; preço/Inscrito com `marginLeft: auto` (alinhamento à direita estável mesmo com categoria longa — fim do spacer+wrap quebrado); variante reco: duração trunca (flexShrink) em vez de vazar do card na grade
+- CARD CORRIGIDO — HomeScreen: barra de progresso tinha width 100% dentro de row → empurrava o "0%" / "0/1" para fora do card; agora a barra vive em track flex:1 e o rótulo fica inteiro (valendo para Continue estudando e Missões)
+- CARD CORRIGIDO — MentoriasScreen BookingRow: card era coluna com avatar "flutuando" em cima; agora é LINHA (avatar à esquerda, conteúdo à direita, minWidth 0), alinhado com os demais cards do app
+- POLIMENTO — CursoScreen: heroTitle com textShadow (legibilidade sobre capas claras, o gradiente sozinho não bastava)
+- VERIFICAÇÃO E2E PÓS-FIX (bundle novo servido localmente): ícones renderizam em todo o app; progresso "0%" e "0/1" dentro dos cards; mentor com experiência truncando limpo; Explorar grade com meta íntegra e corações visíveis; Minhas sessões em linha; Busca com respiro lateral e resultado íntegro; modal Conteúdos agrupado por tema; dark mode perfeito; Snack novo compila "No errors" e login renderiza com ícones no preview web
+- PUBLICAÇÃO: Snack republish via script → NOVO HASH OFICIAL XohSNWn7WJf18kBXrfjSc (uuid 4d0b55e9 in-place, 59 arquivos CODE 3.02MB, 12 deps); publish-snack.js + README atualizados (novidades v2.1 + nota do baseUrl)
+- DEPLOY: dist reexportado (bundle index-b75820d0) → public/app-mobile; zip v17 (75 arquivos 2.5MB) em public/ (v16 removida); zip interno da pasta mobile-app-snack deixou de ser rastreado (ignorado)
+
+Stage Summary:
+- CARDS CONSERTADOS E APP MAIS POLIDO: todos os pontos que quebravam por falta de delimitação de espaço (progresso, métricas do mentor, preço do curso, card de sessão, padding da busca) estão delimitados e truncam com elegância; ícones 100% visíveis no fallback web (fonte 404 resolvida na raiz com experiments.baseUrl)
+- SNACK OFICIAL: https://snack.expo.dev/XohSNWn7WJf18kBXrfjSc · fallback /app-mobile/ com baseUrl correto · zip v17

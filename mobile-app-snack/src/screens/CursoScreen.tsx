@@ -1068,7 +1068,17 @@ const makeStyles = () =>
       justifyContent: "flex-end",
       padding: theme.spacing.lg,
     },
-    heroTitle: { color: theme.colors.white, fontSize: 22, fontWeight: "800", lineHeight: 28 },
+    /* Sombra discreta garante leitura sobre capas claras (o gradiente sozinho
+       não basta quando a capa é quase branca). */
+    heroTitle: {
+      color: theme.colors.white,
+      fontSize: 22,
+      fontWeight: "800",
+      lineHeight: 28,
+      textShadowColor: "rgba(2, 6, 23, 0.55)",
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 6,
+    },
     mentorRow: {
       flexDirection: "row",
       alignItems: "center",

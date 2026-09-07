@@ -72,11 +72,15 @@ export function CourseCard({ course, onPress, showFavorite = true, variant = "ro
             <Ionicons name="star" size={11} color={theme.colors.warning} />
             <Text style={styles.metaReco}>{(course.rating ?? 0).toFixed(1)}</Text>
             <Text style={styles.dotReco}>·</Text>
-            <Text style={styles.metaReco}>{course.lessonCount} aulas</Text>
+            <Text style={styles.metaReco} numberOfLines={1}>
+              {course.lessonCount} aulas
+            </Text>
             {course.totalDurationMin > 0 ? (
               <>
                 <Text style={styles.dotReco}>·</Text>
-                <Text style={styles.metaReco}>{formatDuration(course.totalDurationMin)}</Text>
+                <Text style={[styles.metaReco, styles.metaRecoShrink]} numberOfLines={1}>
+                  {formatDuration(course.totalDurationMin)}
+                </Text>
               </>
             ) : null}
           </View>
@@ -86,14 +90,18 @@ export function CourseCard({ course, onPress, showFavorite = true, variant = "ro
                 {course.category}
               </Text>
             </View>
-            <View style={styles.spacer} />
             {course.enrolled ? (
-              <View style={styles.enrolledPill}>
+              <View style={[styles.enrolledPill, styles.rowEnd]}>
                 <Ionicons name="checkmark-circle" size={11} color={theme.colors.accent} />
                 <Text style={styles.enrolledText}>Inscrito</Text>
               </View>
             ) : (
-              <Text style={(course.price ?? 0) > 0 ? styles.priceReco : styles.freeReco}>
+              <Text
+                style={[
+                  styles.priceRowEnd,
+                  (course.price ?? 0) > 0 ? styles.priceReco : styles.freeReco,
+                ]}
+              >
                 {formatPrice(course.price ?? 0)}
               </Text>
             )}
@@ -112,6 +120,12 @@ export function CourseCard({ course, onPress, showFavorite = true, variant = "ro
             <Ionicons name="star" size={12} color={theme.colors.warning} />
             <Text style={styles.meta}>{(course.rating ?? 0).toFixed(1)}</Text>
             <Text style={styles.metaFaint}>({formatNumber(course.reviewCount ?? 0)})</Text>
+            {level ? (
+              <>
+                <Text style={styles.dot}>·</Text>
+                <Text style={styles.meta}>{level}</Text>
+              </>
+            ) : null}
             <Text style={styles.dot}>·</Text>
             <Text style={styles.meta}>{course.lessonCount} aulas</Text>
             {course.totalDurationMin > 0 ? (
@@ -123,15 +137,13 @@ export function CourseCard({ course, onPress, showFavorite = true, variant = "ro
           </View>
           <View style={styles.bottomRow}>
             <Chip label={course.category} />
-            {level ? <Chip label={level} tone="outline" /> : null}
-            <View style={styles.spacer} />
             {course.enrolled ? (
-              <View style={styles.enrolledPill}>
+              <View style={[styles.enrolledPill, styles.rowEnd]}>
                 <Ionicons name="checkmark-circle" size={12} color={theme.colors.accent} />
                 <Text style={styles.enrolledText}>Inscrito</Text>
               </View>
             ) : (
-              <Text style={(course.price ?? 0) > 0 ? styles.price : styles.free}>
+              <Text style={[styles.priceRowEnd, (course.price ?? 0) > 0 ? styles.price : styles.free]}>
                 {formatPrice(course.price ?? 0)}
               </Text>
             )}
@@ -175,6 +187,9 @@ const makeStyles = () =>
     meta: { color: theme.colors.textMuted, fontSize: 12, fontWeight: "600" },
     metaFaint: { color: theme.colors.textFaint, fontSize: 11 },
     dot: { color: theme.colors.textFaint, fontSize: 12 },
+    /* Categoria à esquerda, preço encostado à direita — mesmo quando a
+       categoria é longa, o preço nunca perde o alinhamento (marginLeft auto
+       realinha sozinho, com ou sem quebra de linha). */
     bottomRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -182,7 +197,8 @@ const makeStyles = () =>
       flexWrap: "wrap",
       marginTop: 6,
     },
-    spacer: { flex: 1 },
+    rowEnd: { marginLeft: "auto" },
+    priceRowEnd: { marginLeft: "auto" },
     enrolledPill: {
       flexDirection: "row",
       alignItems: "center",
@@ -217,8 +233,10 @@ const makeStyles = () =>
       alignItems: "center",
       gap: 4,
       marginTop: 2,
+      minWidth: 0,
     },
     metaReco: { color: theme.colors.textMuted, fontSize: 11.5, fontWeight: "600" },
+    metaRecoShrink: { flexShrink: 1 },
     dotReco: { color: theme.colors.textFaint, fontSize: 11 },
     bottomRowReco: {
       flexDirection: "row",
