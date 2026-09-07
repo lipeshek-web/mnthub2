@@ -1,4 +1,4 @@
-// Publica o MentorHub Mobile no Snack — versão SEM ASSETS (data URIs no código).
+// Publica o app Órbita no Snack — versão SEM ASSETS (data URIs no código).
 // ASSET files travam o runtime do Snack em "Loading..." (provado por probes).
 // Envia apenas App.js + src/** como CODE, manifest SDK 54 + 12 dependências
 // (incl. react-native-webview 13.15.0 — versão do bundledNativeModules do SDK 54,
@@ -63,7 +63,7 @@ console.log("raízes:", [...new Set(files.map(f => f.split("/")[0]))].join(", ")
 
 // hash oficial anterior (log/uuid) — após o publish, o link oficial é o
 // hashId devolvido pela API. Atualizar README + worklog com o hash novo.
-const OFFICIAL_HASH_ID = process.argv[2] || "vUOTh1bNSHXrYh9tgquax";
+const OFFICIAL_HASH_ID = process.argv[2] || "6OATQfZcOmw7oKxGN0Nuf";
 
 async function resolveOfficialId(hashId) {
   // descobre o UUID interno do snack a partir do hashId público
@@ -84,7 +84,7 @@ if (OFFICIAL_HASH_ID) {
 const payload = {
   manifest: {
     sdkVersion: "54.0.0",
-    name: "MentorHub — App do Aluno",
+    name: "Órbita — App do Aluno",
     description: "App do aluno: leitor de PDF nativo (páginas embutidas), livros, cursos com COMPRA no app (PIX/cartão/boleto via Asaas) e mensagens com mentores — API https://mentorhub.space-z.ai. Login demo: ana@demo.com / demo123",
     dependencies: deps,
   },

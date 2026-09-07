@@ -31,7 +31,7 @@ export function ScreenHeader({ title, subtitle, onBack, right }: ScreenHeaderPro
           accessibilityLabel="Voltar"
           accessibilityRole="button"
         >
-          <Ionicons name="chevron-back" size={24} color={theme.colors.accent} />
+          <Ionicons name="chevron-back" size={26} color={theme.colors.accent} />
         </TouchableOpacity>
       ) : (
         <View style={styles.placeholder} />

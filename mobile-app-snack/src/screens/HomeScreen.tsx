@@ -1,15 +1,25 @@
 /**
- * Aba Início — ENXUTA (estilo Duolingo/Apple). A própria Home É a exploração:
- * - Header fixo: saudação à esquerda; à direita, busca global, notificações
- *   (com badge), tema e avatar da conta (único acesso ao Perfil).
- * - "Continuar estudando" — card destaque com gradiente (o próximo passo).
- * - "Meus cursos" — carrossel compacto com o resto dos cursos inscritos.
- * - "Explorar" — 3 atalhos grandes (Cursos · Biblioteca · Mentores).
- * - "Em alta agora" — carrossel de cursos recomendados.
- * - "Mentorias" — próximas sessões (máx. 3).
- * Header e rodapé fixos: só o corpo rola (com folga para o dock flutuante).
+ * Aba 1 "Início" — painel diário da Órbita, minimalista estilo iOS.
+ *
+ * Header: saudação ("Olá, {nome}" + data curta) e à direita busca global e
+ * notificações (com badge) — o acesso à conta vive na ABA Perfil, não aqui.
+ *
+ * Seções (rótulo pequeno uppercase + "Ver tudo" quando faz sentido):
+ *   1. "Continue estudando" — cursos inscritos como cards horizontais com
+ *      barra de progresso azul (em andamento primeiro);
+ *   2. chips discretos de atalho (Cursos · Biblioteca · Mentorias · Ranking);
+ *   3. "Ao vivo & eventos" — reuniões multi-participante (AO VIVO em azul);
+ *   4. "Mentores para você" — próximas sessões 1:1 (máx. 3);
+ *   5. "Novidades da biblioteca" — carrossel de livros/artigos;
+ *   6. "Missões de hoje" — hábito diário com coleta de XP (compacta);
+ *   7. "Em alta agora" — cursos recomendados.
+ *
+ * "Ver tudo" abre a Explorar JÁ no segmento certo (setSegment + setTab do
+ * useTabs). Dados: getHome() (bootstrap; cai para getDashboard() em servidor
+ * antigo), listEvents() e getGamificationDaily() — falhas silenciosas escondem
+ * a seção. Só o corpo rola, com folga (DOCK_CLEARANCE) para a tab bar nativa.
  */
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { ComponentProps } from "react";
 import {
   FlatList,
@@ -22,7 +32,6 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import {
   claimMission,
   errMessage,
@@ -40,8 +49,7 @@ import {
   type EventItem,
 } from "../lib/api";
 import { useAuth } from "../lib/auth";
-import { useThemeMode } from "../lib/theme";
-import { DOCK_CLEARANCE, useTabs } from "../lib/tabs";
+import { DOCK_CLEARANCE, useTabs, type SegmentName } from "../lib/tabs";
 import { formatNaiveDateTime } from "../lib/format";
 import { theme } from "../theme";
 import { Avatar } from "../components/Avatar";
@@ -53,7 +61,6 @@ import { NotificationsModal } from "../components/NotificationsModal";
 import { ProgressBar } from "../components/ProgressBar";
 import { RemoteImage } from "../components/RemoteImage";
 import { Screen } from "../components/Screen";
-import { SectionTitle } from "../components/SectionTitle";
 import { StatusPill } from "../components/StatusPill";
 
 import { clearPendingCheckout, readPendingCheckout } from "../lib/pendingCheckout";
@@ -61,19 +68,18 @@ import { clearPendingCheckout, readPendingCheckout } from "../lib/pendingCheckou
 /** Nome de ícone Ionicons tipado (o `name` do componente aceita só literais). */
 type IoniconName = NonNullable<ComponentProps<typeof Ionicons>["name"]>;
 
-/** Atalhos da seção "Explorar" — abas trocam de pager; telas empilham no stack. */
-interface ExplorarTile {
+/** Chips discretos de atalho — substituem os antigos tiles grandes de "Explorar". */
+interface QuickChip {
   icon: IoniconName;
-  title: string;
-  sub: string;
-  tab?: string;
+  label: string;
+  segment?: SegmentName;
   screen?: string;
 }
-const EXPLORAR: ExplorarTile[] = [
-  { tab: "Cursos", icon: "play-circle-outline", title: "Cursos", sub: "Aulas no seu ritmo" },
-  { tab: "Livros", icon: "book-outline", title: "Biblioteca", sub: "Livros e artigos" },
-  { tab: "Mentorias", icon: "people-outline", title: "Mentores", sub: "Sessões 1:1" },
-  { screen: "Ranking", icon: "trophy-outline", title: "Ranking", sub: "Top da semana" },
+const QUICK_CHIPS: QuickChip[] = [
+  { segment: "Cursos", icon: "play-circle-outline", label: "Cursos" },
+  { segment: "Livros", icon: "book-outline", label: "Biblioteca" },
+  { segment: "Mentorias", icon: "people-outline", label: "Mentorias" },
+  { screen: "Ranking", icon: "trophy-outline", label: "Ranking" },
 ];
 
 /** Ícone por missão diária (o servidor manda só o id). */
@@ -84,6 +90,37 @@ const MISSION_ICONS: Record<string, IoniconName> = {
   mensagem: "chatbubble-outline",
   anotacao: "create-outline",
 };
+
+/** Rótulo de seção pequeno estilo iOS: uppercase, 12/700, textFaint. */
+function SectionLabel({
+  label,
+  actionLabel,
+  onAction,
+}: {
+  label: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  const styles = makeStyles();
+  const showAction = Boolean(actionLabel && onAction);
+  return (
+    <View style={styles.sectionRow}>
+      <Text style={styles.sectionLabel} numberOfLines={1}>
+        {label}
+      </Text>
+      {showAction ? (
+        <TouchableOpacity
+          onPress={onAction}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel={actionLabel}
+        >
+          <Text style={styles.sectionAction}>{actionLabel}</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+}
 
 export default function HomeScreen() {
   const styles = makeStyles();
@@ -100,9 +137,8 @@ export default function HomeScreen() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const { setTab } = useTabs();
+  const { setTab, setSegment } = useTabs();
   const { user, updateUser } = useAuth();
-  const { mode, toggle } = useThemeMode();
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [missions, setMissions] = useState<GamificationDaily | null>(null);
@@ -111,6 +147,16 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+
+  // Data curta do header ("qua, 12/03") — calculada uma vez por montagem.
+  const todayLabel = useMemo(() => {
+    const fmt = new Intl.DateTimeFormat("pt-BR", {
+      weekday: "short",
+      day: "2-digit",
+      month: "2-digit",
+    });
+    return fmt.format(new Date()).replace(".", "");
+  }, []);
 
   // Missões diárias (gamificação) — falha silenciosa: servidor antigo esconde a seção.
   const loadMissions = useCallback(async () => {
@@ -201,28 +247,36 @@ export default function HomeScreen() {
   }, [load]);
 
   const firstName = (user?.name ?? "").trim().split(/\s+/)[0] ?? "";
-  const enrolledCourses = data?.enrolledCourses ?? [];
-  const continueCourse: DashboardEnrolledCourse | null =
-    enrolledCourses.find((c) => c.progressPct > 0 && c.progressPct < 100) ??
-    enrolledCourses[0] ??
-    null;
-  // Os outros cursos inscritos (sem repetir o card destaque).
-  const myOtherCourses = continueCourse
-    ? enrolledCourses.filter((c) => c.id !== continueCourse.id)
-    : enrolledCourses;
+  const enrolledCourses: DashboardEnrolledCourse[] = data?.enrolledCourses ?? [];
+  // Em andamento primeiro (0 < progresso < 100), depois o resto na ordem original.
+  const isStudying = (c: DashboardEnrolledCourse) => c.progressPct > 0 && c.progressPct < 100;
+  const orderedCourses: DashboardEnrolledCourse[] = [
+    ...enrolledCourses.filter(isStudying),
+    ...enrolledCourses.filter((c) => !isStudying(c)),
+  ];
   const bookings: Booking[] = data?.upcomingBookings ?? [];
+  const newBooks = data?.newBooks ?? [];
   const recommended: CourseItem[] = data?.recommendedCourses ?? [];
   const unreadNotifications = user?.unreadNotifications ?? 0;
 
+  /** Atalho de Explorar já no segmento certo. */
+  const goExplorar = useCallback(
+    (segment: SegmentName) => {
+      setSegment(segment);
+      setTab("Explorar");
+    },
+    [setSegment, setTab]
+  );
+
   return (
     <Screen>
-      {/* Header fixo: saudação | busca, notificações, tema e conta */}
+      {/* Header: saudação + data | busca e notificações (Perfil é ABA, sem avatar aqui) */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.greetingBig} numberOfLines={1}>
+          <Text style={styles.greeting} numberOfLines={1}>
             Olá{firstName ? `, ${firstName}` : ""}
           </Text>
-          <Text style={styles.greetingSub}>Bem-vinda de volta 👋</Text>
+          <Text style={styles.greetingSub}>{todayLabel}</Text>
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity
@@ -254,14 +308,6 @@ export default function HomeScreen() {
               </View>
             ) : null}
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => navigation.navigate("Perfil")}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="Abrir meu perfil"
-          >
-            <Avatar uri={user?.avatarUrl ?? null} name={user?.name ?? "?"} size={36} />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -286,139 +332,18 @@ export default function HomeScreen() {
         >
           {error && data ? <ErrorBox compact message={error} /> : null}
 
-          {/* Continuar estudando — card destaque com gradiente */}
-          {continueCourse ? (
-            <TouchableOpacity
-              onPress={() => navigation.navigate("Curso", { id: continueCourse.id })}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel={`Continuar o curso ${continueCourse.title}`}
-            >
-              <LinearGradient
-                colors={[theme.colors.accent, theme.colors.accentStrong]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.continueCard}
-              >
-                <RemoteImage
-                  uri={continueCourse.coverUrl}
-                  style={styles.continueCover}
-                  recyclingKey={continueCourse.id}
-                  errorIcon="image-outline"
-                  iconSize={22}
-                />
-                <View style={styles.continueInfo}>
-                  <Text style={styles.continueKicker}>CONTINUAR</Text>
-                  <Text style={styles.continueTitle} numberOfLines={2}>
-                    {continueCourse.title}
-                  </Text>
-                  <Text style={styles.continueMeta}>
-                    {continueCourse.completedLessons} de {continueCourse.totalLessons} aulas ·{" "}
-                    {continueCourse.progressPct}%
-                  </Text>
-                  <ProgressBar
-                    pct={continueCourse.progressPct}
-                    height={6}
-                    color={theme.colors.white}
-                    trackColor="rgba(255, 255, 255, 0.28)"
-                  />
-                  <View style={styles.continueCta}>
-                    <Text style={styles.continueCtaText}>Continuar</Text>
-                    <Ionicons name="arrow-forward" size={14} color={theme.colors.white} />
-                  </View>
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
-          ) : (
-            <EmptyState
-              icon="school-outline"
-              title="Nenhum curso em andamento"
-              message="Explore o catálogo e inscreva-se no seu primeiro curso."
-              actionLabel="Explorar cursos"
-              onAction={() => setTab("Cursos")}
-            />
-          )}
-
-          {/* Missões de hoje — hábito diário estilo Duolingo (coleta de XP) */}
-          {missions && missions.missions.length > 0 ? (
+          {/* 1. Continue estudando — cursos inscritos com barra de progresso azul */}
+          {orderedCourses.length > 0 ? (
             <>
-              <SectionTitle title="Missões de hoje" />
-              <View style={styles.missionsCard}>
-                {missions.missions.map((mission) => {
-                  const pct = Math.min(100, Math.round((mission.progress / mission.target) * 100));
-                  return (
-                    <View key={mission.id} style={styles.missionRow}>
-                      <View
-                        style={[
-                          styles.missionIcon,
-                          mission.claimed ? styles.missionIconDone : null,
-                        ]}
-                      >
-                        <Ionicons
-                          name={mission.claimed ? "checkmark" : (MISSION_ICONS[mission.id] ?? "flash-outline")}
-                          size={18}
-                          color={mission.claimed ? theme.colors.white : theme.colors.accent}
-                        />
-                      </View>
-                      <View style={styles.missionInfo}>
-                        <Text style={styles.missionTitle} numberOfLines={1}>
-                          {mission.title}
-                        </Text>
-                        <Text style={styles.missionDesc} numberOfLines={2}>
-                          {mission.description}
-                        </Text>
-                        {mission.progress < mission.target ? (
-                          <View style={styles.missionProgress}>
-                            <ProgressBar pct={pct} height={4} />
-                            <Text style={styles.missionProgressText}>
-                              {mission.progress}/{mission.target}
-                            </Text>
-                          </View>
-                        ) : null}
-                      </View>
-                      {mission.claimed ? (
-                        <Text style={styles.missionClaimed}>Coletada</Text>
-                      ) : mission.claimable ? (
-                        <TouchableOpacity
-                          style={styles.missionClaimBtn}
-                          onPress={() => void handleClaim(mission)}
-                          disabled={claimingId === mission.id}
-                          activeOpacity={0.8}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Coletar +${mission.xp} XP da missão ${mission.title}`}
-                        >
-                          <Text style={styles.missionClaimBtnText}>
-                            {claimingId === mission.id ? "..." : `+${mission.xp}`}
-                          </Text>
-                        </TouchableOpacity>
-                      ) : (
-                        <View style={styles.missionXpPill}>
-                          <Text style={styles.missionXpPillText}>+{mission.xp}</Text>
-                        </View>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            </>
-          ) : null}
-
-          {/* Meus cursos — o resto dos cursos inscritos, em carrossel compacto */}
-          {myOtherCourses.length > 0 ? (
-            <>
-              <SectionTitle
-                title="Meus cursos"
-                actionLabel="Ver todos"
-                onAction={() => setTab("Cursos")}
-              />
+              <SectionLabel label="Continue estudando" />
               <FlatList
                 horizontal
                 nestedScrollEnabled
-                data={myOtherCourses}
+                data={orderedCourses}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                   <TouchableOpacity
-                    style={styles.myCourseCard}
+                    style={styles.courseCard}
                     onPress={() => navigation.navigate("Curso", { id: item.id })}
                     activeOpacity={0.85}
                     accessibilityRole="button"
@@ -426,17 +351,17 @@ export default function HomeScreen() {
                   >
                     <RemoteImage
                       uri={item.coverUrl}
-                      style={styles.myCourseCover}
+                      style={styles.courseCover}
                       recyclingKey={item.id}
                       errorIcon="play-circle-outline"
                       iconSize={20}
                     />
-                    <Text style={styles.myCourseTitle} numberOfLines={2}>
+                    <Text style={styles.courseTitle} numberOfLines={2}>
                       {item.title}
                     </Text>
-                    <View style={styles.myCourseProgress}>
-                      <ProgressBar pct={item.progressPct} height={4} />
-                      <Text style={styles.myCoursePct}>{item.progressPct}%</Text>
+                    <View style={styles.courseProgress}>
+                      <ProgressBar pct={item.progressPct} height={5} />
+                      <Text style={styles.coursePct}>{item.progressPct}%</Text>
                     </View>
                   </TouchableOpacity>
                 )}
@@ -444,39 +369,49 @@ export default function HomeScreen() {
                 contentContainerStyle={styles.carousel}
               />
             </>
-          ) : null}
+          ) : (
+            <>
+              <SectionLabel label="Continue estudando" />
+              <EmptyState
+                icon="school-outline"
+                title="Nenhum curso em andamento"
+                message="Explore o catálogo e inscreva-se no seu primeiro curso."
+                actionLabel="Explorar cursos"
+                onAction={() => goExplorar("Cursos")}
+              />
+            </>
+          )}
 
-          {/* Explorar — a home É a porta de entrada para o catálogo */}
-          <SectionTitle title="Explorar" />
-          <View style={styles.explorarRow}>
-            {EXPLORAR.map((tile) => (
+          {/* 2. Chips discretos de atalho (no lugar dos antigos tiles grandes) */}
+          <ScrollView
+            horizontal
+            nestedScrollEnabled
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipScroll}
+          >
+            {QUICK_CHIPS.map((chip) => (
               <TouchableOpacity
-                key={tile.title}
-                style={styles.explorarTile}
-                onPress={() =>
-                  tile.screen ? navigation.navigate(tile.screen) : tile.tab ? setTab(tile.tab) : undefined
-                }
+                key={chip.label}
+                style={styles.chip}
+                onPress={() => {
+                  if (chip.screen) navigation.navigate(chip.screen);
+                  else if (chip.segment) goExplorar(chip.segment);
+                }}
                 activeOpacity={0.8}
+                hitSlop={{ top: 5, bottom: 5 }}
                 accessibilityRole="button"
-                accessibilityLabel={`Explorar ${tile.title}`}
+                accessibilityLabel={chip.label}
               >
-                <View style={styles.explorarIcon}>
-                  <Ionicons name={tile.icon} size={20} color={theme.colors.accent} />
-                </View>
-                <Text style={styles.explorarTitle} numberOfLines={1}>
-                  {tile.title}
-                </Text>
-                <Text style={styles.explorarSub} numberOfLines={1}>
-                  {tile.sub}
-                </Text>
+                <Ionicons name={chip.icon} size={15} color={theme.colors.accent} />
+                <Text style={styles.chipText}>{chip.label}</Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
 
-          {/* Eventos — reuniões multi-participante da plataforma (ao vivo primeiro) */}
+          {/* 3. Ao vivo & eventos — AO VIVO em destaque azul */}
           {events.length > 0 ? (
             <>
-              <SectionTitle title="Eventos ao vivo & reuniões" />
+              <SectionLabel label="Ao vivo & eventos" />
               <FlatList
                 horizontal
                 nestedScrollEnabled
@@ -526,13 +461,156 @@ export default function HomeScreen() {
             </>
           ) : null}
 
-          {/* Em alta agora — carrossel horizontal de recomendados */}
+          {/* 4. Mentores para você — próximas sessões 1:1 */}
+          <SectionLabel
+            label="Mentores para você"
+            actionLabel={bookings.length > 0 ? "Ver tudo" : undefined}
+            onAction={() => goExplorar("Mentorias")}
+          />
+          {bookings.length === 0 ? (
+            <EmptyState
+              icon="videocam-outline"
+              title="Nenhuma mentoria agendada"
+              message="Encontre um mentor e agende sua próxima sessão 1:1."
+              actionLabel="Ver mentores"
+              onAction={() => goExplorar("Mentorias")}
+            />
+          ) : (
+            bookings.slice(0, 3).map((booking) => (
+              <TouchableOpacity
+                key={booking.id}
+                style={styles.bookingCard}
+                onPress={() => navigation.navigate("Mentor", { id: booking.mentor.id })}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={`Abrir o mentor ${booking.mentor.name}`}
+              >
+                <Avatar uri={booking.mentor.avatarUrl} name={booking.mentor.name} size={42} />
+                <View style={styles.bookingInfo}>
+                  <Text style={styles.bookingName} numberOfLines={1}>
+                    {booking.mentor.name}
+                  </Text>
+                  <Text style={styles.bookingTopic} numberOfLines={1}>
+                    {booking.topic}
+                  </Text>
+                  <Text style={styles.bookingWhen}>{formatNaiveDateTime(booking.startsAt)}</Text>
+                </View>
+                <StatusPill status={booking.status} />
+              </TouchableOpacity>
+            ))
+          )}
+
+          {/* 5. Novidades da biblioteca — carrossel de livros/artigos */}
+          {newBooks.length > 0 ? (
+            <>
+              <SectionLabel
+                label="Novidades da biblioteca"
+                actionLabel="Ver tudo"
+                onAction={() => goExplorar("Livros")}
+              />
+              <FlatList
+                horizontal
+                nestedScrollEnabled
+                data={newBooks}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.bookCard}
+                    onPress={() => navigation.navigate("Livro", { id: item.id })}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Abrir ${item.kind === "BOOK" ? "o livro" : "o artigo"} ${item.title}`}
+                  >
+                    <RemoteImage
+                      uri={item.coverUrl}
+                      style={styles.bookCover}
+                      recyclingKey={`home-book-${item.id}`}
+                      fallbackIcon={item.kind === "BOOK" ? "book-outline" : "document-text-outline"}
+                      iconSize={22}
+                    />
+                    <Text style={styles.bookKind}>{item.kind === "BOOK" ? "Livro" : "Artigo"}</Text>
+                    <Text style={styles.bookTitle} numberOfLines={2}>
+                      {item.title}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.carousel}
+              />
+            </>
+          ) : null}
+
+          {/* 6. Missões de hoje — hábito diário (coleta de XP), compacta */}
+          {missions && missions.missions.length > 0 ? (
+            <>
+              <SectionLabel label="Missões de hoje" />
+              <View style={styles.missionsCard}>
+                {missions.missions.map((mission) => {
+                  const pct = Math.min(100, Math.round((mission.progress / mission.target) * 100));
+                  return (
+                    <View key={mission.id} style={styles.missionRow}>
+                      <View
+                        style={[
+                          styles.missionIcon,
+                          mission.claimed ? styles.missionIconDone : null,
+                        ]}
+                      >
+                        <Ionicons
+                          name={mission.claimed ? "checkmark" : (MISSION_ICONS[mission.id] ?? "flash-outline")}
+                          size={18}
+                          color={mission.claimed ? theme.colors.onAccent : theme.colors.accent}
+                        />
+                      </View>
+                      <View style={styles.missionInfo}>
+                        <Text style={styles.missionTitle} numberOfLines={1}>
+                          {mission.title}
+                        </Text>
+                        <Text style={styles.missionDesc} numberOfLines={2}>
+                          {mission.description}
+                        </Text>
+                        {mission.progress < mission.target ? (
+                          <View style={styles.missionProgress}>
+                            <ProgressBar pct={pct} height={4} />
+                            <Text style={styles.missionProgressText}>
+                              {mission.progress}/{mission.target}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      {mission.claimed ? (
+                        <Text style={styles.missionClaimed}>Coletada</Text>
+                      ) : mission.claimable ? (
+                        <TouchableOpacity
+                          style={styles.missionClaimBtn}
+                          onPress={() => void handleClaim(mission)}
+                          disabled={claimingId === mission.id}
+                          activeOpacity={0.8}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Coletar +${mission.xp} XP da missão ${mission.title}`}
+                        >
+                          <Text style={styles.missionClaimBtnText}>
+                            {claimingId === mission.id ? "..." : `+${mission.xp}`}
+                          </Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <View style={styles.missionXpPill}>
+                          <Text style={styles.missionXpPillText}>+{mission.xp}</Text>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            </>
+          ) : null}
+
+          {/* 7. Em alta agora — cursos recomendados */}
           {recommended.length > 0 ? (
             <>
-              <SectionTitle
-                title="Em alta agora"
+              <SectionLabel
+                label="Em alta agora"
                 actionLabel="Ver tudo"
-                onAction={() => setTab("Cursos")}
+                onAction={() => goExplorar("Cursos")}
               />
               <FlatList
                 horizontal
@@ -553,45 +631,6 @@ export default function HomeScreen() {
               />
             </>
           ) : null}
-
-          {/* Próximas mentorias */}
-          <SectionTitle
-            title="Mentorias"
-            actionLabel={bookings.length > 0 ? "Ver todas" : undefined}
-            onAction={() => setTab("Mentorias")}
-          />
-          {bookings.length === 0 ? (
-            <EmptyState
-              icon="videocam-outline"
-              title="Nenhuma mentoria agendada"
-              message="Encontre um mentor e agende sua próxima sessão 1:1."
-              actionLabel="Ver mentores"
-              onAction={() => setTab("Mentorias")}
-            />
-          ) : (
-            bookings.slice(0, 3).map((booking) => (
-              <TouchableOpacity
-                key={booking.id}
-                style={styles.bookingCard}
-                onPress={() => navigation.navigate("Mentor", { id: booking.mentor.id })}
-                activeOpacity={0.85}
-              >
-                <Avatar uri={booking.mentor.avatarUrl} name={booking.mentor.name} size={42} />
-                <View style={styles.bookingInfo}>
-                  <Text style={styles.bookingName} numberOfLines={1}>
-                    {booking.mentor.name}
-                  </Text>
-                  <Text style={styles.bookingTopic} numberOfLines={1}>
-                    {booking.topic}
-                  </Text>
-                  <Text style={styles.bookingWhen}>{formatNaiveDateTime(booking.startsAt)}</Text>
-                </View>
-                <StatusPill status={booking.status} />
-              </TouchableOpacity>
-            ))
-          )}
-
-          <View style={styles.bottomSpacer} />
         </ScrollView>
       )}
 
@@ -609,7 +648,7 @@ const makeStyles = () =>
     flex: { flex: 1 },
     content: {
       paddingHorizontal: theme.spacing.lg,
-      paddingBottom: theme.spacing.sm,
+      paddingBottom: DOCK_CLEARANCE,
     },
 
     /* Header */
@@ -623,21 +662,21 @@ const makeStyles = () =>
       paddingBottom: theme.spacing.md,
     },
     headerLeft: { flexShrink: 1, gap: 2 },
-    greetingBig: {
+    greeting: {
       color: theme.colors.text,
-      fontSize: 26,
-      fontWeight: "800",
-      letterSpacing: -0.6,
+      fontSize: 23,
+      fontWeight: "700",
+      letterSpacing: -0.5,
     },
-    greetingSub: { color: theme.colors.textMuted, fontSize: 12.5, fontWeight: "500" },
+    greetingSub: { color: theme.colors.textFaint, fontSize: 13, fontWeight: "500" },
     headerActions: {
       flexDirection: "row",
       alignItems: "center",
       gap: theme.spacing.sm,
     },
     iconButton: {
-      width: 38,
-      height: 38,
+      width: 40,
+      height: 40,
       borderRadius: theme.radius.full,
       backgroundColor: theme.colors.surface,
       borderWidth: StyleSheet.hairlineWidth,
@@ -661,6 +700,25 @@ const makeStyles = () =>
     },
     badgeText: { color: theme.colors.white, fontSize: 9, fontWeight: "700" },
 
+    /* Rótulos de seção (uppercase pequeno) */
+    sectionRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: theme.spacing.md,
+      marginTop: theme.spacing.lg,
+      marginBottom: theme.spacing.md,
+    },
+    sectionLabel: {
+      color: theme.colors.textFaint,
+      fontSize: 12,
+      fontWeight: "700",
+      letterSpacing: 0.6,
+      textTransform: "uppercase",
+      flex: 1,
+    },
+    sectionAction: { color: theme.colors.accent, fontSize: 13, fontWeight: "600" },
+
     /* Carrosséis horizontais */
     carousel: {
       paddingHorizontal: theme.spacing.lg,
@@ -669,40 +727,9 @@ const makeStyles = () =>
     },
     recoItem: { width: 218 },
 
-    /* Continuar estudando (gradiente) */
-    continueCard: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: theme.spacing.md,
-      padding: theme.spacing.md,
-      borderRadius: theme.radius.lg,
-    },
-    continueCover: {
-      width: 104,
-      height: 66,
-      borderRadius: theme.radius.md,
-      backgroundColor: "rgba(255, 255, 255, 0.18)",
-    },
-    continueInfo: { flex: 1, gap: 5 },
-    continueKicker: {
-      color: "rgba(255, 255, 255, 0.75)",
-      fontSize: 9.5,
-      fontWeight: "800",
-      letterSpacing: 1.2,
-    },
-    continueTitle: { color: theme.colors.white, fontSize: 15, fontWeight: "700", lineHeight: 20 },
-    continueMeta: { color: "rgba(255, 255, 255, 0.85)", fontSize: 12, fontWeight: "600" },
-    continueCta: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 5,
-      marginTop: 2,
-    },
-    continueCtaText: { color: theme.colors.white, fontSize: 12, fontWeight: "700" },
-
-    /* Meus cursos (carrossel compacto) */
-    myCourseCard: {
-      width: 148,
+    /* Continue estudando (cards horizontais com progresso azul) */
+    courseCard: {
+      width: 168,
       gap: 6,
       padding: theme.spacing.sm,
       backgroundColor: theme.colors.surface,
@@ -710,48 +737,39 @@ const makeStyles = () =>
       borderColor: theme.colors.border,
       borderRadius: theme.radius.lg,
     },
-    myCourseCover: {
+    courseCover: {
       width: "100%",
-      height: 62,
+      height: 78,
       borderRadius: theme.radius.md,
       backgroundColor: theme.colors.surfaceAlt,
     },
-    myCourseTitle: { color: theme.colors.text, fontSize: 12.5, fontWeight: "700", lineHeight: 16 },
-    myCourseProgress: {
+    courseTitle: { color: theme.colors.text, fontSize: 12.5, fontWeight: "700", lineHeight: 16 },
+    courseProgress: {
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
     },
-    myCoursePct: { color: theme.colors.textFaint, fontSize: 10.5, fontWeight: "700" },
+    coursePct: { color: theme.colors.accent, fontSize: 10.5, fontWeight: "700" },
 
-    /* Explorar — grade 2×2 de atalhos grandes (Cursos · Biblioteca · Mentores · Ranking) */
-    explorarRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
+    /* Chips de atalho discretos */
+    chipScroll: {
+      paddingHorizontal: theme.spacing.lg,
       gap: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
+      alignItems: "center",
     },
-    explorarTile: {
-      width: "47.5%",
-      gap: 4,
-      padding: theme.spacing.md,
+    chip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      height: 36,
+      paddingHorizontal: theme.spacing.md,
+      borderRadius: theme.radius.full,
       backgroundColor: theme.colors.surface,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.colors.border,
-      borderRadius: theme.radius.lg,
     },
-    explorarIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: theme.radius.md,
-      backgroundColor: theme.colors.accentSoft,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.colors.accentBorder,
-      alignItems: "center",
-      justifyContent: "center",
-      marginBottom: 4,
-    },
-    explorarTitle: { color: theme.colors.text, fontSize: 13.5, fontWeight: "800" },
-    explorarSub: { color: theme.colors.textFaint, fontSize: 10.5, fontWeight: "600" },
+    chipText: { color: theme.colors.text, fontSize: 12.5, fontWeight: "700" },
 
     /* Missões de hoje */
     missionsCard: {
@@ -792,13 +810,8 @@ const makeStyles = () =>
       backgroundColor: theme.colors.accent,
       alignItems: "center",
       justifyContent: "center",
-      shadowColor: theme.colors.accent,
-      shadowOpacity: 0.35,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: 5,
     },
-    missionClaimBtnText: { color: theme.colors.white, fontSize: 12.5, fontWeight: "800" },
+    missionClaimBtnText: { color: theme.colors.onAccent, fontSize: 12.5, fontWeight: "800" },
     missionClaimed: { color: theme.colors.accent, fontSize: 11, fontWeight: "800" },
     missionXpPill: {
       paddingHorizontal: 10,
@@ -812,7 +825,7 @@ const makeStyles = () =>
     },
     missionXpPillText: { color: theme.colors.warning, fontSize: 11, fontWeight: "800" },
 
-    /* Próximas mentorias */
+    /* Mentores para você */
     bookingCard: {
       flexDirection: "row",
       alignItems: "center",
@@ -828,8 +841,32 @@ const makeStyles = () =>
     bookingName: { color: theme.colors.text, fontSize: 14, fontWeight: "600" },
     bookingTopic: { color: theme.colors.textMuted, fontSize: 12 },
     bookingWhen: { color: theme.colors.textFaint, fontSize: 11, fontWeight: "600" },
-    /* folga para o conteúdo nunca nascer sob o dock flutuante */
-    bottomSpacer: { height: DOCK_CLEARANCE },
+
+    /* Novidades da biblioteca */
+    bookCard: {
+      width: 136,
+      gap: 4,
+      padding: theme.spacing.sm,
+      backgroundColor: theme.colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.lg,
+    },
+    bookCover: {
+      width: "100%",
+      height: 92,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.surfaceAlt,
+      marginBottom: 2,
+    },
+    bookKind: {
+      color: theme.colors.accent,
+      fontSize: 9.5,
+      fontWeight: "800",
+      letterSpacing: 0.6,
+      textTransform: "uppercase",
+    },
+    bookTitle: { color: theme.colors.text, fontSize: 12.5, fontWeight: "700", lineHeight: 16 },
 
     /* Eventos */
     eventCard: {
@@ -852,10 +889,10 @@ const makeStyles = () =>
       paddingHorizontal: 8,
       paddingVertical: 4,
       borderRadius: theme.radius.full,
-      backgroundColor: theme.colors.danger,
+      backgroundColor: theme.colors.accent,
     },
-    eventLiveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.colors.white },
-    eventLiveText: { color: theme.colors.white, fontSize: 9, fontWeight: "800", letterSpacing: 0.4 },
+    eventLiveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.colors.onAccent },
+    eventLiveText: { color: theme.colors.onAccent, fontSize: 9, fontWeight: "800", letterSpacing: 0.4 },
     eventBody: { padding: 11, gap: 3 },
     eventTitle: { color: theme.colors.text, fontSize: 13.5, fontWeight: "800", letterSpacing: -0.2 },
     eventMeta: { color: theme.colors.textFaint, fontSize: 11, fontWeight: "600" },

@@ -303,7 +303,7 @@ export default function BuscaScreen() {
             <>
               <EmptyState
                 icon="search-outline"
-                title="Busque no MentorHub"
+                title="Busque na Órbita"
                 message="Encontre cursos, livros e mentores pelo nome."
               />
               <Text style={styles.suggestLabel}>Sugestões</Text>

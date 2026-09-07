@@ -24,7 +24,7 @@ import {
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../theme";
+import { palettes, theme } from "../theme";
 import { Screen } from "../components/Screen";
 import { ScreenHeader } from "../components/ScreenHeader";
 import { Avatar } from "../components/Avatar";
@@ -237,7 +237,7 @@ export default function EventoScreen() {
             accessibilityLabel="Sair da reunião"
             accessibilityRole="button"
           >
-            <Ionicons name="chevron-back" size={24} color="#ffffff" />
+            <Ionicons name="chevron-back" size={24} color={theme.colors.white} />
           </TouchableOpacity>
           <View style={styles.roomTitleWrap}>
             <Text style={styles.roomTitle} numberOfLines={1}>
@@ -263,7 +263,7 @@ export default function EventoScreen() {
           />
         ) : (
           <View style={styles.roomFallback}>
-            <Ionicons name="videocam" size={40} color={theme.colors.accent} />
+            <Ionicons name="videocam" size={40} color={palettes.dark.accent} />
             <Text style={styles.roomFallbackTitle}>Sala pronta</Text>
             <Text style={styles.roomFallbackText}>
               A reunião abre no navegador (vídeo e áudio multi-participante, tudo na plataforma).
@@ -474,15 +474,15 @@ const makeStyles = () =>
       paddingHorizontal: 10,
       paddingVertical: 5,
       borderRadius: theme.radius.full,
-      backgroundColor: theme.colors.danger,
+      backgroundColor: theme.colors.accent,
     },
     liveDot: {
       width: 7,
       height: 7,
       borderRadius: 4,
-      backgroundColor: theme.colors.white,
+      backgroundColor: theme.colors.onAccent,
     },
-    liveText: { color: theme.colors.white, fontSize: 10.5, fontWeight: "800", letterSpacing: 0.4 },
+    liveText: { color: theme.colors.onAccent, fontSize: 10.5, fontWeight: "800", letterSpacing: 0.4 },
     body: { padding: theme.spacing.lg, gap: 10 },
     chipRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
     title: {
@@ -517,7 +517,12 @@ const makeStyles = () =>
       elevation: 6,
       marginTop: 6,
     },
-    primaryBtnText: { fontSize: 15, fontWeight: "800", letterSpacing: -0.2 },
+    primaryBtnText: {
+      fontSize: 15,
+      fontWeight: "800",
+      letterSpacing: -0.2,
+      color: theme.colors.onAccent,
+    },
     ghostBtn: {
       height: 48,
       borderRadius: theme.radius.md,
@@ -571,12 +576,13 @@ const makeStyles = () =>
       paddingHorizontal: 7,
       paddingVertical: 3,
       borderRadius: 7,
-      backgroundColor: "rgba(245, 158, 11, 0.18)",
+      backgroundColor: theme.colors.accentSoft,
     },
-    hostTagText: { color: "#fcd34d", fontSize: 8.5, fontWeight: "800", letterSpacing: 0.5 },
+    hostTagText: { color: theme.colors.accent, fontSize: 8.5, fontWeight: "800", letterSpacing: 0.5 },
 
-    /* sala (WebView) */
-    roomRoot: { flex: 1, backgroundColor: "#0c0a09" },
+    /* sala (WebView) — chrome fixado na paleta dark do tema (o palco do
+     * vídeo é sempre escuro, em qualquer modo). */
+    roomRoot: { flex: 1, backgroundColor: palettes.dark.bg },
     roomTop: {
       flexDirection: "row",
       alignItems: "center",
@@ -586,9 +592,9 @@ const makeStyles = () =>
     },
     roomBack: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
     roomTitleWrap: { flex: 1, alignItems: "center" },
-    roomTitle: { color: "#fafaf9", fontSize: 15, fontWeight: "800", letterSpacing: -0.3 },
-    roomSub: { color: "#a8a29e", fontSize: 11, fontWeight: "600", marginTop: 1 },
-    roomWeb: { flex: 1, backgroundColor: "#0c0a09" },
+    roomTitle: { color: palettes.dark.text, fontSize: 15, fontWeight: "800", letterSpacing: -0.3 },
+    roomSub: { color: palettes.dark.textMuted, fontSize: 11, fontWeight: "600", marginTop: 1 },
+    roomWeb: { flex: 1, backgroundColor: palettes.dark.bg },
     roomFallback: {
       flex: 1,
       alignItems: "center",
@@ -596,9 +602,9 @@ const makeStyles = () =>
       gap: 12,
       padding: 28,
     },
-    roomFallbackTitle: { color: "#fafaf9", fontSize: 18, fontWeight: "800" },
+    roomFallbackTitle: { color: palettes.dark.text, fontSize: 18, fontWeight: "800" },
     roomFallbackText: {
-      color: "#a8a29e",
+      color: palettes.dark.textMuted,
       fontSize: 13,
       lineHeight: 20,
       textAlign: "center",

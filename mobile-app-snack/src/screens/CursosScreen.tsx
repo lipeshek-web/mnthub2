@@ -1,8 +1,9 @@
 /**
- * Aba Cursos: catálogo em GRADE (estilo Apple/Duolingo) — cards verticais com
- * capa 16:9, busca por texto, chips de categoria (derivadas dos itens
- * carregados, filtro no servidor), badge "Inscrito", paginação infinita e
- * pull-to-refresh.
+ * SEGMENTO "Cursos" da aba Explorar: catálogo em GRADE (estilo Apple) —
+ * cards verticais com capa 16:9, busca por texto, chips de categoria
+ * (derivadas dos itens carregados, filtro no servidor), badge "Inscrito",
+ * paginação infinita e pull-to-refresh. O cabeçalho/título/segmented
+ * control pertencem à ExplorarScreen — aqui fica só o conteúdo.
  */
 import React, { useEffect, useMemo, useState } from "react";
 import { FlatList, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -16,10 +17,9 @@ import { EmptyState } from "../components/EmptyState";
 import { ErrorBox } from "../components/ErrorBox";
 import { FilterChip } from "../components/FilterChip";
 import { LoadingList } from "../components/LoadingList";
-import { Screen } from "../components/Screen";
 import { SearchField } from "../components/SearchField";
 
-export default function CoursesScreen() {
+export function CursosSegment() {
   const styles = makeStyles();
   const navigation = useNavigation<any>();
   const [query, setQuery] = useState("");
@@ -58,97 +58,91 @@ export default function CoursesScreen() {
   }, [categories, category]);
 
   return (
-    <Screen>
-      <FlatList<CourseItem>
-        style={styles.flex}
-        data={list.items}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        columnWrapperStyle={styles.gridRow}
-        renderItem={({ item }) => (
-          <View style={styles.gridCell}>
-            <CourseCard
-              course={item}
-              variant="reco"
-              onPress={() => navigation.navigate("Curso", { id: item.id })}
-            />
-          </View>
-        )}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.content}
-        refreshControl={
-          <RefreshControl
-            refreshing={list.refreshing}
-            onRefresh={list.refresh}
-            tintColor={theme.colors.accent}
-            colors={[theme.colors.accent]}
-            progressBackgroundColor={theme.colors.surface}
+    <FlatList<CourseItem>
+      style={styles.flex}
+      data={list.items}
+      keyExtractor={(item) => item.id}
+      numColumns={2}
+      columnWrapperStyle={styles.gridRow}
+      renderItem={({ item }) => (
+        <View style={styles.gridCell}>
+          <CourseCard
+            course={item}
+            variant="reco"
+            onPress={() => navigation.navigate("Curso", { id: item.id })}
           />
-        }
-        onEndReached={list.loadMore}
-        onEndReachedThreshold={0.4}
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <Text style={styles.title}>Cursos</Text>
-            <Text style={styles.subtitle}>
-              Aprenda no seu ritmo — vídeos, textos e aulas ao vivo
-            </Text>
-            <SearchField
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Buscar por título, tema ou mentor..."
-            />
-            {categories.length > 0 ? (
-              <ScrollView
-                horizontal
-                nestedScrollEnabled
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.catRow}
-              >
+        </View>
+      )}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          refreshing={list.refreshing}
+          onRefresh={list.refresh}
+          tintColor={theme.colors.accent}
+          colors={[theme.colors.accent]}
+          progressBackgroundColor={theme.colors.surface}
+        />
+      }
+      onEndReached={list.loadMore}
+      onEndReachedThreshold={0.4}
+      ListHeaderComponent={
+        <View style={styles.header}>
+          <SearchField
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Buscar por título, tema ou mentor..."
+          />
+          {categories.length > 0 ? (
+            <ScrollView
+              horizontal
+              nestedScrollEnabled
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.catRow}
+            >
+              <FilterChip
+                label="Todas"
+                selected={category === null}
+                onPress={() => setCategory(null)}
+              />
+              {categories.map((cat) => (
                 <FilterChip
-                  label="Todas"
-                  selected={category === null}
-                  onPress={() => setCategory(null)}
+                  key={cat}
+                  label={cat}
+                  selected={category === cat}
+                  onPress={() => setCategory(cat === category ? null : cat)}
                 />
-                {categories.map((cat) => (
-                  <FilterChip
-                    key={cat}
-                    label={cat}
-                    selected={category === cat}
-                    onPress={() => setCategory(cat === category ? null : cat)}
-                  />
-                ))}
-              </ScrollView>
-            ) : null}
-            {list.error && list.items.length > 0 ? (
-              <View style={styles.banner}>
-                <ErrorBox compact message={list.error} onRetry={list.refresh} />
-              </View>
-            ) : !list.loading && !list.error ? (
-              <Text style={styles.count}>
-                {list.total} {list.total === 1 ? "curso" : "cursos"}
-              </Text>
-            ) : null}
-          </View>
-        }
-        ListFooterComponent={list.loadingMore ? <LoadingList compact /> : null}
-        ListEmptyComponent={
-          list.loading ? (
-            <LoadingList label="Carregando cursos..." />
-          ) : list.error ? (
-            <ErrorBox message={list.error} onRetry={list.reload} />
-          ) : (
-            <EmptyState
-              icon="play-circle-outline"
-              title="Nenhum curso encontrado"
-              message={search ? "Tente buscar por outro termo." : "O catálogo está vazio por enquanto."}
-              actionLabel={search ? "Limpar busca" : undefined}
-              onAction={search ? () => setQuery("") : undefined}
-            />
-          )
-        }
-      />
-    </Screen>
+              ))}
+            </ScrollView>
+          ) : null}
+          {list.error && list.items.length > 0 ? (
+            <View style={styles.banner}>
+              <ErrorBox compact message={list.error} onRetry={list.refresh} />
+            </View>
+          ) : !list.loading && !list.error ? (
+            <Text style={styles.count}>
+              {list.total} {list.total === 1 ? "curso" : "cursos"}
+            </Text>
+          ) : null}
+        </View>
+      }
+      ListFooterComponent={list.loadingMore ? <LoadingList compact /> : null}
+      ListEmptyComponent={
+        list.loading ? (
+          <LoadingList label="Carregando cursos..." />
+        ) : list.error ? (
+          <ErrorBox message={list.error} onRetry={list.reload} />
+        ) : (
+          <EmptyState
+            icon="play-circle-outline"
+            title="Nenhum curso encontrado"
+            message={search ? "Tente buscar por outro termo." : "O catálogo está vazio por enquanto."}
+            actionLabel={search ? "Limpar busca" : undefined}
+            onAction={search ? () => setQuery("") : undefined}
+          />
+        )
+      }
+    />
   );
 }
 
@@ -161,8 +155,6 @@ const makeStyles = () =>
       paddingBottom: DOCK_CLEARANCE,
     },
     header: { gap: theme.spacing.md, marginBottom: theme.spacing.md },
-    title: { color: theme.colors.text, fontSize: 26, fontWeight: "800", letterSpacing: -0.6 },
-    subtitle: { color: theme.colors.textMuted, fontSize: 13, marginTop: -8 },
     catRow: { gap: theme.spacing.sm, paddingRight: theme.spacing.lg },
     gridRow: { gap: theme.spacing.md, marginBottom: theme.spacing.xl },
     /* célula fluida da grade (o card "reco" não tem largura própria) */

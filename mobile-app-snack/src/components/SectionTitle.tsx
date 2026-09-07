@@ -40,6 +40,14 @@ const makeStyles = () =>
       marginTop: theme.spacing.xl,
       marginBottom: theme.spacing.md,
     },
-    title: { color: theme.colors.text, fontSize: 17, fontWeight: "700", flex: 1 },
+    /* Overline iOS: rótulo pequeno, caixa alta e discreto acima da seção. */
+    title: {
+      color: theme.colors.textFaint,
+      fontSize: 12,
+      fontWeight: "700",
+      letterSpacing: 0.6,
+      textTransform: "uppercase",
+      flex: 1,
+    },
     action: { color: theme.colors.accent, fontSize: 13, fontWeight: "600" },
   });

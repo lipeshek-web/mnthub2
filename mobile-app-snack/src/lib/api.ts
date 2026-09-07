@@ -178,7 +178,7 @@ const STATUS_MESSAGES: Record<number, string> = {
   0: "Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.",
   400: "Requisição inválida. Verifique os dados e tente novamente.",
   401: "Sessão expirada. Faça login novamente.",
-  402: "Este curso é pago. A compra é feita pelo site do MentorHub.",
+  402: "Este curso é pago. A compra é feita pelo site da Órbita.",
   403: "Você não tem permissão para isso.",
   404: "Conteúdo não encontrado.",
   409: "Este horário ficou indisponível. Escolha outro, por favor.",

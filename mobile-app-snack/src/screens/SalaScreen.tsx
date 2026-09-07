@@ -36,7 +36,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { errMessage, getMeetingToken, getServerUrl, type MeetingTokenResponse } from "../lib/api";
 import { useSafeBack, useBackStage } from "../lib/navigation";
 import { formatNaiveLong, parseNaive } from "../lib/format";
-import { theme } from "../theme";
+import { palettes, theme } from "../theme";
 import { Avatar } from "../components/Avatar";
 import { ErrorBox } from "../components/ErrorBox";
 import { ScreenHeader } from "../components/ScreenHeader";
@@ -240,7 +240,7 @@ export default function SalaScreen() {
               </View>
               <View style={styles.heroBadge}>
                 <Ionicons name="shield-checkmark" size={10} color={theme.colors.white} />
-                <Text style={styles.heroBadgeText}>MentorHub Live · 1:1</Text>
+                <Text style={styles.heroBadgeText}>Órbita Live · 1:1</Text>
               </View>
             </View>
             <Text style={styles.heroTitle} numberOfLines={2}>
@@ -375,14 +375,14 @@ export default function SalaScreen() {
             accessibilityRole="button"
             accessibilityLabel="Sair da sala"
           >
-            <Ionicons name="chevron-back" size={20} color={theme.colors.text} />
+            <Ionicons name="chevron-back" size={20} color={palettes.dark.text} />
             <Text style={styles.leaveBtnText}>Sair</Text>
           </TouchableOpacity>
           <View style={{ width: 76 }} />
         </View>
         <View style={styles.webFallback}>
           <View style={styles.webFallbackIcon}>
-            <Ionicons name="videocam" size={26} color={theme.colors.accent} />
+            <Ionicons name="videocam" size={26} color={palettes.dark.accent} />
           </View>
           <Text style={styles.webFallbackTitle}>Sala pronta</Text>
           <Text style={styles.webFallbackText}>
@@ -415,13 +415,13 @@ export default function SalaScreen() {
           accessibilityRole="button"
           accessibilityLabel="Sair da reunião"
         >
-          <Ionicons name="chevron-down" size={20} color={theme.colors.text} />
+          <Ionicons name="chevron-down" size={20} color={palettes.dark.text} />
           <Text style={styles.leaveBtnText}>Sair</Text>
         </TouchableOpacity>
         <View style={styles.roomTitleWrap}>
           <View style={styles.roomLiveDot} />
           <Text style={styles.roomTitle} numberOfLines={1}>
-            MentorHub Live
+            Órbita Live
           </Text>
         </View>
         <View style={{ width: 76 }} />
@@ -444,7 +444,7 @@ export default function SalaScreen() {
             renderError={() => (
               <View style={styles.webFallback}>
                 <View style={styles.webFallbackIcon}>
-                  <Ionicons name="cloud-offline-outline" size={26} color={theme.colors.danger} />
+                  <Ionicons name="cloud-offline-outline" size={26} color={palettes.dark.danger} />
                 </View>
                 <Text style={styles.webFallbackTitle}>Sala não carregou</Text>
                 <Text style={styles.webFallbackText}>
@@ -465,7 +465,7 @@ export default function SalaScreen() {
           /* webview indisponível nesta build — a sala ainda abre no navegador */
           <View style={styles.webFallback}>
             <View style={styles.webFallbackIcon}>
-              <Ionicons name="videocam" size={26} color={theme.colors.accent} />
+              <Ionicons name="videocam" size={26} color={palettes.dark.accent} />
             </View>
             <Text style={styles.webFallbackTitle}>Sala pronta</Text>
             <Text style={styles.webFallbackText}>
@@ -485,8 +485,8 @@ export default function SalaScreen() {
           </View>
         ) : (
           <View style={styles.webFallback}>
-            <ActivityIndicator size="small" color={theme.colors.accent} />
-            <Text style={styles.ctaDisabledText}>Abrindo a sala…</Text>
+            <ActivityIndicator size="small" color={palettes.dark.accent} />
+            <Text style={styles.roomLoadingText}>Abrindo a sala…</Text>
           </View>
         )}
       </View>
@@ -661,15 +661,16 @@ const makeStyles = () =>
     },
     bottomSpacer: { height: theme.spacing.lg },
 
-    /* Room */
-    roomBg: { backgroundColor: "#0c0a09" },
+    /* Room — o chrome da sala é SEMPRE escuro (fixado na paleta dark do
+     * tema) para combinar com o palco de vídeo do WebView em qualquer modo. */
+    roomBg: { backgroundColor: palettes.dark.bg },
     roomTopBar: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       paddingHorizontal: theme.spacing.md,
       paddingBottom: 6,
-      backgroundColor: "#0c0a09",
+      backgroundColor: palettes.dark.bg,
     },
     leaveBtn: {
       flexDirection: "row",
@@ -678,11 +679,11 @@ const makeStyles = () =>
       paddingHorizontal: 10,
       paddingVertical: 7,
       borderRadius: theme.radius.full,
-      backgroundColor: "rgba(28,25,23,0.9)",
+      backgroundColor: palettes.dark.surfaceAlt,
       borderWidth: 1,
-      borderColor: theme.colors.borderStrong,
+      borderColor: palettes.dark.borderStrong,
     },
-    leaveBtnText: { color: theme.colors.text, fontSize: 13, fontWeight: "700" },
+    leaveBtnText: { color: palettes.dark.text, fontSize: 13, fontWeight: "700" },
     roomTitleWrap: {
       flexDirection: "row",
       alignItems: "center",
@@ -692,11 +693,11 @@ const makeStyles = () =>
       width: 7,
       height: 7,
       borderRadius: theme.radius.full,
-      backgroundColor: theme.colors.accent,
+      backgroundColor: palettes.dark.accent,
     },
-    roomTitle: { color: theme.colors.textMuted, fontSize: 12.5, fontWeight: "700" },
+    roomTitle: { color: palettes.dark.textMuted, fontSize: 12.5, fontWeight: "700" },
     webViewWrap: { flex: 1 },
-    webView: { flex: 1, backgroundColor: "#0c0a09" },
+    webView: { flex: 1, backgroundColor: palettes.dark.bg },
 
     /* fallback / erro */
     webFallback: {
@@ -705,24 +706,25 @@ const makeStyles = () =>
       justifyContent: "center",
       gap: 12,
       padding: 28,
-      backgroundColor: "#0c0a09",
+      backgroundColor: palettes.dark.bg,
     },
     webFallbackIcon: {
       width: 64,
       height: 64,
       borderRadius: 22,
-      backgroundColor: theme.colors.accentSoft,
+      backgroundColor: palettes.dark.accentSoft,
       borderWidth: 1,
-      borderColor: theme.colors.accentBorder,
+      borderColor: palettes.dark.accentBorder,
       alignItems: "center",
       justifyContent: "center",
     },
-    webFallbackTitle: { color: theme.colors.text, fontSize: 17, fontWeight: "800" },
+    webFallbackTitle: { color: palettes.dark.text, fontSize: 17, fontWeight: "800" },
     webFallbackText: {
-      color: theme.colors.textMuted,
+      color: palettes.dark.textMuted,
       fontSize: 13.5,
       lineHeight: 20,
       textAlign: "center",
       maxWidth: 320,
     },
+    roomLoadingText: { color: palettes.dark.textMuted, fontSize: 14, fontWeight: "600" },
   });

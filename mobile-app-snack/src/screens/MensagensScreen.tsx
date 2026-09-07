@@ -76,7 +76,7 @@ function timeLabel(raw: string): string {
 export function MessagesTabPage() {
   const styles = makeStyles();
   const navigation = useNavigation<any>();
-  const { setTab } = useTabs();
+  const { setTab, setSegment } = useTabs();
   // Polling/pull só quando a aba está de fato visível (Main em foco).
   const isFocused = useIsFocused();
   const [data, setData] = useState<ThreadsResponse | null>(null);
@@ -156,7 +156,7 @@ export function MessagesTabPage() {
           </Text>
           <TouchableOpacity
             style={styles.emptyAction}
-            onPress={() => setTab("Mentorias")}
+            onPress={() => { setSegment("Mentorias"); setTab("Explorar"); }}
             activeOpacity={0.85}
             accessibilityRole="button"
             accessibilityLabel="Explorar mentores para começar uma conversa"

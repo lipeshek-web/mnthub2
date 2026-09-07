@@ -81,7 +81,7 @@ export default function CheckoutScreen() {
   const styles = makeStyles();
   const navigation = useNavigation<any>();
   const goBack = useSafeBack(navigation);
-  const { setTab } = useTabs();
+  const { setTab, setSegment } = useTabs();
   const params = (useRoute<any>().params ?? {}) as {
     id?: string;
     kind?: string;
@@ -325,7 +325,8 @@ export default function CheckoutScreen() {
                 // Aba Mentorias ativa + desempilha tudo para revelar o pager
                 // direto no segmento "Minhas sessões" (agora com a sessão paga).
                 requestSessionsSegment();
-                setTab("Mentorias");
+                setSegment("Mentorias");
+                setTab("Explorar");
                 navigation.popToTop();
               } else {
                 // Pilha final [Main, Curso]: voltar da aula não reabre a página
@@ -629,7 +630,7 @@ export default function CheckoutScreen() {
           )}
         </TouchableOpacity>
         <Text style={styles.secureText}>
-          Pagamento processado pelo gateway seguro do MentorHub (Asaas).
+          Pagamento processado pelo gateway seguro da Órbita (Asaas).
         </Text>
       </ScrollView>
     </Screen>

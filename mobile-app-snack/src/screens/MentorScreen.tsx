@@ -582,7 +582,7 @@ function BookingSuccess({
 }) {
   const styles = makeStyles();
   const navigation = useNavigation<any>();
-  const { setTab } = useTabs();
+  const { setTab, setSegment } = useTabs();
   const needsPayment = !!created && created.price > 0;
 
   /** Pagamento INTEGRADO: escolheu dia/horário e já paga aqui mesmo. */
@@ -602,7 +602,8 @@ function BookingSuccess({
     // Aba Mentorias no pager principal (TabsContext) + desempilha o
     // Mentor para revelar o pager já em "Minhas sessões".
     requestSessionsSegment();
-    setTab("Mentorias");
+    setSegment("Mentorias");
+    setTab("Explorar");
     navigation.goBack();
   }
 

@@ -75,7 +75,7 @@ export default function RankingScreen() {
               : styles.rankBadgePlain,
           ]}
         >
-          <Text style={[styles.rankText, rank <= 3 ? { color: "#ffffff" } : null]}>{rank}</Text>
+          <Text style={[styles.rankText, rank <= 3 ? { color: theme.colors.white } : null]}>{rank}</Text>
         </View>
         <Avatar uri={item.avatarUrl} name={item.name} size={38} />
         <View style={styles.rowInfo}>

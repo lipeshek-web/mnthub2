@@ -1,29 +1,31 @@
 /**
- * MentorHub Mobile — edição Expo Snack.
+ * Órbita — edição Expo Snack.
  *
  * Entrada única App.js: navegação via React Navigation com stack JS
  * (@react-navigation/stack) — a navegação nativa de stack não resolve no
  * runtime do Snack; mesma identidade visual e mesmas telas da versão local.
  *
- * As 5 abas principais (Início · Livros · Cursos · Mentorias · Mensagens) NÃO usam
- * mais bottom-tabs: são páginas de um pager horizontal (ScrollView pagingEnabled)
- * com DOCK flutuante custom (pill destacada, solta acima do rodapé — estilo
- * Duolingo/Apple), sincronizadas pelo TabsContext (src/lib/tabs.tsx) — dá para
- * deslizar entre as abas com o dedo ou tocar no dock. O estado da aba ativa
- * vive no Root, ACIMA do NavigationContainer, para que telas do stack também
- * consigam trocar de aba (useTabs().setTab) antes de desempilhar.
+ * Navegação MINIMALISTA estilo iOS: 4 abas apenas (Início · Explorar ·
+ * Mensagens · Perfil) em um pager horizontal (ScrollView pagingEnabled)
+ * com TAB BAR nativa no rodapé — barra sólida com hairline, ícone + rótulo,
+ * como no UIKit. Cursos, Livros e Mentores vivem DENTRO de Explorar (um
+ * segmented control iOS), eliminando três telas/abas do app. O estado da
+ * aba ativa (e do segmento da Explorar) vive no Root, ACIMA do
+ * NavigationContainer, para que telas do stack também consigam trocar de
+ * aba (useTabs().setTab) antes de desempilhar.
  *
  * Estrutura:
  *   SafeAreaProvider
  *     └─ ThemeProvider (modo Claro/Escuro persistido em SecureStore)
  *         └─ AuthProvider → gate de sessão
- *             - loading       → splash
+ *             - loading       → splash (marca Órbita)
  *             - anonymous     → LoginScreen (minimalista: só e-mail + senha)
  *             - authenticated → TabsContext.Provider
  *                 └─ NavigationContainer
  *                     RootStack (headerShown: false)
- *                       ├─ Main (pager horizontal + dock flutuante): Início ·
- *                       │   Livros · Cursos · Mentorias · Mensagens
+ *                       ├─ Main (pager + tab bar nativa): Início ·
+ *                       │   Explorar (Cursos|Livros|Mentores) · Mensagens ·
+ *                       │   Perfil
  *                       ├─ Livro  (params: { id })
  *                       ├─ Curso  (params: { id }) — conteúdo em foco
  *                       ├─ Checkout (params: { id }) — compra PIX/cartão no app
@@ -34,7 +36,6 @@
  *                       ├─ Evento (params: { id }) — reunião MULTI-participante
  *                       │   (WebView → /room.html, malha WebRTC)
  *                       ├─ Ranking (ranking de XP da semana — gamificação)
- *                       ├─ Perfil (aberto pelo ícone da conta na Home)
  *                       ├─ Busca  (busca global: cursos + livros + mentores)
  *                       └─ Salvos (favoritos locais do aparelho)
  *
@@ -92,13 +93,11 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { AuthProvider, useAuth } from "./src/lib/auth";
 import { ThemeProvider, useThemeMode } from "./src/lib/theme";
-import { TabsContext, useTabs, isTabName } from "./src/lib/tabs";
+import { TabsContext, useTabs, isTabName, isSegmentName } from "./src/lib/tabs";
 import { theme } from "./src/theme";
 import LoginScreen from "./src/screens/LoginScreen";
 import HomeScreen from "./src/screens/HomeScreen";
-import LivrosScreen from "./src/screens/LivrosScreen";
-import CursosScreen from "./src/screens/CursosScreen";
-import MentoriasScreen from "./src/screens/MentoriasScreen";
+import ExplorarScreen from "./src/screens/ExplorarScreen";
 import PerfilScreen from "./src/screens/PerfilScreen";
 import LivroScreen from "./src/screens/LivroScreen";
 import CursoScreen from "./src/screens/CursoScreen";
@@ -133,13 +132,32 @@ function makeNavTheme(mode) {
 
 /* --------------------------------- Splash ----------------------------------- */
 
+/** Marca Órbita: planeta com anel elíptico — desenhado só com Views. */
+function OrbitMark({ size = 96 }) {
+  const styles = makeStyles();
+  const ringW = size * 1.55;
+  const ringH = size * 0.56;
+  return (
+    <View style={[styles.markStage, { width: ringW, height: ringW }]}>
+      <View
+        style={[
+          styles.markRing,
+          { width: ringW, height: ringH, borderRadius: ringH / 2 },
+        ]}
+      />
+      <View style={[styles.markMoon, { width: size * 0.14, height: size * 0.14 }]} />
+      <View style={[styles.markPlanet, { width: size, height: size, borderRadius: size / 2 }]} />
+    </View>
+  );
+}
+
 function Splash() {
   const styles = makeStyles();
   return (
     <View style={styles.splash}>
-      <Text style={styles.splashLogo}>
-        Mentor<Text style={styles.splashAccent}>Hub</Text>
-      </Text>
+      <OrbitMark size={84} />
+      <Text style={styles.splashLogo}>Órbita</Text>
+      <Text style={styles.splashTagline}>Seu universo de aprendizado</Text>
       <ActivityIndicator color={theme.colors.accent} style={styles.splashSpinner} />
     </View>
   );
@@ -147,13 +165,12 @@ function Splash() {
 
 /* ------------------------------ Abas (pager) -------------------------------- */
 
-/** Itens do dock flutuante — 5 abas; o Perfil fica no stack (ícone da conta na Home). */
+/** Itens da tab bar nativa — 4 abas; Cursos/Livros/Mentores vivem em Explorar. */
 const TABS = [
-  { name: "Início", icon: "home-outline", Component: HomeScreen },
-  { name: "Livros", icon: "book-outline", Component: LivrosScreen },
-  { name: "Cursos", icon: "play-circle-outline", Component: CursosScreen },
-  { name: "Mentorias", icon: "videocam-outline", Component: MentoriasScreen },
-  { name: "Mensagens", icon: "chatbubble-ellipses-outline", Component: MessagesTabPage },
+  { name: "Início", icon: "home", Component: HomeScreen },
+  { name: "Explorar", icon: "compass", Component: ExplorarScreen },
+  { name: "Mensagens", icon: "chatbubble-ellipses", Component: MessagesTabPage },
+  { name: "Perfil", icon: "person", Component: PerfilScreen },
 ];
 
 function MainTabs() {
@@ -168,7 +185,7 @@ function MainTabs() {
     unreadStore.get,
     unreadStore.get
   );
-  // Foco do "Main" no stack: ao abrir uma tela por cima (Perfil, Curso,
+  // Foco do "Main" no stack: ao abrir uma tela por cima (Curso, Livro,
   // Mentor...), o pager PERDE foco — travamos a rolagem para que gestos de
   // transição nunca deixem o pager meio deslizado ao voltar (bug do voltar).
   const isFocused = useIsFocused();
@@ -184,7 +201,7 @@ function MainTabs() {
     setVisited((prev) => (prev.has(tab) ? prev : new Set([...prev, tab])));
   }, [tab]);
 
-  // Deep-link via params do stack: navigate("Main", { screen: "Mentorias" }).
+  // Deep-link via params do stack: navigate("Main", { screen: "Explorar" }).
   useEffect(() => {
     const target = route.params?.screen;
     if (target) setTab(target);
@@ -252,47 +269,38 @@ function MainTabs() {
         ))}
       </ScrollView>
 
-      {/* Dock flutuante — pill solta acima do rodapé (não colada), estilo
-          Duolingo/Apple: sombra suave, cantos redondos e destaque na aba ativa. */}
+      {/* Tab bar nativa estilo iOS — barra sólida no rodapé, hairline no topo,
+          ícone + rótulo, sem pílula decorativa. */}
       <View
         style={[
-          styles.dock,
-          { bottom: Math.max(insets.bottom, 10) + 8 },
+          styles.tabBar,
+          { paddingBottom: Math.max(insets.bottom, 10) },
         ]}
       >
         {TABS.map(({ name, icon }) => {
           const active = tab === name;
+          const color = active ? theme.colors.accent : theme.colors.textFaint;
           return (
             <TouchableOpacity
               key={name}
-              style={[styles.dockItem, active ? styles.dockItemActive : null]}
+              style={styles.tabItem}
               onPress={() => setTab(name)}
-              activeOpacity={0.7}
+              activeOpacity={0.65}
               accessibilityRole="tab"
               accessibilityState={{ selected: active }}
               accessibilityLabel={name}
             >
-              <View style={styles.dockIconWrap}>
-                <Ionicons
-                  name={icon}
-                  size={22}
-                  color={active ? theme.colors.accent : theme.colors.textFaint}
-                />
+              <View style={styles.tabIconWrap}>
+                <Ionicons name={icon} size={24} color={color} />
                 {name === "Mensagens" && unreadMessages > 0 ? (
-                  <View style={styles.dockBadge}>
-                    <Text style={styles.dockBadgeText}>
+                  <View style={styles.tabBadge}>
+                    <Text style={styles.tabBadgeText}>
                       {unreadMessages > 9 ? "9+" : String(unreadMessages)}
                     </Text>
                   </View>
                 ) : null}
               </View>
-              <Text
-                style={[
-                  styles.dockLabel,
-                  { color: active ? theme.colors.accent : theme.colors.textFaint },
-                ]}
-                numberOfLines={1}
-              >
+              <Text style={[styles.tabLabel, { color }]} numberOfLines={1}>
                 {name}
               </Text>
             </TouchableOpacity>
@@ -325,7 +333,6 @@ function RootNavigator() {
       <Stack.Screen name="Sala" component={SalaScreen} />
       <Stack.Screen name="Evento" component={EventoScreen} />
       <Stack.Screen name="Ranking" component={RankingScreen} />
-      <Stack.Screen name="Perfil" component={PerfilScreen} />
       <Stack.Screen name="Busca" component={BuscaScreen} />
       <Stack.Screen name="Salvos" component={SalvosScreen} />
     </Stack.Navigator>
@@ -338,13 +345,21 @@ function Root() {
   const { status } = useAuth();
   const { mode } = useThemeMode();
 
-  // Estado da aba ativa vive aqui (acima do NavigationContainer) para que as
-  // telas do stack (Livro/Curso/Mentor) também possam trocar de aba via useTabs.
+  // Estado da aba ativa + segmento da Explorar vivem aqui (acima do
+  // NavigationContainer) para que as telas do stack também possam trocar de
+  // aba/segmento via useTabs.
   const [tab, setTabState] = useState("Início");
+  const [segment, setSegmentState] = useState("Cursos");
   const setTab = useCallback((next) => {
     if (isTabName(next)) setTabState(next);
   }, []);
-  const tabsValue = useMemo(() => ({ tab, setTab }), [tab, setTab]);
+  const setSegment = useCallback((next) => {
+    if (isSegmentName(next)) setSegmentState(next);
+  }, []);
+  const tabsValue = useMemo(
+    () => ({ tab, setTab, segment, setSegment }),
+    [tab, setTab, segment, setSegment]
+  );
 
   if (status === "loading") return <Splash />;
   if (status !== "authenticated") return <LoginScreen />;
@@ -395,55 +410,71 @@ const makeStyles = () =>
       alignItems: "center",
       justifyContent: "center",
     },
+    markStage: {
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 18,
+    },
+    markRing: {
+      position: "absolute",
+      borderWidth: 2.5,
+      borderColor: theme.colors.accent,
+      opacity: 0.55,
+      transform: [{ rotate: "-18deg" }],
+    },
+    markMoon: {
+      position: "absolute",
+      backgroundColor: theme.colors.accent,
+      opacity: 0.9,
+      top: "12%",
+      right: "8%",
+    },
+    markPlanet: {
+      backgroundColor: theme.colors.accent,
+      opacity: 0.28,
+    },
     splashLogo: {
       color: theme.colors.text,
       fontSize: 34,
-      fontWeight: "700",
-      letterSpacing: -0.8,
+      fontWeight: "800",
+      letterSpacing: -1,
     },
-    splashAccent: { color: theme.colors.accent },
-    splashSpinner: { marginTop: 18 },
+    splashTagline: {
+      color: theme.colors.textFaint,
+      fontSize: 13,
+      fontWeight: "600",
+      marginTop: 6,
+    },
+    splashSpinner: { marginTop: 26 },
 
     /* Pager de abas */
     mainFlex: { flex: 1, backgroundColor: theme.colors.bg },
     flex: { flex: 1 },
     page: { backgroundColor: theme.colors.bg },
 
-    /* Dock flutuante — pill solta, sombra suave, não colada no rodapé */
-    dock: {
-      position: "absolute",
-      left: 18,
-      right: 18,
-      height: 62,
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 6,
+    /* Tab bar nativa estilo iOS — sólida, hairline no topo, sem flutuar */
+    tabBar: {
       backgroundColor: theme.colors.surface,
-      borderRadius: 22,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.colors.border,
-      shadowColor: "#000000",
-      shadowOpacity: 0.16,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 8 },
-      elevation: 14,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.colors.border,
+      flexDirection: "row",
+      alignItems: "stretch",
+      paddingTop: 7,
+      paddingHorizontal: 6,
     },
-    dockItem: {
+    tabItem: {
       flex: 1,
-      height: "100%",
       alignItems: "center",
-      justifyContent: "center",
+      justifyContent: "flex-start",
       gap: 2,
-      borderRadius: 18,
     },
-    dockItemActive: { backgroundColor: theme.colors.accentSoft },
-    dockIconWrap: { alignItems: "center", justifyContent: "center" },
-    dockBadge: {
+    tabIconWrap: { alignItems: "center", justifyContent: "center" },
+    tabBadge: {
       position: "absolute",
       top: -4,
-      right: -9,
-      minWidth: 16,
-      height: 16,
+      right: -10,
+      minWidth: 17,
+      height: 17,
       paddingHorizontal: 4,
       borderRadius: theme.radius.full,
       backgroundColor: theme.colors.danger,
@@ -452,6 +483,6 @@ const makeStyles = () =>
       borderWidth: 2,
       borderColor: theme.colors.surface,
     },
-    dockBadgeText: { color: theme.colors.white, fontSize: 8.5, fontWeight: "800" },
-    dockLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 0.1 },
+    tabBadgeText: { color: theme.colors.white, fontSize: 9, fontWeight: "800" },
+    tabLabel: { fontSize: 10, fontWeight: "600", letterSpacing: 0.1 },
   });

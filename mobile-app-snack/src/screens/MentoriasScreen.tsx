@@ -1,9 +1,10 @@
 /**
- * Aba Mentorias com dois segmentos:
+ * SEGMENTO "Mentorias" da aba Explorar, com dois sub-segmentos (pílulas):
  * - Mentores: lista paginada com busca → detalhe do mentor (app/mentor/[id]).
  * - Minhas sessões: agendamentos do aluno com StatusPill e cancelamento
  *   (cancelBooking com confirmação) quando PENDING/CONFIRMED.
- * Aceita o param ?segment=sessoes (usado pelo fluxo de agendamento).
+ * A dica requestSessionsSegment() (uiHints) abre direto em "Minhas sessões".
+ * Cabeçalho/título/segmented control pertencem à ExplorarScreen.
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -16,7 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import {
   cancelBooking,
@@ -35,23 +36,15 @@ import { EmptyState } from "../components/EmptyState";
 import { ErrorBox } from "../components/ErrorBox";
 import { LoadingList } from "../components/LoadingList";
 import { MentorCard } from "../components/MentorCard";
-import { Screen } from "../components/Screen";
 import { SearchField } from "../components/SearchField";
 import { StatusPill } from "../components/StatusPill";
 
 type Segment = "mentores" | "sessoes";
 
-export default function MentorshipsScreen() {
+export function MentoriasSegment() {
   const styles = makeStyles();
   const navigation = useNavigation<any>();
-  const params = (useRoute<any>().params ?? {}) as { segment?: string };
-  const [segment, setSegment] = useState<Segment>(
-    params.segment === "sessoes" ? "sessoes" : "mentores"
-  );
-
-  useEffect(() => {
-    if (params.segment === "sessoes") setSegment("sessoes");
-  }, [params.segment]);
+  const [segment, setSegment] = useState<Segment>("mentores");
 
   /* ------------------------------ Mentores ------------------------------ */
 
@@ -168,7 +161,7 @@ export default function MentorshipsScreen() {
   /* ------------------------------- Render ------------------------------- */
 
   return (
-    <Screen>
+    <View style={styles.flex}>
       <View style={styles.segmentRow}>
         <SegmentButton
           label="Mentores"
@@ -285,7 +278,7 @@ export default function MentorshipsScreen() {
           }
         />
       )}
-    </Screen>
+    </View>
   );
 }
 
