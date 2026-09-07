@@ -324,6 +324,8 @@ function SegmentButton({
 /**
  * true quando a sessão está EM ANDAMENTO agora (startsAt até +durationMin).
  * Datas naive local — new Date("YYYY-MM-DDTHH:mm") cai no fuso local do aparelho.
+ * Apenas marca o período: entrar na sala exige pagamento confirmado (regra da
+ * BookingRow — ao vivo sem pagar mostra "Pagar agora", não o botão de reunião).
  */
 function isLiveNow(booking: Booking): boolean {
   if (booking.status !== "PENDING" && booking.status !== "CONFIRMED") return false;
@@ -335,6 +337,12 @@ function isLiveNow(booking: Booking): boolean {
   return now >= start && now <= end;
 }
 
+/**
+ * Linha de uma sessão agendada. Regra central: a sala de reunião só abre com
+ * pagamento confirmado (joinable = cancellable && !payPending). Sessão ao vivo
+ * sem pagamento mantém a pílula "AO VIVO AGORA", esconde os botões de entrar e
+ * mostra "Pagar agora" + aviso de pagamento pendente.
+ */
 function BookingRow({
   item,
   cancellingId,
@@ -353,7 +361,9 @@ function BookingRow({
   const payPending = cancellable && item.price > 0 && !item.paid;
   const cancelling = cancellingId === item.id;
   const live = isLiveNow(item);
-  const joinable = cancellable;
+  /* Sala só com pagamento confirmado: sessão sem pagar NÃO abre a sala —
+     mesmo ao vivo, mostra "Pagar agora" (corrige o bug do joinable = cancellable). */
+  const joinable = cancellable && !payPending;
   return (
     <View style={[styles.bookingCard, live ? styles.bookingCardLive : null]}>
       <Avatar uri={item.mentor.avatarUrl} name={item.mentor.name} size={46} />
@@ -382,18 +392,6 @@ function BookingRow({
             <Text style={styles.liveText}>AO VIVO AGORA</Text>
           </View>
         ) : null}
-        {live ? (
-          <TouchableOpacity
-            style={styles.joinLiveButton}
-            onPress={() => onJoin(item)}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel={`Entrar na reunião com ${item.mentor.name}`}
-          >
-            <Ionicons name="videocam" size={16} color={theme.colors.onAccent} />
-            <Text style={styles.joinLiveButtonText}>Entrar na reunião</Text>
-          </TouchableOpacity>
-        ) : null}
         {payPending ? (
           <TouchableOpacity
             style={styles.payButton}
@@ -404,6 +402,23 @@ function BookingRow({
           >
             <Ionicons name="card-outline" size={15} color={theme.colors.onAccent} />
             <Text style={styles.payButtonText}>Pagar agora</Text>
+          </TouchableOpacity>
+        ) : null}
+        {live && payPending ? (
+          <Text style={styles.payPendingHint}>
+            Pagamento pendente — pague para entrar na sala
+          </Text>
+        ) : null}
+        {live && !payPending ? (
+          <TouchableOpacity
+            style={styles.joinLiveButton}
+            onPress={() => onJoin(item)}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={`Entrar na reunião com ${item.mentor.name}`}
+          >
+            <Ionicons name="videocam" size={16} color={theme.colors.onAccent} />
+            <Text style={styles.joinLiveButtonText}>Entrar na reunião</Text>
           </TouchableOpacity>
         ) : null}
         {joinable && !live ? (
@@ -586,4 +601,6 @@ const makeStyles = () =>
     marginTop: 2,
   },
   payButtonText: { color: theme.colors.onAccent, fontSize: 13, fontWeight: "800" },
+  /* Aviso discreto abaixo do payButton quando a sessão está ao vivo sem pagar. */
+  payPendingHint: { color: theme.colors.textFaint, fontSize: 11 },
 });

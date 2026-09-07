@@ -37,7 +37,9 @@
  *                       │   (WebView → /room.html, malha WebRTC)
  *                       ├─ Ranking (ranking de XP da semana — gamificação)
  *                       ├─ Busca  (busca global: cursos + livros + mentores)
- *                       └─ Salvos (favoritos locais do aparelho)
+ *                       ├─ Salvos (favoritos locais do aparelho)
+ *                       └─ Audio  (player em tela cheia — estado global no
+ *                          AudioProvider: o som NÃO para ao navegar)
  *
  * Ao trocar de tema, a árvore de navegação é remontada com key={mode}: como os
  * componentes criam os estilos com factories (makeStyles) a cada montagem, toda
@@ -94,6 +96,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { AuthProvider, useAuth } from "./src/lib/auth";
 import { ThemeProvider, useThemeMode } from "./src/lib/theme";
 import { TabsContext, useTabs, isTabName, isSegmentName } from "./src/lib/tabs";
+import { AudioProvider, useAudio } from "./src/lib/audio";
 import { theme } from "./src/theme";
 import LoginScreen from "./src/screens/LoginScreen";
 import HomeScreen from "./src/screens/HomeScreen";
@@ -109,6 +112,8 @@ import MensagensScreen, { MessagesTabPage } from "./src/screens/MensagensScreen"
 import SalaScreen from "./src/screens/SalaScreen";
 import EventoScreen from "./src/screens/EventoScreen";
 import RankingScreen from "./src/screens/RankingScreen";
+import AudioScreen from "./src/screens/AudioScreen";
+import MiniPlayer from "./src/components/MiniPlayer";
 import { unreadStore } from "./src/lib/unread";
 
 /* ----------------------------- Tema de navegação ---------------------------- */
@@ -269,6 +274,10 @@ function MainTabs() {
         ))}
       </ScrollView>
 
+      {/* Mini-player de áudio — só aparece com faixa ativa; som continua ao
+          navegar (o estado vive no AudioProvider, no root, fora do stack). */}
+      <MiniPlayer />
+
       {/* Tab bar nativa estilo iOS — barra sólida no rodapé, hairline no topo,
           ícone + rótulo, sem pílula decorativa. */}
       <View
@@ -335,6 +344,7 @@ function RootNavigator() {
       <Stack.Screen name="Ranking" component={RankingScreen} />
       <Stack.Screen name="Busca" component={BuscaScreen} />
       <Stack.Screen name="Salvos" component={SalvosScreen} />
+      <Stack.Screen name="Audio" component={AudioScreen} />
     </Stack.Navigator>
   );
 }
@@ -392,8 +402,13 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <AuthProvider>
-          <ThemedStatusBar />
-          <Root />
+          {/* O player vive AQUI (fora do NavigationContainer e do key={mode}):
+              o som segue tocando em qualquer aba/tela e sobrevive à troca de
+              tema — a tela cheia e o mini-player são só views do estado. */}
+          <AudioProvider>
+            <ThemedStatusBar />
+            <Root />
+          </AudioProvider>
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>

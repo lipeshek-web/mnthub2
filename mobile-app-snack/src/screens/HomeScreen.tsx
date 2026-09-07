@@ -1,7 +1,7 @@
 /**
  * Aba 1 "Início" — painel diário da Órbita, minimalista estilo iOS.
  *
- * Header: saudação ("Olá, {nome}" + data curta) e à direita busca global e
+ * Header: MARCA (OrbitMark + wordmark "Órbita") e à direita busca global e
  * notificações (com badge) — o acesso à conta vive na ABA Perfil, não aqui.
  *
  * Seções (rótulo pequeno uppercase + "Ver tudo" quando faz sentido):
@@ -11,15 +11,16 @@
  *   3. "Ao vivo & eventos" — reuniões multi-participante (AO VIVO em azul);
  *   4. "Mentores para você" — próximas sessões 1:1 (máx. 3);
  *   5. "Novidades da biblioteca" — carrossel de livros/artigos;
- *   6. "Missões de hoje" — hábito diário com coleta de XP (compacta);
- *   7. "Em alta agora" — cursos recomendados.
+ *   6. "Para ouvir" — áudio-aulas (prévias demo) com player global;
+ *   7. "Missões de hoje" — hábito diário com coleta de XP (compacta);
+ *   8. "Em alta agora" — cursos recomendados.
  *
  * "Ver tudo" abre a Explorar JÁ no segmento certo (setSegment + setTab do
  * useTabs). Dados: getHome() (bootstrap; cai para getDashboard() em servidor
  * antigo), listEvents() e getGamificationDaily() — falhas silenciosas escondem
  * a seção. Só o corpo rola, com folga (DOCK_CLEARANCE) para a tab bar nativa.
  */
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import type { ComponentProps } from "react";
 import {
   FlatList,
@@ -148,15 +149,7 @@ export default function HomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  // Data curta do header ("qua, 12/03") — calculada uma vez por montagem.
-  const todayLabel = useMemo(() => {
-    const fmt = new Intl.DateTimeFormat("pt-BR", {
-      weekday: "short",
-      day: "2-digit",
-      month: "2-digit",
-    });
-    return fmt.format(new Date()).replace(".", "");
-  }, []);
+  // Data curta do header removida — o header agora é MARCA (OrbitMark + Órbita).
 
   // Missões diárias (gamificação) — falha silenciosa: servidor antigo esconde a seção.
   const loadMissions = useCallback(async () => {

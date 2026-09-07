@@ -2,10 +2,14 @@
  * Tela de busca global (stack "Busca"): um único campo que pesquisa cursos,
  * livros e mentores em paralelo (Promise.allSettled — uma falha não derruba as
  * demais). Debounce de 400ms para não buscar a cada tecla e sequencial interno
- * para descartar respostas velhas. Sem termo: buscas recentes (persistidas no
- * aparelho) ou estado vazio com sugestões fixas.
+ * para descartar respostas velhas.
+ * Ao abrir (sem termo): buscas recentes (persistidas no aparelho) e, sempre
+ * abaixo delas, sugestões de conteúdo real (cursos/livros/mentores) carregadas
+ * uma única vez no mount — falha silenciosa (cai no estado vazio com chips).
+ * Termo curto (1 caractere, abaixo de MIN_TERM): filtra as sugestões já
+ * carregadas localmente, sem acento e sem diferenciar maiúsculas — zero rede.
  */
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -47,8 +51,28 @@ const MIN_TERM = 2;
 /** Espera após a última tecla antes de buscar. */
 const DEBOUNCE_MS = 400;
 
-/** Sugestões fixas exibidas quando não há buscas recentes. */
+/** Sugestões fixas exibidas quando não há buscas recentes nem sugestões reais. */
 const SUGGESTIONS = ["Design", "Carreira", "Finanças", "Dados", "Inglês"];
+
+/** Sugestões de conteúdo real carregadas uma vez ao abrir a tela. */
+interface SuggestionData {
+  courses: CourseItem[];
+  books: LibraryItemSummary[];
+  mentors: MentorListItem[];
+}
+
+/** Minúsculas sem acento — para casar "Mentoria" com "mentoria"/"MENTORIA". */
+function normalize(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+/** true se há ao menos um item de sugestão em qualquer seção. */
+function hasAnySuggestion(data: SuggestionData): boolean {
+  return data.courses.length > 0 || data.books.length > 0 || data.mentors.length > 0;
+}
 
 interface SearchResults {
   term: string;
@@ -67,6 +91,9 @@ export default function BuscaScreen() {
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<SearchResults | null>(null);
   const [recent, setRecent] = useState<string[]>([]);
+  /* Sugestões de conteúdo real (null = tudo falhou → fallback silencioso). */
+  const [suggestions, setSuggestions] = useState<SuggestionData | null>(null);
+  const [suggestLoading, setSuggestLoading] = useState(true);
 
   // Invalida respostas de buscas antigas (o usuário já digitou outra coisa).
   const seqRef = useRef(0);
@@ -86,6 +113,35 @@ export default function BuscaScreen() {
     return () => {
       alive = false;
       unsubscribe();
+    };
+  }, []);
+
+  /* Sugestões reais: uma única rodada em paralelo no mount. Falha silenciosa —
+     se TUDO falhar (ou vier vazio), suggestions fica null e a tela cai no
+     estado vazio de sempre (EmptyState + chips fixos), sem ErrorBox. */
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const [coursesRes, booksRes, mentorsRes] = await Promise.allSettled([
+        listCourses({ pageSize: 3 }),
+        listLibrary({ pageSize: 2 }),
+        listMentors({ pageSize: 3 }),
+      ]);
+      if (!alive) return;
+      const data: SuggestionData = {
+        courses: coursesRes.status === "fulfilled" ? coursesRes.value.items : [],
+        books: booksRes.status === "fulfilled" ? booksRes.value.items : [],
+        mentors: mentorsRes.status === "fulfilled" ? mentorsRes.value.items : [],
+      };
+      if (!hasAnySuggestion(data)) {
+        setSuggestLoading(false); // nada carregou — mantém o fallback
+        return;
+      }
+      setSuggestions(data);
+      setSuggestLoading(false);
+    })();
+    return () => {
+      alive = false;
     };
   }, []);
 
@@ -160,6 +216,63 @@ export default function BuscaScreen() {
   const hasResults =
     results !== null &&
     (results.courses.length > 0 || results.books.length > 0 || results.mentors.length > 0);
+
+  const clean = q.trim();
+  /* Termo curto: abaixo de MIN_TERM ainda não busca no servidor — filtra local. */
+  const shortTerm = clean.length >= 1 && clean.length < MIN_TERM;
+
+  /* Filtro local das sugestões para termo curto (sem tocar na rede). */
+  const filteredSuggestions = useMemo<SuggestionData | null>(() => {
+    if (!suggestions || !shortTerm) return null;
+    const nq = normalize(clean);
+    return {
+      courses: suggestions.courses.filter((c) => normalize(c.title).includes(nq)),
+      books: suggestions.books.filter((b) => normalize(b.title).includes(nq)),
+      mentors: suggestions.mentors.filter((m) => normalize(m.name).includes(nq)),
+    };
+  }, [suggestions, shortTerm, clean]);
+
+  /** Seções de sugestão (mesma renderização no estado vazio e no termo curto). */
+  const renderSuggestions = (data: SuggestionData) => (
+    <>
+      {data.courses.length > 0 ? (
+        <View>
+          <SectionTitle title="Em alta · Cursos" />
+          {data.courses.map((course) => (
+            <CourseCard
+              key={course.id}
+              course={course}
+              onPress={() => navigation.navigate("Curso", { id: course.id })}
+            />
+          ))}
+        </View>
+      ) : null}
+      {data.books.length > 0 ? (
+        <View>
+          <SectionTitle title="Livros" />
+          {data.books.map((book) => (
+            <BookCard
+              key={book.id}
+              item={book}
+              onPress={() => navigation.navigate("Livro", { id: book.id })}
+            />
+          ))}
+        </View>
+      ) : null}
+      {data.mentors.length > 0 ? (
+        <View>
+          <SectionTitle title="Mentores" />
+          {data.mentors.map((mentor) => (
+            <MentorCard
+              key={mentor.id}
+              mentor={mentor}
+              onPress={() => navigation.navigate("Mentor", { id: mentor.id })}
+            />
+          ))}
+        </View>
+      ) : null}
+    </>
+  );
 
   return (
     <Screen edges={["top", "left", "right", "bottom"]}>
@@ -256,14 +369,16 @@ export default function BuscaScreen() {
           ) : null}
         </ScrollView>
       ) : (
-        /* Sem termo: recentes ou estado vazio com sugestões. */
+        /* Sem termo/termo curto: recentes + sugestões de conteúdo real.
+           Termo curto mostra as sugestões filtradas localmente (sem recentes,
+           sem rede) — "sobrar só o que corresponde". */
         <ScrollView
           style={styles.flex}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {recent.length > 0 ? (
+          {!shortTerm && recent.length > 0 ? (
             <>
               <SectionTitle
                 title="Buscas recentes"
@@ -299,7 +414,26 @@ export default function BuscaScreen() {
                 ))}
               </View>
             </>
-          ) : (
+          ) : null}
+
+          {shortTerm ? (
+            filteredSuggestions && hasAnySuggestion(filteredSuggestions) ? (
+              renderSuggestions(filteredSuggestions)
+            ) : (
+              <Text style={styles.continueHint}>
+                Continue digitando para buscar em tudo...
+              </Text>
+            )
+          ) : suggestLoading ? (
+            /* Sugestões carregando: indicador discreto no lugar das seções. */
+            <View style={styles.suggestLoading}>
+              <ActivityIndicator color={theme.colors.accent} size="small" />
+            </View>
+          ) : suggestions ? (
+            /* Conteúdo real carregado — substitui o EmptyState + chips antigos. */
+            renderSuggestions(suggestions)
+          ) : recent.length === 0 ? (
+            /* Fallback: sem sugestões (falhou/vazio) e sem recentes. */
             <>
               <EmptyState
                 icon="search-outline"
@@ -323,7 +457,7 @@ export default function BuscaScreen() {
                 ))}
               </View>
             </>
-          )}
+          ) : null}
         </ScrollView>
       )}
     </Screen>
@@ -399,6 +533,19 @@ const makeStyles = () =>
       fontWeight: "700",
       textAlign: "center",
       marginBottom: theme.spacing.md,
+    },
+
+    /* Sugestões de conteúdo real (estado vazio / termo curto) */
+    suggestLoading: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: theme.spacing.xxl,
+    },
+    continueHint: {
+      color: theme.colors.textFaint,
+      fontSize: 13,
+      textAlign: "center",
+      paddingVertical: theme.spacing.lg,
     },
     suggestChip: {
       height: 34,

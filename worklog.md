@@ -2962,3 +2962,23 @@ Stage Summary:
 - TRILHA COMPLETA NO AR: 4 cursos encadeados de nível produto — a porta de entrada da plataforma para estudantes querem usar IA de verdade (fundamentos → engenharia de prompt → pesquisa acadêmica → construir sites com Claude Code/z.ai/Lovable)
 - 63 aulas de leitura profunda (~2.100 chars cada), 184 quizzes com correção + XP, conteúdo protegido por inscrição (gated) igual aos demais cursos
 - Seed idempotente re-executável a qualquer momento sem duplicar; trabalha com o padrão estabelecido na Task X
+---
+Task ID: ORB-a
+Agent: general-purpose (Busca sugestões + fix Mentorias)
+Task: BuscaScreen com sugestões reais + filtro ao digitar; BookingRow sem botão de sala quando pagamento pendente
+
+Work Log:
+- CONTEXTO LIDO: worklog (~80 linhas), BuscaScreen.tsx (415 linhas), MentoriasScreen.tsx (589 linhas, BookingRow ~338); props de CourseCard/BookCard/MentorCard e tipos de listCourses/listLibrary/listMentors conferidos em src/lib/api.ts (Paged<CourseItem|LibraryItemSummary|MentorListItem>)
+- APENAS 2 ARQUIVOS EDITADOS: src/screens/BuscaScreen.tsx e src/screens/MentoriasScreen.tsx; zero dependências novas
+- BuscaScreen: estado `suggestions` (SuggestionData = courses/books/mentors) + `suggestLoading`; useEffect no mount com Promise.allSettled(listCourses pageSize 3, listLibrary pageSize 2, listMentors pageSize 3); falha silenciosa — se TUDO falhar/vier vazio, suggestions fica null e a tela mantém o fallback (EmptyState + chips fixos), sem ErrorBox
+- BuscaScreen: no bloco "sem termo", Buscas recentes mantido intacto e, SEMPRE abaixo, as sugestões — seções "Em alta · Cursos" (CourseCard row), "Livros" (BookCard), "Mentores" (MentorCard), só seções com itens, cada card navega direto via navigation.navigate("Curso"/"Livro"/"Mentor", { id }); enquanto suggestLoading: ActivityIndicator accent/small no lugar das seções; bloco antigo EmptyState+chips removido apenas quando suggestions !== null
+- BuscaScreen: normalize() (NFD + faixa \u0300-\u036f + toLowerCase) em nível de módulo; termo curto (1 <= len < MIN_TERM=2) renderiza as MESMAS seções filtradas por normalize(title||name).includes(normalize(q)) via useMemo, sem rede; se nada casar (ou suggestions null), texto discreto "Continue digitando para buscar em tudo..." (textFaint, 13, centrado); len >= MIN_TERM segue fluxo server-side inalterado
+- BuscaScreen: debounce/seqRef/lastTermRef/recentes/allFailed/onSubmitEditing/pushRecent 100% preservados (só o que renderiza no ramo "sem termo/termo curto" mudou); styles novos: suggestLoading, continueHint
+- MentoriasScreen: `const joinable = cancellable && !payPending;` (era `= cancellable`) — sala só com pagamento confirmado; ao vivo + não pago: pílula "AO VIVO AGORA" mantida, joinLiveButton escondido (condição virou `live && !payPending`), payButton + hint "Pagamento pendente — pague para entrar na sala" (fontSize 11, textFaint, sem botão); ao vivo + pago: botão cheio accent "Entrar na reunião" como antes; fora do ar não pago: payButton + cancelar, SEM botão de sala (joinable false); fora do ar pago/grátis: joinButton soft + cancelar como antes; payButton movido para antes do bloco de entrar na reunião
+- MentoriasScreen: comentários de isLiveNow e BookingRow atualizados documentando "sala só com pagamento confirmado"; style novo payPendingHint; typo de comentário corrigido ("corrige o bug")
+- VALIDAÇÃO: bunx tsc --noEmit → exit 0 (rodado 2x, inclusive após último ajuste); releitura integral dos 2 arquivos — CourseCard (course/onPress), BookCard (item/onPress), MentorCard (mentor/onPress) com props corretas, navigation.navigate com rotas "Curso"/"Livro"/"Mentor" já usadas no arquivo, nenhum import órfão
+
+Stage Summary:
+- Busca agora abre com conteúdo real: sugestões de 3 cursos + 2 livros + 3 mentores carregadas no mount (Promise.allSettled, falha silenciosa) sempre abaixo das buscas recentes; digitando 1 caractere filtra localmente por título/nome sem acento (zero rede, hint "Continue digitando..."), e a partir de 2 caracteres segue a busca server-side com debounce/seq intactos; fallback EmptyState+chips só quando não há sugestões nem recentes
+- Mentorias: fim da inconsistência pagar × entrar — sessão sem pagamento (mesmo AO VIVO) não mostra botão de sala; mostra "Pagar agora" (+ aviso discreto ao vivo) e a sala só abre com pagamento confirmado ou sessão gratuita
+- tsc --noEmit exit 0; nenhum outro arquivo tocado; seed não rodado; git não usado
