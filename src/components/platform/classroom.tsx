@@ -38,6 +38,7 @@ import {
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { toast } from 'sonner'
+import { LessonContent } from '@/components/platform/lesson-content'
 import { AiTutor } from '@/components/platform/ai-tutor'
 import { LessonAiSummary } from '@/components/platform/ai-lesson-summary'
 import { Badge } from '@/components/ui/badge'
@@ -674,16 +675,9 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                       </div>
                     ) : currentLesson.content ? (
                       <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 dark:border-slate-800 dark:bg-slate-900">
-                        <div className="max-w-prose space-y-4">
-                          {currentLesson.content.split(/\n{2,}/).map((para, i) => (
-                            <p
-                              key={i}
-                              className="whitespace-pre-line text-[15px] leading-relaxed text-slate-700 dark:text-slate-200"
-                            >
-                              {para}
-                            </p>
-                          ))}
-                        </div>
+                        {/* Markdown leve (##, listas, **negrito**, `código`) — mesmo
+                            formato do RichText do app Órbita e do seed de conteúdo */}
+                        <LessonContent content={currentLesson.content} />
                       </article>
                     ) : currentLesson.kind === 'LIVE' ? (
                       <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm leading-relaxed text-slate-600 sm:p-6 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
