@@ -33,7 +33,7 @@ export default function MiniPlayer() {
         uri={current.artwork}
         style={styles.artwork}
         recyclingKey={`mini-audio-${current.id}`}
-        fallbackIcon="headphones-outline"
+        fallbackIcon="headset-outline"
         iconSize={16}
       />
       <View style={styles.info}>

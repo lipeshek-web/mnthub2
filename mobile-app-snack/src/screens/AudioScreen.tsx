@@ -95,7 +95,7 @@ export default function AudioScreen() {
         </View>
         <View style={styles.emptyStage}>
           <View style={styles.emptyArt}>
-            <Ionicons name="headphones-outline" size={44} color={theme.colors.textFaint} />
+            <Ionicons name="headset-outline" size={44} color={theme.colors.textFaint} />
           </View>
           <Text style={styles.emptyTitle}>Nada tocando agora</Text>
           <Text style={styles.emptyText}>
@@ -139,7 +139,7 @@ export default function AudioScreen() {
           uri={current.artwork}
           style={styles.art}
           recyclingKey={`audio-full-${current.id}`}
-          fallbackIcon="headphones-outline"
+          fallbackIcon="headset-outline"
           iconSize={64}
         />
       </View>

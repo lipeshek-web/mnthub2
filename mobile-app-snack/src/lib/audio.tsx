@@ -27,6 +27,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { Platform } from "react-native";
 import * as AV from "expo-av";
 import { assetUrl } from "./api";
 import { useAuth } from "./auth";
@@ -39,6 +40,12 @@ export interface AudioTrack {
   artwork?: string | null;
   /** Path relativo ("/uploads/...") ou URL absoluta do áudio. */
   source: string;
+  /**
+   * URL alternativa usada se o source principal falhar (404/offline).
+   * Usado pelas prévias demo enquanto as mídias reais não foram publicadas
+   * no servidor de produção — o player nunca fica “mudo sem explicar”.
+   */
+  fallbackUrl?: string | null;
 }
 
 interface AudioContextValue {
@@ -73,6 +80,50 @@ export function useAudio(): AudioContextValue {
 
 const SKIP_MS = 15_000;
 const RATES = [1, 1.25, 1.5, 2];
+
+/**
+ * URLs candidatas de uma faixa, em ordem de preferência:
+ *   1. assetUrl(source)  → servidor atual (produção / configurado);
+ *   2. mesma origem (web) → funciona no fallback web (/app-mobile) servido
+ *      junto do site, mesmo quando o servidor da API está desatualizado;
+ *   3. fallbackUrl        → mídia demo externa e estável (última linha).
+ */
+function candidateUris(track: AudioTrack): string[] {
+  const primary = assetUrl(track.source) ?? track.source;
+  const list = [primary];
+  if (Platform.OS === "web" && typeof window !== "undefined" && track.source.startsWith("/")) {
+    const sameOrigin = `${window.location.origin}${track.source}`;
+    if (!list.includes(sameOrigin)) list.push(sameOrigin);
+  }
+  if (track.fallbackUrl && !list.includes(track.fallbackUrl)) list.push(track.fallbackUrl);
+  return list;
+}
+
+/**
+ * Filtra as candidatas mortas com um HEAD barato (só web): no web o
+ * createAsync pode RESOLVER mesmo com URL 404/403 (o erro chega depois, no
+ * status), o que furaria a cadeia de fallback. Resposta ruim → descarta;
+ * CORS/rede → mantém (deixa o createAsync decidir). No nativo o createAsync
+ * já falha na hora, então seguimos com a lista inteira.
+ */
+async function playableCandidates(track: AudioTrack): Promise<string[]> {
+  const candidates = candidateUris(track);
+  if (Platform.OS !== "web" || typeof fetch !== "function") return candidates;
+  const kept: string[] = [];
+  for (const uri of candidates) {
+    if (!/^https?:/.test(uri)) {
+      kept.push(uri);
+      continue;
+    }
+    try {
+      const res = await fetch(uri, { method: "HEAD" });
+      if (res.ok) kept.push(uri);
+    } catch {
+      kept.push(uri);
+    }
+  }
+  return kept.length > 0 ? kept : candidates;
+}
 
 export function nextRate(rate: number): number {
   const idx = RATES.indexOf(rate);
@@ -116,7 +167,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     try {
       await AV.Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
-        allowsRecordingAndroid: false,
         shouldDuckAndroid: true,
       });
     } catch {
@@ -177,41 +227,46 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             /* ignore */
           }
         }
-        try {
-          const source = { uri: assetUrl(track.source) ?? track.source };
-          // Streaming direto pelo uri — expo-av cuida do buffer no nativo e no web.
-          const { sound } = await AV.Audio.Sound.createAsync(
-            source,
-            {
-              shouldPlay: true,
-              progressUpdateIntervalMillis: 500,
-              rate: rateRef.current,
-              shouldCorrectPitch: true,
-              pitchCorrectionQuality: AV.Audio.PitchCorrectionQuality.High,
-            },
-            onStatus
-          );
-          if (generation !== generationRef.current) {
-            // O usuário já pediu outra faixa enquanto carregávamos.
-            try {
-              await sound.unloadAsync();
-            } catch {
-              /* ignore */
+        // Tenta as URLs candidatas vivas, em ordem (servidor → origem → demo).
+        let lastError: unknown = null;
+        const uris = await playableCandidates(track);
+        for (const uri of uris) {
+          try {
+            const { sound } = await AV.Audio.Sound.createAsync(
+              { uri },
+              {
+                shouldPlay: true,
+                progressUpdateIntervalMillis: 500,
+                rate: rateRef.current,
+                shouldCorrectPitch: true,
+                pitchCorrectionQuality: AV.Audio.PitchCorrectionQuality.High,
+              },
+              onStatus
+            );
+            if (generation !== generationRef.current) {
+              // O usuário já pediu outra faixa enquanto carregávamos.
+              try {
+                await sound.unloadAsync();
+              } catch {
+                /* ignore */
+              }
+              return;
             }
+            soundRef.current = sound;
+            loadedIdRef.current = track.id;
+            setIsLoading(false);
             return;
+          } catch (err) {
+            lastError = err;
           }
-          soundRef.current = sound;
-          loadedIdRef.current = track.id;
-          setIsLoading(false);
-        } catch (err) {
-          if (generation !== generationRef.current) return;
-          setIsLoading(false);
-          setError(
-            err instanceof Error
-              ? `Não foi possível tocar: ${err.message}`
-              : "Não foi possível tocar este áudio agora."
-          );
         }
+        if (generation !== generationRef.current) return;
+        setIsLoading(false);
+        setError(
+          lastError instanceof Error
+            ? `Não foi possível tocar: ${lastError.message}`
+            : "Não foi possível tocar este áudio agora."
+        );
       })();
     },
     [ensureAudioMode, onStatus]

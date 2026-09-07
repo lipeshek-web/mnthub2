@@ -50,10 +50,13 @@ import {
   type EventItem,
 } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { useAudio, type AudioTrack } from "../lib/audio";
+import { DEMO_AUDIO_TRACKS } from "../lib/audioContent";
 import { DOCK_CLEARANCE, useTabs, type SegmentName } from "../lib/tabs";
 import { formatNaiveDateTime } from "../lib/format";
 import { theme } from "../theme";
 import { Avatar } from "../components/Avatar";
+import OrbitLogo from "../components/OrbitLogo";
 import { CourseCard } from "../components/CourseCard";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBox } from "../components/ErrorBox";
@@ -119,6 +122,52 @@ function SectionLabel({
           <Text style={styles.sectionAction}>{actionLabel}</Text>
         </TouchableOpacity>
       ) : null}
+    </View>
+  );
+}
+
+/** Linha de áudio-aula: arte + título + botão tocar/pausar (player global). */
+function AudioRow({ track }: { track: AudioTrack }) {
+  const styles = makeStyles();
+  const { current, isPlaying, isLoading, play, toggle } = useAudio();
+  const isCurrent = current?.id === track.id;
+  const active = isCurrent && isPlaying;
+  const onPress = () => {
+    if (isCurrent) toggle();
+    else play(track);
+  };
+  return (
+    <View style={styles.audioRow}>
+      <RemoteImage
+        uri={track.artwork}
+        style={styles.audioArt}
+        recyclingKey={`home-audio-${track.id}`}
+        fallbackIcon="headset-outline"
+        iconSize={18}
+      />
+      <View style={styles.audioInfo}>
+        <Text style={styles.audioTitle} numberOfLines={1}>
+          {track.title}
+        </Text>
+        <Text style={styles.audioSubtitle} numberOfLines={1}>
+          {track.subtitle}
+        </Text>
+      </View>
+      <TouchableOpacity
+        style={[styles.audioPlay, active ? styles.audioPlayActive : null]}
+        onPress={onPress}
+        disabled={isCurrent && isLoading}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel={`${active ? "Pausar" : "Tocar"} ${track.title}`}
+      >
+        <Ionicons
+          name={isCurrent && isLoading ? "hourglass-outline" : active ? "pause" : "play"}
+          size={18}
+          color={active ? theme.colors.onAccent : theme.colors.accent}
+        />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -239,7 +288,6 @@ export default function HomeScreen() {
     void load("initial");
   }, [load]);
 
-  const firstName = (user?.name ?? "").trim().split(/\s+/)[0] ?? "";
   const enrolledCourses: DashboardEnrolledCourse[] = data?.enrolledCourses ?? [];
   // Em andamento primeiro (0 < progresso < 100), depois o resto na ordem original.
   const isStudying = (c: DashboardEnrolledCourse) => c.progressPct > 0 && c.progressPct < 100;
@@ -263,13 +311,11 @@ export default function HomeScreen() {
 
   return (
     <Screen>
-      {/* Header: saudação + data | busca e notificações (Perfil é ABA, sem avatar aqui) */}
+      {/* Header: MARCA (planeta + Órbita) | busca e notificações — o perfil
+          vive na ABA Perfil; sem saudação nem data (identidade limpa). */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.greeting} numberOfLines={1}>
-            Olá{firstName ? `, ${firstName}` : ""}
-          </Text>
-          <Text style={styles.greetingSub}>{todayLabel}</Text>
+          <OrbitLogo size={26} />
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity
@@ -535,7 +581,19 @@ export default function HomeScreen() {
             </>
           ) : null}
 
-          {/* 6. Missões de hoje — hábito diário (coleta de XP), compacta */}
+          {/* 6. Para ouvir — áudio-aulas (prévias demo) com o player global:
+              tocar aqui continua soando em qualquer aba (mini-player na tab bar). */}
+          <SectionLabel label="Para ouvir" />
+          <View style={styles.audioCard}>
+            {DEMO_AUDIO_TRACKS.map((track) => (
+              <AudioRow key={track.id} track={track} />
+            ))}
+            <Text style={styles.audioHint}>
+              Estude ouvindo — no ônibus, na academia, tomando um café.
+            </Text>
+          </View>
+
+          {/* 7. Missões de hoje — hábito diário (coleta de XP), compacta */}
           {missions && missions.missions.length > 0 ? (
             <>
               <SectionLabel label="Missões de hoje" />
@@ -601,7 +659,7 @@ export default function HomeScreen() {
             </>
           ) : null}
 
-          {/* 7. Em alta agora — cursos recomendados */}
+          {/* 8. Em alta agora — cursos recomendados */}
           {recommended.length > 0 ? (
             <>
               <SectionLabel
@@ -658,14 +716,7 @@ const makeStyles = () =>
       paddingTop: theme.spacing.sm,
       paddingBottom: theme.spacing.md,
     },
-    headerLeft: { flexShrink: 1, gap: 2 },
-    greeting: {
-      color: theme.colors.text,
-      fontSize: 23,
-      fontWeight: "700",
-      letterSpacing: -0.5,
-    },
-    greetingSub: { color: theme.colors.textFaint, fontSize: 13, fontWeight: "500" },
+    headerLeft: { flexShrink: 1 },
     headerActions: {
       flexDirection: "row",
       alignItems: "center",
@@ -770,6 +821,47 @@ const makeStyles = () =>
       borderColor: theme.colors.border,
     },
     chipText: { color: theme.colors.text, fontSize: 12.5, fontWeight: "700" },
+
+    /* Para ouvir — áudio-aulas (prévias demo) com o player global */
+    audioCard: {
+      gap: theme.spacing.sm,
+      padding: theme.spacing.md,
+      backgroundColor: theme.colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.lg,
+    },
+    audioRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.md,
+    },
+    audioArt: {
+      width: 44,
+      height: 44,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.surfaceAlt,
+    },
+    audioInfo: { flex: 1, minWidth: 0, gap: 2 },
+    audioTitle: { color: theme.colors.text, fontSize: 13.5, fontWeight: "700" },
+    audioSubtitle: { color: theme.colors.textFaint, fontSize: 11.5, fontWeight: "600" },
+    audioPlay: {
+      width: 38,
+      height: 38,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.accentSoft,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.accentBorder,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    audioPlayActive: { backgroundColor: theme.colors.accent },
+    audioHint: {
+      color: theme.colors.textFaint,
+      fontSize: 11,
+      fontWeight: "600",
+      marginTop: 2,
+    },
 
     /* Missões de hoje */
     missionsCard: {

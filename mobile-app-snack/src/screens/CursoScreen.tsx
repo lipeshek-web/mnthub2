@@ -47,6 +47,8 @@ import {
   levelLabel,
 } from "../lib/format";
 import { theme } from "../theme";
+import { useAudio } from "../lib/audio";
+import { coursePreviewTrack } from "../lib/audioContent";
 import { Avatar } from "../components/Avatar";
 import { Chip } from "../components/Chip";
 import { EmptyState } from "../components/EmptyState";
@@ -185,6 +187,14 @@ export default function CourseDetailScreen() {
   const course = detail?.course ?? null;
   const enrollment = detail?.enrollment ?? null;
   const enrolled = enrollment !== null;
+
+  /* Prévia em áudio (página de venda) — estado vem do player global. */
+  const { current, isPlaying, isLoading, play, toggle } = useAudio();
+  const previewTrack = course ? coursePreviewTrack(course.title, course.id, course.coverUrl) : null;
+  const isPreviewCurrent = Boolean(previewTrack && current?.id === previewTrack.id);
+  const previewActive = isPreviewCurrent && isPlaying;
+  const previewLoading = isPreviewCurrent && isLoading;
+
   const completedIds = enrollment?.completedLessonIds ?? [];
   const allLessons = detail
     ? [...detail.lessons, ...detail.themes.flatMap((courseTheme) => courseTheme.lessons)]
@@ -663,6 +673,43 @@ export default function CourseDetailScreen() {
 
               {course.description ? <Text style={styles.description}>{course.description}</Text> : null}
 
+              {/* Prévia em áudio — todo curso terá trilha sonora; por ora é
+                  uma prévia demo que toca no player global (mini-player na
+                  tab bar), igual ao que chega com as aulas em áudio. */}
+              <TouchableOpacity
+                style={styles.audioPreview}
+                onPress={() => {
+                  const track = coursePreviewTrack(course.title, course.id, course.coverUrl);
+                  if (current?.id === track.id) toggle();
+                  else play(track);
+                }}
+                disabled={previewLoading}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Ouvir prévia em áudio do curso"
+              >
+                <View style={styles.audioPreviewIcon}>
+                  <Ionicons
+                    name={previewLoading ? "hourglass-outline" : previewActive ? "pause" : "headset-outline"}
+                    size={18}
+                    color={theme.colors.accent}
+                  />
+                </View>
+                <View style={styles.audioPreviewInfo}>
+                  <Text style={styles.audioPreviewTitle} numberOfLines={1}>
+                    {previewLoading
+                      ? "Carregando prévia…"
+                      : previewActive
+                        ? "Prévia tocando — toque para pausar"
+                        : "Ouvir prévia em áudio"}
+                  </Text>
+                  <Text style={styles.audioPreviewSub} numberOfLines={1}>
+                    Áudio-aula demo · o player segue tocando enquanto você navega
+                  </Text>
+                </View>
+                <Ionicons name="play" size={16} color={theme.colors.accent} />
+              </TouchableOpacity>
+
               <View style={styles.lockedBanner}>
                 <Ionicons name="lock-closed" size={14} color={theme.colors.warning} />
                 <Text style={styles.lockedBannerText}>
@@ -1133,6 +1180,33 @@ const makeStyles = () =>
     },
     lockedBannerText: { color: theme.colors.textMuted, fontSize: 12, flex: 1, lineHeight: 17 },
     salesFooterSpacer: { height: theme.spacing.md },
+
+    /* Prévia em áudio (página de venda) — player global */
+    audioPreview: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.md,
+      marginHorizontal: theme.spacing.lg,
+      marginTop: theme.spacing.lg,
+      padding: theme.spacing.md,
+      backgroundColor: theme.colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.lg,
+    },
+    audioPreviewIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.accentSoft,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.accentBorder,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    audioPreviewInfo: { flex: 1, minWidth: 0, gap: 2 },
+    audioPreviewTitle: { color: theme.colors.text, fontSize: 13.5, fontWeight: "700" },
+    audioPreviewSub: { color: theme.colors.textFaint, fontSize: 11, fontWeight: "600" },
 
     /* CTA rodapé */
     footer: {

@@ -31,6 +31,7 @@ const deps = {
   "expo-secure-store":             "~15.0.8",
   "expo-linear-gradient":          "~15.0.8",
   "expo-status-bar":               "~3.0.9",
+  "expo-av":                       "~16.0.8",
   "@expo/vector-icons":            "^15.0.3",
 };
 
@@ -63,7 +64,7 @@ console.log("raízes:", [...new Set(files.map(f => f.split("/")[0]))].join(", ")
 
 // hash oficial anterior (log/uuid) — após o publish, o link oficial é o
 // hashId devolvido pela API. Atualizar README + worklog com o hash novo.
-const OFFICIAL_HASH_ID = process.argv[2] || "XohSNWn7WJf18kBXrfjSc";
+const OFFICIAL_HASH_ID = process.argv[2] || "fyvpHgPZy3uaWgO9TiGvS";
 
 async function resolveOfficialId(hashId) {
   // descobre o UUID interno do snack a partir do hashId público
