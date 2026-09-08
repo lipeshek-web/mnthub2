@@ -597,10 +597,16 @@ export const api = {
     request<MyTrackDTO[]>(`/api/tracks/mine${qs({ userId })}`),
 
   // Upload de arquivos (imagens: avatar/capas · documentos: anexos de aula)
+  // Envia Authorization — /api/upload exige sessão e grava no banco (Turso)
   uploadImage: (file: File) => {
     const fd = new FormData()
     fd.append('file', file)
-    return fetch('/api/upload', { method: 'POST', body: fd, cache: 'no-store' }).then(async (res) => {
+    return fetch('/api/upload', {
+      method: 'POST',
+      body: fd,
+      cache: 'no-store',
+      headers: authHeaders(),
+    }).then(async (res) => {
       const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string }
       if (!res.ok || !json.url) throw new Error(json.error || 'Falha no upload do arquivo.')
       return json.url
@@ -611,7 +617,12 @@ export const api = {
   uploadAttachment: (file: File) => {
     const fd = new FormData()
     fd.append('file', file)
-    return fetch('/api/upload', { method: 'POST', body: fd, cache: 'no-store' }).then(async (res) => {
+    return fetch('/api/upload', {
+      method: 'POST',
+      body: fd,
+      cache: 'no-store',
+      headers: authHeaders(),
+    }).then(async (res) => {
       const json = (await res.json().catch(() => ({}))) as {
         url?: string
         name?: string

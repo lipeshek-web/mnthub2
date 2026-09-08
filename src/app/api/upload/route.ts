@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { mkdir, writeFile } from 'fs/promises'
-import path from 'path'
-import { randomUUID } from 'crypto'
+import { db } from '@/lib/db'
+import { resolveUser, unauthorized } from '@/lib/session'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -26,14 +25,31 @@ const DOC_TYPES: Record<string, string> = {
   'text/csv': 'csv',
   'audio/mpeg': 'mp3',
   'audio/mp4': 'm4a',
+  'audio/wav': 'wav',
+  'audio/x-wav': 'wav',
+  'audio/ogg': 'ogg',
   'video/mp4': 'mp4',
+  'video/webm': 'webm',
 }
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024 // 5MB
 const MAX_DOC_BYTES = 20 * 1024 * 1024 // 20MB
 
-/** POST /api/upload — upload de imagem (avatar/capas) ou documento (anexo de aula) → { url, name } */
+/**
+ * POST /api/upload — upload de imagem (avatar/capas) ou documento/anexo/mídia
+ * (PDF, áudio, vídeo) → { url, name, kind }.
+ *
+ * PERSISTÊNCIA À PROVA DE PERDA: o arquivo é gravado no PRÓPRIO BANCO
+ * (modelo UploadFile) — em modo nuvem vive no TURSO e sobrevive a publish,
+ * rebuild e downgrade de snapshot (arquivos no filesystem morriam no rebuild).
+ * A URL devolvida é /api/files/<id>, servida pelo app com cache imutável.
+ *
+ * Exige sessão (era aberto — vetor de abuso).
+ */
 export async function POST(req: NextRequest) {
   try {
+    const session = await resolveUser(req)
+    if (!session) return unauthorized('Entre para enviar arquivos.')
+
     const form = await req.formData()
     const file = form.get('file')
     if (!(file instanceof File)) {
@@ -47,7 +63,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            'Formato não suportado. Imagens: JPG/PNG/WEBP/GIF · Documentos: PDF/ZIP/DOC(X)/PPT(X)/XLS(X)/TXT/CSV/MP3/MP4.',
+            'Formato não suportado. Imagens: JPG/PNG/WEBP/GIF · Documentos: PDF/ZIP/DOC(X)/PPT(X)/XLS(X)/TXT/CSV/MP3/M4A/WAV/OGG/MP4/WEBM.',
         },
         { status: 415 }
       )
@@ -61,14 +77,25 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const dir = path.join(process.cwd(), 'public', 'uploads')
-    await mkdir(dir, { recursive: true })
-    const filename = `${randomUUID()}.${ext}`
-    await writeFile(path.join(dir, filename), Buffer.from(await file.arrayBuffer()))
+    const safeName =
+      file.name
+        .replace(/[^\p{L}\p{N}\-_. ()]+/gu, '')
+        .replace(/\.[^.]+$/, '')
+        .slice(0, 120) || 'Anexo'
+
+    const buffer = Buffer.from(await file.arrayBuffer())
+    const created = await db.uploadFile.create({
+      data: {
+        name: `${safeName}.${ext}`,
+        mime: file.type || 'application/octet-stream',
+        size: buffer.length,
+        data: buffer,
+      },
+    })
 
     return NextResponse.json({
-      url: `/uploads/${filename}`,
-      name: file.name.replace(/\.[^.]+$/, '').slice(0, 120) || 'Anexo',
+      url: `/api/files/${created.id}`,
+      name: safeName,
       kind: isImage ? 'image' : 'document',
     })
   } catch (err) {

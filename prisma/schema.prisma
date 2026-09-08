@@ -827,3 +827,18 @@ model AuditLog {
 
   @@index([createdAt])
 }
+
+/// Arquivos enviados em runtime (capas, avatares, PDFs, imagens/áudio de
+/// artigos) — gravados no PRÓPRIO banco para nunca se perderem: em modo
+/// nuvem vivem no Turso e sobrevivem a publish/rebuild/downgrade de snapshot.
+/// Servidos por /api/files/[id] (URL devolvida pelo /api/upload).
+model UploadFile {
+  id        String   @id @default(cuid())
+  name      String   @default("arquivo") // nome original (sem caminho)
+  mime      String   @default("application/octet-stream")
+  size      Int      @default(0) // bytes
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

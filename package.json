@@ -12,6 +12,7 @@
     "db:generate": "prisma generate",
     "db:backup": "bun scripts/backup-db.ts",
     "db:to-turso": "bun scripts/turso-sync.ts",
+    "db:from-turso": "bun scripts/turso-restore.ts",
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset"
   },

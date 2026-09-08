@@ -3020,3 +3020,25 @@ Stage Summary:
 - Artigo demo "O guia do criador" publicado no Explorar (local + Turso) mostrando TODOS os recursos — o usuário abre e vê como fica
 - Bônus: /api/upload restaurada (uploads quebrados desde o rebase), leitor rico também ativo no classroom e fallback de texto puro para o app mobile
 - Pendente de publish: produção (mentorhub.space-z.ai) mostra o artigo quando o site for republicado; preview local já exibe tudo
+
+---
+Task ID: W
+Agent: main (Z.ai Code)
+Task: Durabilidade de dados — tudo gravado no Turso (banco principal), nada se perde
+
+Work Log:
+- AUDITORIA de perda de dados: produção já sai em modo nuvem (build.sh copia .env e COMPLETA variáveis ausentes do cloud.env versionado — fallback W-47 ok); MFA tickets já no banco; tracking → /api/track → banco. Riscos reais encontrados: (1) dev/preview rodando no SQLite local — escrita do preview não ia ao Turso e o preview mostrava dados diferentes da produção; (2) uploads em runtime iam para public/uploads no FILESYSTEM — não estavam no banco (perdíveis em downgrade de snapshot do workspace); (3) nenhum backup do próprio Turso; (4) /api/upload sem auth (aberto)
+- DEV = NUVEM AGORA: .env unificado (DATABASE_URL local p/ CLI + TURSO_DATABASE_URL/TURSO_AUTH_TOKEN copiados de .zscripts/cloud.env) — o dev server reiniciou em MODO TURSO: o preview mostra exatamente a produção e TODA escrita vai direto ao banco principal (artigo demo, edits, uploads…). Regra documentada no cabeçalho do .env
+- DETECTOR DE MODO: db.ts emite aviso ALTO no boot quando sobe SEM Turso ("MODO LOCAL — os dados NÃO estão sendo gravados no Turso"); novo dbMode() exportado; GET /api agora responde { storage: { mode: 'turso'|'local', durable, hint } } — checagem em 1 curl (verificado: mode=turso, durable=true; dev.log sem aviso local)
+- UPLOADS NO BANCO (novo model UploadFile: name/mime/size/data Bytes): POST /api/upload reescrito — grava os bytes NO BANCO (no Turso em modo nuvem) e devolve /api/files/<id>; nova rota GET /api/files/[id] serve os bytes com Content-Type correto e Cache-Control immutable (conteúdo imutável por id — nada de reler do Turso a cada visita); exige sessão (Authorization Bearer — antes era aberto); formatos ampliados (wav/ogg/webm); imagens 5MB / docs+mídia 20MB. Corrigido junto: api.uploadImage/uploadAttachment usavam fetch cru SEM Authorization (funcionavam porque a rota era aberta) — agora enviam o header como o resto do api.ts
+- MIGRAÇÃO SUAVE: arquivos antigos em /uploads/* continuam servidos estaticamente (nada quebra); TODO upload novo nasce no banco
+- DDL aplicado no Turso (ddl-turso.mts idempotente — 2 statements novos: UploadFile + índice) e db push local (schema em sync)
+- BACKUP REVERSO (seguro contra perda do próprio Turso): scripts/turso-restore.ts + bun run db:from-turso — puxa o banco REMOTO para db/turso-backup-<data>.db (+ ponteiro db/turso-backup-latest.db, gitignored); mesma ordenação topológica Kahn do turso-sync (PRAGMA foreign_key_list na origem) e PRAGMA com aspas (tabela "Order" é palavra reservada — SQL_PARSE_ERROR corrigido); testado: 2.398 linhas · 40 tabelas · snapshot 2MB
+- E2E: login carlos → upload de capa PELA UI (Painel → Biblioteca → Novo item) → preview em /api/files/<id> ✓; download byte a byte idêntico (cmp) ✓; linha CONFIRMADA DENTRO do Turso por query libsql independente (length(data)=144388) ✓; create/delete de LibraryItem contra o Turso ✓; limpeza dos itens/arquivos de teste (UploadFile=0); leitor rico lendo 100% do Turso (callout+áudio+vídeo) ✓; tsc/lint limpos
+- Push: incluído após rebase limpo; db/custom.db revertido no commit
+
+Stage Summary:
+- O TURSO É A FONTE ÚNICA DE VERDADE em todas as superfícies: produção (já era, garantido por build.sh), dev/preview (AGORA — .env unificado) e uploads (AGORA — gravados no banco, servidos por /api/files com cache imutável)
+- Guard-rails novos: aviso ALTO de modo local no boot + GET /api com storage.mode para checagem em 1 curl + bun run db:from-turso para snapshot de segurança do banco principal
+- Uploads agora sobrevivem a publish/rebuild/downgrade de snapshot (estão no Turso, não no filesystem)
+- Comando novo: bun run db:from-turso (com .zscripts/cloud.env sourced) — rodar de vez em quando como seguro

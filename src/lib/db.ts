@@ -19,6 +19,11 @@ function resolveCloud(): { url: string; authToken?: string } | null {
   return { url, authToken }
 }
 
+/** Modo de armazenamento em uso — 'turso' (nuvem, fonte da verdade) | 'local' */
+export function dbMode(): 'turso' | 'local' {
+  return resolveCloud() ? 'turso' : 'local'
+}
+
 function makeDb(): PrismaClient {
   const cloud = resolveCloud()
   if (cloud) {
@@ -39,6 +44,17 @@ function makeDb(): PrismaClient {
 const baseDb = globalForPrisma.prisma ?? makeDb()
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = baseDb
+
+// Aviso ALTO quando o servidor sobe SEM Turso: tudo que for gravado daqui pra
+// frente fica preso no SQLite do sandbox e some no próximo rebuild/publish.
+// NUNCA silenciar este aviso — ele é o detector de "dados sumindo".
+if (!resolveCloud()) {
+  console.warn(
+    '\n⚠️  [Órbita] MODO LOCAL (SQLite em db/custom.db) — os dados NÃO estão sendo gravados no Turso!\n' +
+      '   Toda escrita agora vive só no sandbox e se perde no próximo publish/rebuild.\n' +
+      '   Defina TURSO_DATABASE_URL e TURSO_AUTH_TOKEN no .env (cópia pronta em .zscripts/cloud.env).\n'
+  )
+}
 
 /**
  * AUTO-RECUPERAÇÃO (SQLite readonly): se o ARQUIVO do banco for substituído
