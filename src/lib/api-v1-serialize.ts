@@ -2,6 +2,7 @@
 // em docs/api-v1.md. Todas as URLs saem absolutas (origin do request).
 import { db } from '@/lib/db'
 import { absolutize, avgRating, avgRatingFromAgg, parseJsonArray } from '@/lib/api-v1'
+import { articleToPlainText } from '@/lib/article-blocks'
 
 type Origin = string
 
@@ -61,7 +62,9 @@ export function serializeMobileLibraryDetail(
   return {
     ...serializeMobileLibraryCard(item, origin),
     pdfUrl: absolutize(item.pdfUrl, origin),
-    content: item.content,
+    // Doc em blocos (JSON) é convertido em texto puro — o app mobile renderiza
+    // parágrafos simples; a versão rica vive na web.
+    content: articleToPlainText(item.content),
     updatedAt: item.updatedAt.toISOString(),
     mentor: {
       id: item.mentor.id,

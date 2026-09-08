@@ -60,6 +60,7 @@ import { api } from '@/lib/api'
 import { CATEGORIES, LEVEL_LABELS, avatarGradient } from '@/lib/helpers'
 import type { LibraryItemDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { ArticleEditor } from '@/components/platform/article-editor'
 
 const LEVELS = ['INICIANTE', 'INTERMEDIARIO', 'AVANCADO'] as const
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
@@ -451,7 +452,12 @@ export function LibraryManager({
           if (open) setFormErrors({})
         }}
       >
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent
+          className={cn(
+            'max-h-[85vh] overflow-y-auto',
+            kind === 'ARTICLE' ? 'sm:max-w-3xl' : 'sm:max-w-lg'
+          )}
+        >
           <DialogHeader>
             <DialogTitle>{editing ? 'Editar item' : 'Novo item da Biblioteca'}</DialogTitle>
             <DialogDescription>
@@ -697,26 +703,37 @@ export function LibraryManager({
               />
             </div>
 
-            {/* Conteúdo: texto */}
+            {/* Conteúdo: texto — artigos ganham o editor rico em blocos */}
             <div className="flex flex-col gap-2">
               <Label htmlFor="lib-content">{contentLabel}</Label>
-              <Textarea
-                id="lib-content"
-                rows={8}
-                value={content}
-                onChange={(event) => {
-                  setContent(event.target.value)
-                  if (formErrors.content) {
-                    setFormErrors((prev) => ({ ...prev, content: undefined }))
-                  }
-                }}
-                placeholder={
-                  isBook
-                    ? 'Texto complementar ao PDF (opcional). Use linhas vazias para separar parágrafos, "## " para subtítulos e "- " para listas.'
-                    : 'Escreva o texto do artigo aqui. Use linhas vazias para separar parágrafos, "## " para subtítulos e "- " para listas.'
-                }
-                aria-invalid={Boolean(formErrors.content)}
-              />
+              {isBook ? (
+                <Textarea
+                  id="lib-content"
+                  rows={8}
+                  value={content}
+                  onChange={(event) => {
+                    setContent(event.target.value)
+                    if (formErrors.content) {
+                      setFormErrors((prev) => ({ ...prev, content: undefined }))
+                    }
+                  }}
+                  placeholder={'Texto complementar ao PDF (opcional). Use linhas vazias para separar parágrafos, "## " para subtítulos e "- " para listas.'}
+                  aria-invalid={Boolean(formErrors.content)}
+                />
+              ) : (
+                <div id="lib-content">
+                  <ArticleEditor
+                    rawValue={content}
+                    onChange={(raw) => {
+                      setContent(raw)
+                      if (formErrors.content) {
+                        setFormErrors((prev) => ({ ...prev, content: undefined }))
+                      }
+                    }}
+                    disabled={saving}
+                  />
+                </div>
+              )}
               {formErrors.content ? (
                 <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.content}</p>
               ) : (

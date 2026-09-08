@@ -15,7 +15,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar } from '@/components/platform/avatar'
+import { ArticleBlocksRich } from '@/components/platform/article-renderer'
 import { api } from '@/lib/api'
+import { parseArticleDoc } from '@/lib/article-blocks'
 import { avatarGradient, firstName } from '@/lib/helpers'
 import { useAppStore } from '@/lib/store'
 import type { LibraryItemDTO, LibraryItemDetailDTO } from '@/lib/types'
@@ -182,6 +184,8 @@ export function ReaderView({ itemId }: { itemId: string }) {
 
   const kindMeta = item ? (KIND_META[item.kind] ?? KIND_META.ARTICLE) : null
   const firstCourse = item?.linkedCourses?.[0]
+  // Artigo em blocos (novo formato JSON) — null = texto legado
+  const articleDoc = item?.canRead && !item.pdfUrl ? parseArticleDoc(item.content ?? '') : null
 
   const footerSections = (wide: boolean) =>
     item && item.canRead ? (
@@ -495,7 +499,11 @@ export function ReaderView({ itemId }: { itemId: string }) {
               <p className="mt-6 text-lg leading-relaxed text-slate-500 dark:text-slate-400">{item.description}</p>
             )}
             <div className="mt-8">
-              <ArticleBlocks content={item.content ?? ''} sizeClass={READER_FONT_CLASSES[fontStep]} />
+              {articleDoc ? (
+                <ArticleBlocksRich doc={articleDoc} sizeClass={READER_FONT_CLASSES[fontStep]} />
+              ) : (
+                <ArticleBlocks content={item.content ?? ''} sizeClass={READER_FONT_CLASSES[fontStep]} />
+              )}
             </div>
             {footerSections(false)}
           </article>

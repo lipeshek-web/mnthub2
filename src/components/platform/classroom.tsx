@@ -56,7 +56,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Avatar, Stars } from '@/components/platform/avatar'
+import { ArticleBlocksRich } from '@/components/platform/article-renderer'
 import { api } from '@/lib/api'
+import { parseArticleDoc } from '@/lib/article-blocks'
 import {
   LEVEL_LABELS,
   avatarGradient,
@@ -675,9 +677,15 @@ export function ClassroomView({ courseId }: { courseId: string }) {
                       </div>
                     ) : currentLesson.content ? (
                       <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 dark:border-slate-800 dark:bg-slate-900">
-                        {/* Markdown leve (##, listas, **negrito**, `código`) — mesmo
-                            formato do RichText do app Órbita e do seed de conteúdo */}
-                        <LessonContent content={currentLesson.content} />
+                        <div className="max-w-prose">
+                          {(() => {
+                            // Artigo em blocos (editor rico) → leitor rico;
+                            // markdown leve (##, listas, **negrito`, `código`) → LessonContent
+                            const doc = parseArticleDoc(currentLesson.content)
+                            if (doc) return <ArticleBlocksRich doc={doc} />
+                            return <LessonContent content={currentLesson.content} />
+                          })()}
+                        </div>
                       </article>
                     ) : currentLesson.kind === 'LIVE' ? (
                       <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm leading-relaxed text-slate-600 sm:p-6 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
@@ -1204,27 +1212,12 @@ function ReadingMaterial({
         <div className="min-h-[420px] max-h-[70vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl shadow-slate-950/15 ring-1 ring-slate-200 sm:p-8 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-track]:bg-slate-100 dark:[&::-webkit-scrollbar-track]:bg-slate-900 [&::-webkit-scrollbar]:w-1.5 dark:bg-slate-900 dark:ring-slate-800">
           <article className="mx-auto max-w-3xl">
             <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">{reading.title}</h2>
-            <div className="mt-5 space-y-4">
-              {(reading.content ?? '')
-                .split(/\n{2,}/)
-                .filter((para) => para.trim().length > 0)
-                .map((para, i) =>
-                  para.trim().startsWith('## ') ? (
-                    <h3
-                      key={i}
-                      className="pt-2 text-lg font-bold tracking-tight text-blue-900 dark:text-blue-200"
-                    >
-                      {para.trim().slice(3)}
-                    </h3>
-                  ) : (
-                    <p
-                      key={i}
-                      className="whitespace-pre-line text-[15px] leading-relaxed text-slate-700 dark:text-slate-200"
-                    >
-                      {para}
-                    </p>
-                  )
-                )}
+            <div className="mt-5">
+              {(() => {
+                const doc = parseArticleDoc(reading.content)
+                if (doc) return <ArticleBlocksRich doc={doc} />
+                return <LessonContent content={reading.content ?? ''} />
+              })()}
             </div>
           </article>
         </div>
